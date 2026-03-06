@@ -5,6 +5,8 @@ import { prisma } from "@/lib/prisma";
 import { revalidatePath } from "next/cache";
 import { toCsv } from "@/lib/export/toCsv";
 import { Role } from "@prisma/client";
+import { writeAuditLog } from "@/lib/audit/log";
+import { requirePermission } from "@/lib/auth/permissions";
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -37,7 +39,7 @@ export async function addPartnerContribution(formData: FormData) {
 
   const partner = await prisma.partner.findUnique({ where: { id: partnerId } });
 
-  await prisma.journalEntry.create({
+  const entry = await prisma.journalEntry.create({
     data: {
       projectId,
       date: new Date(date),
@@ -50,6 +52,17 @@ export async function addPartnerContribution(formData: FormData) {
         ],
       },
     },
+  });
+
+  await writeAuditLog({
+    companyId: session!.user.companyId,
+    projectId,
+    entityType: "JOURNAL_ENTRY",
+    entityId: entry.id,
+    action: "CREATE",
+    changes: [{ field: "type", oldValue: null, newValue: "partner_contribution" }, { field: "amount", oldValue: null, newValue: String(amount) }],
+    userId: session!.user.id,
+    userName: session!.user.name ?? session!.user.email ?? "",
   });
 
   revalidate(session!.user.companyId, projectId);
@@ -75,7 +88,7 @@ export async function addPayExpense(formData: FormData) {
   const expenseAccount = accounts.find((a) => a.name === "Project Expenses");
   if (!cashAccount || !expenseAccount) throw new Error("Cash or Project Expenses account not found");
 
-  await prisma.journalEntry.create({
+  const payEntry = await prisma.journalEntry.create({
     data: {
       projectId,
       date: new Date(date),
@@ -89,6 +102,17 @@ export async function addPayExpense(formData: FormData) {
         ],
       },
     },
+  });
+
+  await writeAuditLog({
+    companyId: session!.user.companyId,
+    projectId,
+    entityType: "JOURNAL_ENTRY",
+    entityId: payEntry.id,
+    action: "CREATE",
+    changes: [{ field: "type", oldValue: null, newValue: "pay_expense" }, { field: "amount", oldValue: null, newValue: String(amount) }],
+    userId: session!.user.id,
+    userName: session!.user.name ?? session!.user.email ?? "",
   });
 
   revalidate(session!.user.companyId, projectId);
@@ -114,7 +138,7 @@ export async function addDistribution(formData: FormData) {
   const drawAccount = accounts.find((a) => a.name === "Owner Draws");
   if (!cashAccount || !drawAccount) throw new Error("Cash or Owner Draws account not found");
 
-  await prisma.journalEntry.create({
+  const distEntry = await prisma.journalEntry.create({
     data: {
       projectId,
       date: new Date(date),
@@ -127,6 +151,17 @@ export async function addDistribution(formData: FormData) {
         ],
       },
     },
+  });
+
+  await writeAuditLog({
+    companyId: session!.user.companyId,
+    projectId,
+    entityType: "JOURNAL_ENTRY",
+    entityId: distEntry.id,
+    action: "CREATE",
+    changes: [{ field: "type", oldValue: null, newValue: "distribution" }, { field: "amount", oldValue: null, newValue: String(amount) }],
+    userId: session!.user.id,
+    userName: session!.user.name ?? session!.user.email ?? "",
   });
 
   revalidate(session!.user.companyId, projectId);
@@ -152,7 +187,7 @@ export async function addJournalEntry(formData: FormData) {
   if (!amount || amount <= 0) throw new Error("Amount must be positive");
   if (debitAccountId === creditAccountId) throw new Error("Debit and credit accounts must differ");
 
-  await prisma.journalEntry.create({
+  const manualEntry = await prisma.journalEntry.create({
     data: {
       projectId,
       date: new Date(date),
@@ -168,6 +203,17 @@ export async function addJournalEntry(formData: FormData) {
     },
   });
 
+  await writeAuditLog({
+    companyId: session!.user.companyId,
+    projectId,
+    entityType: "JOURNAL_ENTRY",
+    entityId: manualEntry.id,
+    action: "CREATE",
+    changes: [{ field: "type", oldValue: null, newValue: "manual" }, { field: "amount", oldValue: null, newValue: String(amount) }],
+    userId: session!.user.id,
+    userName: session!.user.name ?? session!.user.email ?? "",
+  });
+
   revalidate(session!.user.companyId, projectId);
   return { success: true };
 }
@@ -177,6 +223,7 @@ export async function addJournalEntry(formData: FormData) {
 export async function reverseJournalEntry(entryId: string) {
   const session = await auth();
   await requireRole(session, [Role.ADMIN, Role.PM, Role.BOOKKEEPER]);
+  requirePermission(session, "journalEntry:reverse");
 
   const entry = await prisma.journalEntry.findUnique({
     where: { id: entryId },
@@ -193,7 +240,7 @@ export async function reverseJournalEntry(entryId: string) {
 
   const today = new Date().toISOString().split("T")[0];
 
-  await prisma.journalEntry.create({
+  const reversal = await prisma.journalEntry.create({
     data: {
       projectId: entry.projectId,
       date: new Date(today),
@@ -211,6 +258,17 @@ export async function reverseJournalEntry(entryId: string) {
         })),
       },
     },
+  });
+
+  await writeAuditLog({
+    companyId: session!.user.companyId,
+    projectId: entry.projectId,
+    entityType: "JOURNAL_ENTRY",
+    entityId: reversal.id,
+    action: "REVERSE",
+    changes: [{ field: "reversesId", oldValue: null, newValue: entryId }],
+    userId: session!.user.id,
+    userName: session!.user.name ?? session!.user.email ?? "",
   });
 
   revalidate(session!.user.companyId, entry.projectId);

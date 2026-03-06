@@ -14,15 +14,15 @@ export default async function DashboardPage({
   const [project, expenses, tasks, entries, costCodes] = await Promise.all([
     prisma.project.findUnique({ where: { id: params.projectId } }),
     prisma.expense.findMany({
-      where: { projectId: params.projectId },
+      where: { projectId: params.projectId, archivedAt: null },
       orderBy: { date: "asc" },
     }),
-    prisma.task.findMany({ where: { projectId: params.projectId } }),
+    prisma.task.findMany({ where: { projectId: params.projectId, archivedAt: null } }),
     prisma.journalEntry.findMany({
       where: { projectId: params.projectId },
       include: { lines: { include: { account: true, partner: true } } },
     }),
-    prisma.costCode.findMany({ where: { projectId: params.projectId } }),
+    prisma.costCode.findMany({ where: { projectId: params.projectId, archivedAt: null } }),
   ]);
 
   // Cash balance from ledger

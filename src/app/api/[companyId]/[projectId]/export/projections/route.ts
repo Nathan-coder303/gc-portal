@@ -12,13 +12,13 @@ export async function GET(
   const sp = Object.fromEntries(req.nextUrl.searchParams.entries());
 
   const [expenses, tasks, entries, costCodes, accounts] = await Promise.all([
-    prisma.expense.findMany({ where: { projectId: params.projectId }, orderBy: { date: "asc" } }),
-    prisma.task.findMany({ where: { projectId: params.projectId } }),
+    prisma.expense.findMany({ where: { projectId: params.projectId, archivedAt: null }, orderBy: { date: "asc" } }),
+    prisma.task.findMany({ where: { projectId: params.projectId, archivedAt: null } }),
     prisma.journalEntry.findMany({
       where: { projectId: params.projectId },
       include: { lines: { include: { account: true } } },
     }),
-    prisma.costCode.findMany({ where: { projectId: params.projectId } }),
+    prisma.costCode.findMany({ where: { projectId: params.projectId, archivedAt: null } }),
     prisma.account.findMany({ where: { projectId: params.projectId } }),
   ]);
 

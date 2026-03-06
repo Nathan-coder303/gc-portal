@@ -10,8 +10,8 @@ export default async function SettingsPage({
 }) {
   const [project, costCodes, users, accounts] = await Promise.all([
     prisma.project.findUnique({ where: { id: params.projectId } }),
-    prisma.costCode.findMany({ where: { projectId: params.projectId }, orderBy: { code: "asc" } }),
-    prisma.user.findMany({ where: { companyId: params.companyId }, orderBy: { name: "asc" } }),
+    prisma.costCode.findMany({ where: { projectId: params.projectId, archivedAt: null }, orderBy: { code: "asc" } }),
+    prisma.user.findMany({ where: { companyId: params.companyId, archivedAt: null }, orderBy: { name: "asc" } }),
     prisma.account.findMany({ where: { projectId: params.projectId } }),
   ]);
 

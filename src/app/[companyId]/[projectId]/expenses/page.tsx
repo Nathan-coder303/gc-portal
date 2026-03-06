@@ -11,12 +11,12 @@ export default async function ExpensesPage({
 }) {
   const [expenses, costCodes] = await Promise.all([
     prisma.expense.findMany({
-      where: { projectId: params.projectId },
+      where: { projectId: params.projectId, archivedAt: null },
       include: { costCode: true },
       orderBy: { date: "desc" },
     }),
     prisma.costCode.findMany({
-      where: { projectId: params.projectId },
+      where: { projectId: params.projectId, archivedAt: null },
       orderBy: { code: "asc" },
     }),
   ]);

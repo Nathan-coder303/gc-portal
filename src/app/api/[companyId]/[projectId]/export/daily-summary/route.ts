@@ -11,7 +11,7 @@ export async function GET(
   if (!session) return new Response("Unauthorized", { status: 401 });
 
   const expenses = await prisma.expense.findMany({
-    where: { projectId: params.projectId },
+    where: { projectId: params.projectId, archivedAt: null },
     include: { costCode: true },
     orderBy: [{ date: "desc" }, { vendor: "asc" }],
   });

@@ -6,10 +6,13 @@ import { revalidatePath } from "next/cache";
 import { parseScheduleCsv } from "@/lib/csv/parseSchedule";
 import { toCsv } from "@/lib/export/toCsv";
 import { TaskStatus } from "@prisma/client";
+import { writeAuditLog } from "@/lib/audit/log";
+import { requirePermission } from "@/lib/auth/permissions";
 
 export async function importScheduleCsv(formData: FormData) {
   const session = await auth();
   if (!session) throw new Error("Unauthorized");
+  requirePermission(session, "task:import");
 
   const projectId = formData.get("projectId") as string;
   const csvText = formData.get("csv") as string;
@@ -65,6 +68,17 @@ export async function importScheduleCsv(formData: FormData) {
     }
   }
 
+  await writeAuditLog({
+    companyId: session.user.companyId,
+    projectId,
+    entityType: "TASK",
+    entityId: projectId,
+    action: "IMPORT",
+    changes: [{ field: "count", oldValue: null, newValue: String(tasks.length) }],
+    userId: session.user.id,
+    userName: session.user.name ?? session.user.email ?? "",
+  });
+
   revalidatePath(`/${session.user.companyId}/${projectId}/schedule`);
   return { success: true, errors: [], cycleChains: [], imported: tasks.length };
 }
@@ -76,6 +90,7 @@ export async function updateTaskStatus(
 ) {
   const session = await auth();
   if (!session) throw new Error("Unauthorized");
+  requirePermission(session, "task:updateStatus");
 
   const existing = await prisma.task.findUnique({ where: { id: taskId } });
   if (!existing) throw new Error("Task not found");
@@ -109,6 +124,16 @@ export async function updateTaskStatus(
 
   if (logs.length > 0) {
     await prisma.taskChangeLog.createMany({ data: logs });
+    await writeAuditLog({
+      companyId: session.user.companyId,
+      projectId: existing.projectId,
+      entityType: "TASK",
+      entityId: taskId,
+      action: "UPDATE",
+      changes: logs.map((l) => ({ field: l.field, oldValue: l.oldValue, newValue: l.newValue })),
+      userId: session.user.id,
+      userName: session.user.name ?? session.user.email ?? "",
+    });
   }
 
   revalidatePath(`/${session.user.companyId}/${task.projectId}/schedule`);

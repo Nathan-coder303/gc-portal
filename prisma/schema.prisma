@@ -6,6 +6,54 @@ datasource db {
   provider = "postgresql"
 }
 
+// ─── Enums ───────────────────────────────────────────────────────────────────
+
+enum Role {
+  ADMIN
+  PM
+  BOOKKEEPER
+  PARTNER
+}
+
+enum TaskStatus {
+  NOT_STARTED
+  IN_PROGRESS
+  BLOCKED
+  DONE
+}
+
+enum AccountType {
+  ASSET
+  LIABILITY
+  EQUITY
+  EXPENSE
+  REVENUE
+}
+
+enum AuditAction {
+  CREATE
+  UPDATE
+  DELETE
+  ARCHIVE
+  RESTORE
+  IMPORT
+  REVERSE
+}
+
+enum EntityType {
+  EXPENSE
+  COST_CODE
+  TASK
+  JOURNAL_ENTRY
+  PARTNER
+  ACCOUNT
+  USER
+  PROJECT
+  PROJECT_SETTINGS
+}
+
+// ─── Core ────────────────────────────────────────────────────────────────────
+
 model Company {
   id        String    @id @default(cuid())
   name      String
@@ -17,40 +65,42 @@ model Company {
 }
 
 model Project {
-  id             String         @id @default(cuid())
+  id             String           @id @default(cuid())
   companyId      String
-  company        Company        @relation(fields: [companyId], references: [id])
+  company        Company          @relation(fields: [companyId], references: [id])
   name           String
   code           String
   startDate      DateTime
-  budget         Decimal        @db.Decimal(14, 2)
-  status         String         @default("ACTIVE")
-  createdAt      DateTime       @default(now())
-  updatedAt      DateTime       @updatedAt
+  budget         Decimal          @db.Decimal(14, 2)
+  status         String           @default("ACTIVE")
+  createdAt      DateTime         @default(now())
+  updatedAt      DateTime         @updatedAt
+  updatedBy      String?
   expenses       Expense[]
   costCodes      CostCode[]
   tasks          Task[]
   accounts       Account[]
   journalEntries JournalEntry[]
+  auditLogs      AuditLog[]
+  settings       ProjectSettings[]
 }
 
 model User {
-  id           String   @id @default(cuid())
+  id           String    @id @default(cuid())
   companyId    String
-  company      Company  @relation(fields: [companyId], references: [id])
-  email        String   @unique
+  company      Company   @relation(fields: [companyId], references: [id])
+  email        String    @unique
   name         String
-  role         Role     @default(PM)
+  role         Role      @default(PM)
   passwordHash String
-  createdAt    DateTime @default(now())
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+  updatedBy    String?
+  archivedAt   DateTime?
+  archivedBy   String?
 }
 
-enum Role {
-  ADMIN
-  PM
-  BOOKKEEPER
-  PARTNER
-}
+// ─── Expenses ────────────────────────────────────────────────────────────────
 
 model CostCode {
   id           String    @id @default(cuid())
@@ -60,6 +110,10 @@ model CostCode {
   name         String
   budgetAmount Decimal   @default(0) @db.Decimal(14, 2)
   expenses     Expense[]
+  updatedAt    DateTime  @updatedAt
+  updatedBy    String?
+  archivedAt   DateTime?
+  archivedBy   String?
 
   @@unique([projectId, code])
 }
@@ -87,79 +141,36 @@ model Expense {
   createdBy     String
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
+  updatedBy     String?
+  archivedAt    DateTime?
+  archivedBy    String?
 }
 
+// ─── Schedule ─────────────────────────────────────────────────────────────────
+
 model Task {
-  id              String     @id @default(cuid())
+  id              String          @id @default(cuid())
   projectId       String
-  project         Project    @relation(fields: [projectId], references: [id])
+  project         Project         @relation(fields: [projectId], references: [id])
   phase           String
   name            String
   durationDays    Int
-  startDate       DateTime?  @db.Date
-  endDate         DateTime?  @db.Date
+  startDate       DateTime?       @db.Date
+  endDate         DateTime?       @db.Date
   predecessorIds  String[]
   trade           String?
   assignee        String?
-  isMilestone     Boolean    @default(false)
-  status          TaskStatus @default(NOT_STARTED)
-  percentComplete Int        @default(0)
+  isMilestone     Boolean         @default(false)
+  status          TaskStatus      @default(NOT_STARTED)
+  percentComplete Int             @default(0)
   notes           String?
   createdBy       String
-  createdAt       DateTime       @default(now())
-  updatedAt       DateTime       @updatedAt
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
+  updatedBy       String?
+  archivedAt      DateTime?
+  archivedBy      String?
   changeLogs      TaskChangeLog[]
-}
-
-enum TaskStatus {
-  NOT_STARTED
-  IN_PROGRESS
-  BLOCKED
-  DONE
-}
-
-model Account {
-  id               String        @id @default(cuid())
-  projectId        String
-  project          Project       @relation(fields: [projectId], references: [id])
-  name             String
-  type             AccountType
-  isPartnerCapital Boolean       @default(false)
-  lines            JournalLine[]
-}
-
-enum AccountType {
-  ASSET
-  LIABILITY
-  EQUITY
-  EXPENSE
-  REVENUE
-}
-
-model Partner {
-  id           String        @id @default(cuid())
-  companyId    String
-  company      Company       @relation(fields: [companyId], references: [id])
-  name         String
-  email        String?
-  role         String?
-  ownershipPct Decimal?      @db.Decimal(5, 2)
-  notes        String?
-  lines        JournalLine[]
-}
-
-model JournalEntry {
-  id             String        @id @default(cuid())
-  projectId      String
-  project        Project       @relation(fields: [projectId], references: [id])
-  date           DateTime      @db.Date
-  memo           String
-  reference      String?
-  isReversal     Boolean       @default(false)
-  reversesId     String?
-  createdBy      String
-  createdAt      DateTime      @default(now())
-  lines          JournalLine[]
 }
 
 model TaskChangeLog {
@@ -173,6 +184,51 @@ model TaskChangeLog {
   changedAt DateTime @default(now())
 }
 
+// ─── Ledger ──────────────────────────────────────────────────────────────────
+
+model Account {
+  id               String        @id @default(cuid())
+  projectId        String
+  project          Project       @relation(fields: [projectId], references: [id])
+  name             String
+  type             AccountType
+  isPartnerCapital Boolean       @default(false)
+  updatedBy        String?
+  archivedAt       DateTime?
+  archivedBy       String?
+  lines            JournalLine[]
+}
+
+model Partner {
+  id           String        @id @default(cuid())
+  companyId    String
+  company      Company       @relation(fields: [companyId], references: [id])
+  name         String
+  email        String?
+  role         String?
+  ownershipPct Decimal?      @db.Decimal(5, 2)
+  notes        String?
+  updatedAt    DateTime      @updatedAt
+  updatedBy    String?
+  archivedAt   DateTime?
+  archivedBy   String?
+  lines        JournalLine[]
+}
+
+model JournalEntry {
+  id         String        @id @default(cuid())
+  projectId  String
+  project    Project       @relation(fields: [projectId], references: [id])
+  date       DateTime      @db.Date
+  memo       String
+  reference  String?
+  isReversal Boolean       @default(false)
+  reversesId String?
+  createdBy  String
+  createdAt  DateTime      @default(now())
+  lines      JournalLine[]
+}
+
 model JournalLine {
   id        String       @id @default(cuid())
   entryId   String
@@ -183,4 +239,41 @@ model JournalLine {
   partner   Partner?     @relation(fields: [partnerId], references: [id])
   debit     Decimal      @default(0) @db.Decimal(14, 2)
   credit    Decimal      @default(0) @db.Decimal(14, 2)
+}
+
+// ─── Audit & Settings ────────────────────────────────────────────────────────
+
+/// Append-only audit trail. Never updated or deleted.
+model AuditLog {
+  id         String      @id @default(cuid())
+  companyId  String
+  projectId  String?
+  project    Project?    @relation(fields: [projectId], references: [id])
+  entityType EntityType
+  entityId   String
+  action     AuditAction
+  /// JSON array of {field, oldValue, newValue}
+  changes    String      @default("[]")
+  /// Required for financial/schedule-critical changes
+  reason     String?
+  userId     String
+  userName   String
+  createdAt  DateTime    @default(now())
+
+  @@index([projectId, entityType, createdAt])
+  @@index([entityId])
+  @@index([userId])
+}
+
+/// Per-project key-value settings (KPI assumptions, widget config, alert thresholds).
+model ProjectSettings {
+  id        String   @id @default(cuid())
+  projectId String
+  project   Project  @relation(fields: [projectId], references: [id])
+  key       String
+  value     String
+  updatedBy String
+  updatedAt DateTime @updatedAt
+
+  @@unique([projectId, key])
 }

@@ -22,13 +22,13 @@ export default async function ProjectionsPage({
 }) {
   const [project, expenses, tasks, entries, costCodes, accounts] = await Promise.all([
     prisma.project.findUnique({ where: { id: params.projectId } }),
-    prisma.expense.findMany({ where: { projectId: params.projectId }, orderBy: { date: "asc" } }),
-    prisma.task.findMany({ where: { projectId: params.projectId } }),
+    prisma.expense.findMany({ where: { projectId: params.projectId, archivedAt: null }, orderBy: { date: "asc" } }),
+    prisma.task.findMany({ where: { projectId: params.projectId, archivedAt: null } }),
     prisma.journalEntry.findMany({
       where: { projectId: params.projectId },
       include: { lines: { include: { account: true, partner: true } } },
     }),
-    prisma.costCode.findMany({ where: { projectId: params.projectId } }),
+    prisma.costCode.findMany({ where: { projectId: params.projectId, archivedAt: null } }),
     prisma.account.findMany({ where: { projectId: params.projectId } }),
   ]);
 

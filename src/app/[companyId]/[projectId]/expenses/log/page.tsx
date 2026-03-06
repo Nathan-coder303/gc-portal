@@ -27,13 +27,14 @@ export default async function ExpenseLogPage({
   const canEdit = session?.user.role !== "PARTNER";
 
   const costCodes = await prisma.costCode.findMany({
-    where: { projectId: params.projectId },
+    where: { projectId: params.projectId, archivedAt: null },
     orderBy: { code: "asc" },
   });
 
   // Build Prisma where clause from searchParams
   const where: Prisma.ExpenseWhereInput = {
     projectId: params.projectId,
+    archivedAt: null,
   };
 
   if (searchParams.from) {

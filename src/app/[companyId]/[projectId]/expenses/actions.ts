@@ -6,6 +6,8 @@ import { z } from "zod";
 import { revalidatePath } from "next/cache";
 import { toCsv } from "@/lib/export/toCsv";
 import { checkDuplicate } from "@/lib/expenses/duplicates";
+import { writeAuditLog } from "@/lib/audit/log";
+import { requirePermission } from "@/lib/auth/permissions";
 
 const ExpenseSchema = z.object({
   projectId: z.string(),
@@ -26,6 +28,7 @@ const ExpenseSchema = z.object({
 export async function addExpense(formData: FormData) {
   const session = await auth();
   if (!session) throw new Error("Unauthorized");
+  requirePermission(session, "expense:create");
 
   const data = ExpenseSchema.parse({
     projectId: formData.get("projectId"),
@@ -95,6 +98,16 @@ export async function addExpense(formData: FormData) {
     });
   }
 
+  await writeAuditLog({
+    companyId: session.user.companyId,
+    projectId: data.projectId,
+    entityType: "EXPENSE",
+    entityId: expense.id,
+    action: "CREATE",
+    userId: session.user.id,
+    userName: session.user.name ?? session.user.email ?? "",
+  });
+
   revalidatePath(`/${session.user.companyId}/${data.projectId}/expenses`);
   return { success: true, id: expense.id, isDuplicate, isPossibleDup };
 }
@@ -102,11 +115,30 @@ export async function addExpense(formData: FormData) {
 export async function deleteExpense(id: string) {
   const session = await auth();
   if (!session) throw new Error("Unauthorized");
+  requirePermission(session, "expense:archive");
 
   const expense = await prisma.expense.findUnique({ where: { id } });
   if (!expense) throw new Error("Not found");
 
-  await prisma.expense.delete({ where: { id } });
+  await prisma.expense.update({
+    where: { id },
+    data: {
+      archivedAt: new Date(),
+      archivedBy: session.user.id,
+      updatedBy: session.user.id,
+    },
+  });
+
+  await writeAuditLog({
+    companyId: session.user.companyId,
+    projectId: expense.projectId,
+    entityType: "EXPENSE",
+    entityId: id,
+    action: "ARCHIVE",
+    userId: session.user.id,
+    userName: session.user.name ?? session.user.email ?? "",
+  });
+
   revalidatePath(`/${session.user.companyId}/${expense.projectId}/expenses`);
   return { success: true };
 }
@@ -121,8 +153,9 @@ export async function importExpensesCsv(
 ) {
   const session = await auth();
   if (!session) throw new Error("Unauthorized");
+  requirePermission(session, "expense:import");
 
-  const costCodes = await prisma.costCode.findMany({ where: { projectId } });
+  const costCodes = await prisma.costCode.findMany({ where: { projectId, archivedAt: null } });
   const ccMap = new Map(costCodes.map((c) => [c.code.toLowerCase(), c.id]));
 
   let imported = 0;
@@ -162,13 +195,26 @@ export async function importExpensesCsv(
     }
   }
 
+  if (imported > 0) {
+    await writeAuditLog({
+      companyId: session.user.companyId,
+      projectId,
+      entityType: "EXPENSE",
+      entityId: projectId,
+      action: "IMPORT",
+      changes: [{ field: "count", oldValue: null, newValue: String(imported) }],
+      userId: session.user.id,
+      userName: session.user.name ?? session.user.email ?? "",
+    });
+  }
+
   revalidatePath(`/${session.user.companyId}/${projectId}/expenses`);
   return { success: rowErrors.length === 0, imported, rowErrors };
 }
 
 export async function exportExpensesCsv(projectId: string) {
   const expenses = await prisma.expense.findMany({
-    where: { projectId },
+    where: { projectId, archivedAt: null },
     include: { costCode: true },
     orderBy: { date: "desc" },
   });
@@ -205,14 +251,23 @@ export async function upsertCostCode(formData: FormData) {
   const budgetAmount = parseFloat(formData.get("budgetAmount") as string) || 0;
 
   if (id) {
+    requirePermission(session, "costCode:edit");
+    const existing = await prisma.costCode.findUnique({ where: { id } });
     await prisma.costCode.update({
       where: { id },
-      data: { code, name, budgetAmount },
+      data: { code, name, budgetAmount, updatedBy: session.user.id },
     });
+    const changes = [];
+    if (existing?.code !== code) changes.push({ field: "code", oldValue: existing?.code ?? null, newValue: code });
+    if (existing?.name !== name) changes.push({ field: "name", oldValue: existing?.name ?? null, newValue: name });
+    if (Number(existing?.budgetAmount) !== budgetAmount) changes.push({ field: "budgetAmount", oldValue: String(existing?.budgetAmount ?? ""), newValue: String(budgetAmount) });
+    await writeAuditLog({ companyId: session.user.companyId, projectId, entityType: "COST_CODE", entityId: id, action: "UPDATE", changes, userId: session.user.id, userName: session.user.name ?? session.user.email ?? "" });
   } else {
-    await prisma.costCode.create({
-      data: { projectId, code, name, budgetAmount },
+    requirePermission(session, "costCode:create");
+    const cc = await prisma.costCode.create({
+      data: { projectId, code, name, budgetAmount, updatedBy: session.user.id },
     });
+    await writeAuditLog({ companyId: session.user.companyId, projectId, entityType: "COST_CODE", entityId: cc.id, action: "CREATE", userId: session.user.id, userName: session.user.name ?? session.user.email ?? "" });
   }
 
   revalidatePath(`/${session.user.companyId}/${projectId}/settings`);
@@ -223,11 +278,18 @@ export async function upsertCostCode(formData: FormData) {
 export async function deleteCostCode(id: string) {
   const session = await auth();
   if (!session) throw new Error("Unauthorized");
+  requirePermission(session, "costCode:archive");
 
   const cc = await prisma.costCode.findUnique({ where: { id } });
   if (!cc) throw new Error("Not found");
 
-  await prisma.costCode.delete({ where: { id } });
+  await prisma.costCode.update({
+    where: { id },
+    data: { archivedAt: new Date(), archivedBy: session.user.id, updatedBy: session.user.id },
+  });
+
+  await writeAuditLog({ companyId: session.user.companyId, projectId: cc.projectId, entityType: "COST_CODE", entityId: id, action: "ARCHIVE", userId: session.user.id, userName: session.user.name ?? session.user.email ?? "" });
+
   revalidatePath(`/${session.user.companyId}/${cc.projectId}/settings`);
   return { success: true };
 }
