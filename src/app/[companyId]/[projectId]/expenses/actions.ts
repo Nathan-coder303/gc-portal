@@ -4,8 +4,8 @@ import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { z } from "zod";
 import { revalidatePath } from "next/cache";
-import { parseExpensesCsv } from "@/lib/csv/parseExpenses";
 import { toCsv } from "@/lib/export/toCsv";
+import { checkDuplicate } from "@/lib/expenses/duplicates";
 
 const ExpenseSchema = z.object({
   projectId: z.string(),
@@ -19,6 +19,8 @@ const ExpenseSchema = z.object({
   paymentMethod: z.string().min(1),
   paidBy: z.string().min(1),
   receiptUrl: z.string().optional(),
+  receiptHash: z.string().optional(),
+  notes: z.string().optional(),
 });
 
 export async function addExpense(formData: FormData) {
@@ -37,25 +39,33 @@ export async function addExpense(formData: FormData) {
     paymentMethod: formData.get("paymentMethod"),
     paidBy: formData.get("paidBy"),
     receiptUrl: formData.get("receiptUrl") || undefined,
+    receiptHash: formData.get("receiptHash") || undefined,
+    notes: formData.get("notes") || undefined,
   });
 
-  // Duplicate detection
-  const expDate = new Date(data.date);
-  const duplicate = await prisma.expense.findFirst({
-    where: {
-      projectId: data.projectId,
-      vendor: data.vendor,
-      amount: data.amount,
-      date: expDate,
-    },
-  });
+  const expDate = new Date(data.date + "T00:00:00");
+  const { isDuplicate, isPossibleDup } = await checkDuplicate(
+    data.projectId, data.vendor, data.amount, expDate, data.receiptHash
+  );
 
   const expense = await prisma.expense.create({
     data: {
-      ...data,
-      date: expDate,
+      projectId: data.projectId,
       companyId: session.user.companyId,
-      isDuplicate: !!duplicate,
+      date: expDate,
+      vendor: data.vendor,
+      description: data.description,
+      costCodeId: data.costCodeId,
+      category: data.category,
+      amount: data.amount,
+      tax: data.tax,
+      paymentMethod: data.paymentMethod,
+      paidBy: data.paidBy,
+      receiptUrl: data.receiptUrl,
+      receiptHash: data.receiptHash,
+      notes: data.notes,
+      isDuplicate,
+      isPossibleDup,
       createdBy: session.user.id,
     },
   });
@@ -67,6 +77,7 @@ export async function addExpense(formData: FormData) {
   ]);
 
   if (cashAccount && expAccount) {
+    const total = data.amount + data.tax;
     await prisma.journalEntry.create({
       data: {
         projectId: data.projectId,
@@ -76,8 +87,8 @@ export async function addExpense(formData: FormData) {
         createdBy: session.user.id,
         lines: {
           create: [
-            { accountId: expAccount.id, debit: data.amount, credit: 0 },
-            { accountId: cashAccount.id, debit: 0, credit: data.amount },
+            { accountId: expAccount.id, debit: total, credit: 0 },
+            { accountId: cashAccount.id, debit: 0, credit: total },
           ],
         },
       },
@@ -85,7 +96,7 @@ export async function addExpense(formData: FormData) {
   }
 
   revalidatePath(`/${session.user.companyId}/${data.projectId}/expenses`);
-  return { success: true, id: expense.id };
+  return { success: true, id: expense.id, isDuplicate, isPossibleDup };
 }
 
 export async function deleteExpense(id: string) {
@@ -100,55 +111,59 @@ export async function deleteExpense(id: string) {
   return { success: true };
 }
 
-export async function importExpensesCsv(formData: FormData) {
+export async function importExpensesCsv(
+  projectId: string,
+  rows: {
+    date: string; vendor: string; description: string; costCode: string;
+    category: string; amount: number; tax: number; paymentMethod: string;
+    paidBy: string; receiptUrl: string; notes: string;
+  }[]
+) {
   const session = await auth();
   if (!session) throw new Error("Unauthorized");
 
-  const projectId = formData.get("projectId") as string;
-  const csvText = formData.get("csv") as string;
-
-  const { rows, errors } = parseExpensesCsv(csvText);
-  if (errors.length > 0) return { success: false, errors, imported: 0 };
-
-  // Look up cost codes
   const costCodes = await prisma.costCode.findMany({ where: { projectId } });
-  const ccMap = new Map(costCodes.map((c) => [c.code, c.id]));
+  const ccMap = new Map(costCodes.map((c) => [c.code.toLowerCase(), c.id]));
 
-  const seen = new Map<string, boolean>();
   let imported = 0;
+  const rowErrors: { row: number; message: string }[] = [];
 
-  for (const row of rows) {
-    const expDate = new Date(row.date);
-    const key = `${row.vendor}|${row.amount}|${row.date}`;
-    const existingDup = await prisma.expense.findFirst({
-      where: { projectId, vendor: row.vendor, amount: row.amount, date: expDate },
-    });
-    const isDuplicate = !!existingDup || seen.has(key);
-    seen.set(key, true);
+  for (let i = 0; i < rows.length; i++) {
+    const row = rows[i];
+    try {
+      const expDate = new Date(row.date + "T00:00:00");
+      const { isDuplicate, isPossibleDup } = await checkDuplicate(
+        projectId, row.vendor, row.amount, expDate
+      );
 
-    await prisma.expense.create({
-      data: {
-        projectId,
-        companyId: session.user.companyId,
-        date: expDate,
-        vendor: row.vendor,
-        description: row.description,
-        costCodeId: row.costCode ? ccMap.get(row.costCode) : undefined,
-        category: row.category,
-        amount: row.amount,
-        tax: row.tax,
-        paymentMethod: row.paymentMethod,
-        paidBy: row.paidBy,
-        receiptUrl: row.receiptUrl || undefined,
-        isDuplicate,
-        createdBy: session.user.id,
-      },
-    });
-    imported++;
+      await prisma.expense.create({
+        data: {
+          projectId,
+          companyId: session.user.companyId,
+          date: expDate,
+          vendor: row.vendor,
+          description: row.description,
+          costCodeId: row.costCode ? ccMap.get(row.costCode.toLowerCase()) : undefined,
+          category: row.category,
+          amount: row.amount,
+          tax: row.tax,
+          paymentMethod: row.paymentMethod,
+          paidBy: row.paidBy,
+          receiptUrl: row.receiptUrl || undefined,
+          notes: row.notes || undefined,
+          isDuplicate,
+          isPossibleDup,
+          createdBy: session.user.id,
+        },
+      });
+      imported++;
+    } catch {
+      rowErrors.push({ row: i + 2, message: "Failed to insert row" });
+    }
   }
 
   revalidatePath(`/${session.user.companyId}/${projectId}/expenses`);
-  return { success: true, errors: [], imported };
+  return { success: rowErrors.length === 0, imported, rowErrors };
 }
 
 export async function exportExpensesCsv(projectId: string) {
@@ -166,11 +181,53 @@ export async function exportExpensesCsv(projectId: string) {
     category: e.category,
     amount: e.amount.toString(),
     tax: e.tax.toString(),
+    total: (Number(e.amount) + Number(e.tax)).toFixed(2),
     payment_method: e.paymentMethod,
     paid_by: e.paidBy,
-    is_duplicate: e.isDuplicate ? "yes" : "no",
+    notes: e.notes ?? "",
+    is_duplicate: e.isDuplicate ? "yes" : "",
+    possible_dup: e.isPossibleDup ? "yes" : "",
     receipt_url: e.receiptUrl ?? "",
   }));
 
   return toCsv(rows, "expenses.csv");
+}
+
+// Cost code management
+export async function upsertCostCode(formData: FormData) {
+  const session = await auth();
+  if (!session) throw new Error("Unauthorized");
+
+  const id = formData.get("id") as string | null;
+  const projectId = formData.get("projectId") as string;
+  const code = (formData.get("code") as string).trim().toUpperCase();
+  const name = formData.get("name") as string;
+  const budgetAmount = parseFloat(formData.get("budgetAmount") as string) || 0;
+
+  if (id) {
+    await prisma.costCode.update({
+      where: { id },
+      data: { code, name, budgetAmount },
+    });
+  } else {
+    await prisma.costCode.create({
+      data: { projectId, code, name, budgetAmount },
+    });
+  }
+
+  revalidatePath(`/${session.user.companyId}/${projectId}/settings`);
+  revalidatePath(`/${session.user.companyId}/${projectId}/expenses`);
+  return { success: true };
+}
+
+export async function deleteCostCode(id: string) {
+  const session = await auth();
+  if (!session) throw new Error("Unauthorized");
+
+  const cc = await prisma.costCode.findUnique({ where: { id } });
+  if (!cc) throw new Error("Not found");
+
+  await prisma.costCode.delete({ where: { id } });
+  revalidatePath(`/${session.user.companyId}/${cc.projectId}/settings`);
+  return { success: true };
 }

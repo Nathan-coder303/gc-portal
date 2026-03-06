@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/prisma";
 import CsvImportExpenses from "@/components/expenses/CsvImportExpenses";
 import CsvImportSchedule from "@/components/schedule/CsvImportSchedule";
+import CostCodeManager from "@/components/expenses/CostCodeManager";
 
 export default async function SettingsPage({
   params,
@@ -60,27 +61,15 @@ export default async function SettingsPage({
 
         {/* Cost Codes */}
         <div className="bg-white rounded-xl border border-slate-200 p-5">
-          <h2 className="font-semibold text-slate-800 mb-4">Cost Codes</h2>
-          <table className="w-full text-sm">
-            <thead className="border-b border-slate-200">
-              <tr>
-                <th className="text-left py-2 text-slate-500 font-medium">Code</th>
-                <th className="text-left py-2 text-slate-500 font-medium">Name</th>
-                <th className="text-right py-2 text-slate-500 font-medium">Budget</th>
-              </tr>
-            </thead>
-            <tbody>
-              {costCodes.map((cc) => (
-                <tr key={cc.id} className="border-b border-slate-50">
-                  <td className="py-2 font-mono text-slate-700">{cc.code}</td>
-                  <td className="py-2 text-slate-700">{cc.name}</td>
-                  <td className="py-2 text-right font-mono text-slate-600">
-                    ${Number(cc.budgetAmount).toLocaleString()}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+          <CostCodeManager
+            projectId={params.projectId}
+            costCodes={costCodes.map(cc => ({
+              id: cc.id,
+              code: cc.code,
+              name: cc.name,
+              budgetAmount: Number(cc.budgetAmount),
+            }))}
+          />
         </div>
 
         {/* Ledger Accounts */}
