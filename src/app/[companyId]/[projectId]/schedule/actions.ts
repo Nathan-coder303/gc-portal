@@ -17,15 +17,18 @@ export async function importScheduleCsv(formData: FormData) {
   const project = await prisma.project.findUnique({ where: { id: projectId } });
   if (!project) throw new Error("Project not found");
 
-  const { tasks, errors } = parseScheduleCsv(csvText, project.startDate);
-  if (errors.length > 0) return { success: false, errors, imported: 0 };
+  const { tasks, errors, cycleChains } = parseScheduleCsv(csvText, project.startDate);
+  if (errors.length > 0) return { success: false, errors, cycleChains, imported: 0 };
 
-  // Delete existing tasks and re-import
+  // Delete existing tasks (and their change logs) then re-import
+  await prisma.taskChangeLog.deleteMany({
+    where: { task: { projectId } },
+  });
   await prisma.task.deleteMany({ where: { projectId } });
 
-  // Create tasks first pass (no predecessor IDs yet)
+  // First pass: create tasks with empty predecessorIds
   const nameToId = new Map<string, string>();
-  const created = [];
+  const created: { taskId: string; predecessorNames: string[] }[] = [];
 
   for (const t of tasks) {
     const task = await prisma.task.create({
@@ -37,8 +40,8 @@ export async function importScheduleCsv(formData: FormData) {
         startDate: t.startDate,
         endDate: t.endDate,
         predecessorIds: [],
-        trade: t.trade,
-        assignee: t.assignee,
+        trade: t.trade || null,
+        assignee: t.assignee || null,
         isMilestone: t.isMilestone,
         status: TaskStatus.NOT_STARTED,
         percentComplete: 0,
@@ -46,34 +49,67 @@ export async function importScheduleCsv(formData: FormData) {
       },
     });
     nameToId.set(t.name, task.id);
-    created.push({ task, predecessorName: t.predecessorName });
+    created.push({ taskId: task.id, predecessorNames: t.predecessorNames });
   }
 
-  // Second pass: update predecessor IDs with real DB IDs
-  for (const { task, predecessorName } of created) {
-    if (predecessorName) {
-      const predId = nameToId.get(predecessorName);
-      if (predId) {
-        await prisma.task.update({
-          where: { id: task.id },
-          data: { predecessorIds: [predId] },
-        });
-      }
+  // Second pass: resolve predecessor IDs
+  for (const { taskId, predecessorNames } of created) {
+    const predecessorIds = predecessorNames
+      .map((name) => nameToId.get(name))
+      .filter((id): id is string => !!id);
+    if (predecessorIds.length > 0) {
+      await prisma.task.update({
+        where: { id: taskId },
+        data: { predecessorIds },
+      });
     }
   }
 
   revalidatePath(`/${session.user.companyId}/${projectId}/schedule`);
-  return { success: true, errors: [], imported: tasks.length };
+  return { success: true, errors: [], cycleChains: [], imported: tasks.length };
 }
 
-export async function updateTaskStatus(taskId: string, status: TaskStatus, percentComplete: number) {
+export async function updateTaskStatus(
+  taskId: string,
+  status: TaskStatus,
+  percentComplete: number
+) {
   const session = await auth();
   if (!session) throw new Error("Unauthorized");
+
+  const existing = await prisma.task.findUnique({ where: { id: taskId } });
+  if (!existing) throw new Error("Task not found");
 
   const task = await prisma.task.update({
     where: { id: taskId },
     data: { status, percentComplete },
   });
+
+  // Write change logs for each changed field
+  const logs: { taskId: string; field: string; oldValue: string; newValue: string; changedBy: string }[] = [];
+
+  if (existing.status !== status) {
+    logs.push({
+      taskId,
+      field: "status",
+      oldValue: existing.status,
+      newValue: status,
+      changedBy: session.user.id,
+    });
+  }
+  if (existing.percentComplete !== percentComplete) {
+    logs.push({
+      taskId,
+      field: "percentComplete",
+      oldValue: String(existing.percentComplete),
+      newValue: String(percentComplete),
+      changedBy: session.user.id,
+    });
+  }
+
+  if (logs.length > 0) {
+    await prisma.taskChangeLog.createMany({ data: logs });
+  }
 
   revalidatePath(`/${session.user.companyId}/${task.projectId}/schedule`);
   return { success: true };
