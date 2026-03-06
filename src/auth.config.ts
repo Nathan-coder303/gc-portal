@@ -1,4 +1,5 @@
 import type { NextAuthConfig } from "next-auth";
+import type { Role } from "@prisma/client";
 
 // Edge-compatible auth config (no database access, no Node.js-only modules)
 export const authConfig: NextAuthConfig = {
@@ -26,7 +27,7 @@ export const authConfig: NextAuthConfig = {
     },
     session({ session, token }) {
       if (token && session.user) {
-        session.user.role = token.role as string;
+        session.user.role = token.role as Role;
         session.user.companyId = token.companyId as string;
         session.user.id = token.userId as string;
       }
