@@ -140,6 +140,72 @@ export async function updateTaskStatus(
   return { success: true };
 }
 
+export async function updateTask(formData: FormData) {
+  const session = await auth();
+  if (!session) throw new Error("Unauthorized");
+  requirePermission(session, "task:edit");
+
+  const id = formData.get("id") as string;
+  const existing = await prisma.task.findUnique({ where: { id } });
+  if (!existing) throw new Error("Task not found");
+
+  const name = (formData.get("name") as string).trim();
+  const phase = (formData.get("phase") as string).trim();
+  const durationDays = Math.max(0, parseInt(formData.get("durationDays") as string, 10) || 0);
+  const trade = (formData.get("trade") as string).trim() || null;
+  const assignee = (formData.get("assignee") as string).trim() || null;
+  const notes = (formData.get("notes") as string).trim() || null;
+  const percentComplete = Math.min(100, Math.max(0, parseInt(formData.get("percentComplete") as string, 10) || 0));
+  const startDateStr = (formData.get("startDate") as string) || "";
+  const endDateStr = (formData.get("endDate") as string) || "";
+  const startDate = startDateStr ? new Date(startDateStr + "T00:00:00") : existing.startDate;
+  const endDate = endDateStr ? new Date(endDateStr + "T00:00:00") : existing.endDate;
+
+  if (!name || !phase) throw new Error("Name and phase are required");
+
+  await prisma.task.update({
+    where: { id },
+    data: { name, phase, durationDays, trade, assignee, notes, percentComplete, startDate, endDate, updatedBy: session.user.id },
+  });
+
+  // Build diffs for both TaskChangeLog and AuditLog
+  type LogRow = { taskId: string; field: string; oldValue: string; newValue: string; changedBy: string };
+  const logRows: LogRow[] = [];
+  const pairs: [string, string | number | null, string | number | null][] = [
+    ["name", existing.name, name],
+    ["phase", existing.phase, phase],
+    ["durationDays", existing.durationDays, durationDays],
+    ["trade", existing.trade, trade],
+    ["assignee", existing.assignee, assignee],
+    ["notes", existing.notes, notes],
+    ["percentComplete", existing.percentComplete, percentComplete],
+    ["startDate", existing.startDate?.toISOString().split("T")[0] ?? null, startDateStr || null],
+    ["endDate", existing.endDate?.toISOString().split("T")[0] ?? null, endDateStr || null],
+  ];
+  for (const [field, oldVal, newVal] of pairs) {
+    const o = oldVal == null ? "" : String(oldVal);
+    const n = newVal == null ? "" : String(newVal);
+    if (o !== n) logRows.push({ taskId: id, field, oldValue: o, newValue: n, changedBy: session.user.id });
+  }
+
+  if (logRows.length > 0) {
+    await prisma.taskChangeLog.createMany({ data: logRows });
+    await writeAuditLog({
+      companyId: session.user.companyId,
+      projectId: existing.projectId,
+      entityType: "TASK",
+      entityId: id,
+      action: "UPDATE",
+      changes: logRows.map((r) => ({ field: r.field, oldValue: r.oldValue || null, newValue: r.newValue || null })),
+      userId: session.user.id,
+      userName: session.user.name ?? session.user.email ?? "",
+    });
+  }
+
+  revalidatePath(`/${session.user.companyId}/${existing.projectId}/schedule`);
+  return { success: true };
+}
+
 export async function exportScheduleCsv(projectId: string) {
   const tasks = await prisma.task.findMany({
     where: { projectId },

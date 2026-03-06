@@ -3,15 +3,20 @@ import { addDays, format } from "date-fns";
 import GanttChart from "@/components/schedule/GanttChart";
 import TaskTable from "@/components/schedule/TaskTable";
 import { computeCriticalPath } from "@/lib/schedule/gantt";
+import { auth } from "@/lib/auth";
+import { can } from "@/lib/auth/permissions";
 
 export default async function SchedulePage({
   params,
 }: {
   params: { companyId: string; projectId: string };
 }) {
+  const session = await auth();
+  const canEdit = can(session?.user.role ?? "PARTNER", "task:edit");
+
   const [tasks, project, recentLogs] = await Promise.all([
     prisma.task.findMany({
-      where: { projectId: params.projectId },
+      where: { projectId: params.projectId, archivedAt: null },
       orderBy: [{ phase: "asc" }, { startDate: "asc" }],
     }),
     prisma.project.findUnique({ where: { id: params.projectId } }),
@@ -144,7 +149,7 @@ export default async function SchedulePage({
               <h2 className="font-semibold text-slate-800">Task List</h2>
               <p className="text-xs text-slate-400 mt-0.5">Click phase headers to expand/collapse · Select status to update</p>
             </div>
-            <TaskTable tasks={ganttTasks} projectId={params.projectId} />
+            <TaskTable tasks={ganttTasks} projectId={params.projectId} canEdit={canEdit} />
           </div>
 
           {/* Recent change log */}

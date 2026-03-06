@@ -5,6 +5,7 @@ import { format, isAfter, isBefore, addDays } from "date-fns";
 import { updateTaskStatus } from "@/app/[companyId]/[projectId]/schedule/actions";
 import { TaskStatus } from "@prisma/client";
 import type { GanttTask } from "@/lib/schedule/gantt";
+import TaskEditModal from "./TaskEditModal";
 
 const statusColors: Record<string, string> = {
   NOT_STARTED: "bg-slate-100 text-slate-600",
@@ -20,9 +21,12 @@ const statusLabel: Record<string, string> = {
   DONE:         "Done",
 };
 
-export default function TaskTable({ tasks }: { tasks: GanttTask[]; projectId: string }) {
+type EditingTask = { id: string; name: string; phase: string; durationDays: number; startDate: string | null; endDate: string | null; trade: string | null; assignee: string | null; notes: string | null; percentComplete: number };
+
+export default function TaskTable({ tasks, canEdit = false }: { tasks: GanttTask[]; projectId: string; canEdit?: boolean }) {
   const [updating, setUpdating] = useState<string | null>(null);
   const [collapsed, setCollapsed] = useState<Set<string>>(new Set());
+  const [editingTask, setEditingTask] = useState<EditingTask | null>(null);
 
   const today = new Date();
   const in7 = addDays(today, 7);
@@ -52,6 +56,9 @@ export default function TaskTable({ tasks }: { tasks: GanttTask[]; projectId: st
 
   return (
     <div className="overflow-x-auto">
+      {editingTask && (
+        <TaskEditModal task={editingTask} onClose={() => setEditingTask(null)} />
+      )}
       <table className="w-full text-sm">
         <thead className="bg-slate-50 border-b border-slate-200">
           <tr>
@@ -63,6 +70,7 @@ export default function TaskTable({ tasks }: { tasks: GanttTask[]; projectId: st
             <th className="text-left px-4 py-2.5 text-slate-500 font-medium">Assignee</th>
             <th className="text-left px-4 py-2.5 text-slate-500 font-medium">Status</th>
             <th className="text-right px-4 py-2.5 text-slate-500 font-medium">%</th>
+            {canEdit && <th className="px-4 py-2.5 w-12"></th>}
           </tr>
         </thead>
         <tbody>
@@ -80,7 +88,7 @@ export default function TaskTable({ tasks }: { tasks: GanttTask[]; projectId: st
                 className="bg-slate-100 border-b border-slate-200 cursor-pointer hover:bg-slate-200"
                 onClick={() => toggle(phase)}
               >
-                <td colSpan={8} className="px-4 py-2">
+                <td colSpan={canEdit ? 9 : 8} className="px-4 py-2">
                   <div className="flex items-center gap-3">
                     <span className="text-slate-500 text-xs">{isCollapsed ? "▶" : "▼"}</span>
                     <span className="font-semibold text-slate-700">{phase}</span>
@@ -146,6 +154,27 @@ export default function TaskTable({ tasks }: { tasks: GanttTask[]; projectId: st
                           </select>
                         </td>
                         <td className="px-4 py-2 text-right text-slate-500 text-xs">{t.percentComplete}%</td>
+                        {canEdit && (
+                          <td className="px-4 py-2">
+                            <button
+                              onClick={() => setEditingTask({
+                                id: t.id,
+                                name: t.name,
+                                phase: t.phase,
+                                durationDays: t.durationDays,
+                                startDate: t.startDate ? format(t.startDate, "yyyy-MM-dd") : null,
+                                endDate: t.endDate ? format(t.endDate, "yyyy-MM-dd") : null,
+                                trade: t.trade ?? null,
+                                assignee: t.assignee ?? null,
+                                notes: null,
+                                percentComplete: t.percentComplete,
+                              })}
+                              className="text-xs text-blue-600 hover:underline"
+                            >
+                              Edit
+                            </button>
+                          </td>
+                        )}
                       </tr>
                     );
                   })

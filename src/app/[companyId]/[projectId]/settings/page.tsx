@@ -1,13 +1,21 @@
 import { prisma } from "@/lib/prisma";
+import { auth } from "@/lib/auth";
+import { can } from "@/lib/auth/permissions";
 import CsvImportExpenses from "@/components/expenses/CsvImportExpenses";
 import CsvImportSchedule from "@/components/schedule/CsvImportSchedule";
 import CostCodeManager from "@/components/expenses/CostCodeManager";
+import ProjectEditor from "@/components/settings/ProjectEditor";
+import UserManager from "@/components/settings/UserManager";
 
 export default async function SettingsPage({
   params,
 }: {
   params: { companyId: string; projectId: string };
 }) {
+  const session = await auth();
+  const role = session?.user.role ?? "PARTNER";
+  const isAdmin = can(role, "project:edit");
+
   const [project, costCodes, users, accounts] = await Promise.all([
     prisma.project.findUnique({ where: { id: params.projectId } }),
     prisma.costCode.findMany({ where: { projectId: params.projectId, archivedAt: null }, orderBy: { code: "asc" } }),
@@ -97,58 +105,82 @@ export default async function SettingsPage({
 
         {/* Users */}
         <div className="bg-white rounded-xl border border-slate-200 p-5">
-          <h2 className="font-semibold text-slate-800 mb-4">Users</h2>
-          <table className="w-full text-sm">
-            <thead className="border-b border-slate-200">
-              <tr>
-                <th className="text-left py-2 text-slate-500 font-medium">Name</th>
-                <th className="text-left py-2 text-slate-500 font-medium">Email</th>
-                <th className="text-left py-2 text-slate-500 font-medium">Role</th>
-              </tr>
-            </thead>
-            <tbody>
-              {users.map((u) => (
-                <tr key={u.id} className="border-b border-slate-50">
-                  <td className="py-2 font-medium text-slate-800">{u.name}</td>
-                  <td className="py-2 text-slate-500">{u.email}</td>
-                  <td className="py-2">
-                    <span className="text-xs bg-blue-50 text-blue-700 px-2 py-0.5 rounded font-medium">{u.role}</span>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+          {isAdmin ? (
+            <UserManager
+              users={users.map((u) => ({ id: u.id, name: u.name, email: u.email, role: u.role }))}
+              currentUserId={session?.user.id ?? ""}
+            />
+          ) : (
+            <>
+              <h2 className="font-semibold text-slate-800 mb-4">Users</h2>
+              <table className="w-full text-sm">
+                <thead className="border-b border-slate-200">
+                  <tr>
+                    <th className="text-left py-2 text-slate-500 font-medium">Name</th>
+                    <th className="text-left py-2 text-slate-500 font-medium">Email</th>
+                    <th className="text-left py-2 text-slate-500 font-medium">Role</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {users.map((u) => (
+                    <tr key={u.id} className="border-b border-slate-50">
+                      <td className="py-2 font-medium text-slate-800">{u.name}</td>
+                      <td className="py-2 text-slate-500">{u.email}</td>
+                      <td className="py-2">
+                        <span className="text-xs bg-blue-50 text-blue-700 px-2 py-0.5 rounded font-medium">{u.role}</span>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </>
+          )}
         </div>
 
         {/* Project Info */}
         <div className="bg-white rounded-xl border border-slate-200 p-5">
-          <h2 className="font-semibold text-slate-800 mb-4">Project Info</h2>
-          <dl className="grid grid-cols-2 gap-3 text-sm">
-            <div>
-              <dt className="text-slate-500">Project Name</dt>
-              <dd className="font-medium text-slate-800">{project?.name}</dd>
-            </div>
-            <div>
-              <dt className="text-slate-500">Code</dt>
-              <dd className="font-medium text-slate-800">{project?.code}</dd>
-            </div>
-            <div>
-              <dt className="text-slate-500">Start Date</dt>
-              <dd className="font-medium text-slate-800">
-                {project?.startDate.toLocaleDateString("en-US")}
-              </dd>
-            </div>
-            <div>
-              <dt className="text-slate-500">Budget</dt>
-              <dd className="font-medium text-slate-800">
-                ${Number(project?.budget).toLocaleString()}
-              </dd>
-            </div>
-            <div>
-              <dt className="text-slate-500">Status</dt>
-              <dd className="font-medium text-slate-800">{project?.status}</dd>
-            </div>
-          </dl>
+          {isAdmin && project ? (
+            <ProjectEditor
+              project={{
+                id: project.id,
+                name: project.name,
+                code: project.code,
+                startDate: project.startDate.toISOString().split("T")[0],
+                budget: Number(project.budget),
+                status: project.status,
+              }}
+            />
+          ) : (
+            <>
+              <h2 className="font-semibold text-slate-800 mb-4">Project Info</h2>
+              <dl className="grid grid-cols-2 gap-3 text-sm">
+                <div>
+                  <dt className="text-slate-500">Project Name</dt>
+                  <dd className="font-medium text-slate-800">{project?.name}</dd>
+                </div>
+                <div>
+                  <dt className="text-slate-500">Code</dt>
+                  <dd className="font-medium text-slate-800">{project?.code}</dd>
+                </div>
+                <div>
+                  <dt className="text-slate-500">Start Date</dt>
+                  <dd className="font-medium text-slate-800">
+                    {project?.startDate.toLocaleDateString("en-US")}
+                  </dd>
+                </div>
+                <div>
+                  <dt className="text-slate-500">Budget</dt>
+                  <dd className="font-medium text-slate-800">
+                    ${Number(project?.budget).toLocaleString()}
+                  </dd>
+                </div>
+                <div>
+                  <dt className="text-slate-500">Status</dt>
+                  <dd className="font-medium text-slate-800">{project?.status}</dd>
+                </div>
+              </dl>
+            </>
+          )}
         </div>
       </div>
     </div>
