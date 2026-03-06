@@ -112,6 +112,96 @@ export async function addExpense(formData: FormData) {
   return { success: true, id: expense.id, isDuplicate, isPossibleDup };
 }
 
+export async function updateExpense(formData: FormData) {
+  const session = await auth();
+  if (!session) throw new Error("Unauthorized");
+  requirePermission(session, "expense:edit");
+
+  const id = formData.get("id") as string;
+  if (!id) throw new Error("Missing expense id");
+
+  const existing = await prisma.expense.findUnique({ where: { id } });
+  if (!existing) throw new Error("Not found");
+
+  const data = ExpenseSchema.parse({
+    projectId: existing.projectId,
+    date: formData.get("date"),
+    vendor: formData.get("vendor"),
+    description: formData.get("description"),
+    costCodeId: formData.get("costCodeId") || undefined,
+    category: formData.get("category"),
+    amount: formData.get("amount"),
+    tax: formData.get("tax") || 0,
+    paymentMethod: formData.get("paymentMethod"),
+    paidBy: formData.get("paidBy"),
+    receiptUrl: formData.get("receiptUrl") || undefined,
+    receiptHash: formData.get("receiptHash") || undefined,
+    notes: formData.get("notes") || undefined,
+  });
+
+  const expDate = new Date(data.date + "T00:00:00");
+  const { isDuplicate, isPossibleDup } = await checkDuplicate(
+    existing.projectId, data.vendor, data.amount, expDate, data.receiptHash, id
+  );
+
+  await prisma.expense.update({
+    where: { id },
+    data: {
+      date: expDate,
+      vendor: data.vendor,
+      description: data.description,
+      costCodeId: data.costCodeId ?? null,
+      category: data.category,
+      amount: data.amount,
+      tax: data.tax,
+      paymentMethod: data.paymentMethod,
+      paidBy: data.paidBy,
+      receiptUrl: data.receiptUrl ?? null,
+      receiptHash: data.receiptHash ?? null,
+      notes: data.notes ?? null,
+      isDuplicate,
+      isPossibleDup,
+      updatedBy: session.user.id,
+    },
+  });
+
+  // Build change diff for audit
+  const changes: { field: string; oldValue: string | null; newValue: string | null }[] = [];
+  const fields: [string, unknown, unknown][] = [
+    ["date", existing.date.toISOString().split("T")[0], data.date],
+    ["vendor", existing.vendor, data.vendor],
+    ["description", existing.description, data.description],
+    ["costCodeId", existing.costCodeId, data.costCodeId ?? null],
+    ["category", existing.category, data.category],
+    ["amount", Number(existing.amount).toFixed(2), data.amount.toFixed(2)],
+    ["tax", Number(existing.tax).toFixed(2), data.tax.toFixed(2)],
+    ["paymentMethod", existing.paymentMethod, data.paymentMethod],
+    ["paidBy", existing.paidBy, data.paidBy],
+    ["notes", existing.notes, data.notes ?? null],
+  ];
+  for (const [field, oldVal, newVal] of fields) {
+    const o = oldVal == null ? null : String(oldVal);
+    const n = newVal == null ? null : String(newVal);
+    if (o !== n) changes.push({ field, oldValue: o, newValue: n });
+  }
+
+  if (changes.length > 0) {
+    await writeAuditLog({
+      companyId: session.user.companyId,
+      projectId: existing.projectId,
+      entityType: "EXPENSE",
+      entityId: id,
+      action: "UPDATE",
+      changes,
+      userId: session.user.id,
+      userName: session.user.name ?? session.user.email ?? "",
+    });
+  }
+
+  revalidatePath(`/${session.user.companyId}/${existing.projectId}/expenses`);
+  return { success: true };
+}
+
 export async function deleteExpense(id: string) {
   const session = await auth();
   if (!session) throw new Error("Unauthorized");
