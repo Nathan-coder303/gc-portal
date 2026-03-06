@@ -151,7 +151,7 @@ export default function CsvImportExpenses({ projectId }: { projectId: string }) 
           <input type="file" accept=".csv"
             onChange={handleFile}
             className="block text-sm text-slate-600 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100 cursor-pointer" />
-          <p className="text-xs text-slate-400 mt-2">Accepts any CSV — you'll map columns in the next step</p>
+          <p className="text-xs text-slate-400 mt-2">Accepts any CSV — you&apos;ll map columns in the next step</p>
         </div>
       )}
 

@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useState } from "react";
 import {
   addPartnerContribution,
   addPayExpense,
@@ -86,7 +86,6 @@ export default function LedgerForms({
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
   const [error, setError] = useState("");
-  const formRef = useRef<HTMLFormElement>(null);
 
   function wrap(fn: (fd: FormData) => Promise<unknown>) {
     return async (e: React.FormEvent<HTMLFormElement>) => {
