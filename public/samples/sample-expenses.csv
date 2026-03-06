@@ -1,0 +1,7 @@
+date,vendor,description,cost_code,category,amount,tax,payment_method,paid_by,receipt_url
+2026-01-15,Home Depot,Lumber 2x4,03-FRAME,Materials,1250.00,0,Credit Card,Mike Ross,
+2026-01-15,Home Depot,OSB Sheathing,03-FRAME,Materials,3400.00,0,Credit Card,Sarah Chen,
+2026-01-16,Sparky Electric,Rough-in labor,04-ELEC,Labor,2800.00,0,ACH,Mike Ross,
+2026-01-16,Graybar Electric,Wire and conduit,04-ELEC,Materials,4200.00,0,Check,Sarah Chen,
+2026-01-17,Ready Mix Co,Concrete slab pour,02-FOUND,Materials,4800.00,0,ACH,Mike Ross,
+2026-01-15,Home Depot,Lumber 2x4,03-FRAME,Materials,1250.00,0,Credit Card,Mike Ross,

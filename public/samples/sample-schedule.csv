@@ -1,0 +1,13 @@
+phase,task_name,duration_days,predecessor_task,trade,milestone,default_assignee
+Foundation,Excavation,3,,Excavation,false,Crew A
+Foundation,Pour Footings,2,Excavation,Concrete,false,Crew B
+Foundation,Cure Period,7,Pour Footings,,false,
+Foundation,Foundation Inspection,0,Cure Period,,true,
+Framing,Frame Walls,5,Foundation Inspection,Framing,false,Framing Crew
+Framing,Roof Structure,4,Frame Walls,Framing,false,Framing Crew
+Framing,Sheathing,3,Roof Structure,Framing,false,Framing Crew
+Framing,Framing Inspection,0,Sheathing,,true,
+Electrical,Rough-in Wiring,5,Framing Inspection,Electrical,false,Sparky Electric
+Electrical,Panel Installation,2,Rough-in Wiring,Electrical,false,Sparky Electric
+Electrical,Electrical Inspection,0,Panel Installation,,true,
+Electrical,Trim-out,3,Electrical Inspection,Electrical,false,Sparky Electric
