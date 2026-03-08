@@ -164,3 +164,45 @@ export async function archiveUser(userId: string) {
   revalidatePath(`/${session.user.companyId}`);
   return { success: true };
 }
+
+// ─── Projection assumptions persistence ──────────────────────────────────────
+
+export async function saveProjectionSettings(
+  projectId: string,
+  values: { burn: string; contingency: string; injection: string; horizon: string }
+) {
+  const session = await auth();
+  if (!session) throw new Error("Unauthorized");
+  requirePermission(session, "settings:edit");
+
+  const entries: [string, string][] = [
+    ["projection.burnOverride", values.burn],
+    ["projection.contingencyPct", values.contingency],
+    ["projection.cashInjection", values.injection],
+    ["projection.horizon", values.horizon],
+  ];
+
+  await Promise.all(
+    entries.map(([key, value]) =>
+      prisma.projectSettings.upsert({
+        where: { projectId_key: { projectId, key } },
+        update: { value, updatedBy: session.user.id },
+        create: { projectId, key, value, updatedBy: session.user.id },
+      })
+    )
+  );
+
+  await writeAuditLog({
+    companyId: session.user.companyId,
+    projectId,
+    entityType: "PROJECT_SETTINGS",
+    entityId: projectId,
+    action: "UPDATE",
+    changes: entries.map(([key, value]) => ({ field: key, oldValue: null, newValue: value })),
+    userId: session.user.id,
+    userName: session.user.name ?? session.user.email ?? "",
+  });
+
+  revalidatePath(`/${session.user.companyId}/${projectId}/projections`);
+  return { success: true };
+}

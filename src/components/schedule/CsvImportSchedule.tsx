@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { parseScheduleCsv } from "@/lib/csv/parseSchedule";
 import { importScheduleCsv } from "@/app/[companyId]/[projectId]/schedule/actions";
+import { SCHEDULE_CSV_TEMPLATE } from "@/lib/csv/versions";
 import { format } from "date-fns";
 
 export default function CsvImportSchedule({ projectId }: { projectId: string }) {
@@ -142,7 +143,10 @@ export default function CsvImportSchedule({ projectId }: { projectId: string }) 
           }`}
         >
           {result.errors.length === 0 ? (
-            <p className="text-sm text-green-700 font-medium">{result.imported} tasks imported successfully!</p>
+            <div>
+              <p className="text-sm text-green-700 font-medium">{result.imported} tasks imported successfully!</p>
+              <p className="text-xs text-slate-500 mt-1">Template: {SCHEDULE_CSV_TEMPLATE}</p>
+            </div>
           ) : (
             <div>
               <p className="text-sm text-red-700 font-medium mb-2">Import failed</p>

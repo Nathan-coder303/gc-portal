@@ -21,7 +21,7 @@ export default async function ReportsPage({
       include: { lines: { include: { account: true, partner: true } } },
       orderBy: { date: "asc" },
     }),
-    prisma.partner.findMany({ where: { companyId: params.companyId } }),
+    prisma.partner.findMany({ where: { companyId: params.companyId, archivedAt: null } }),
   ]);
 
   // Budget vs Actual

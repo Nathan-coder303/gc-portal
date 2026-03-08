@@ -4,6 +4,7 @@ import { useState } from "react";
 import Papa from "papaparse";
 import { z } from "zod";
 import { importExpensesCsv } from "@/app/[companyId]/[projectId]/expenses/actions";
+import { EXPENSES_CSV_TEMPLATE } from "@/lib/csv/versions";
 
 const EXPECTED_FIELDS = [
   { key: "date", label: "Date", required: true },
@@ -258,6 +259,7 @@ export default function CsvImportExpenses({ projectId }: { projectId: string }) 
         <div>
           <div className={`p-4 rounded-lg border mb-4 ${result.rowErrors.length === 0 ? "bg-green-50 border-green-200" : "bg-amber-50 border-amber-200"}`}>
             <p className="font-semibold text-slate-800">{result.imported} expenses imported successfully!</p>
+            <p className="text-xs text-slate-500 mt-1">Template: {EXPENSES_CSV_TEMPLATE}</p>
             {result.rowErrors.length > 0 && (
               <div className="mt-2">
                 <p className="text-sm text-amber-700">{result.rowErrors.length} rows failed:</p>

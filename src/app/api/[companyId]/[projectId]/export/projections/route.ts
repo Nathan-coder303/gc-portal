@@ -19,7 +19,7 @@ export async function GET(
       include: { lines: { include: { account: true } } },
     }),
     prisma.costCode.findMany({ where: { projectId: params.projectId, archivedAt: null } }),
-    prisma.account.findMany({ where: { projectId: params.projectId } }),
+    prisma.account.findMany({ where: { projectId: params.projectId, archivedAt: null } }),
   ]);
 
   const allLines = entries.flatMap((e) =>

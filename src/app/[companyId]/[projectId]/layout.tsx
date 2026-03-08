@@ -12,6 +12,7 @@ export default async function ProjectLayout({
 }) {
   const session = await auth();
   if (!session) redirect("/login");
+  const isAdmin = session.user.role === "ADMIN";
 
   const project = await prisma.project.findFirst({
     where: { id: params.projectId, companyId: params.companyId },
@@ -44,7 +45,7 @@ export default async function ProjectLayout({
             </form>
           </div>
         </div>
-        <TabNav companyId={params.companyId} projectId={params.projectId} />
+        <TabNav companyId={params.companyId} projectId={params.projectId} isAdmin={isAdmin} />
       </header>
       <main className="max-w-7xl mx-auto px-4 py-6">{children}</main>
     </div>

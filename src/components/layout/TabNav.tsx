@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
-const tabs = [
+const TABS = [
   { label: "Dashboard", segment: "dashboard" },
   { label: "Expenses", segment: "expenses" },
   { label: "Schedule", segment: "schedule" },
@@ -13,9 +13,23 @@ const tabs = [
   { label: "Settings", segment: "settings" },
 ];
 
-export default function TabNav({ companyId, projectId }: { companyId: string; projectId: string }) {
+const ADMIN_TABS = [
+  ...TABS,
+  { label: "Audit", segment: "audit" },
+];
+
+export default function TabNav({
+  companyId,
+  projectId,
+  isAdmin = false,
+}: {
+  companyId: string;
+  projectId: string;
+  isAdmin?: boolean;
+}) {
   const pathname = usePathname();
   const base = `/${companyId}/${projectId}`;
+  const tabs = isAdmin ? ADMIN_TABS : TABS;
 
   return (
     <nav className="max-w-7xl mx-auto px-4 flex gap-1">

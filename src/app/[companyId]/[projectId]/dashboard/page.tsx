@@ -35,7 +35,7 @@ export default async function DashboardPage({
       credit: Number(l.credit),
     }))
   );
-  const accounts = await prisma.account.findMany({ where: { projectId: params.projectId } });
+  const accounts = await prisma.account.findMany({ where: { projectId: params.projectId, archivedAt: null } });
   const accountBalances = new Map<string, number>();
   for (const line of allLines) {
     const acct = accounts.find((a) => a.id === line.accountId);

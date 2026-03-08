@@ -12,6 +12,8 @@ import {
 } from "@/lib/projections/forecast";
 import CashflowChart from "@/components/projections/CashflowChart";
 import AssumptionControls from "@/components/projections/AssumptionControls";
+import { auth } from "@/lib/auth";
+import { can } from "@/lib/auth/permissions";
 
 export default async function ProjectionsPage({
   params,
@@ -20,7 +22,10 @@ export default async function ProjectionsPage({
   params: { companyId: string; projectId: string };
   searchParams: Record<string, string | undefined>;
 }) {
-  const [project, expenses, tasks, entries, costCodes, accounts] = await Promise.all([
+  const session = await auth();
+  const canSave = can(session?.user.role ?? "PARTNER", "settings:edit");
+
+  const [project, expenses, tasks, entries, costCodes, accounts, savedSettings] = await Promise.all([
     prisma.project.findUnique({ where: { id: params.projectId } }),
     prisma.expense.findMany({ where: { projectId: params.projectId, archivedAt: null }, orderBy: { date: "asc" } }),
     prisma.task.findMany({ where: { projectId: params.projectId, archivedAt: null } }),
@@ -29,8 +34,22 @@ export default async function ProjectionsPage({
       include: { lines: { include: { account: true, partner: true } } },
     }),
     prisma.costCode.findMany({ where: { projectId: params.projectId, archivedAt: null } }),
-    prisma.account.findMany({ where: { projectId: params.projectId } }),
+    prisma.account.findMany({ where: { projectId: params.projectId, archivedAt: null } }),
+    prisma.projectSettings.findMany({
+      where: {
+        projectId: params.projectId,
+        key: { in: ["projection.burnOverride", "projection.contingencyPct", "projection.cashInjection", "projection.horizon"] },
+      },
+    }),
   ]);
+
+  const settingsMap = Object.fromEntries(savedSettings.map((s) => [s.key, s.value]));
+  const savedAssumptions = {
+    burn: settingsMap["projection.burnOverride"] ?? "",
+    contingency: settingsMap["projection.contingencyPct"] ?? "10",
+    injection: settingsMap["projection.cashInjection"] ?? "0",
+    horizon: settingsMap["projection.horizon"] ?? "30",
+  };
 
   // Cash balance
   const allLines = entries.flatMap((e) =>
@@ -135,7 +154,12 @@ export default async function ProjectionsPage({
 
       {/* Assumption Controls */}
       <Suspense>
-        <AssumptionControls burn30d={fin.burn30d} />
+        <AssumptionControls
+          burn30d={fin.burn30d}
+          projectId={params.projectId}
+          saved={savedAssumptions}
+          canSave={canSave}
+        />
       </Suspense>
 
       {/* Horizon Summary Cards */}

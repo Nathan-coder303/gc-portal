@@ -8,6 +8,7 @@ import { toCsv } from "@/lib/export/toCsv";
 import { TaskStatus } from "@prisma/client";
 import { writeAuditLog } from "@/lib/audit/log";
 import { requirePermission } from "@/lib/auth/permissions";
+import { SCHEDULE_CSV_TEMPLATE } from "@/lib/csv/versions";
 
 export async function importScheduleCsv(formData: FormData) {
   const session = await auth();
@@ -74,7 +75,10 @@ export async function importScheduleCsv(formData: FormData) {
     entityType: "TASK",
     entityId: projectId,
     action: "IMPORT",
-    changes: [{ field: "count", oldValue: null, newValue: String(tasks.length) }],
+    changes: [
+      { field: "count", oldValue: null, newValue: String(tasks.length) },
+      { field: "templateVersion", oldValue: null, newValue: SCHEDULE_CSV_TEMPLATE },
+    ],
     userId: session.user.id,
     userName: session.user.name ?? session.user.email ?? "",
   });

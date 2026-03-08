@@ -11,7 +11,7 @@ import { requirePermission } from "@/lib/auth/permissions";
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
 async function getProjectAccounts(projectId: string) {
-  return prisma.account.findMany({ where: { projectId } });
+  return prisma.account.findMany({ where: { projectId, archivedAt: null } });
 }
 
 function revalidate(companyId: string, projectId: string) {
@@ -298,6 +298,153 @@ export async function exportLedgerCsv(projectId: string) {
   );
 
   return toCsv(rows, "ledger.csv");
+}
+
+// ─── Partner management ───────────────────────────────────────────────────────
+
+export async function updatePartner(formData: FormData) {
+  const session = await auth();
+  if (!session) throw new Error("Unauthorized");
+  requirePermission(session, "partner:edit");
+
+  const id = formData.get("id") as string;
+  const existing = await prisma.partner.findUnique({ where: { id } });
+  if (!existing) throw new Error("Partner not found");
+  if (existing.companyId !== session.user.companyId) throw new Error("Forbidden");
+
+  const name = (formData.get("name") as string).trim();
+  const email = (formData.get("email") as string).trim() || null;
+  const role = (formData.get("role") as string).trim() || null;
+  const ownershipPctRaw = formData.get("ownershipPct") as string;
+  const ownershipPct = ownershipPctRaw ? parseFloat(ownershipPctRaw) : null;
+
+  if (!name) throw new Error("Name is required");
+  if (ownershipPct !== null && (ownershipPct < 0 || ownershipPct > 100)) throw new Error("Ownership must be 0–100");
+
+  await prisma.partner.update({
+    where: { id },
+    data: { name, email, role, ownershipPct: ownershipPct ?? null, updatedBy: session.user.id },
+  });
+
+  const changes: { field: string; oldValue: string | null; newValue: string | null }[] = [];
+  const pairs: [string, unknown, unknown][] = [
+    ["name", existing.name, name],
+    ["email", existing.email, email],
+    ["role", existing.role, role],
+    ["ownershipPct", existing.ownershipPct != null ? String(existing.ownershipPct) : null, ownershipPct != null ? String(ownershipPct) : null],
+  ];
+  for (const [field, o, n] of pairs) {
+    const os = o == null ? null : String(o);
+    const ns = n == null ? null : String(n);
+    if (os !== ns) changes.push({ field, oldValue: os, newValue: ns });
+  }
+
+  if (changes.length > 0) {
+    await writeAuditLog({
+      companyId: session.user.companyId,
+      entityType: "PARTNER",
+      entityId: id,
+      action: "UPDATE",
+      changes,
+      userId: session.user.id,
+      userName: session.user.name ?? session.user.email ?? "",
+    });
+  }
+
+  revalidatePath(`/${session.user.companyId}`);
+  return { success: true };
+}
+
+export async function archivePartner(id: string) {
+  const session = await auth();
+  if (!session) throw new Error("Unauthorized");
+  requirePermission(session, "partner:archive");
+
+  const partner = await prisma.partner.findUnique({ where: { id } });
+  if (!partner) throw new Error("Partner not found");
+  if (partner.companyId !== session.user.companyId) throw new Error("Forbidden");
+
+  await prisma.partner.update({
+    where: { id },
+    data: { archivedAt: new Date(), archivedBy: session.user.id, updatedBy: session.user.id },
+  });
+
+  await writeAuditLog({
+    companyId: session.user.companyId,
+    entityType: "PARTNER",
+    entityId: id,
+    action: "ARCHIVE",
+    userId: session.user.id,
+    userName: session.user.name ?? session.user.email ?? "",
+  });
+
+  revalidatePath(`/${session.user.companyId}`);
+  return { success: true };
+}
+
+// ─── Account management ───────────────────────────────────────────────────────
+
+export async function updateAccount(formData: FormData) {
+  const session = await auth();
+  if (!session) throw new Error("Unauthorized");
+  requirePermission(session, "account:create"); // reuse create permission for edits
+
+  const id = formData.get("id") as string;
+  const projectId = formData.get("projectId") as string;
+  const name = (formData.get("name") as string).trim();
+
+  if (!name) throw new Error("Name is required");
+
+  const existing = await prisma.account.findUnique({ where: { id } });
+  if (!existing || existing.projectId !== projectId) throw new Error("Account not found");
+
+  await prisma.account.update({
+    where: { id },
+    data: { name, updatedBy: session.user.id },
+  });
+
+  await writeAuditLog({
+    companyId: session.user.companyId,
+    projectId,
+    entityType: "ACCOUNT",
+    entityId: id,
+    action: "UPDATE",
+    changes: [{ field: "name", oldValue: existing.name, newValue: name }],
+    userId: session.user.id,
+    userName: session.user.name ?? session.user.email ?? "",
+  });
+
+  revalidatePath(`/${session.user.companyId}/${projectId}/ledger`);
+  revalidatePath(`/${session.user.companyId}/${projectId}/settings`);
+  return { success: true };
+}
+
+export async function archiveAccount(id: string, projectId: string) {
+  const session = await auth();
+  if (!session) throw new Error("Unauthorized");
+  requirePermission(session, "account:archive");
+
+  const account = await prisma.account.findUnique({ where: { id } });
+  if (!account || account.projectId !== projectId) throw new Error("Account not found");
+
+  await prisma.account.update({
+    where: { id },
+    data: { archivedAt: new Date(), archivedBy: session.user.id, updatedBy: session.user.id },
+  });
+
+  await writeAuditLog({
+    companyId: session.user.companyId,
+    projectId,
+    entityType: "ACCOUNT",
+    entityId: id,
+    action: "ARCHIVE",
+    userId: session.user.id,
+    userName: session.user.name ?? session.user.email ?? "",
+  });
+
+  revalidatePath(`/${session.user.companyId}/${projectId}/ledger`);
+  revalidatePath(`/${session.user.companyId}/${projectId}/settings`);
+  return { success: true };
 }
 
 // ─── Legacy alias (kept for backward compat with any existing calls) ─────────

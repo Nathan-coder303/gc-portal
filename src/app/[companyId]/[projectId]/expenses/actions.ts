@@ -8,6 +8,7 @@ import { toCsv } from "@/lib/export/toCsv";
 import { checkDuplicate } from "@/lib/expenses/duplicates";
 import { writeAuditLog } from "@/lib/audit/log";
 import { requirePermission } from "@/lib/auth/permissions";
+import { EXPENSES_CSV_TEMPLATE } from "@/lib/csv/versions";
 
 const ExpenseSchema = z.object({
   projectId: z.string(),
@@ -292,7 +293,10 @@ export async function importExpensesCsv(
       entityType: "EXPENSE",
       entityId: projectId,
       action: "IMPORT",
-      changes: [{ field: "count", oldValue: null, newValue: String(imported) }],
+      changes: [
+      { field: "count", oldValue: null, newValue: String(imported) },
+      { field: "templateVersion", oldValue: null, newValue: EXPENSES_CSV_TEMPLATE },
+    ],
       userId: session.user.id,
       userName: session.user.name ?? session.user.email ?? "",
     });
@@ -327,6 +331,71 @@ export async function exportExpensesCsv(projectId: string) {
   }));
 
   return toCsv(rows, "expenses.csv");
+}
+
+export async function bulkArchiveExpenses(ids: string[]) {
+  const session = await auth();
+  if (!session) throw new Error("Unauthorized");
+  requirePermission(session, "expense:archive");
+  if (!ids.length) return { success: true, count: 0 };
+
+  const sample = await prisma.expense.findFirst({ where: { id: { in: ids } } });
+  if (!sample) throw new Error("Not found");
+
+  await prisma.expense.updateMany({
+    where: { id: { in: ids }, archivedAt: null },
+    data: { archivedAt: new Date(), archivedBy: session.user.id, updatedBy: session.user.id },
+  });
+
+  await writeAuditLog({
+    companyId: session.user.companyId,
+    projectId: sample.projectId,
+    entityType: "EXPENSE",
+    entityId: "bulk",
+    action: "ARCHIVE",
+    changes: [
+      { field: "count", oldValue: null, newValue: String(ids.length) },
+      { field: "ids", oldValue: null, newValue: ids.join(",") },
+    ],
+    userId: session.user.id,
+    userName: session.user.name ?? session.user.email ?? "",
+  });
+
+  revalidatePath(`/${session.user.companyId}/${sample.projectId}/expenses`);
+  return { success: true, count: ids.length };
+}
+
+export async function bulkReclassifyExpenses(ids: string[], costCodeId: string | null) {
+  const session = await auth();
+  if (!session) throw new Error("Unauthorized");
+  requirePermission(session, "expense:edit");
+  if (!ids.length) return { success: true, count: 0 };
+
+  const sample = await prisma.expense.findFirst({ where: { id: { in: ids } } });
+  if (!sample) throw new Error("Not found");
+
+  await prisma.expense.updateMany({
+    where: { id: { in: ids }, archivedAt: null },
+    data: { costCodeId: costCodeId ?? null, updatedBy: session.user.id },
+  });
+
+  await writeAuditLog({
+    companyId: session.user.companyId,
+    projectId: sample.projectId,
+    entityType: "EXPENSE",
+    entityId: "bulk",
+    action: "UPDATE",
+    changes: [
+      { field: "costCodeId", oldValue: null, newValue: costCodeId ?? "none" },
+      { field: "count", oldValue: null, newValue: String(ids.length) },
+      { field: "ids", oldValue: null, newValue: ids.join(",") },
+    ],
+    userId: session.user.id,
+    userName: session.user.name ?? session.user.email ?? "",
+  });
+
+  revalidatePath(`/${session.user.companyId}/${sample.projectId}/expenses`);
+  return { success: true, count: ids.length };
 }
 
 // Cost code management

@@ -6,6 +6,7 @@ import CsvImportSchedule from "@/components/schedule/CsvImportSchedule";
 import CostCodeManager from "@/components/expenses/CostCodeManager";
 import ProjectEditor from "@/components/settings/ProjectEditor";
 import UserManager from "@/components/settings/UserManager";
+import AccountManager from "@/components/settings/AccountManager";
 
 export default async function SettingsPage({
   params,
@@ -20,7 +21,7 @@ export default async function SettingsPage({
     prisma.project.findUnique({ where: { id: params.projectId } }),
     prisma.costCode.findMany({ where: { projectId: params.projectId, archivedAt: null }, orderBy: { code: "asc" } }),
     prisma.user.findMany({ where: { companyId: params.companyId, archivedAt: null }, orderBy: { name: "asc" } }),
-    prisma.account.findMany({ where: { projectId: params.projectId } }),
+    prisma.account.findMany({ where: { projectId: params.projectId, archivedAt: null }, orderBy: { name: "asc" } }),
   ]);
 
   return (
@@ -82,25 +83,39 @@ export default async function SettingsPage({
 
         {/* Ledger Accounts */}
         <div className="bg-white rounded-xl border border-slate-200 p-5">
-          <h2 className="font-semibold text-slate-800 mb-4">Ledger Accounts</h2>
-          <table className="w-full text-sm">
-            <thead className="border-b border-slate-200">
-              <tr>
-                <th className="text-left py-2 text-slate-500 font-medium">Account</th>
-                <th className="text-left py-2 text-slate-500 font-medium">Type</th>
-                <th className="text-left py-2 text-slate-500 font-medium">Partner Capital</th>
-              </tr>
-            </thead>
-            <tbody>
-              {accounts.map((a) => (
-                <tr key={a.id} className="border-b border-slate-50">
-                  <td className="py-2 text-slate-700">{a.name}</td>
-                  <td className="py-2 text-slate-500">{a.type}</td>
-                  <td className="py-2 text-slate-500">{a.isPartnerCapital ? "Yes" : "—"}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+          {isAdmin ? (
+            <AccountManager
+              accounts={accounts.map((a) => ({
+                id: a.id,
+                name: a.name,
+                type: a.type,
+                isPartnerCapital: a.isPartnerCapital,
+                projectId: a.projectId,
+              }))}
+            />
+          ) : (
+            <>
+              <h2 className="font-semibold text-slate-800 mb-4">Ledger Accounts</h2>
+              <table className="w-full text-sm">
+                <thead className="border-b border-slate-200">
+                  <tr>
+                    <th className="text-left py-2 text-slate-500 font-medium">Account</th>
+                    <th className="text-left py-2 text-slate-500 font-medium">Type</th>
+                    <th className="text-left py-2 text-slate-500 font-medium">Partner Capital</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {accounts.map((a) => (
+                    <tr key={a.id} className="border-b border-slate-50">
+                      <td className="py-2 text-slate-700">{a.name}</td>
+                      <td className="py-2 text-slate-500">{a.type}</td>
+                      <td className="py-2 text-slate-500">{a.isPartnerCapital ? "Yes" : "—"}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </>
+          )}
         </div>
 
         {/* Users */}

@@ -5,21 +5,27 @@ import { AccountType } from "@prisma/client";
 import LedgerForms from "@/components/ledger/LedgerForms";
 import PartnerCapitalStatement from "@/components/ledger/PartnerCapitalStatement";
 import ReverseButton from "@/components/ledger/ReverseButton";
+import PartnerManager from "@/components/ledger/PartnerManager";
+import { auth } from "@/lib/auth";
+import { can } from "@/lib/auth/permissions";
 
 export default async function LedgerPage({
   params,
 }: {
   params: { companyId: string; projectId: string };
 }) {
+  const session = await auth();
+  const isAdmin = can(session?.user.role ?? "PARTNER", "partner:edit");
+
   const [entries, accounts, partners] = await Promise.all([
     prisma.journalEntry.findMany({
       where: { projectId: params.projectId },
       include: { lines: { include: { account: true, partner: true } } },
       orderBy: { date: "desc" },
     }),
-    prisma.account.findMany({ where: { projectId: params.projectId } }),
+    prisma.account.findMany({ where: { projectId: params.projectId, archivedAt: null } }),
     prisma.partner.findMany({
-      where: { companyId: params.companyId },
+      where: { companyId: params.companyId, archivedAt: null },
       orderBy: { name: "asc" },
     }),
   ]);
@@ -244,7 +250,7 @@ export default async function LedgerPage({
 
       {/* Partner Capital Statements */}
       {capitalLines.length > 0 && (
-        <div className="bg-white rounded-xl border border-slate-200 overflow-hidden">
+        <div className="bg-white rounded-xl border border-slate-200 overflow-hidden mb-6">
           <div className="px-4 py-3 border-b border-slate-200">
             <h2 className="font-semibold text-slate-800">Partner Capital Statements</h2>
             <p className="text-xs text-slate-400 mt-0.5">Running balance per partner</p>
@@ -259,6 +265,21 @@ export default async function LedgerPage({
               capitalLines={capitalLines}
             />
           </div>
+        </div>
+      )}
+
+      {/* Manage Partners (admin only) */}
+      {isAdmin && (
+        <div className="bg-white rounded-xl border border-slate-200 p-5">
+          <PartnerManager
+            partners={partners.map((p) => ({
+              id: p.id,
+              name: p.name,
+              email: p.email,
+              role: p.role,
+              ownershipPct: p.ownershipPct != null ? Number(p.ownershipPct) : null,
+            }))}
+          />
         </div>
       )}
     </div>

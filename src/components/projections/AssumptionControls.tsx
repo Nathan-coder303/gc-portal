@@ -2,22 +2,33 @@
 
 import { useRouter, usePathname, useSearchParams } from "next/navigation";
 import { useCallback, useState } from "react";
+import { saveProjectionSettings } from "@/app/[companyId]/[projectId]/settings/actions";
+
+type Saved = { burn?: string; contingency?: string; injection?: string; horizon?: string };
 
 export default function AssumptionControls({
   burn30d,
+  projectId,
+  saved = {},
+  canSave = false,
 }: {
   burn30d: number;
+  projectId: string;
+  saved?: Saved;
+  canSave?: boolean;
 }) {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
 
   const [local, setLocal] = useState({
-    burn: searchParams.get("burn") ?? "",
-    contingency: searchParams.get("contingency") ?? "10",
-    injection: searchParams.get("injection") ?? "0",
-    horizon: searchParams.get("horizon") ?? "30",
+    burn: searchParams.get("burn") ?? saved.burn ?? "",
+    contingency: searchParams.get("contingency") ?? saved.contingency ?? "10",
+    injection: searchParams.get("injection") ?? saved.injection ?? "0",
+    horizon: searchParams.get("horizon") ?? saved.horizon ?? "30",
   });
+  const [saving, setSaving] = useState(false);
+  const [saveMsg, setSaveMsg] = useState("");
 
   const apply = useCallback(() => {
     const params = new URLSearchParams();
@@ -32,6 +43,20 @@ export default function AssumptionControls({
     setLocal({ burn: "", contingency: "10", injection: "0", horizon: "30" });
     router.push(pathname);
   };
+
+  const saveDefaults = useCallback(async () => {
+    setSaving(true);
+    setSaveMsg("");
+    try {
+      await saveProjectionSettings(projectId, local);
+      setSaveMsg("Saved!");
+      setTimeout(() => setSaveMsg(""), 3000);
+    } catch {
+      setSaveMsg("Save failed");
+    } finally {
+      setSaving(false);
+    }
+  }, [projectId, local]);
 
   const changed =
     local.burn !== (searchParams.get("burn") ?? "") ||
@@ -103,7 +128,7 @@ export default function AssumptionControls({
           </select>
         </div>
       </div>
-      <div className="flex gap-2 mt-3">
+      <div className="flex items-center gap-2 mt-3 flex-wrap">
         <button
           onClick={apply}
           disabled={!changed}
@@ -117,6 +142,22 @@ export default function AssumptionControls({
         >
           Reset defaults
         </button>
+        {canSave && (
+          <>
+            <button
+              onClick={saveDefaults}
+              disabled={saving}
+              className="px-3 py-1.5 text-sm border border-slate-200 rounded-lg text-slate-600 hover:bg-slate-100 disabled:opacity-50"
+            >
+              {saving ? "Saving..." : "Save as defaults"}
+            </button>
+            {saveMsg && (
+              <span className={`text-xs font-medium ${saveMsg === "Saved!" ? "text-green-600" : "text-red-600"}`}>
+                {saveMsg}
+              </span>
+            )}
+          </>
+        )}
       </div>
     </div>
   );
