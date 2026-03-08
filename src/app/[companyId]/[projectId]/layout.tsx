@@ -25,7 +25,7 @@ export default async function ProjectLayout({
       <header className="bg-white border-b border-slate-200">
         <div className="max-w-7xl mx-auto px-4 flex items-center justify-between h-14">
           <div className="flex items-center gap-3">
-            <span className="font-bold text-slate-900">GC Portal</span>
+            <a href={`/${params.companyId}/projects`} className="font-bold text-slate-900 hover:text-blue-600">GC Portal</a>
             <span className="text-slate-300">|</span>
             <span className="text-sm text-slate-600 font-medium">{project.name}</span>
             <span className="text-xs bg-slate-100 text-slate-500 px-2 py-0.5 rounded">{project.code}</span>
