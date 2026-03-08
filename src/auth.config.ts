@@ -11,10 +11,12 @@ export const authConfig: NextAuthConfig = {
     authorized({ auth, request: { nextUrl } }) {
       const isLoggedIn = !!auth?.user;
       const isLoginPage = nextUrl.pathname.startsWith("/login");
+      const isSignupPage = nextUrl.pathname.startsWith("/signup");
       const isApiAuth = nextUrl.pathname.startsWith("/api/auth");
 
       if (isApiAuth) return true;
       if (isLoginPage) return true;
+      if (isSignupPage) return true;
       return isLoggedIn;
     },
     jwt({ token, user }) {
