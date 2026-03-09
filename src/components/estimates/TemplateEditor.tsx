@@ -296,7 +296,7 @@ function TemplateDivisionSection({ division, canEdit }: { division: Division; ca
   );
 }
 
-type ClientData = { id: string; name: string; address: string | null; email: string | null; phone: string | null };
+type ClientData = { id: string; name: string; address: string | null; city: string | null; state: string | null; zip: string | null; email: string | null; phone: string | null };
 
 function ClientSelector({
   templateId,
@@ -314,6 +314,9 @@ function ClientSelector({
   const [selectedId, setSelectedId] = useState(currentClient?.id ?? "");
   const [newName, setNewName] = useState("");
   const [newAddress, setNewAddress] = useState("");
+  const [newCity, setNewCity] = useState("");
+  const [newState, setNewState] = useState("");
+  const [newZip, setNewZip] = useState("");
   const [newEmail, setNewEmail] = useState("");
   const [displayClient, setDisplayClient] = useState<ClientData | null>(currentClient);
 
@@ -330,10 +333,10 @@ function ClientSelector({
   function handleCreateNew() {
     if (!newName.trim()) return;
     startTransition(async () => {
-      const client = await upsertClient({ name: newName, address: newAddress, email: newEmail });
+      const client = await upsertClient({ name: newName, address: newAddress, city: newCity, state: newState, zip: newZip, email: newEmail });
       await setTemplateClient(templateId, client.id);
-      setDisplayClient({ id: client.id, name: client.name, address: client.address, email: client.email, phone: client.phone });
-      setNewName(""); setNewAddress(""); setNewEmail("");
+      setDisplayClient({ id: client.id, name: client.name, address: client.address, city: client.city, state: client.state, zip: client.zip, email: client.email, phone: client.phone });
+      setNewName(""); setNewAddress(""); setNewCity(""); setNewState(""); setNewZip(""); setNewEmail("");
       setMode("view");
     });
   }
@@ -346,6 +349,8 @@ function ClientSelector({
     });
   }
 
+  const cityLine = displayClient ? [displayClient.city, displayClient.state, displayClient.zip].filter(Boolean).join(", ") : "";
+
   return (
     <div className="mt-4 pt-4 border-t border-slate-100">
       <div className="flex items-start justify-between">
@@ -355,6 +360,7 @@ function ClientSelector({
             <div>
               <p className="text-sm font-semibold text-slate-900">{displayClient.name}</p>
               {displayClient.address && <p className="text-xs text-slate-500">{displayClient.address}</p>}
+              {cityLine && <p className="text-xs text-slate-500">{cityLine}</p>}
               {displayClient.email && <p className="text-xs text-slate-400">{displayClient.email}</p>}
             </div>
           ) : (
@@ -404,7 +410,21 @@ function ClientSelector({
           </div>
           <div className="col-span-2">
             <label className="block text-xs font-medium text-slate-600 mb-1">Address</label>
-            <input value={newAddress} onChange={e => setNewAddress(e.target.value)} placeholder="123 Main St, City, State" className="w-full border border-slate-300 rounded px-2 py-1.5 text-sm" />
+            <input value={newAddress} onChange={e => setNewAddress(e.target.value)} placeholder="123 Main St" className="w-full border border-slate-300 rounded px-2 py-1.5 text-sm" />
+          </div>
+          <div>
+            <label className="block text-xs font-medium text-slate-600 mb-1">City</label>
+            <input value={newCity} onChange={e => setNewCity(e.target.value)} placeholder="Hollywood" className="w-full border border-slate-300 rounded px-2 py-1.5 text-sm" />
+          </div>
+          <div className="grid grid-cols-2 gap-2">
+            <div>
+              <label className="block text-xs font-medium text-slate-600 mb-1">State</label>
+              <input value={newState} onChange={e => setNewState(e.target.value)} placeholder="FL" className="w-full border border-slate-300 rounded px-2 py-1.5 text-sm" />
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-slate-600 mb-1">Zip</label>
+              <input value={newZip} onChange={e => setNewZip(e.target.value)} placeholder="33020" className="w-full border border-slate-300 rounded px-2 py-1.5 text-sm" />
+            </div>
           </div>
           <div>
             <label className="block text-xs font-medium text-slate-600 mb-1">Email</label>
@@ -430,8 +450,8 @@ export default function TemplateEditor({
   template: Template;
   divisions: Division[];
   canEdit: boolean;
-  currentClient: { id: string; name: string; address: string | null; email: string | null; phone: string | null } | null;
-  allClients: { id: string; name: string; address: string | null; email: string | null; phone: string | null }[];
+  currentClient: { id: string; name: string; address: string | null; city: string | null; state: string | null; zip: string | null; email: string | null; phone: string | null } | null;
+  allClients: { id: string; name: string; address: string | null; city: string | null; state: string | null; zip: string | null; email: string | null; phone: string | null }[];
 }) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();

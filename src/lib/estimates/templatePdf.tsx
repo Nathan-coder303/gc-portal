@@ -79,7 +79,7 @@ type Division = { id: string; csiCode: string | null; name: string; groups: Grou
 type TemplatePdfProps = {
   companyName: string;
   template: { name: string; description: string | null; estimateNumber: string | null; estimateDate: string | null };
-  client: { name: string; address: string | null } | null;
+  client: { name: string; address: string | null; city: string | null; state: string | null; zip: string | null } | null;
   divisions: Division[];
 };
 
@@ -143,7 +143,10 @@ function TemplatePdfDocument({ companyName, template, client, divisions }: Templ
             {client ? (
               <>
                 <Text style={styles.clientName}>{client.name}</Text>
-                {client.address ? <Text style={styles.clientAddress}>{client.address}</Text> : null}
+                {client.address ? <Text style={styles.clientName}>{client.address}</Text> : null}
+                {(client.city || client.state || client.zip) ? (
+                  <Text style={styles.clientName}>{[client.city, client.state, client.zip].filter(Boolean).join(", ")}</Text>
+                ) : null}
               </>
             ) : null}
           </View>
@@ -194,10 +197,12 @@ function TemplatePdfDocument({ companyName, template, client, divisions }: Templ
           );
         })}
 
-        {/* Grand total — inline color to guarantee gold, bypassing style inheritance */}
+        {/* Grand total */}
         <View style={styles.grandTotalBar}>
           <Text style={styles.grandTotalLabel}>ESTIMATE TOTAL</Text>
-          <Text style={{ fontSize: 16, fontFamily: "Helvetica-Bold", color: "#C9A84C" }}>${fmt(grandTotal)}</Text>
+          <View style={{ backgroundColor: "#1e293b" }}>
+            <Text style={{ fontSize: 16, fontFamily: "Helvetica-Bold", color: "#C9A84C" }}>${fmt(grandTotal)}</Text>
+          </View>
         </View>
 
         <Text style={styles.pageNumber} render={({ pageNumber, totalPages }) => `Page ${pageNumber} of ${totalPages}`} fixed />

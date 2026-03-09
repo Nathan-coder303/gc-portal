@@ -74,6 +74,9 @@ model Client {
   company   Company           @relation(fields: [companyId], references: [id])
   name      String
   address   String?
+  city      String?
+  state     String?
+  zip       String?
   email     String?
   phone     String?
   createdAt DateTime          @default(now())

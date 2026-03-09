@@ -302,29 +302,26 @@ export async function listClients() {
   return clients;
 }
 
-export async function upsertClient(data: { id?: string; name: string; address?: string; email?: string; phone?: string }) {
+export async function upsertClient(data: { id?: string; name: string; address?: string; city?: string; state?: string; zip?: string; email?: string; phone?: string }) {
   const session = await auth();
   if (!session) throw new Error("Unauthorized");
   requirePermission(session, "estimateTemplate:edit");
 
+  const payload = {
+    name: data.name.trim(),
+    address: data.address?.trim() || null,
+    city: data.city?.trim() || null,
+    state: data.state?.trim() || null,
+    zip: data.zip?.trim() || null,
+    email: data.email?.trim() || null,
+    phone: data.phone?.trim() || null,
+  };
+
   if (data.id) {
-    const client = await prisma.client.update({
-      where: { id: data.id },
-      data: { name: data.name.trim(), address: data.address?.trim() || null, email: data.email?.trim() || null, phone: data.phone?.trim() || null },
-    });
-    return client;
+    return prisma.client.update({ where: { id: data.id }, data: payload });
   }
 
-  const client = await prisma.client.create({
-    data: {
-      companyId: session.user.companyId,
-      name: data.name.trim(),
-      address: data.address?.trim() || null,
-      email: data.email?.trim() || null,
-      phone: data.phone?.trim() || null,
-    },
-  });
-  return client;
+  return prisma.client.create({ data: { companyId: session.user.companyId, ...payload } });
 }
 
 export async function setTemplateClient(templateId: string, clientId: string | null) {

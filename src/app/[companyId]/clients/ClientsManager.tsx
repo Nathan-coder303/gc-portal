@@ -5,18 +5,26 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { upsertClient, deleteClient } from "@/app/[companyId]/estimates/actions";
 
-type Client = { id: string; name: string; address: string | null; email: string | null; phone: string | null; estimateCount: number };
+type Client = { id: string; name: string; address: string | null; city: string | null; state: string | null; zip: string | null; email: string | null; phone: string | null; estimateCount: number };
 
 function ClientRow({ client, companyId, isAdmin }: { client: Client; companyId: string; isAdmin: boolean }) {
   const [editing, setEditing] = useState(false);
   const [isPending, startTransition] = useTransition();
   const [showDelete, setShowDelete] = useState(false);
   const router = useRouter();
-  const [form, setForm] = useState({ name: client.name, address: client.address ?? "", email: client.email ?? "", phone: client.phone ?? "" });
+  const [form, setForm] = useState({
+    name: client.name,
+    address: client.address ?? "",
+    city: client.city ?? "",
+    state: client.state ?? "",
+    zip: client.zip ?? "",
+    email: client.email ?? "",
+    phone: client.phone ?? "",
+  });
 
   function save() {
     startTransition(async () => {
-      await upsertClient({ id: client.id, name: form.name, address: form.address, email: form.email, phone: form.phone });
+      await upsertClient({ id: client.id, ...form });
       setEditing(false);
       router.refresh();
     });
@@ -30,22 +38,37 @@ function ClientRow({ client, companyId, isAdmin }: { client: Client; companyId: 
   }
 
   const field = "border border-slate-300 rounded px-2 py-1.5 text-sm w-full";
+  const cityLine = [client.city, client.state, client.zip].filter(Boolean).join(", ");
 
   if (editing) {
     return (
       <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 space-y-3">
         <div className="grid grid-cols-2 gap-3">
-          <div>
+          <div className="col-span-2">
             <label className="block text-xs font-medium text-slate-600 mb-1">Name *</label>
             <input value={form.name} onChange={e => setForm({...form, name: e.target.value})} className={field} />
+          </div>
+          <div className="col-span-2">
+            <label className="block text-xs font-medium text-slate-600 mb-1">Address</label>
+            <input value={form.address} onChange={e => setForm({...form, address: e.target.value})} className={field} placeholder="123 Main St" />
+          </div>
+          <div>
+            <label className="block text-xs font-medium text-slate-600 mb-1">City</label>
+            <input value={form.city} onChange={e => setForm({...form, city: e.target.value})} className={field} placeholder="Hollywood" />
+          </div>
+          <div className="grid grid-cols-2 gap-2">
+            <div>
+              <label className="block text-xs font-medium text-slate-600 mb-1">State</label>
+              <input value={form.state} onChange={e => setForm({...form, state: e.target.value})} className={field} placeholder="FL" />
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-slate-600 mb-1">Zip</label>
+              <input value={form.zip} onChange={e => setForm({...form, zip: e.target.value})} className={field} placeholder="33020" />
+            </div>
           </div>
           <div>
             <label className="block text-xs font-medium text-slate-600 mb-1">Email</label>
             <input type="email" value={form.email} onChange={e => setForm({...form, email: e.target.value})} className={field} />
-          </div>
-          <div>
-            <label className="block text-xs font-medium text-slate-600 mb-1">Address</label>
-            <input value={form.address} onChange={e => setForm({...form, address: e.target.value})} className={field} />
           </div>
           <div>
             <label className="block text-xs font-medium text-slate-600 mb-1">Phone</label>
@@ -69,7 +92,7 @@ function ClientRow({ client, companyId, isAdmin }: { client: Client; companyId: 
         <div className="min-w-0">
           <div className="font-semibold text-slate-900">{client.name}</div>
           <div className="text-xs text-slate-400 mt-0.5">
-            {[client.address, client.email, client.phone].filter(Boolean).join(" · ") || "No contact info"}
+            {[client.address, cityLine, client.email, client.phone].filter(Boolean).join(" · ") || "No contact info"}
           </div>
         </div>
       </div>
@@ -100,13 +123,13 @@ export default function ClientsManager({ companyId, clients, isAdmin }: { compan
   const [adding, setAdding] = useState(false);
   const [isPending, startTransition] = useTransition();
   const router = useRouter();
-  const [form, setForm] = useState({ name: "", address: "", email: "", phone: "" });
+  const [form, setForm] = useState({ name: "", address: "", city: "", state: "", zip: "", email: "", phone: "" });
 
   function handleAdd() {
     if (!form.name.trim()) return;
     startTransition(async () => {
-      await upsertClient({ name: form.name, address: form.address, email: form.email, phone: form.phone });
-      setForm({ name: "", address: "", email: "", phone: "" });
+      await upsertClient({ ...form });
+      setForm({ name: "", address: "", city: "", state: "", zip: "", email: "", phone: "" });
       setAdding(false);
       router.refresh();
     });
@@ -132,17 +155,31 @@ export default function ClientsManager({ companyId, clients, isAdmin }: { compan
         <div className="bg-green-50 border border-green-200 rounded-xl p-4 mb-4 space-y-3">
           <h3 className="text-sm font-semibold text-slate-800">New Client</h3>
           <div className="grid grid-cols-2 gap-3">
-            <div>
+            <div className="col-span-2">
               <label className="block text-xs font-medium text-slate-600 mb-1">Name *</label>
               <input autoFocus value={form.name} onChange={e => setForm({...form, name: e.target.value})} className={field} placeholder="Client name" />
+            </div>
+            <div className="col-span-2">
+              <label className="block text-xs font-medium text-slate-600 mb-1">Address</label>
+              <input value={form.address} onChange={e => setForm({...form, address: e.target.value})} className={field} placeholder="123 Main St" />
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-slate-600 mb-1">City</label>
+              <input value={form.city} onChange={e => setForm({...form, city: e.target.value})} className={field} placeholder="Hollywood" />
+            </div>
+            <div className="grid grid-cols-2 gap-2">
+              <div>
+                <label className="block text-xs font-medium text-slate-600 mb-1">State</label>
+                <input value={form.state} onChange={e => setForm({...form, state: e.target.value})} className={field} placeholder="FL" />
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-slate-600 mb-1">Zip</label>
+                <input value={form.zip} onChange={e => setForm({...form, zip: e.target.value})} className={field} placeholder="33020" />
+              </div>
             </div>
             <div>
               <label className="block text-xs font-medium text-slate-600 mb-1">Email</label>
               <input type="email" value={form.email} onChange={e => setForm({...form, email: e.target.value})} className={field} placeholder="client@email.com" />
-            </div>
-            <div>
-              <label className="block text-xs font-medium text-slate-600 mb-1">Address</label>
-              <input value={form.address} onChange={e => setForm({...form, address: e.target.value})} className={field} placeholder="123 Main St" />
             </div>
             <div>
               <label className="block text-xs font-medium text-slate-600 mb-1">Phone</label>

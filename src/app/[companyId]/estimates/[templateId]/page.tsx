@@ -119,10 +119,13 @@ export default async function TemplateEditorPage({
             id: template.client.id,
             name: template.client.name,
             address: template.client.address,
+            city: template.client.city,
+            state: template.client.state,
+            zip: template.client.zip,
             email: template.client.email,
             phone: template.client.phone,
           } : null}
-          allClients={clients.map(c => ({ id: c.id, name: c.name, address: c.address, email: c.email, phone: c.phone }))}
+          allClients={clients.map(c => ({ id: c.id, name: c.name, address: c.address, city: c.city, state: c.state, zip: c.zip, email: c.email, phone: c.phone }))}
         />
       </main>
     </div>
