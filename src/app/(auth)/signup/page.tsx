@@ -14,11 +14,10 @@ export default function SignupPage() {
     setError("");
     try {
       await signUp(new FormData(e.currentTarget));
+      window.location.href = "/login?registered=1";
     } catch (err: unknown) {
-      if (err instanceof Error && err.message !== "NEXT_REDIRECT") {
-        setError(err.message || "Failed to create account");
-        setLoading(false);
-      }
+      setError(err instanceof Error ? err.message : "Failed to create account");
+      setLoading(false);
     }
   }
 

@@ -16,13 +16,11 @@ export default function NewProjectForm({ companyId }: { companyId: string }) {
     setLoading(true);
     setError("");
     try {
-      await createProject(new FormData(e.currentTarget));
+      const result = await createProject(new FormData(e.currentTarget));
+      router.push(`/${result.companyId}/${result.projectId}/dashboard`);
     } catch (err: unknown) {
-      // createProject redirects on success, so any catch here is a real error
-      if (err instanceof Error && err.message !== "NEXT_REDIRECT") {
-        setError(err.message || "Failed to create project");
-        setLoading(false);
-      }
+      setError(err instanceof Error ? err.message : "Failed to create project");
+      setLoading(false);
     }
   }
 

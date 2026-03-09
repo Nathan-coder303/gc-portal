@@ -3,7 +3,6 @@
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { z } from "zod";
-import { redirect } from "next/navigation";
 import { requirePermission } from "@/lib/auth/permissions";
 import { writeAuditLog } from "@/lib/audit/log";
 import { AccountType } from "@prisma/client";
@@ -75,5 +74,5 @@ export async function createProject(formData: FormData) {
     userName: session.user.name ?? session.user.email ?? "",
   });
 
-  redirect(`/${session.user.companyId}/${project.id}/dashboard`);
+  return { companyId: session.user.companyId, projectId: project.id };
 }
