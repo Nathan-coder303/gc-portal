@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
+import { useRouter } from "next/navigation";
 import {
   upsertTemplateItem,
   archiveTemplateItem,
@@ -9,6 +10,7 @@ import {
   upsertTemplateGroup,
   archiveTemplateGroup,
   updateTemplate,
+  saveAsNewTemplate,
 } from "@/app/[companyId]/estimates/actions";
 
 type Item = {
@@ -21,10 +23,11 @@ type Item = {
   defaultMaterialCost: number | null;
   defaultMarkupPct: number | null;
   notes: string | null;
+  visibleInPdf: boolean;
 };
 type Group = { id: string; name: string; items: Item[] };
 type Division = { id: string; csiCode: string | null; name: string; groups: Group[]; items: Item[] };
-type Template = { id: string; name: string; description: string | null };
+type Template = { id: string; name: string; description: string | null; companyId: string };
 
 function ItemRow({ item, divisionId, groupId, canEdit }: { item: Item; divisionId: string; groupId?: string | null; canEdit: boolean }) {
   const [editing, setEditing] = useState(false);
@@ -38,6 +41,7 @@ function ItemRow({ item, divisionId, groupId, canEdit }: { item: Item; divisionI
     defaultMaterialCost: item.defaultMaterialCost?.toString() ?? "",
     defaultMarkupPct: item.defaultMarkupPct?.toString() ?? "",
     notes: item.notes ?? "",
+    visibleInPdf: item.visibleInPdf,
   });
 
   function save() {
@@ -53,20 +57,57 @@ function ItemRow({ item, divisionId, groupId, canEdit }: { item: Item; divisionI
         defaultMaterialCost: form.defaultMaterialCost ? Number(form.defaultMaterialCost) : null,
         defaultMarkupPct: form.defaultMarkupPct ? Number(form.defaultMarkupPct) : null,
         notes: form.notes || null,
+        visibleInPdf: form.visibleInPdf,
       });
       setEditing(false);
     });
   }
 
+  function toggleVisible() {
+    startTransition(async () => {
+      await upsertTemplateItem(divisionId, {
+        id: item.id,
+        groupId: groupId ?? null,
+        name: item.name,
+        unit: item.unit,
+        defaultQty: item.defaultQty,
+        defaultUnitCost: item.defaultUnitCost,
+        defaultLaborCost: item.defaultLaborCost,
+        defaultMaterialCost: item.defaultMaterialCost,
+        defaultMarkupPct: item.defaultMarkupPct,
+        notes: item.notes,
+        visibleInPdf: !item.visibleInPdf,
+      });
+    });
+  }
+
+  const rowClass = item.visibleInPdf ? "" : "opacity-50";
+
   if (!editing) {
     return (
-      <tr className="border-t border-slate-100 hover:bg-slate-50 group text-sm">
+      <tr className={`border-t border-slate-100 hover:bg-slate-50 group text-sm ${rowClass}`}>
         <td className="px-3 py-2 text-slate-800">{item.name}</td>
         <td className="px-3 py-2 text-slate-500 text-center">{item.unit ?? "—"}</td>
         <td className="px-3 py-2 text-slate-500 text-right">{item.defaultQty ?? "—"}</td>
         <td className="px-3 py-2 text-slate-500 text-right">{item.defaultUnitCost != null ? `$${item.defaultUnitCost}` : "—"}</td>
         <td className="px-3 py-2 text-slate-500 text-right">{item.defaultMarkupPct != null ? `${item.defaultMarkupPct}%` : "—"}</td>
-        <td className="px-3 py-2 text-slate-400 text-sm italic">{item.notes ?? ""}</td>
+        <td className="px-3 py-2 text-slate-400 text-sm italic truncate max-w-[120px]">{item.notes ?? ""}</td>
+        <td className="px-3 py-2 text-center">
+          {canEdit ? (
+            <button
+              onClick={toggleVisible}
+              disabled={isPending}
+              title={item.visibleInPdf ? "Visible in PDF — click to hide" : "Hidden in PDF — click to show"}
+              className={`text-base leading-none transition-opacity ${item.visibleInPdf ? "opacity-100" : "opacity-30"}`}
+            >
+              {item.visibleInPdf ? "👁" : "🚫"}
+            </button>
+          ) : (
+            <span className={`text-xs ${item.visibleInPdf ? "text-green-600" : "text-slate-400"}`}>
+              {item.visibleInPdf ? "✓" : "✗"}
+            </span>
+          )}
+        </td>
         <td className="px-3 py-2 text-right">
           <div className="flex gap-1 justify-end opacity-0 group-hover:opacity-100 transition-opacity">
             {canEdit && (
@@ -85,10 +126,15 @@ function ItemRow({ item, divisionId, groupId, canEdit }: { item: Item; divisionI
     <tr className="border-t border-blue-100 bg-blue-50">
       <td className="px-2 py-1"><input className="w-full border border-slate-300 rounded px-2 py-1 text-xs" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} /></td>
       <td className="px-2 py-1"><input className="w-14 border border-slate-300 rounded px-2 py-1 text-xs" value={form.unit} onChange={(e) => setForm({ ...form, unit: e.target.value })} placeholder="unit" /></td>
-      <td className="px-2 py-1"><input type="number" step="any" className="w-14 border border-slate-300 rounded px-2 py-1 text-xs text-right" value={form.defaultQty} onChange={(e) => setForm({ ...form, defaultQty: e.target.value })} placeholder="qty" /></td>
-      <td className="px-2 py-1"><input type="number" step="any" className="w-20 border border-slate-300 rounded px-2 py-1 text-xs text-right" value={form.defaultUnitCost} onChange={(e) => setForm({ ...form, defaultUnitCost: e.target.value })} placeholder="cost" /></td>
-      <td className="px-2 py-1"><input type="number" step="any" className="w-14 border border-slate-300 rounded px-2 py-1 text-xs text-right" value={form.defaultMarkupPct} onChange={(e) => setForm({ ...form, defaultMarkupPct: e.target.value })} placeholder="%" /></td>
+      <td className="px-2 py-1"><input type="number" step="any" className="w-14 border border-slate-300 rounded px-2 py-1 text-xs text-right" value={form.defaultQty} onChange={(e) => setForm({ ...form, defaultQty: e.target.value })} /></td>
+      <td className="px-2 py-1"><input type="number" step="any" className="w-20 border border-slate-300 rounded px-2 py-1 text-xs text-right" value={form.defaultUnitCost} onChange={(e) => setForm({ ...form, defaultUnitCost: e.target.value })} /></td>
+      <td className="px-2 py-1"><input type="number" step="any" className="w-14 border border-slate-300 rounded px-2 py-1 text-xs text-right" value={form.defaultMarkupPct} onChange={(e) => setForm({ ...form, defaultMarkupPct: e.target.value })} /></td>
       <td className="px-2 py-1"><input className="w-full border border-slate-300 rounded px-2 py-1 text-xs" value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} placeholder="notes" /></td>
+      <td className="px-2 py-1 text-center">
+        <button onClick={() => setForm({ ...form, visibleInPdf: !form.visibleInPdf })} className={`text-base ${form.visibleInPdf ? "opacity-100" : "opacity-40"}`}>
+          {form.visibleInPdf ? "👁" : "🚫"}
+        </button>
+      </td>
       <td className="px-2 py-1">
         <div className="flex gap-1 justify-end">
           <button onClick={save} disabled={isPending} className="text-xs bg-blue-600 text-white px-2 py-1 rounded">Save</button>
@@ -102,7 +148,7 @@ function ItemRow({ item, divisionId, groupId, canEdit }: { item: Item; divisionI
 function AddTemplateItemRow({ divisionId, groupId, canEdit }: { divisionId: string; groupId?: string | null; canEdit: boolean }) {
   const [open, setOpen] = useState(false);
   const [isPending, startTransition] = useTransition();
-  const [form, setForm] = useState({ name: "", unit: "", defaultQty: "", defaultUnitCost: "", defaultMarkupPct: "", notes: "" });
+  const [form, setForm] = useState({ name: "", unit: "", defaultQty: "", defaultUnitCost: "", defaultMarkupPct: "", notes: "", visibleInPdf: true });
 
   if (!canEdit) return null;
 
@@ -117,8 +163,9 @@ function AddTemplateItemRow({ divisionId, groupId, canEdit }: { divisionId: stri
         defaultUnitCost: form.defaultUnitCost ? Number(form.defaultUnitCost) : null,
         defaultMarkupPct: form.defaultMarkupPct ? Number(form.defaultMarkupPct) : null,
         notes: form.notes || null,
+        visibleInPdf: form.visibleInPdf,
       });
-      setForm({ name: "", unit: "", defaultQty: "", defaultUnitCost: "", defaultMarkupPct: "", notes: "" });
+      setForm({ name: "", unit: "", defaultQty: "", defaultUnitCost: "", defaultMarkupPct: "", notes: "", visibleInPdf: true });
       setOpen(false);
     });
   }
@@ -126,7 +173,7 @@ function AddTemplateItemRow({ divisionId, groupId, canEdit }: { divisionId: stri
   if (!open) {
     return (
       <tr>
-        <td colSpan={7} className="px-3 py-1">
+        <td colSpan={8} className="px-3 py-1">
           <button onClick={() => setOpen(true)} className="text-xs text-blue-600 hover:text-blue-800">+ Add Item</button>
         </td>
       </tr>
@@ -137,10 +184,15 @@ function AddTemplateItemRow({ divisionId, groupId, canEdit }: { divisionId: stri
     <tr className="bg-green-50 border-t border-green-100">
       <td className="px-2 py-1"><input autoFocus className="w-full border border-slate-300 rounded px-2 py-1 text-xs" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} placeholder="Item name" /></td>
       <td className="px-2 py-1"><input className="w-14 border border-slate-300 rounded px-2 py-1 text-xs" value={form.unit} onChange={(e) => setForm({ ...form, unit: e.target.value })} placeholder="unit" /></td>
-      <td className="px-2 py-1"><input type="number" step="any" className="w-14 border border-slate-300 rounded px-2 py-1 text-xs text-right" value={form.defaultQty} onChange={(e) => setForm({ ...form, defaultQty: e.target.value })} placeholder="qty" /></td>
-      <td className="px-2 py-1"><input type="number" step="any" className="w-20 border border-slate-300 rounded px-2 py-1 text-xs text-right" value={form.defaultUnitCost} onChange={(e) => setForm({ ...form, defaultUnitCost: e.target.value })} placeholder="cost" /></td>
-      <td className="px-2 py-1"><input type="number" step="any" className="w-14 border border-slate-300 rounded px-2 py-1 text-xs text-right" value={form.defaultMarkupPct} onChange={(e) => setForm({ ...form, defaultMarkupPct: e.target.value })} placeholder="%" /></td>
+      <td className="px-2 py-1"><input type="number" step="any" className="w-14 border border-slate-300 rounded px-2 py-1 text-xs text-right" value={form.defaultQty} onChange={(e) => setForm({ ...form, defaultQty: e.target.value })} /></td>
+      <td className="px-2 py-1"><input type="number" step="any" className="w-20 border border-slate-300 rounded px-2 py-1 text-xs text-right" value={form.defaultUnitCost} onChange={(e) => setForm({ ...form, defaultUnitCost: e.target.value })} /></td>
+      <td className="px-2 py-1"><input type="number" step="any" className="w-14 border border-slate-300 rounded px-2 py-1 text-xs text-right" value={form.defaultMarkupPct} onChange={(e) => setForm({ ...form, defaultMarkupPct: e.target.value })} /></td>
       <td className="px-2 py-1"><input className="w-full border border-slate-300 rounded px-2 py-1 text-xs" value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} placeholder="notes" /></td>
+      <td className="px-2 py-1 text-center">
+        <button onClick={() => setForm({ ...form, visibleInPdf: !form.visibleInPdf })} className={`text-base ${form.visibleInPdf ? "opacity-100" : "opacity-40"}`}>
+          {form.visibleInPdf ? "👁" : "🚫"}
+        </button>
+      </td>
       <td className="px-2 py-1">
         <div className="flex gap-1 justify-end">
           <button onClick={save} disabled={isPending} className="text-xs bg-green-600 text-white px-2 py-1 rounded">Add</button>
@@ -163,6 +215,7 @@ function TemplateItemTable({ divisionId, groupId, items, canEdit }: { divisionId
             <th className="px-3 py-1.5 text-right font-medium w-24">Def Cost</th>
             <th className="px-3 py-1.5 text-right font-medium w-16">Markup</th>
             <th className="px-3 py-1.5 text-left font-medium">Notes</th>
+            <th className="px-3 py-1.5 text-center font-medium w-14" title="Visible in PDF">PDF</th>
             <th className="w-20" />
           </tr>
         </thead>
@@ -179,17 +232,12 @@ function TemplateItemTable({ divisionId, groupId, items, canEdit }: { divisionId
 
 function TemplateGroupSection({ group, divisionId, canEdit }: { group: Group; divisionId: string; canEdit: boolean }) {
   const [isPending, startTransition] = useTransition();
-
   return (
     <div className="mt-3">
       <div className="flex items-center justify-between px-3 py-1.5 bg-slate-100 rounded">
         <span className="text-xs font-semibold text-slate-600 uppercase tracking-wide">{group.name}</span>
         {canEdit && (
-          <button
-            onClick={() => { if (confirm("Remove group?")) startTransition(async () => { await archiveTemplateGroup(group.id); }); }}
-            disabled={isPending}
-            className="text-xs text-red-400 hover:text-red-600"
-          >
+          <button onClick={() => { if (confirm("Remove group?")) startTransition(async () => { await archiveTemplateGroup(group.id); }); }} disabled={isPending} className="text-xs text-red-400 hover:text-red-600">
             Remove
           </button>
         )}
@@ -214,18 +262,16 @@ function TemplateDivisionSection({ division, canEdit }: { division: Division; ca
     });
   }
 
+  const totalItems = division.groups.reduce((s, g) => s + g.items.length, 0) + division.items.length;
+  const visibleItems = division.groups.reduce((s, g) => s + g.items.filter(i => i.visibleInPdf).length, 0) + division.items.filter(i => i.visibleInPdf).length;
+
   return (
     <div className="bg-white border border-slate-200 rounded-xl overflow-hidden">
-      <button
-        onClick={() => setOpen(!open)}
-        className="w-full flex items-center gap-3 px-4 py-3 hover:bg-slate-50 transition-colors text-left"
-      >
+      <button onClick={() => setOpen(!open)} className="w-full flex items-center gap-3 px-4 py-3 hover:bg-slate-50 transition-colors text-left">
         <span className="text-slate-400 text-xs">{open ? "▼" : "▶"}</span>
         {division.csiCode && <span className="text-xs font-mono text-slate-400">{division.csiCode}</span>}
         <span className="font-semibold text-slate-900">{division.name}</span>
-        <span className="ml-auto text-xs text-slate-400">
-          {division.groups.reduce((s, g) => s + g.items.length, 0) + division.items.length} items
-        </span>
+        <span className="ml-auto text-xs text-slate-400">{visibleItems}/{totalItems} visible</span>
       </button>
 
       {open && (
@@ -233,11 +279,9 @@ function TemplateDivisionSection({ division, canEdit }: { division: Division; ca
           {division.groups.map((grp) => (
             <TemplateGroupSection key={grp.id} group={grp} divisionId={division.id} canEdit={canEdit} />
           ))}
-
           {division.items.length > 0 && (
             <TemplateItemTable divisionId={division.id} groupId={null} items={division.items} canEdit={canEdit} />
           )}
-
           {canEdit && (
             <div className="px-3 pt-2">
               {addingGroup ? (
@@ -251,14 +295,9 @@ function TemplateDivisionSection({ division, canEdit }: { division: Division; ca
               )}
             </div>
           )}
-
           {canEdit && (
             <div className="px-3 pt-1">
-              <button
-                onClick={() => { if (confirm("Remove division?")) startTransition(async () => { await archiveTemplateDivision(division.id); }); }}
-                disabled={isPending}
-                className="text-xs text-red-400 hover:text-red-600"
-              >
+              <button onClick={() => { if (confirm("Remove division?")) startTransition(async () => { await archiveTemplateDivision(division.id); }); }} disabled={isPending} className="text-xs text-red-400 hover:text-red-600">
                 Remove Division
               </button>
             </div>
@@ -278,6 +317,7 @@ export default function TemplateEditor({
   divisions: Division[];
   canEdit: boolean;
 }) {
+  const router = useRouter();
   const [isPending, startTransition] = useTransition();
   const [editingHeader, setEditingHeader] = useState(false);
   const [name, setName] = useState(template.name);
@@ -285,8 +325,12 @@ export default function TemplateEditor({
   const [addingDiv, setAddingDiv] = useState(false);
   const [divName, setDivName] = useState("");
   const [divCsi, setDivCsi] = useState("");
+  const [saveAsNew, setSaveAsNew] = useState(false);
+  const [newName, setNewName] = useState(`${template.name} (copy)`);
+  const [saveError, setSaveError] = useState("");
 
   const totalItems = divisions.reduce((s, d) => s + d.groups.reduce((gs, g) => gs + g.items.length, 0) + d.items.length, 0);
+  const visibleItems = divisions.reduce((s, d) => s + d.groups.reduce((gs, g) => gs + g.items.filter(i => i.visibleInPdf).length, 0) + d.items.filter(i => i.visibleInPdf).length, 0);
 
   function saveHeader() {
     startTransition(async () => {
@@ -299,9 +343,22 @@ export default function TemplateEditor({
     if (!divName.trim()) return;
     startTransition(async () => {
       await upsertTemplateDivision(template.id, { csiCode: divCsi || undefined, name: divName });
-      setDivName("");
-      setDivCsi("");
-      setAddingDiv(false);
+      setDivName(""); setDivCsi(""); setAddingDiv(false);
+    });
+  }
+
+  function handleSaveAsNew() {
+    if (!newName.trim()) { setSaveError("Name is required"); return; }
+    setSaveError("");
+    startTransition(async () => {
+      try {
+        const result = await saveAsNewTemplate(template.id, newName);
+        if (result.success) {
+          router.push(`/${template.companyId}/estimates/${result.id}`);
+        }
+      } catch (e) {
+        setSaveError(e instanceof Error ? e.message : "Failed");
+      }
     });
   }
 
@@ -329,11 +386,46 @@ export default function TemplateEditor({
             <div>
               <h1 className="text-xl font-bold text-slate-900">{template.name}</h1>
               {template.description && <p className="text-sm text-slate-500 mt-1">{template.description}</p>}
-              <p className="text-xs text-slate-400 mt-2">{divisions.length} divisions · {totalItems} items</p>
+              <p className="text-xs text-slate-400 mt-2">{divisions.length} divisions · {totalItems} items · {visibleItems} visible in PDF</p>
             </div>
-            {canEdit && (
-              <button onClick={() => setEditingHeader(true)} className="text-xs text-blue-600 hover:text-blue-800">Edit</button>
-            )}
+            <div className="flex items-center gap-2 flex-wrap justify-end">
+              <a
+                href={`/api/${template.companyId}/estimates/${template.id}/pdf`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-xs bg-slate-800 text-white px-3 py-1.5 rounded-lg hover:bg-slate-900 font-medium"
+              >
+                Export PDF
+              </a>
+              {canEdit && (
+                <>
+                  <button onClick={() => setSaveAsNew(!saveAsNew)} className="text-xs border border-slate-300 text-slate-600 px-3 py-1.5 rounded-lg hover:bg-slate-50 font-medium">
+                    Save as New Template
+                  </button>
+                  <button onClick={() => setEditingHeader(true)} className="text-xs text-blue-600 hover:text-blue-800">Edit</button>
+                </>
+              )}
+            </div>
+          </div>
+        )}
+
+        {saveAsNew && (
+          <div className="mt-4 pt-4 border-t border-slate-100 space-y-2">
+            <label className="block text-xs font-medium text-slate-700">New Template Name</label>
+            <div className="flex gap-2 items-center">
+              <input
+                autoFocus
+                value={newName}
+                onChange={(e) => setNewName(e.target.value)}
+                className="flex-1 border border-slate-300 rounded-lg px-3 py-2 text-sm"
+                placeholder="e.g. Addition v2"
+              />
+              <button onClick={handleSaveAsNew} disabled={isPending} className="bg-green-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-green-700 disabled:opacity-50">
+                {isPending ? "Saving..." : "Save Copy"}
+              </button>
+              <button onClick={() => setSaveAsNew(false)} className="text-sm text-slate-500 px-2">Cancel</button>
+            </div>
+            {saveError && <p className="text-xs text-red-600">{saveError}</p>}
           </div>
         )}
       </div>

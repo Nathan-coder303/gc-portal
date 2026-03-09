@@ -12,7 +12,7 @@ export default async function ProjectsPage({
 }) {
   const session = await auth();
   if (!session) redirect("/login");
-  if (session.user.companyId !== params.companyId) redirect("/");
+  if (session.user.companyId !== params.companyId) redirect(`/${session.user.companyId}`);
 
   const isAdmin = can(session.user.role, "project:edit");
 

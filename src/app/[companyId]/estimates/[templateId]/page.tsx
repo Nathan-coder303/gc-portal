@@ -11,7 +11,7 @@ export default async function TemplateEditorPage({
 }) {
   const session = await auth();
   if (!session) redirect("/login");
-  if (!can(session.user.role, "estimate:read")) redirect(`/${params.companyId}/projects`);
+  if (!can(session.user.role, "estimate:read")) redirect(`/${params.companyId}`);
 
   const template = await prisma.estimateTemplate.findFirst({
     where: { id: params.templateId, companyId: params.companyId, archivedAt: null },
@@ -55,6 +55,7 @@ export default async function TemplateEditorPage({
         defaultMaterialCost: i.defaultMaterialCost ? Number(i.defaultMaterialCost) : null,
         defaultMarkupPct: i.defaultMarkupPct ? Number(i.defaultMarkupPct) : null,
         notes: i.notes,
+        visibleInPdf: i.visibleInPdf,
       })),
     })),
     items: d.items.map((i) => ({
@@ -67,6 +68,7 @@ export default async function TemplateEditorPage({
       defaultMaterialCost: i.defaultMaterialCost ? Number(i.defaultMaterialCost) : null,
       defaultMarkupPct: i.defaultMarkupPct ? Number(i.defaultMarkupPct) : null,
       notes: i.notes,
+      visibleInPdf: i.visibleInPdf,
     })),
   }));
 
@@ -75,7 +77,7 @@ export default async function TemplateEditorPage({
       <header className="bg-white border-b border-slate-200">
         <div className="max-w-7xl mx-auto px-4 flex items-center justify-between h-14">
           <div className="flex items-center gap-3">
-            <a href={`/${params.companyId}/projects`} className="font-bold text-slate-900 hover:text-blue-600">GC Portal</a>
+            <a href={`/${params.companyId}`} className="font-bold text-slate-900 hover:text-blue-600">GC Portal</a>
             <span className="text-slate-300">|</span>
             <a href={`/${params.companyId}/estimates`} className="text-sm text-slate-600 hover:text-blue-600">Templates</a>
             <span className="text-slate-300">/</span>
@@ -88,7 +90,7 @@ export default async function TemplateEditorPage({
       </header>
       <main className="max-w-7xl mx-auto px-4 py-6">
         <TemplateEditor
-          template={{ id: template.id, name: template.name, description: template.description }}
+          template={{ id: template.id, name: template.name, description: template.description, companyId: params.companyId }}
           divisions={divisions}
           canEdit={can(session.user.role, "estimateTemplate:edit")}
         />

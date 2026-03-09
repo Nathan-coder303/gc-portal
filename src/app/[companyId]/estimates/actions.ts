@@ -204,6 +204,7 @@ export async function upsertTemplateItem(
     defaultMaterialCost?: number | null;
     defaultMarkupPct?: number | null;
     notes?: string | null;
+    visibleInPdf?: boolean;
   }
 ) {
   const session = await auth();
@@ -219,6 +220,7 @@ export async function upsertTemplateItem(
     defaultMaterialCost: data.defaultMaterialCost ?? null,
     defaultMarkupPct: data.defaultMarkupPct ?? null,
     notes: data.notes ?? null,
+    visibleInPdf: data.visibleInPdf ?? true,
   };
 
   if (data.id) {
@@ -274,4 +276,84 @@ export async function reorderTemplateItems(parentId: string, parentType: "divisi
   );
   revalidatePath(`/${session.user.companyId}/estimates`);
   return { success: true };
+}
+
+// ─── Save as new template (deep copy) ────────────────────────────────────────
+
+export async function saveAsNewTemplate(sourceTemplateId: string, newName: string) {
+  const session = await auth();
+  if (!session) throw new Error("Unauthorized");
+  requirePermission(session, "estimateTemplate:create");
+
+  const source = await prisma.estimateTemplate.findUnique({
+    where: { id: sourceTemplateId },
+    include: {
+      divisions: {
+        where: { archivedAt: null },
+        orderBy: { sortOrder: "asc" },
+        include: {
+          groups: {
+            where: { archivedAt: null },
+            orderBy: { sortOrder: "asc" },
+            include: { items: { where: { archivedAt: null }, orderBy: { sortOrder: "asc" } } },
+          },
+          items: { where: { archivedAt: null, groupId: null }, orderBy: { sortOrder: "asc" } },
+        },
+      },
+    },
+  });
+
+  if (!source) throw new Error("Template not found");
+
+  const newTemplate = await prisma.$transaction(async (tx) => {
+    const tpl = await tx.estimateTemplate.create({
+      data: {
+        companyId: session.user.companyId,
+        name: newName.trim(),
+        description: source.description,
+        sortOrder: 0,
+        createdBy: session.user.id,
+        updatedBy: session.user.id,
+      },
+    });
+
+    for (const div of source.divisions) {
+      const newDiv = await tx.estimateTemplateDivision.create({
+        data: { templateId: tpl.id, csiCode: div.csiCode, name: div.name, sortOrder: div.sortOrder },
+      });
+      for (const grp of div.groups) {
+        const newGrp = await tx.estimateTemplateGroup.create({
+          data: { divisionId: newDiv.id, name: grp.name, sortOrder: grp.sortOrder },
+        });
+        for (const item of grp.items) {
+          await tx.estimateTemplateItem.create({
+            data: {
+              divisionId: newDiv.id, groupId: newGrp.id,
+              name: item.name, unit: item.unit,
+              defaultQty: item.defaultQty, defaultUnitCost: item.defaultUnitCost,
+              defaultLaborCost: item.defaultLaborCost, defaultMaterialCost: item.defaultMaterialCost,
+              defaultMarkupPct: item.defaultMarkupPct, notes: item.notes,
+              visibleInPdf: item.visibleInPdf, sortOrder: item.sortOrder,
+            },
+          });
+        }
+      }
+      for (const item of div.items) {
+        await tx.estimateTemplateItem.create({
+          data: {
+            divisionId: newDiv.id, groupId: null,
+            name: item.name, unit: item.unit,
+            defaultQty: item.defaultQty, defaultUnitCost: item.defaultUnitCost,
+            defaultLaborCost: item.defaultLaborCost, defaultMaterialCost: item.defaultMaterialCost,
+            defaultMarkupPct: item.defaultMarkupPct, notes: item.notes,
+            visibleInPdf: item.visibleInPdf, sortOrder: item.sortOrder,
+          },
+        });
+      }
+    }
+    return tpl;
+  });
+
+  revalidatePath(`/${session.user.companyId}/estimates`);
+  return { success: true, id: newTemplate.id };
 }

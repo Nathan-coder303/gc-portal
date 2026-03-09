@@ -5,5 +5,5 @@ export default async function Home() {
   const session = await auth();
   if (!session) redirect("/login");
 
-  redirect(`/${session.user.companyId}/projects`);
+  redirect(`/${session.user.companyId}`);
 }

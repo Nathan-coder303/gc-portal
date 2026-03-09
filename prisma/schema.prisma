@@ -333,6 +333,7 @@ model EstimateTemplateItem {
   defaultMaterialCost Decimal?                 @db.Decimal(14, 2)
   defaultMarkupPct    Decimal?                 @db.Decimal(5, 2)
   notes               String?
+  visibleInPdf        Boolean                  @default(true)
   sortOrder           Int                      @default(0)
   archivedAt          DateTime?
   archivedBy          String?
@@ -406,6 +407,7 @@ model ProjectEstimateItem {
   manualTotal  Decimal?                @db.Decimal(14, 2)
   vendor       String?
   notes        String?
+  visibleInPdf Boolean                 @default(true)
   sortOrder    Int                     @default(0)
   archivedAt   DateTime?
   archivedBy   String?
