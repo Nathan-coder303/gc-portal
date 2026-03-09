@@ -83,13 +83,31 @@ export default async function TemplateEditorPage({
           <div className="flex items-center gap-3">
             <a href={`/${params.companyId}`} className="font-bold text-slate-900 hover:text-blue-600">GC Portal</a>
             <span className="text-slate-300">|</span>
-            <a href={`/${params.companyId}/estimates`} className="text-sm text-slate-600 hover:text-blue-600">Templates</a>
-            <span className="text-slate-300">/</span>
-            <span className="text-sm text-slate-800 font-medium">{template.name}</span>
+            {template.type === "CLIENT_ESTIMATE" && template.client ? (
+              <>
+                <a href={`/${params.companyId}/clients`} className="text-sm text-slate-600 hover:text-blue-600">Clients</a>
+                <span className="text-slate-300">/</span>
+                <a href={`/${params.companyId}/clients/${template.client.id}`} className="text-sm text-slate-600 hover:text-blue-600">{template.client.name}</a>
+                <span className="text-slate-300">/</span>
+                <span className="text-sm text-slate-800 font-medium">{template.name}</span>
+              </>
+            ) : (
+              <>
+                <a href={`/${params.companyId}/estimates`} className="text-sm text-slate-600 hover:text-blue-600">Templates</a>
+                <span className="text-slate-300">/</span>
+                <span className="text-sm text-slate-800 font-medium">{template.name}</span>
+              </>
+            )}
           </div>
-          <a href={`/${params.companyId}/estimates`} className="text-sm text-slate-500 hover:text-slate-900">
-            ← Back to Templates
-          </a>
+          {template.type === "CLIENT_ESTIMATE" && template.client ? (
+            <a href={`/${params.companyId}/clients/${template.client.id}`} className="text-sm text-slate-500 hover:text-slate-900">
+              ← Back to {template.client.name}
+            </a>
+          ) : (
+            <a href={`/${params.companyId}/estimates`} className="text-sm text-slate-500 hover:text-slate-900">
+              ← Back to Templates
+            </a>
+          )}
         </div>
       </header>
       <main className="max-w-7xl mx-auto px-4 py-6">
