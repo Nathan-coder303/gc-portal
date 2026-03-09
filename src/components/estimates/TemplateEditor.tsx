@@ -459,6 +459,12 @@ export default function TemplateEditor({
     });
   }
 
+  function saveEstimateMeta() {
+    startTransition(async () => {
+      await updateTemplate(template.id, name, description || null, estimateNumber || null, estimateDate || null);
+    });
+  }
+
   function saveDiv() {
     if (!divName.trim()) return;
     startTransition(async () => {
@@ -526,13 +532,28 @@ export default function TemplateEditor({
           <div>
             <div className="flex items-start justify-between gap-6">
               <div>
-                <div className="flex items-baseline gap-2">
-                  <span className="text-sm font-medium text-slate-500">Scope of Work:</span>
-                  <h1 className="text-xl font-bold text-slate-900">{template.name}</h1>
-                </div>
-                <div className="flex gap-4 mt-1">
-                  {template.estimateNumber && <span className="text-xs text-slate-500">Estimate #{template.estimateNumber}</span>}
-                  {template.estimateDate && <span className="text-xs text-slate-500">{template.estimateDate}</span>}
+                <h1 className="text-2xl font-bold text-slate-900">Scope of Work: {name}</h1>
+                <div className="flex gap-6 mt-2 items-center">
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs font-medium text-slate-500 shrink-0">Estimate #</span>
+                    <input
+                      value={estimateNumber}
+                      onChange={(e) => setEstimateNumber(e.target.value)}
+                      onBlur={saveEstimateMeta}
+                      placeholder="e.g. 001"
+                      className="text-sm border-b border-dashed border-slate-300 bg-transparent w-20 px-1 focus:outline-none focus:border-blue-400 focus:border-solid"
+                    />
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs font-medium text-slate-500 shrink-0">Date</span>
+                    <input
+                      value={estimateDate}
+                      onChange={(e) => setEstimateDate(e.target.value)}
+                      onBlur={saveEstimateMeta}
+                      placeholder="e.g. March 9, 2026"
+                      className="text-sm border-b border-dashed border-slate-300 bg-transparent w-40 px-1 focus:outline-none focus:border-blue-400 focus:border-solid"
+                    />
+                  </div>
                 </div>
               </div>
               <div className="flex items-center gap-4 shrink-0">

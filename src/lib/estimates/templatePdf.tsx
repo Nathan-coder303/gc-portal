@@ -60,7 +60,7 @@ const styles = StyleSheet.create({
   // Grand total bar — label white, value GOLD
   grandTotalBar: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", backgroundColor: DARK, padding: 10, marginTop: 14, borderRadius: 3 },
   grandTotalLabel: { fontSize: 12, fontFamily: "Helvetica-Bold", color: "#ffffff" },
-  grandTotalValue: { fontSize: 16, fontFamily: "Helvetica-Bold", color: GOLD },
+  grandTotalValue: { fontSize: 16, fontFamily: "Helvetica-Bold", color: "#C9A84C" },
 
   pageNumber: { position: "absolute", bottom: 24, right: 40, fontSize: 8, color: "#94a3b8" },
 });
