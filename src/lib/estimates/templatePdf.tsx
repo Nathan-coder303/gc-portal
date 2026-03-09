@@ -19,17 +19,29 @@ function isItemFilled(item: Item): boolean {
 const styles = StyleSheet.create({
   page: { fontFamily: "Helvetica", fontSize: 9, paddingTop: 36, paddingBottom: 48, paddingHorizontal: 40, color: DARK },
   header: { flexDirection: "row", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 20, paddingBottom: 12, borderBottomWidth: 2, borderBottomColor: GOLD },
+
+  // Left column
   companyName: { fontSize: 18, fontFamily: "Helvetica-Bold", color: GOLD, marginBottom: 3 },
   companyAddress: { fontSize: 9, color: "#475569" },
+  companyPhone: { fontSize: 9, color: "#475569", marginTop: 2 },
+  companyLicense: { fontSize: 11, fontFamily: "Helvetica-Bold", color: DARK, marginTop: 5 },
+
+  // Center column
+  centerSection: { flex: 1, alignItems: "center", paddingHorizontal: 16, paddingTop: 4 },
+  scopeLabel: { fontSize: 15, fontFamily: "Helvetica-Bold", color: DARK, textAlign: "center", marginBottom: 5 },
+  estimateMetaText: { fontSize: 9, color: "#475569", textAlign: "center", marginTop: 2 },
+
+  // Right column
   clientName: { fontSize: 13, fontFamily: "Helvetica-Bold", color: "#0f172a", marginBottom: 3, textAlign: "right" },
   clientAddress: { fontSize: 9, color: "#475569", textAlign: "right" },
-  templateName: { fontSize: 10, color: "#64748b", textAlign: "right", marginBottom: 2 },
-  metaText: { fontSize: 7, color: "#94a3b8", textAlign: "right" },
+
+  // Division header row — text/total both white (not gold)
   divisionHeader: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", backgroundColor: DARK, paddingHorizontal: 8, paddingVertical: 5, marginTop: 12, borderRadius: 3 },
   divisionLeft: { flexDirection: "row", alignItems: "center", gap: 6 },
-  divisionCsi: { fontSize: 8, color: "#94a3b8" },
+  divisionCsi: { fontSize: 8, color: "#ffffff" },
   divisionName: { fontSize: 10, fontFamily: "Helvetica-Bold", color: "#ffffff" },
-  divisionTotal: { fontSize: 10, fontFamily: "Helvetica-Bold", color: GOLD },
+  divisionTotal: { fontSize: 10, fontFamily: "Helvetica-Bold", color: "#ffffff" },
+
   groupHeader: { flexDirection: "row", justifyContent: "space-between", backgroundColor: "#f1f5f9", paddingHorizontal: 8, paddingVertical: 3, marginTop: 4 },
   groupName: { fontSize: 8, fontFamily: "Helvetica-Bold", color: "#475569", textTransform: "uppercase" },
   groupTotal: { fontSize: 8, fontFamily: "Helvetica-Bold", color: "#475569" },
@@ -44,9 +56,12 @@ const styles = StyleSheet.create({
   cellText: { fontSize: 8, color: "#334155" },
   cellMuted: { fontSize: 8, color: "#94a3b8" },
   cellBold: { fontSize: 8, color: "#0f172a", fontFamily: "Helvetica-Bold" },
+
+  // Grand total bar — label white, value GOLD
   grandTotalBar: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", backgroundColor: DARK, padding: 10, marginTop: 14, borderRadius: 3 },
   grandTotalLabel: { fontSize: 12, fontFamily: "Helvetica-Bold", color: "#ffffff" },
   grandTotalValue: { fontSize: 16, fontFamily: "Helvetica-Bold", color: GOLD },
+
   pageNumber: { position: "absolute", bottom: 24, right: 40, fontSize: 8, color: "#94a3b8" },
 });
 
@@ -56,7 +71,7 @@ type Division = { id: string; csiCode: string | null; name: string; groups: Grou
 
 type TemplatePdfProps = {
   companyName: string;
-  template: { name: string; description: string | null };
+  template: { name: string; description: string | null; estimateNumber: string | null; estimateDate: string | null };
   client: { name: string; address: string | null } | null;
   divisions: Division[];
 };
@@ -97,21 +112,35 @@ function TemplatePdfDocument({ companyName, template, client, divisions }: Templ
   return (
     <Document title={`${template.name} — Estimate`} author={companyName}>
       <Page size="LETTER" style={styles.page} orientation="landscape">
-        {/* Header */}
+        {/* Header: 3 columns */}
         <View style={styles.header}>
+          {/* Left: Company */}
           <View>
             <Text style={styles.companyName}>{companyName}</Text>
             <Text style={styles.companyAddress}>2950 N 28 Terr, Hollywood, FL 33020</Text>
+            <Text style={styles.companyPhone}>Tel: 305-746-7307</Text>
+            <Text style={styles.companyLicense}>CGC1527069 | CCC1336817</Text>
           </View>
+
+          {/* Center: Scope of Work, Date, Estimate # */}
+          <View style={styles.centerSection}>
+            <Text style={styles.scopeLabel}>Scope of Work: {template.name}</Text>
+            {template.estimateDate ? (
+              <Text style={styles.estimateMetaText}>{template.estimateDate}</Text>
+            ) : null}
+            {template.estimateNumber ? (
+              <Text style={styles.estimateMetaText}>Estimate #{template.estimateNumber}</Text>
+            ) : null}
+          </View>
+
+          {/* Right: Client */}
           <View>
             {client ? (
               <>
                 <Text style={styles.clientName}>{client.name}</Text>
-                {client.address && <Text style={styles.clientAddress}>{client.address}</Text>}
+                {client.address ? <Text style={styles.clientAddress}>{client.address}</Text> : null}
               </>
             ) : null}
-            <Text style={styles.templateName}>{template.name}</Text>
-            <Text style={styles.metaText}>Generated {new Date().toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" })}</Text>
           </View>
         </View>
 
@@ -130,7 +159,7 @@ function TemplatePdfDocument({ companyName, template, client, divisions }: Templ
             <View key={div.id}>
               <View style={styles.divisionHeader}>
                 <View style={styles.divisionLeft}>
-                  {div.csiCode && <Text style={styles.divisionCsi}>{div.csiCode}</Text>}
+                  {div.csiCode ? <Text style={styles.divisionCsi}>{div.csiCode}</Text> : null}
                   <Text style={styles.divisionName}>{div.name}</Text>
                 </View>
                 <Text style={styles.divisionTotal}>${fmt(divTotal)}</Text>
@@ -160,7 +189,7 @@ function TemplatePdfDocument({ companyName, template, client, divisions }: Templ
           );
         })}
 
-        {/* Grand total */}
+        {/* Grand total — label white, value gold */}
         <View style={styles.grandTotalBar}>
           <Text style={styles.grandTotalLabel}>ESTIMATE TOTAL</Text>
           <Text style={styles.grandTotalValue}>${fmt(grandTotal)}</Text>

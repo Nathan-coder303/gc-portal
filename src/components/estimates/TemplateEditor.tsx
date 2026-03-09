@@ -30,7 +30,7 @@ type Item = {
 };
 type Group = { id: string; name: string; items: Item[] };
 type Division = { id: string; csiCode: string | null; name: string; groups: Group[]; items: Item[] };
-type Template = { id: string; name: string; description: string | null; companyId: string };
+type Template = { id: string; name: string; description: string | null; companyId: string; estimateNumber: string | null; estimateDate: string | null };
 
 function fmt(n: number) {
   return n.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
@@ -437,7 +437,9 @@ export default function TemplateEditor({
   const [isPending, startTransition] = useTransition();
   const [editingHeader, setEditingHeader] = useState(false);
   const [name, setName] = useState(template.name);
-  const [description, setDescription] = useState(template.description ?? "");
+  const [description] = useState(template.description ?? "");
+  const [estimateNumber, setEstimateNumber] = useState(template.estimateNumber ?? "");
+  const [estimateDate, setEstimateDate] = useState(template.estimateDate ?? "");
   const [addingDiv, setAddingDiv] = useState(false);
   const [divName, setDivName] = useState("");
   const [divCsi, setDivCsi] = useState("");
@@ -452,7 +454,7 @@ export default function TemplateEditor({
 
   function saveHeader() {
     startTransition(async () => {
-      await updateTemplate(template.id, name, description || null);
+      await updateTemplate(template.id, name, description || null, estimateNumber || null, estimateDate || null);
       setEditingHeader(false);
     });
   }
@@ -501,13 +503,19 @@ export default function TemplateEditor({
       <div className="bg-white border border-slate-200 rounded-xl p-5">
         {editingHeader ? (
           <div className="space-y-3">
-            <div>
-              <label className="block text-xs font-medium text-slate-600 mb-1">Name</label>
-              <input value={name} onChange={(e) => setName(e.target.value)} className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm" />
-            </div>
-            <div>
-              <label className="block text-xs font-medium text-slate-600 mb-1">Description</label>
-              <input value={description} onChange={(e) => setDescription(e.target.value)} className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm" />
+            <div className="grid grid-cols-2 gap-3">
+              <div className="col-span-2">
+                <label className="block text-xs font-medium text-slate-600 mb-1">Scope of Work (Name)</label>
+                <input value={name} onChange={(e) => setName(e.target.value)} className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm" />
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-slate-600 mb-1">Estimate #</label>
+                <input value={estimateNumber} onChange={(e) => setEstimateNumber(e.target.value)} placeholder="e.g. 001" className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm" />
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-slate-600 mb-1">Date</label>
+                <input value={estimateDate} onChange={(e) => setEstimateDate(e.target.value)} placeholder="e.g. March 9, 2026" className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm" />
+              </div>
             </div>
             <div className="flex gap-2">
               <button onClick={saveHeader} disabled={isPending} className="bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-medium">Save</button>
@@ -518,8 +526,14 @@ export default function TemplateEditor({
           <div>
             <div className="flex items-start justify-between gap-6">
               <div>
-                <h1 className="text-xl font-bold text-slate-900">{template.name}</h1>
-                {template.description && <p className="text-sm text-slate-500 mt-1">{template.description}</p>}
+                <div className="flex items-baseline gap-2">
+                  <span className="text-sm font-medium text-slate-500">Scope of Work:</span>
+                  <h1 className="text-xl font-bold text-slate-900">{template.name}</h1>
+                </div>
+                <div className="flex gap-4 mt-1">
+                  {template.estimateNumber && <span className="text-xs text-slate-500">Estimate #{template.estimateNumber}</span>}
+                  {template.estimateDate && <span className="text-xs text-slate-500">{template.estimateDate}</span>}
+                </div>
               </div>
               <div className="flex items-center gap-4 shrink-0">
                 {/* Prominent TOTAL card */}

@@ -112,7 +112,7 @@ export default async function TemplateEditorPage({
       </header>
       <main className="max-w-7xl mx-auto px-4 py-6">
         <TemplateEditor
-          template={{ id: template.id, name: template.name, description: template.description, companyId: params.companyId }}
+          template={{ id: template.id, name: template.name, description: template.description, companyId: params.companyId, estimateNumber: template.estimateNumber, estimateDate: template.estimateDate }}
           divisions={divisions}
           canEdit={can(session.user.role, "estimateTemplate:edit")}
           currentClient={template.client ? {

@@ -302,8 +302,10 @@ model EstimateTemplate {
   updatedBy   String?
   archivedAt  DateTime?
   archivedBy  String?
-  type        String                     @default("TEMPLATE")
-  divisions   EstimateTemplateDivision[]
+  type           String                     @default("TEMPLATE")
+  estimateNumber String?
+  estimateDate   String?
+  divisions      EstimateTemplateDivision[]
   estimates   ProjectEstimate[]
 
   @@index([companyId])

@@ -41,14 +41,26 @@ export async function createTemplate(formData: FormData) {
   return { success: true, id: template.id };
 }
 
-export async function updateTemplate(templateId: string, name: string, description: string | null) {
+export async function updateTemplate(
+  templateId: string,
+  name: string,
+  description: string | null,
+  estimateNumber?: string | null,
+  estimateDate?: string | null,
+) {
   const session = await auth();
   if (!session) throw new Error("Unauthorized");
   requirePermission(session, "estimateTemplate:edit");
 
   await prisma.estimateTemplate.update({
     where: { id: templateId },
-    data: { name: name.trim(), description: description?.trim() || null, updatedBy: session.user.id },
+    data: {
+      name: name.trim(),
+      description: description?.trim() || null,
+      estimateNumber: estimateNumber?.trim() || null,
+      estimateDate: estimateDate?.trim() || null,
+      updatedBy: session.user.id,
+    },
   });
 
   revalidatePath(`/${session.user.companyId}/estimates`);

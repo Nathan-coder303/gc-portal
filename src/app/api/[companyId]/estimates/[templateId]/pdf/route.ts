@@ -69,7 +69,7 @@ export async function GET(
 
   const buffer = await renderTemplatePdf({
     companyName: company.name,
-    template: { name: template.name, description: template.description },
+    template: { name: template.name, description: template.description, estimateNumber: template.estimateNumber, estimateDate: template.estimateDate },
     client: template.client ? { name: template.client.name, address: template.client.address } : null,
     divisions,
   });
