@@ -77,41 +77,8 @@ export default async function TemplateEditorPage({
   }));
 
   return (
-    <div className="min-h-screen bg-slate-50">
-      <header className="bg-white border-b border-slate-200">
-        <div className="max-w-7xl mx-auto px-4 flex items-center justify-between h-14">
-          <div className="flex items-center gap-3">
-            <a href={`/${params.companyId}`} className="font-bold text-slate-900 hover:text-blue-600">GC Portal</a>
-            <span className="text-slate-300">|</span>
-            {template.type === "CLIENT_ESTIMATE" && template.client ? (
-              <>
-                <a href={`/${params.companyId}/clients`} className="text-sm text-slate-600 hover:text-blue-600">Clients</a>
-                <span className="text-slate-300">/</span>
-                <a href={`/${params.companyId}/clients/${template.client.id}`} className="text-sm text-slate-600 hover:text-blue-600">{template.client.name}</a>
-                <span className="text-slate-300">/</span>
-                <span className="text-sm text-slate-800 font-medium">{template.name}</span>
-              </>
-            ) : (
-              <>
-                <a href={`/${params.companyId}/estimates`} className="text-sm text-slate-600 hover:text-blue-600">Templates</a>
-                <span className="text-slate-300">/</span>
-                <span className="text-sm text-slate-800 font-medium">{template.name}</span>
-              </>
-            )}
-          </div>
-          {template.type === "CLIENT_ESTIMATE" && template.client ? (
-            <a href={`/${params.companyId}/clients/${template.client.id}`} className="text-sm text-slate-500 hover:text-slate-900">
-              ← Back to {template.client.name}
-            </a>
-          ) : (
-            <a href={`/${params.companyId}/estimates`} className="text-sm text-slate-500 hover:text-slate-900">
-              ← Back to Templates
-            </a>
-          )}
-        </div>
-      </header>
-      <main className="max-w-7xl mx-auto px-4 py-6">
-        <TemplateEditor
+    <div className="max-w-7xl mx-auto px-4 py-6">
+      <TemplateEditor
           template={{ id: template.id, name: template.name, description: template.description, companyId: params.companyId, estimateNumber: template.estimateNumber, estimateDate: template.estimateDate }}
           divisions={divisions}
           canEdit={can(session.user.role, "estimateTemplate:edit")}
@@ -127,7 +94,6 @@ export default async function TemplateEditorPage({
           } : null}
           allClients={clients.map(c => ({ id: c.id, name: c.name, address: c.address, city: c.city, state: c.state, zip: c.zip, email: c.email, phone: c.phone }))}
         />
-      </main>
     </div>
   );
 }

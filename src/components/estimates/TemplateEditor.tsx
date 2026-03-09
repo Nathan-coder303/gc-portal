@@ -32,6 +32,10 @@ type Group = { id: string; name: string; items: Item[] };
 type Division = { id: string; csiCode: string | null; name: string; groups: Group[]; items: Item[] };
 type Template = { id: string; name: string; description: string | null; companyId: string; estimateNumber: string | null; estimateDate: string | null };
 
+const INPUT = "rounded px-2 py-1 text-xs" as const;
+const inputStyle = { background: "#0d1117", border: "1px solid #30373f", color: "#e6edf3" };
+const inputStyleSm = { background: "#0d1117", border: "1px solid #30373f", color: "#e6edf3", width: "100%" };
+
 function fmt(n: number) {
   return n.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 }
@@ -91,20 +95,20 @@ function ItemRow({ item, divisionId, groupId, canEdit }: { item: Item; divisionI
 
   if (!editing) {
     return (
-      <tr className="border-t border-slate-100 hover:bg-slate-50 group text-sm">
-        <td className="px-3 py-2 text-slate-800">{item.name}</td>
-        <td className="px-3 py-2 text-slate-500 text-right">{item.defaultQty ?? "—"}</td>
-        <td className="px-3 py-2 text-slate-500 text-center">{item.unit ?? "—"}</td>
-        <td className="px-3 py-2 text-slate-500 text-right">{item.defaultUnitCost != null ? `$${fmt(item.defaultUnitCost)}` : "—"}</td>
-        <td className="px-3 py-2 text-slate-500 text-right">{item.defaultMarkupPct != null ? `${item.defaultMarkupPct}%` : "—"}</td>
-        <td className="px-3 py-2 text-slate-900 font-semibold text-right">{total > 0 ? `$${fmt(total)}` : "—"}</td>
-        <td className="px-3 py-2 text-slate-400 text-sm italic truncate max-w-[120px]">{item.notes ?? ""}</td>
+      <tr className="group text-sm" style={{ borderTop: "1px solid #30373f" }}>
+        <td className="px-3 py-2" style={{ color: "#e6edf3" }}>{item.name}</td>
+        <td className="px-3 py-2 text-right" style={{ color: "#8b949e" }}>{item.defaultQty ?? "—"}</td>
+        <td className="px-3 py-2 text-center" style={{ color: "#8b949e" }}>{item.unit ?? "—"}</td>
+        <td className="px-3 py-2 text-right" style={{ color: "#8b949e" }}>{item.defaultUnitCost != null ? `$${fmt(item.defaultUnitCost)}` : "—"}</td>
+        <td className="px-3 py-2 text-right" style={{ color: "#8b949e" }}>{item.defaultMarkupPct != null ? `${item.defaultMarkupPct}%` : "—"}</td>
+        <td className="px-3 py-2 font-semibold text-right" style={{ color: "#C9A84C" }}>{total > 0 ? `$${fmt(total)}` : "—"}</td>
+        <td className="px-3 py-2 text-sm italic truncate max-w-[120px]" style={{ color: "#8b949e" }}>{item.notes ?? ""}</td>
         <td className="px-3 py-2 text-right">
           <div className="flex gap-1 justify-end opacity-0 group-hover:opacity-100 transition-opacity">
             {canEdit && (
               <>
-                <button onClick={() => setEditing(true)} className="text-xs text-blue-600 hover:text-blue-800 px-2">Edit</button>
-                <button onClick={() => { if (confirm("Remove item?")) startTransition(async () => { await archiveTemplateItem(item.id); }); }} disabled={isPending} className="text-xs text-red-500 hover:text-red-700 px-2">Remove</button>
+                <button onClick={() => setEditing(true)} className="text-xs px-2" style={{ color: "#C9A84C" }}>Edit</button>
+                <button onClick={() => { if (confirm("Remove item?")) startTransition(async () => { await archiveTemplateItem(item.id); }); }} disabled={isPending} className="text-xs px-2" style={{ color: "#ef4444" }}>Remove</button>
               </>
             )}
           </div>
@@ -116,18 +120,18 @@ function ItemRow({ item, divisionId, groupId, canEdit }: { item: Item; divisionI
   const previewTotal = (form.defaultQty ? Number(form.defaultQty) : 0) * (form.defaultUnitCost ? Number(form.defaultUnitCost) : 0) * (1 + (form.defaultMarkupPct ? Number(form.defaultMarkupPct) : 0) / 100);
 
   return (
-    <tr className="border-t border-blue-100 bg-blue-50">
-      <td className="px-2 py-1"><input className="w-full border border-slate-300 rounded px-2 py-1 text-xs" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} /></td>
-      <td className="px-2 py-1"><input type="number" step="any" className="w-14 border border-slate-300 rounded px-2 py-1 text-xs text-right" value={form.defaultQty} onChange={(e) => setForm({ ...form, defaultQty: e.target.value })} /></td>
-      <td className="px-2 py-1"><input className="w-14 border border-slate-300 rounded px-2 py-1 text-xs" value={form.unit} onChange={(e) => setForm({ ...form, unit: e.target.value })} placeholder="unit" /></td>
-      <td className="px-2 py-1"><input type="number" step="any" className="w-20 border border-slate-300 rounded px-2 py-1 text-xs text-right" value={form.defaultUnitCost} onChange={(e) => setForm({ ...form, defaultUnitCost: e.target.value })} /></td>
-      <td className="px-2 py-1"><input type="number" step="any" className="w-14 border border-slate-300 rounded px-2 py-1 text-xs text-right" value={form.defaultMarkupPct} onChange={(e) => setForm({ ...form, defaultMarkupPct: e.target.value })} /></td>
-      <td className="px-2 py-1 text-xs font-semibold text-slate-700 text-right">{previewTotal > 0 ? `$${fmt(previewTotal)}` : "—"}</td>
-      <td className="px-2 py-1"><input className="w-full border border-slate-300 rounded px-2 py-1 text-xs" value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} placeholder="notes" /></td>
+    <tr style={{ borderTop: "1px solid #30373f", background: "#1a2d1a" }}>
+      <td className="px-2 py-1"><input className={INPUT} style={inputStyleSm} value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} /></td>
+      <td className="px-2 py-1"><input type="number" step="any" className={INPUT} style={{ ...inputStyle, width: "56px" }} value={form.defaultQty} onChange={(e) => setForm({ ...form, defaultQty: e.target.value })} /></td>
+      <td className="px-2 py-1"><input className={INPUT} style={{ ...inputStyle, width: "56px" }} value={form.unit} onChange={(e) => setForm({ ...form, unit: e.target.value })} placeholder="unit" /></td>
+      <td className="px-2 py-1"><input type="number" step="any" className={INPUT} style={{ ...inputStyle, width: "80px" }} value={form.defaultUnitCost} onChange={(e) => setForm({ ...form, defaultUnitCost: e.target.value })} /></td>
+      <td className="px-2 py-1"><input type="number" step="any" className={INPUT} style={{ ...inputStyle, width: "56px" }} value={form.defaultMarkupPct} onChange={(e) => setForm({ ...form, defaultMarkupPct: e.target.value })} /></td>
+      <td className="px-2 py-1 text-xs font-semibold text-right" style={{ color: "#C9A84C" }}>{previewTotal > 0 ? `$${fmt(previewTotal)}` : "—"}</td>
+      <td className="px-2 py-1"><input className={INPUT} style={inputStyleSm} value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} placeholder="notes" /></td>
       <td className="px-2 py-1">
         <div className="flex gap-1 justify-end">
-          <button onClick={save} disabled={isPending} className="text-xs bg-blue-600 text-white px-2 py-1 rounded">Save</button>
-          <button onClick={() => setEditing(false)} className="text-xs text-slate-500 px-2">Cancel</button>
+          <button onClick={save} disabled={isPending} className="text-xs px-2 py-1 rounded font-medium" style={{ background: "#C9A84C", color: "#0d1117" }}>Save</button>
+          <button onClick={() => setEditing(false)} className="text-xs px-2" style={{ color: "#8b949e" }}>Cancel</button>
         </div>
       </td>
     </tr>
@@ -163,25 +167,25 @@ function AddTemplateItemRow({ divisionId, groupId, canEdit }: { divisionId: stri
     return (
       <tr>
         <td colSpan={8} className="px-3 py-1">
-          <button onClick={() => setOpen(true)} className="text-xs text-blue-600 hover:text-blue-800">+ Add Item</button>
+          <button onClick={() => setOpen(true)} className="text-xs" style={{ color: "#C9A84C" }}>+ Add Item</button>
         </td>
       </tr>
     );
   }
 
   return (
-    <tr className="bg-green-50 border-t border-green-100">
-      <td className="px-2 py-1"><input autoFocus className="w-full border border-slate-300 rounded px-2 py-1 text-xs" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} placeholder="Item name" /></td>
-      <td className="px-2 py-1"><input type="number" step="any" className="w-14 border border-slate-300 rounded px-2 py-1 text-xs text-right" value={form.defaultQty} onChange={(e) => setForm({ ...form, defaultQty: e.target.value })} /></td>
-      <td className="px-2 py-1"><input className="w-14 border border-slate-300 rounded px-2 py-1 text-xs" value={form.unit} onChange={(e) => setForm({ ...form, unit: e.target.value })} placeholder="unit" /></td>
-      <td className="px-2 py-1"><input type="number" step="any" className="w-20 border border-slate-300 rounded px-2 py-1 text-xs text-right" value={form.defaultUnitCost} onChange={(e) => setForm({ ...form, defaultUnitCost: e.target.value })} /></td>
-      <td className="px-2 py-1"><input type="number" step="any" className="w-14 border border-slate-300 rounded px-2 py-1 text-xs text-right" value={form.defaultMarkupPct} onChange={(e) => setForm({ ...form, defaultMarkupPct: e.target.value })} /></td>
+    <tr style={{ borderTop: "1px solid #30373f", background: "#0d2a1a" }}>
+      <td className="px-2 py-1"><input autoFocus className={INPUT} style={inputStyleSm} value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} placeholder="Item name" /></td>
+      <td className="px-2 py-1"><input type="number" step="any" className={INPUT} style={{ ...inputStyle, width: "56px" }} value={form.defaultQty} onChange={(e) => setForm({ ...form, defaultQty: e.target.value })} /></td>
+      <td className="px-2 py-1"><input className={INPUT} style={{ ...inputStyle, width: "56px" }} value={form.unit} onChange={(e) => setForm({ ...form, unit: e.target.value })} placeholder="unit" /></td>
+      <td className="px-2 py-1"><input type="number" step="any" className={INPUT} style={{ ...inputStyle, width: "80px" }} value={form.defaultUnitCost} onChange={(e) => setForm({ ...form, defaultUnitCost: e.target.value })} /></td>
+      <td className="px-2 py-1"><input type="number" step="any" className={INPUT} style={{ ...inputStyle, width: "56px" }} value={form.defaultMarkupPct} onChange={(e) => setForm({ ...form, defaultMarkupPct: e.target.value })} /></td>
       <td />
-      <td className="px-2 py-1"><input className="w-full border border-slate-300 rounded px-2 py-1 text-xs" value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} placeholder="notes" /></td>
+      <td className="px-2 py-1"><input className={INPUT} style={inputStyleSm} value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} placeholder="notes" /></td>
       <td className="px-2 py-1">
         <div className="flex gap-1 justify-end">
-          <button onClick={save} disabled={isPending} className="text-xs bg-green-600 text-white px-2 py-1 rounded">Add</button>
-          <button onClick={() => setOpen(false)} className="text-xs text-slate-500 px-2">Cancel</button>
+          <button onClick={save} disabled={isPending} className="text-xs px-2 py-1 rounded font-medium" style={{ background: "#22c55e", color: "#fff" }}>Add</button>
+          <button onClick={() => setOpen(false)} className="text-xs px-2" style={{ color: "#8b949e" }}>Cancel</button>
         </div>
       </td>
     </tr>
@@ -193,14 +197,14 @@ function TemplateItemTable({ divisionId, groupId, items, canEdit }: { divisionId
     <div className="overflow-x-auto">
       <table className="w-full text-sm">
         <thead>
-          <tr className="text-xs text-slate-500 bg-slate-50">
-            <th className="px-3 py-1.5 text-left font-medium">Item</th>
-            <th className="px-3 py-1.5 text-right font-medium w-16">Qty</th>
-            <th className="px-3 py-1.5 text-center font-medium w-16">Unit</th>
-            <th className="px-3 py-1.5 text-right font-medium w-24">Cost</th>
-            <th className="px-3 py-1.5 text-right font-medium w-16">Markup</th>
-            <th className="px-3 py-1.5 text-right font-medium w-28 text-slate-800">TOTAL</th>
-            <th className="px-3 py-1.5 text-left font-medium">Notes</th>
+          <tr style={{ background: "#161b22" }}>
+            <th className="px-3 py-1.5 text-left font-medium text-xs" style={{ color: "#8b949e" }}>Item</th>
+            <th className="px-3 py-1.5 text-right font-medium text-xs w-16" style={{ color: "#8b949e" }}>Qty</th>
+            <th className="px-3 py-1.5 text-center font-medium text-xs w-16" style={{ color: "#8b949e" }}>Unit</th>
+            <th className="px-3 py-1.5 text-right font-medium text-xs w-24" style={{ color: "#8b949e" }}>Cost</th>
+            <th className="px-3 py-1.5 text-right font-medium text-xs w-16" style={{ color: "#8b949e" }}>Markup</th>
+            <th className="px-3 py-1.5 text-right font-medium text-xs w-28" style={{ color: "#C9A84C" }}>TOTAL</th>
+            <th className="px-3 py-1.5 text-left font-medium text-xs" style={{ color: "#8b949e" }}>Notes</th>
             <th className="w-20" />
           </tr>
         </thead>
@@ -220,12 +224,12 @@ function TemplateGroupSection({ group, divisionId, canEdit }: { group: Group; di
   const total = groupTotal(group.items);
   return (
     <div className="mt-3">
-      <div className="flex items-center justify-between px-3 py-1.5 bg-slate-100 rounded">
-        <span className="text-xs font-semibold text-slate-600 uppercase tracking-wide">{group.name}</span>
+      <div className="flex items-center justify-between px-3 py-1.5 rounded" style={{ background: "#0d1117" }}>
+        <span className="text-xs font-semibold uppercase tracking-wide" style={{ color: "#8b949e" }}>{group.name}</span>
         <div className="flex items-center gap-3">
-          {total > 0 && <span className="text-xs font-semibold text-slate-700">${fmt(total)}</span>}
+          {total > 0 && <span className="text-xs font-semibold" style={{ color: "#C9A84C" }}>${fmt(total)}</span>}
           {canEdit && (
-            <button onClick={() => { if (confirm("Remove group?")) startTransition(async () => { await archiveTemplateGroup(group.id); }); }} disabled={isPending} className="text-xs text-red-400 hover:text-red-600">
+            <button onClick={() => { if (confirm("Remove group?")) startTransition(async () => { await archiveTemplateGroup(group.id); }); }} disabled={isPending} className="text-xs" style={{ color: "#ef4444" }}>
               Remove
             </button>
           )}
@@ -254,16 +258,16 @@ function TemplateDivisionSection({ division, canEdit }: { division: Division; ca
   }
 
   return (
-    <div className="bg-white border border-slate-200 rounded-xl overflow-hidden">
-      <button onClick={() => setOpen(!open)} className="w-full flex items-center gap-3 px-4 py-3 hover:bg-slate-50 transition-colors text-left">
-        <span className="text-slate-400 text-xs">{open ? "▼" : "▶"}</span>
-        {division.csiCode && <span className="text-xs font-mono text-slate-400">{division.csiCode}</span>}
-        <span className="font-semibold text-slate-900">{division.name}</span>
-        {total > 0 && <span className="ml-auto text-sm font-bold text-slate-900">${fmt(total)}</span>}
+    <div className="rounded-xl overflow-hidden" style={{ background: "#1e2736", border: "1px solid #30373f" }}>
+      <button onClick={() => setOpen(!open)} className="w-full flex items-center gap-3 px-4 py-3 text-left transition-colors" style={{ background: "#1e2736" }}>
+        <span className="text-xs" style={{ color: "#8b949e" }}>{open ? "▼" : "▶"}</span>
+        {division.csiCode && <span className="text-xs font-mono" style={{ color: "#8b949e" }}>{division.csiCode}</span>}
+        <span className="font-semibold" style={{ color: "#e6edf3" }}>{division.name}</span>
+        {total > 0 && <span className="ml-auto text-sm font-bold" style={{ color: "#C9A84C" }}>${fmt(total)}</span>}
       </button>
 
       {open && (
-        <div className="border-t border-slate-100 pb-2">
+        <div style={{ borderTop: "1px solid #30373f" }} className="pb-2">
           {division.groups.map((grp) => (
             <TemplateGroupSection key={grp.id} group={grp} divisionId={division.id} canEdit={canEdit} />
           ))}
@@ -274,18 +278,18 @@ function TemplateDivisionSection({ division, canEdit }: { division: Division; ca
             <div className="px-3 pt-2">
               {addingGroup ? (
                 <div className="flex gap-2 items-center">
-                  <input autoFocus value={groupName} onChange={(e) => setGroupName(e.target.value)} placeholder="Group name" className="border border-slate-300 rounded px-2 py-1 text-xs flex-1" />
-                  <button onClick={saveGroup} disabled={isPending} className="text-xs bg-blue-600 text-white px-2 py-1 rounded">Add</button>
-                  <button onClick={() => setAddingGroup(false)} className="text-xs text-slate-500">Cancel</button>
+                  <input autoFocus value={groupName} onChange={(e) => setGroupName(e.target.value)} placeholder="Group name" className={INPUT} style={{ ...inputStyle, flex: 1 }} />
+                  <button onClick={saveGroup} disabled={isPending} className="text-xs px-2 py-1 rounded font-medium" style={{ background: "#C9A84C", color: "#0d1117" }}>Add</button>
+                  <button onClick={() => setAddingGroup(false)} className="text-xs" style={{ color: "#8b949e" }}>Cancel</button>
                 </div>
               ) : (
-                <button onClick={() => setAddingGroup(true)} className="text-xs text-slate-400 hover:text-blue-600">+ Add Group</button>
+                <button onClick={() => setAddingGroup(true)} className="text-xs" style={{ color: "#8b949e" }}>+ Add Group</button>
               )}
             </div>
           )}
           {canEdit && (
             <div className="px-3 pt-1">
-              <button onClick={() => { if (confirm("Remove division?")) startTransition(async () => { await archiveTemplateDivision(division.id); }); }} disabled={isPending} className="text-xs text-red-400 hover:text-red-600">
+              <button onClick={() => { if (confirm("Remove division?")) startTransition(async () => { await archiveTemplateDivision(division.id); }); }} disabled={isPending} className="text-xs" style={{ color: "#ef4444" }}>
                 Remove Division
               </button>
             </div>
@@ -352,28 +356,28 @@ function ClientSelector({
   const cityLine = displayClient ? [displayClient.city, displayClient.state, displayClient.zip].filter(Boolean).join(", ") : "";
 
   return (
-    <div className="mt-4 pt-4 border-t border-slate-100">
+    <div className="mt-4 pt-4" style={{ borderTop: "1px solid #30373f" }}>
       <div className="flex items-start justify-between">
         <div>
-          <p className="text-xs font-medium text-slate-600 mb-1">Client</p>
+          <p className="text-xs font-medium mb-1" style={{ color: "#8b949e" }}>Client</p>
           {displayClient ? (
             <div>
-              <p className="text-sm font-semibold text-slate-900">{displayClient.name}</p>
-              {displayClient.address && <p className="text-xs text-slate-500">{displayClient.address}</p>}
-              {cityLine && <p className="text-xs text-slate-500">{cityLine}</p>}
-              {displayClient.email && <p className="text-xs text-slate-400">{displayClient.email}</p>}
+              <p className="text-sm font-semibold" style={{ color: "#e6edf3" }}>{displayClient.name}</p>
+              {displayClient.address && <p className="text-xs" style={{ color: "#8b949e" }}>{displayClient.address}</p>}
+              {cityLine && <p className="text-xs" style={{ color: "#8b949e" }}>{cityLine}</p>}
+              {displayClient.email && <p className="text-xs" style={{ color: "#8b949e" }}>{displayClient.email}</p>}
             </div>
           ) : (
-            <p className="text-sm text-slate-400">No client assigned</p>
+            <p className="text-sm" style={{ color: "#8b949e" }}>No client assigned</p>
           )}
         </div>
         {canEdit && mode === "view" && (
           <div className="flex gap-2">
-            <button onClick={() => setMode("select")} className="text-xs text-blue-600 hover:text-blue-800 px-2 py-1 border border-slate-200 rounded">
+            <button onClick={() => setMode("select")} className="text-xs px-2 py-1 rounded" style={{ border: "1px solid #30373f", color: "#C9A84C" }}>
               {displayClient ? "Change" : "Assign Client"}
             </button>
             {displayClient && (
-              <button onClick={handleClear} disabled={isPending} className="text-xs text-red-400 hover:text-red-600 px-2 py-1">
+              <button onClick={handleClear} disabled={isPending} className="text-xs px-2 py-1" style={{ color: "#ef4444" }}>
                 Remove
               </button>
             )}
@@ -384,11 +388,12 @@ function ClientSelector({
       {canEdit && mode === "select" && (
         <div className="mt-3 flex gap-2 items-end flex-wrap">
           <div className="flex-1">
-            <label className="block text-xs font-medium text-slate-600 mb-1">Select existing client</label>
+            <label className="block text-xs font-medium mb-1" style={{ color: "#8b949e" }}>Select existing client</label>
             <select
               value={selectedId}
               onChange={(e) => setSelectedId(e.target.value)}
-              className="w-full border border-slate-300 rounded px-2 py-1.5 text-sm"
+              className="w-full rounded px-2 py-1.5 text-sm"
+              style={{ background: "#0d1117", border: "1px solid #30373f", color: "#e6edf3" }}
             >
               <option value="">— choose —</option>
               {allClients.map(c => (
@@ -396,43 +401,43 @@ function ClientSelector({
               ))}
             </select>
           </div>
-          <button onClick={handleAssignExisting} disabled={isPending || !selectedId} className="text-xs bg-blue-600 text-white px-3 py-1.5 rounded">Assign</button>
-          <button onClick={() => setMode("new")} className="text-xs border border-slate-300 text-slate-600 px-3 py-1.5 rounded">+ New Client</button>
-          <button onClick={() => setMode("view")} className="text-xs text-slate-400 px-2">Cancel</button>
+          <button onClick={handleAssignExisting} disabled={isPending || !selectedId} className="text-xs px-3 py-1.5 rounded font-medium" style={{ background: "#C9A84C", color: "#0d1117" }}>Assign</button>
+          <button onClick={() => setMode("new")} className="text-xs px-3 py-1.5 rounded" style={{ border: "1px solid #30373f", color: "#e6edf3" }}>+ New Client</button>
+          <button onClick={() => setMode("view")} className="text-xs px-2" style={{ color: "#8b949e" }}>Cancel</button>
         </div>
       )}
 
       {canEdit && mode === "new" && (
         <div className="mt-3 grid grid-cols-2 gap-2">
           <div className="col-span-2">
-            <label className="block text-xs font-medium text-slate-600 mb-1">Name *</label>
-            <input autoFocus value={newName} onChange={e => setNewName(e.target.value)} placeholder="Client name" className="w-full border border-slate-300 rounded px-2 py-1.5 text-sm" />
+            <label className="block text-xs font-medium mb-1" style={{ color: "#8b949e" }}>Name *</label>
+            <input autoFocus value={newName} onChange={e => setNewName(e.target.value)} placeholder="Client name" className="w-full rounded px-2 py-1.5 text-sm" style={inputStyleSm} />
           </div>
           <div className="col-span-2">
-            <label className="block text-xs font-medium text-slate-600 mb-1">Address</label>
-            <input value={newAddress} onChange={e => setNewAddress(e.target.value)} placeholder="123 Main St" className="w-full border border-slate-300 rounded px-2 py-1.5 text-sm" />
+            <label className="block text-xs font-medium mb-1" style={{ color: "#8b949e" }}>Address</label>
+            <input value={newAddress} onChange={e => setNewAddress(e.target.value)} placeholder="123 Main St" className="w-full rounded px-2 py-1.5 text-sm" style={inputStyleSm} />
           </div>
           <div>
-            <label className="block text-xs font-medium text-slate-600 mb-1">City</label>
-            <input value={newCity} onChange={e => setNewCity(e.target.value)} placeholder="Hollywood" className="w-full border border-slate-300 rounded px-2 py-1.5 text-sm" />
+            <label className="block text-xs font-medium mb-1" style={{ color: "#8b949e" }}>City</label>
+            <input value={newCity} onChange={e => setNewCity(e.target.value)} placeholder="Hollywood" className="w-full rounded px-2 py-1.5 text-sm" style={inputStyleSm} />
           </div>
           <div className="grid grid-cols-2 gap-2">
             <div>
-              <label className="block text-xs font-medium text-slate-600 mb-1">State</label>
-              <input value={newState} onChange={e => setNewState(e.target.value)} placeholder="FL" className="w-full border border-slate-300 rounded px-2 py-1.5 text-sm" />
+              <label className="block text-xs font-medium mb-1" style={{ color: "#8b949e" }}>State</label>
+              <input value={newState} onChange={e => setNewState(e.target.value)} placeholder="FL" className="w-full rounded px-2 py-1.5 text-sm" style={inputStyleSm} />
             </div>
             <div>
-              <label className="block text-xs font-medium text-slate-600 mb-1">Zip</label>
-              <input value={newZip} onChange={e => setNewZip(e.target.value)} placeholder="33020" className="w-full border border-slate-300 rounded px-2 py-1.5 text-sm" />
+              <label className="block text-xs font-medium mb-1" style={{ color: "#8b949e" }}>Zip</label>
+              <input value={newZip} onChange={e => setNewZip(e.target.value)} placeholder="33020" className="w-full rounded px-2 py-1.5 text-sm" style={inputStyleSm} />
             </div>
           </div>
           <div>
-            <label className="block text-xs font-medium text-slate-600 mb-1">Email</label>
-            <input type="email" value={newEmail} onChange={e => setNewEmail(e.target.value)} placeholder="client@email.com" className="w-full border border-slate-300 rounded px-2 py-1.5 text-sm" />
+            <label className="block text-xs font-medium mb-1" style={{ color: "#8b949e" }}>Email</label>
+            <input type="email" value={newEmail} onChange={e => setNewEmail(e.target.value)} placeholder="client@email.com" className="w-full rounded px-2 py-1.5 text-sm" style={inputStyleSm} />
           </div>
           <div className="flex items-end gap-2">
-            <button onClick={handleCreateNew} disabled={isPending || !newName.trim()} className="text-xs bg-green-600 text-white px-3 py-1.5 rounded">Create & Assign</button>
-            <button onClick={() => setMode("select")} className="text-xs text-slate-400 px-2">Back</button>
+            <button onClick={handleCreateNew} disabled={isPending || !newName.trim()} className="text-xs px-3 py-1.5 rounded font-medium" style={{ background: "#22c55e", color: "#fff" }}>Create & Assign</button>
+            <button onClick={() => setMode("select")} className="text-xs px-2" style={{ color: "#8b949e" }}>Back</button>
           </div>
         </div>
       )}
@@ -527,62 +532,64 @@ export default function TemplateEditor({
 
   return (
     <div className="space-y-4">
-      {/* Header */}
-      <div className="bg-white border border-slate-200 rounded-xl p-5">
+      {/* Header card */}
+      <div className="rounded-xl p-5" style={{ background: "#1e2736", border: "1px solid #30373f" }}>
         {editingHeader ? (
           <div className="space-y-3">
             <div className="grid grid-cols-2 gap-3">
               <div className="col-span-2">
-                <label className="block text-xs font-medium text-slate-600 mb-1">Scope of Work (Name)</label>
-                <input value={name} onChange={(e) => setName(e.target.value)} className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm" />
+                <label className="block text-xs font-medium mb-1" style={{ color: "#8b949e" }}>Scope of Work (Name)</label>
+                <input value={name} onChange={(e) => setName(e.target.value)} className="w-full rounded-lg px-3 py-2 text-sm" style={inputStyleSm} />
               </div>
               <div>
-                <label className="block text-xs font-medium text-slate-600 mb-1">Estimate #</label>
-                <input value={estimateNumber} onChange={(e) => setEstimateNumber(e.target.value)} placeholder="e.g. 001" className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm" />
+                <label className="block text-xs font-medium mb-1" style={{ color: "#8b949e" }}>Estimate #</label>
+                <input value={estimateNumber} onChange={(e) => setEstimateNumber(e.target.value)} placeholder="e.g. 001" className="w-full rounded-lg px-3 py-2 text-sm" style={inputStyleSm} />
               </div>
               <div>
-                <label className="block text-xs font-medium text-slate-600 mb-1">Date</label>
-                <input type="date" value={estimateDate} onChange={(e) => setEstimateDate(e.target.value)} className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm" />
+                <label className="block text-xs font-medium mb-1" style={{ color: "#8b949e" }}>Date</label>
+                <input type="date" value={estimateDate} onChange={(e) => setEstimateDate(e.target.value)} className="w-full rounded-lg px-3 py-2 text-sm" style={inputStyleSm} />
               </div>
             </div>
             <div className="flex gap-2">
-              <button onClick={saveHeader} disabled={isPending} className="bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-medium">Save</button>
-              <button onClick={() => setEditingHeader(false)} className="border border-slate-200 text-slate-600 px-4 py-2 rounded-lg text-sm">Cancel</button>
+              <button onClick={saveHeader} disabled={isPending} className="px-4 py-2 rounded-lg text-sm font-medium" style={{ background: "#C9A84C", color: "#0d1117" }}>Save</button>
+              <button onClick={() => setEditingHeader(false)} className="px-4 py-2 rounded-lg text-sm" style={{ border: "1px solid #30373f", color: "#8b949e" }}>Cancel</button>
             </div>
           </div>
         ) : (
           <div>
             <div className="flex items-start justify-between gap-6">
               <div>
-                <h1 className="text-2xl font-bold text-slate-900">Scope of Work: {name}</h1>
+                <h1 className="text-2xl font-bold" style={{ color: "#e6edf3" }}>Scope of Work: {name}</h1>
                 <div className="flex gap-6 mt-2 items-center">
                   <div className="flex items-center gap-2">
-                    <span className="text-xs font-medium text-slate-500 shrink-0">Estimate #</span>
+                    <span className="text-xs font-medium shrink-0" style={{ color: "#8b949e" }}>Estimate #</span>
                     <input
                       value={estimateNumber}
                       onChange={(e) => setEstimateNumber(e.target.value)}
                       onBlur={saveEstimateMeta}
                       placeholder="e.g. 001"
-                      className="text-sm border-b border-dashed border-slate-300 bg-transparent w-20 px-1 focus:outline-none focus:border-blue-400 focus:border-solid"
+                      className="text-sm w-20 px-1 focus:outline-none"
+                      style={{ borderBottom: "1px dashed #30373f", background: "transparent", color: "#e6edf3" }}
                     />
                   </div>
                   <div className="flex items-center gap-2">
-                    <span className="text-xs font-medium text-slate-500 shrink-0">Date</span>
+                    <span className="text-xs font-medium shrink-0" style={{ color: "#8b949e" }}>Date</span>
                     <input
                       type="date"
                       value={estimateDate}
                       onChange={(e) => setEstimateDate(e.target.value)}
                       onBlur={saveEstimateMeta}
-                      className="text-sm border-b border-dashed border-slate-300 bg-transparent px-1 focus:outline-none focus:border-blue-400 focus:border-solid"
+                      className="text-sm px-1 focus:outline-none"
+                      style={{ borderBottom: "1px dashed #30373f", background: "transparent", color: "#e6edf3" }}
                     />
                   </div>
                 </div>
               </div>
               <div className="flex items-center gap-4 shrink-0">
-                {/* Prominent TOTAL card */}
-                <div className="bg-slate-900 text-white rounded-xl px-8 py-5 text-center min-w-[180px]">
-                  <div className="text-xs font-semibold text-slate-400 uppercase tracking-widest mb-2">Total</div>
-                  <div className="text-5xl font-bold leading-none">${fmt(total)}</div>
+                {/* Total card */}
+                <div className="rounded-xl px-8 py-5 text-center min-w-[180px]" style={{ background: "#0d1117", border: "1px solid #C9A84C44" }}>
+                  <div className="text-xs font-semibold uppercase tracking-widest mb-2" style={{ color: "#8b949e" }}>Total</div>
+                  <div className="text-5xl font-bold leading-none" style={{ color: "#C9A84C" }}>${fmt(total)}</div>
                 </div>
                 {/* Actions */}
                 <div className="flex flex-col gap-2 items-start">
@@ -590,24 +597,26 @@ export default function TemplateEditor({
                     href={`/api/${template.companyId}/estimates/${template.id}/pdf`}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="text-xs bg-slate-800 text-white px-3 py-1.5 rounded-lg hover:bg-slate-900 font-medium"
+                    className="text-xs px-3 py-1.5 rounded-lg font-medium"
+                    style={{ background: "#30373f", color: "#e6edf3" }}
                   >
                     Export PDF
                   </a>
                   {canEdit && (
                     <>
-                      <button onClick={() => setSaveAsNew(!saveAsNew)} className="text-xs border border-slate-300 text-slate-600 px-3 py-1.5 rounded-lg hover:bg-slate-50 font-medium">
+                      <button onClick={() => setSaveAsNew(!saveAsNew)} className="text-xs px-3 py-1.5 rounded-lg font-medium" style={{ border: "1px solid #30373f", color: "#e6edf3" }}>
                         Save as New Template
                       </button>
-                      {canEdit && currentClient && (
+                      {currentClient && (
                         <button
                           onClick={() => { setSavingToClient(!savingToClient); setSaveEstimateName(template.name); }}
-                          className="text-xs bg-green-600 text-white px-3 py-1.5 rounded-lg hover:bg-green-700 font-medium"
+                          className="text-xs px-3 py-1.5 rounded-lg font-medium"
+                          style={{ background: "#22c55e", color: "#fff" }}
                         >
                           Save to Client
                         </button>
                       )}
-                      <button onClick={() => setEditingHeader(true)} className="text-xs text-blue-600 hover:text-blue-800">Edit</button>
+                      <button onClick={() => setEditingHeader(true)} className="text-xs" style={{ color: "#C9A84C" }}>Edit</button>
                     </>
                   )}
                 </div>
@@ -623,42 +632,44 @@ export default function TemplateEditor({
         )}
 
         {saveAsNew && (
-          <div className="mt-4 pt-4 border-t border-slate-100 space-y-2">
-            <label className="block text-xs font-medium text-slate-700">New Template Name</label>
+          <div className="mt-4 pt-4 space-y-2" style={{ borderTop: "1px solid #30373f" }}>
+            <label className="block text-xs font-medium" style={{ color: "#8b949e" }}>New Template Name</label>
             <div className="flex gap-2 items-center">
               <input
                 autoFocus
                 value={newName}
                 onChange={(e) => setNewName(e.target.value)}
-                className="flex-1 border border-slate-300 rounded-lg px-3 py-2 text-sm"
+                className="flex-1 rounded-lg px-3 py-2 text-sm"
+                style={inputStyleSm}
                 placeholder="e.g. Addition v2"
               />
-              <button onClick={handleSaveAsNew} disabled={isPending} className="bg-green-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-green-700 disabled:opacity-50">
+              <button onClick={handleSaveAsNew} disabled={isPending} className="px-4 py-2 rounded-lg text-sm font-medium" style={{ background: "#22c55e", color: "#fff" }}>
                 {isPending ? "Saving..." : "Save Copy"}
               </button>
-              <button onClick={() => setSaveAsNew(false)} className="text-sm text-slate-500 px-2">Cancel</button>
+              <button onClick={() => setSaveAsNew(false)} className="text-sm px-2" style={{ color: "#8b949e" }}>Cancel</button>
             </div>
-            {saveError && <p className="text-xs text-red-600">{saveError}</p>}
+            {saveError && <p className="text-xs" style={{ color: "#ef4444" }}>{saveError}</p>}
           </div>
         )}
 
         {savingToClient && currentClient && (
-          <div className="mt-4 pt-4 border-t border-slate-100 space-y-2">
-            <label className="block text-xs font-medium text-slate-700">Estimate Name</label>
+          <div className="mt-4 pt-4 space-y-2" style={{ borderTop: "1px solid #30373f" }}>
+            <label className="block text-xs font-medium" style={{ color: "#8b949e" }}>Estimate Name</label>
             <div className="flex gap-2 items-center">
               <input
                 autoFocus
                 value={saveEstimateName}
                 onChange={(e) => setSaveEstimateName(e.target.value)}
-                className="flex-1 border border-slate-300 rounded-lg px-3 py-2 text-sm"
+                className="flex-1 rounded-lg px-3 py-2 text-sm"
+                style={inputStyleSm}
                 placeholder="e.g. Kitchen Remodel 2026"
               />
-              <button onClick={handleSaveToClient} disabled={isPending || !saveEstimateName.trim()} className="bg-green-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-green-700 disabled:opacity-50">
+              <button onClick={handleSaveToClient} disabled={isPending || !saveEstimateName.trim()} className="px-4 py-2 rounded-lg text-sm font-medium" style={{ background: "#22c55e", color: "#fff" }}>
                 {isPending ? "Saving..." : `Save for ${currentClient.name}`}
               </button>
-              <button onClick={() => setSavingToClient(false)} className="text-sm text-slate-500 px-2">Cancel</button>
+              <button onClick={() => setSavingToClient(false)} className="text-sm px-2" style={{ color: "#8b949e" }}>Cancel</button>
             </div>
-            {saveClientError && <p className="text-xs text-red-600">{saveClientError}</p>}
+            {saveClientError && <p className="text-xs" style={{ color: "#ef4444" }}>{saveClientError}</p>}
           </div>
         )}
       </div>
@@ -672,22 +683,22 @@ export default function TemplateEditor({
 
       {/* Add Division */}
       {canEdit && (
-        <div className="bg-white border border-dashed border-slate-300 rounded-xl p-4">
+        <div className="rounded-xl p-4" style={{ border: "1px dashed #30373f" }}>
           {addingDiv ? (
             <div className="flex gap-2 items-end flex-wrap">
               <div>
-                <label className="block text-xs font-medium text-slate-600 mb-1">CSI Code (optional)</label>
-                <input value={divCsi} onChange={(e) => setDivCsi(e.target.value)} placeholder="e.g. 03" className="border border-slate-300 rounded px-2 py-1.5 text-sm w-24" />
+                <label className="block text-xs font-medium mb-1" style={{ color: "#8b949e" }}>CSI Code (optional)</label>
+                <input value={divCsi} onChange={(e) => setDivCsi(e.target.value)} placeholder="e.g. 03" className="rounded px-2 py-1.5 text-sm w-24" style={inputStyle} />
               </div>
               <div className="flex-1">
-                <label className="block text-xs font-medium text-slate-600 mb-1">Division Name</label>
-                <input autoFocus value={divName} onChange={(e) => setDivName(e.target.value)} placeholder="e.g. Concrete" className="w-full border border-slate-300 rounded px-2 py-1.5 text-sm" />
+                <label className="block text-xs font-medium mb-1" style={{ color: "#8b949e" }}>Division Name</label>
+                <input autoFocus value={divName} onChange={(e) => setDivName(e.target.value)} placeholder="e.g. Concrete" className="w-full rounded px-2 py-1.5 text-sm" style={inputStyleSm} />
               </div>
-              <button onClick={saveDiv} disabled={isPending} className="bg-blue-600 text-white px-3 py-1.5 rounded text-sm">Add</button>
-              <button onClick={() => setAddingDiv(false)} className="text-slate-500 text-sm px-2">Cancel</button>
+              <button onClick={saveDiv} disabled={isPending} className="px-3 py-1.5 rounded text-sm font-medium" style={{ background: "#C9A84C", color: "#0d1117" }}>Add</button>
+              <button onClick={() => setAddingDiv(false)} className="text-sm px-2" style={{ color: "#8b949e" }}>Cancel</button>
             </div>
           ) : (
-            <button onClick={() => setAddingDiv(true)} className="text-sm text-slate-400 hover:text-blue-600 w-full text-center">
+            <button onClick={() => setAddingDiv(true)} className="text-sm w-full text-center" style={{ color: "#8b949e" }}>
               + Add Division
             </button>
           )}
@@ -695,9 +706,9 @@ export default function TemplateEditor({
       )}
 
       {/* Summary footer */}
-      <div className="bg-slate-900 text-white rounded-xl p-5 flex justify-between items-center">
-        <span className="font-semibold text-lg">Estimate Total</span>
-        <span className="text-4xl font-bold">${fmt(total)}</span>
+      <div className="rounded-xl p-5 flex justify-between items-center" style={{ background: "#0d1117", border: "1px solid #C9A84C44" }}>
+        <span className="font-semibold text-lg" style={{ color: "#e6edf3" }}>Estimate Total</span>
+        <span className="text-4xl font-bold" style={{ color: "#C9A84C" }}>${fmt(total)}</span>
       </div>
     </div>
   );
