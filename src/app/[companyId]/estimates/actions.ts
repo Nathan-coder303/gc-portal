@@ -3,6 +3,7 @@
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { revalidatePath } from "next/cache";
+import { redirect } from "next/navigation";
 import { requirePermission } from "@/lib/auth/permissions";
 import { writeAuditLog } from "@/lib/audit/log";
 
@@ -416,6 +417,32 @@ export async function saveAsNewTemplate(sourceTemplateId: string, newName: strin
 
   revalidatePath(`/${session.user.companyId}/estimates`);
   return { success: true, id: newTemplate.id };
+}
+
+export async function createTemplateByName(name: string) {
+  const session = await auth();
+  if (!session) throw new Error("Unauthorized");
+  requirePermission(session, "estimateTemplate:create");
+
+  const existing = await prisma.estimateTemplate.findFirst({
+    where: { companyId: session.user.companyId, name, type: "TEMPLATE", archivedAt: null },
+  });
+
+  const templateId = existing
+    ? existing.id
+    : (
+        await prisma.estimateTemplate.create({
+          data: {
+            companyId: session.user.companyId,
+            name,
+            type: "TEMPLATE",
+            createdBy: session.user.id,
+            updatedBy: session.user.id,
+          },
+        })
+      ).id;
+
+  redirect(`/${session.user.companyId}/estimates/${templateId}`);
 }
 
 export async function deleteClient(clientId: string) {
