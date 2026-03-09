@@ -1,5 +1,5 @@
 import { prisma } from "@/lib/prisma";
-import { auth } from "@/lib/auth";
+import { auth, signOut } from "@/lib/auth";
 import { redirect } from "next/navigation";
 import { can } from "@/lib/auth/permissions";
 import Link from "next/link";
@@ -44,6 +44,9 @@ export default async function ProjectsPage({
             <span className="text-xs bg-blue-100 text-blue-700 px-2 py-0.5 rounded font-medium">
               {session.user.role}
             </span>
+            <form action={async () => { "use server"; await signOut({ redirectTo: "/login" }); }}>
+              <button className="text-sm text-slate-500 hover:text-slate-900">Sign out</button>
+            </form>
           </div>
         </div>
       </header>
