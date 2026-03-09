@@ -12,6 +12,8 @@ type Template = {
   createdAt: Date;
 };
 
+const inputStyle = { background: "#0d1117", border: "1px solid #30373f", color: "#e6edf3", width: "100%" };
+
 export default function TemplateList({
   companyId,
   templates,
@@ -51,13 +53,14 @@ export default function TemplateList({
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-xl font-bold text-slate-900">Estimate Templates</h1>
-          <p className="text-sm text-slate-500 mt-0.5">Reusable templates for project estimates</p>
+          <h1 className="text-xl font-bold" style={{ color: "#e6edf3" }}>Estimate Templates</h1>
+          <p className="text-sm mt-0.5" style={{ color: "#8b949e" }}>Reusable templates for project estimates</p>
         </div>
         {canEdit && (
           <button
             onClick={() => setShowCreate(!showCreate)}
-            className="bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-blue-700"
+            className="px-4 py-2 rounded-lg text-sm font-medium"
+            style={{ background: "#C9A84C", color: "#0d1117" }}
           >
             + New Template
           </button>
@@ -65,33 +68,35 @@ export default function TemplateList({
       </div>
 
       {showCreate && (
-        <div className="bg-white border border-slate-200 rounded-xl p-5 space-y-3">
-          <h3 className="font-medium text-slate-900">New Template</h3>
+        <div className="rounded-xl p-5 space-y-3" style={{ background: "#1e2736", border: "1px solid #30373f" }}>
+          <h3 className="font-medium" style={{ color: "#e6edf3" }}>New Template</h3>
           <div>
-            <label className="block text-sm font-medium text-slate-700 mb-1">Name</label>
+            <label className="block text-sm font-medium mb-1" style={{ color: "#8b949e" }}>Name</label>
             <input
               autoFocus
               value={name}
               onChange={(e) => setName(e.target.value)}
               placeholder="e.g. Addition, Remodel, New Construction"
-              className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm"
+              className="rounded-lg px-3 py-2 text-sm"
+              style={inputStyle}
             />
           </div>
           <div>
-            <label className="block text-sm font-medium text-slate-700 mb-1">Description (optional)</label>
+            <label className="block text-sm font-medium mb-1" style={{ color: "#8b949e" }}>Description (optional)</label>
             <input
               value={description}
               onChange={(e) => setDescription(e.target.value)}
               placeholder="Brief description"
-              className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm"
+              className="rounded-lg px-3 py-2 text-sm"
+              style={inputStyle}
             />
           </div>
-          {error && <p className="text-sm text-red-600">{error}</p>}
+          {error && <p className="text-sm" style={{ color: "#ef4444" }}>{error}</p>}
           <div className="flex gap-2">
-            <button onClick={handleCreate} disabled={isPending} className="bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-blue-700 disabled:opacity-50">
+            <button onClick={handleCreate} disabled={isPending} className="px-4 py-2 rounded-lg text-sm font-medium" style={{ background: "#C9A84C", color: "#0d1117", opacity: isPending ? 0.5 : 1 }}>
               {isPending ? "Creating..." : "Create Template"}
             </button>
-            <button onClick={() => setShowCreate(false)} className="border border-slate-200 text-slate-600 px-4 py-2 rounded-lg text-sm font-medium hover:bg-slate-50">
+            <button onClick={() => setShowCreate(false)} className="px-4 py-2 rounded-lg text-sm font-medium" style={{ border: "1px solid #30373f", color: "#8b949e" }}>
               Cancel
             </button>
           </div>
@@ -99,19 +104,19 @@ export default function TemplateList({
       )}
 
       {templates.length === 0 ? (
-        <div className="bg-white border border-slate-200 rounded-xl p-10 text-center text-slate-400">
-          No templates yet. Create one above.
+        <div className="rounded-xl p-10 text-center" style={{ background: "#1e2736", border: "1px solid #30373f" }}>
+          <p className="text-sm" style={{ color: "#8b949e" }}>No templates yet. Create one above.</p>
         </div>
       ) : (
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
           {templates.map((tpl) => (
-            <div key={tpl.id} className="bg-white border border-slate-200 rounded-xl p-4 hover:border-blue-300 transition-colors">
+            <div key={tpl.id} className="rounded-xl p-4 transition-colors" style={{ background: "#1e2736", border: "1px solid #30373f" }}>
               <a href={`/${companyId}/estimates/${tpl.id}`} className="block">
-                <h3 className="font-semibold text-slate-900 hover:text-blue-600">{tpl.name}</h3>
+                <h3 className="font-semibold" style={{ color: "#e6edf3" }}>{tpl.name}</h3>
                 {tpl.description && (
-                  <p className="text-sm text-slate-500 mt-1">{tpl.description}</p>
+                  <p className="text-sm mt-1" style={{ color: "#8b949e" }}>{tpl.description}</p>
                 )}
-                <div className="flex gap-3 mt-3 text-xs text-slate-400">
+                <div className="flex gap-3 mt-3 text-xs" style={{ color: "#8b949e" }}>
                   <span>{tpl.divisionCount} divisions</span>
                   <span>{tpl.itemCount} items</span>
                 </div>
@@ -123,7 +128,8 @@ export default function TemplateList({
                     startTransition(async () => { await archiveTemplate(tpl.id); });
                   }}
                   disabled={isPending}
-                  className="mt-2 text-xs text-red-400 hover:text-red-600"
+                  className="mt-2 text-xs"
+                  style={{ color: "#ef4444" }}
                 >
                   Archive
                 </button>
