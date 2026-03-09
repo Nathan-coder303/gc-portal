@@ -51,7 +51,7 @@ export default async function ProjectsPage({
       <main className="max-w-5xl mx-auto px-4 py-8">
         <div className="flex items-center justify-between mb-6">
           <div>
-            <h1 className="text-xl font-bold text-slate-900">Projects</h1>
+            <h1 className="text-xl font-bold text-slate-900">Existing Projects</h1>
             <p className="text-sm text-slate-500 mt-0.5">{projects.length} project{projects.length !== 1 ? "s" : ""}</p>
           </div>
           {isAdmin && (

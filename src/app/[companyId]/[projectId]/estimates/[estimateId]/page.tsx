@@ -84,6 +84,8 @@ export default async function EstimateEditorPage({
         </a>
       </div>
       <ProjectEstimateEditor
+        companyId={params.companyId}
+        projectId={params.projectId}
         estimate={{
           id: estimate.id,
           name: estimate.name,

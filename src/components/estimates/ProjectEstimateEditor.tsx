@@ -390,11 +390,15 @@ export default function ProjectEstimateEditor({
   divisions,
   canEdit,
   canArchive,
+  companyId,
+  projectId,
 }: {
   estimate: Estimate;
   divisions: Division[];
   canEdit: boolean;
   canArchive: boolean;
+  companyId: string;
+  projectId: string;
 }) {
   const [isPending, startTransition] = useTransition();
   const [editingHeader, setEditingHeader] = useState(false);
@@ -461,9 +465,19 @@ export default function ProjectEstimateEditor({
             <div className="text-right">
               <div className="text-2xl font-bold text-slate-900">${fmt(grandTotal)}</div>
               <div className="text-xs text-slate-400 mt-0.5">Estimate Total</div>
-              {canEdit && (
-                <button onClick={() => setEditingHeader(true)} className="mt-2 text-xs text-blue-600 hover:text-blue-800">Edit</button>
-              )}
+              <div className="flex gap-3 justify-end mt-2">
+                <a
+                  href={`/api/${companyId}/${projectId}/estimates/${estimate.id}/pdf`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-xs bg-slate-800 text-white px-3 py-1.5 rounded-lg hover:bg-slate-900 font-medium"
+                >
+                  Export PDF
+                </a>
+                {canEdit && (
+                  <button onClick={() => setEditingHeader(true)} className="text-xs text-blue-600 hover:text-blue-800">Edit</button>
+                )}
+              </div>
             </div>
           </div>
         )}
