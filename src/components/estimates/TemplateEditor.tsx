@@ -29,6 +29,29 @@ type Group = { id: string; name: string; items: Item[] };
 type Division = { id: string; csiCode: string | null; name: string; groups: Group[]; items: Item[] };
 type Template = { id: string; name: string; description: string | null; companyId: string };
 
+function fmt(n: number) {
+  return n.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+}
+
+function itemTotal(item: Item): number {
+  const qty = item.defaultQty ?? 0;
+  const cost = item.defaultUnitCost ?? 0;
+  const markup = item.defaultMarkupPct ?? 0;
+  return qty * cost * (1 + markup / 100);
+}
+
+function groupTotal(items: Item[]): number {
+  return items.reduce((s, i) => s + itemTotal(i), 0);
+}
+
+function divisionTotal(div: Division): number {
+  return div.groups.reduce((s, g) => s + groupTotal(g.items), 0) + groupTotal(div.items);
+}
+
+function grandTotal(divisions: Division[]): number {
+  return divisions.reduce((s, d) => s + divisionTotal(d), 0);
+}
+
 function ItemRow({ item, divisionId, groupId, canEdit }: { item: Item; divisionId: string; groupId?: string | null; canEdit: boolean }) {
   const [editing, setEditing] = useState(false);
   const [isPending, startTransition] = useTransition();
@@ -37,8 +60,6 @@ function ItemRow({ item, divisionId, groupId, canEdit }: { item: Item; divisionI
     unit: item.unit ?? "",
     defaultQty: item.defaultQty?.toString() ?? "",
     defaultUnitCost: item.defaultUnitCost?.toString() ?? "",
-    defaultLaborCost: item.defaultLaborCost?.toString() ?? "",
-    defaultMaterialCost: item.defaultMaterialCost?.toString() ?? "",
     defaultMarkupPct: item.defaultMarkupPct?.toString() ?? "",
     notes: item.notes ?? "",
     visibleInPdf: item.visibleInPdf,
@@ -53,8 +74,8 @@ function ItemRow({ item, divisionId, groupId, canEdit }: { item: Item; divisionI
         unit: form.unit || null,
         defaultQty: form.defaultQty ? Number(form.defaultQty) : null,
         defaultUnitCost: form.defaultUnitCost ? Number(form.defaultUnitCost) : null,
-        defaultLaborCost: form.defaultLaborCost ? Number(form.defaultLaborCost) : null,
-        defaultMaterialCost: form.defaultMaterialCost ? Number(form.defaultMaterialCost) : null,
+        defaultLaborCost: item.defaultLaborCost,
+        defaultMaterialCost: item.defaultMaterialCost,
         defaultMarkupPct: form.defaultMarkupPct ? Number(form.defaultMarkupPct) : null,
         notes: form.notes || null,
         visibleInPdf: form.visibleInPdf,
@@ -81,16 +102,18 @@ function ItemRow({ item, divisionId, groupId, canEdit }: { item: Item; divisionI
     });
   }
 
+  const total = itemTotal(item);
   const rowClass = item.visibleInPdf ? "" : "opacity-50";
 
   if (!editing) {
     return (
       <tr className={`border-t border-slate-100 hover:bg-slate-50 group text-sm ${rowClass}`}>
         <td className="px-3 py-2 text-slate-800">{item.name}</td>
-        <td className="px-3 py-2 text-slate-500 text-center">{item.unit ?? "—"}</td>
         <td className="px-3 py-2 text-slate-500 text-right">{item.defaultQty ?? "—"}</td>
-        <td className="px-3 py-2 text-slate-500 text-right">{item.defaultUnitCost != null ? `$${item.defaultUnitCost}` : "—"}</td>
+        <td className="px-3 py-2 text-slate-500 text-center">{item.unit ?? "—"}</td>
+        <td className="px-3 py-2 text-slate-500 text-right">{item.defaultUnitCost != null ? `$${fmt(item.defaultUnitCost)}` : "—"}</td>
         <td className="px-3 py-2 text-slate-500 text-right">{item.defaultMarkupPct != null ? `${item.defaultMarkupPct}%` : "—"}</td>
+        <td className="px-3 py-2 text-slate-900 font-semibold text-right">{total > 0 ? `$${fmt(total)}` : "—"}</td>
         <td className="px-3 py-2 text-slate-400 text-sm italic truncate max-w-[120px]">{item.notes ?? ""}</td>
         <td className="px-3 py-2 text-center">
           {canEdit ? (
@@ -122,13 +145,16 @@ function ItemRow({ item, divisionId, groupId, canEdit }: { item: Item; divisionI
     );
   }
 
+  const previewTotal = (form.defaultQty ? Number(form.defaultQty) : 0) * (form.defaultUnitCost ? Number(form.defaultUnitCost) : 0) * (1 + (form.defaultMarkupPct ? Number(form.defaultMarkupPct) : 0) / 100);
+
   return (
     <tr className="border-t border-blue-100 bg-blue-50">
       <td className="px-2 py-1"><input className="w-full border border-slate-300 rounded px-2 py-1 text-xs" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} /></td>
-      <td className="px-2 py-1"><input className="w-14 border border-slate-300 rounded px-2 py-1 text-xs" value={form.unit} onChange={(e) => setForm({ ...form, unit: e.target.value })} placeholder="unit" /></td>
       <td className="px-2 py-1"><input type="number" step="any" className="w-14 border border-slate-300 rounded px-2 py-1 text-xs text-right" value={form.defaultQty} onChange={(e) => setForm({ ...form, defaultQty: e.target.value })} /></td>
+      <td className="px-2 py-1"><input className="w-14 border border-slate-300 rounded px-2 py-1 text-xs" value={form.unit} onChange={(e) => setForm({ ...form, unit: e.target.value })} placeholder="unit" /></td>
       <td className="px-2 py-1"><input type="number" step="any" className="w-20 border border-slate-300 rounded px-2 py-1 text-xs text-right" value={form.defaultUnitCost} onChange={(e) => setForm({ ...form, defaultUnitCost: e.target.value })} /></td>
       <td className="px-2 py-1"><input type="number" step="any" className="w-14 border border-slate-300 rounded px-2 py-1 text-xs text-right" value={form.defaultMarkupPct} onChange={(e) => setForm({ ...form, defaultMarkupPct: e.target.value })} /></td>
+      <td className="px-2 py-1 text-xs font-semibold text-slate-700 text-right">{previewTotal > 0 ? `$${fmt(previewTotal)}` : "—"}</td>
       <td className="px-2 py-1"><input className="w-full border border-slate-300 rounded px-2 py-1 text-xs" value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} placeholder="notes" /></td>
       <td className="px-2 py-1 text-center">
         <button onClick={() => setForm({ ...form, visibleInPdf: !form.visibleInPdf })} className={`text-base ${form.visibleInPdf ? "opacity-100" : "opacity-40"}`}>
@@ -173,7 +199,7 @@ function AddTemplateItemRow({ divisionId, groupId, canEdit }: { divisionId: stri
   if (!open) {
     return (
       <tr>
-        <td colSpan={8} className="px-3 py-1">
+        <td colSpan={9} className="px-3 py-1">
           <button onClick={() => setOpen(true)} className="text-xs text-blue-600 hover:text-blue-800">+ Add Item</button>
         </td>
       </tr>
@@ -183,10 +209,11 @@ function AddTemplateItemRow({ divisionId, groupId, canEdit }: { divisionId: stri
   return (
     <tr className="bg-green-50 border-t border-green-100">
       <td className="px-2 py-1"><input autoFocus className="w-full border border-slate-300 rounded px-2 py-1 text-xs" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} placeholder="Item name" /></td>
-      <td className="px-2 py-1"><input className="w-14 border border-slate-300 rounded px-2 py-1 text-xs" value={form.unit} onChange={(e) => setForm({ ...form, unit: e.target.value })} placeholder="unit" /></td>
       <td className="px-2 py-1"><input type="number" step="any" className="w-14 border border-slate-300 rounded px-2 py-1 text-xs text-right" value={form.defaultQty} onChange={(e) => setForm({ ...form, defaultQty: e.target.value })} /></td>
+      <td className="px-2 py-1"><input className="w-14 border border-slate-300 rounded px-2 py-1 text-xs" value={form.unit} onChange={(e) => setForm({ ...form, unit: e.target.value })} placeholder="unit" /></td>
       <td className="px-2 py-1"><input type="number" step="any" className="w-20 border border-slate-300 rounded px-2 py-1 text-xs text-right" value={form.defaultUnitCost} onChange={(e) => setForm({ ...form, defaultUnitCost: e.target.value })} /></td>
       <td className="px-2 py-1"><input type="number" step="any" className="w-14 border border-slate-300 rounded px-2 py-1 text-xs text-right" value={form.defaultMarkupPct} onChange={(e) => setForm({ ...form, defaultMarkupPct: e.target.value })} /></td>
+      <td />
       <td className="px-2 py-1"><input className="w-full border border-slate-300 rounded px-2 py-1 text-xs" value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} placeholder="notes" /></td>
       <td className="px-2 py-1 text-center">
         <button onClick={() => setForm({ ...form, visibleInPdf: !form.visibleInPdf })} className={`text-base ${form.visibleInPdf ? "opacity-100" : "opacity-40"}`}>
@@ -210,10 +237,11 @@ function TemplateItemTable({ divisionId, groupId, items, canEdit }: { divisionId
         <thead>
           <tr className="text-xs text-slate-500 bg-slate-50">
             <th className="px-3 py-1.5 text-left font-medium">Item</th>
+            <th className="px-3 py-1.5 text-right font-medium w-16">Qty</th>
             <th className="px-3 py-1.5 text-center font-medium w-16">Unit</th>
-            <th className="px-3 py-1.5 text-right font-medium w-16">Def Qty</th>
-            <th className="px-3 py-1.5 text-right font-medium w-24">Def Cost</th>
+            <th className="px-3 py-1.5 text-right font-medium w-24">Cost</th>
             <th className="px-3 py-1.5 text-right font-medium w-16">Markup</th>
+            <th className="px-3 py-1.5 text-right font-medium w-28 text-slate-800">TOTAL</th>
             <th className="px-3 py-1.5 text-left font-medium">Notes</th>
             <th className="px-3 py-1.5 text-center font-medium w-14" title="Visible in PDF">PDF</th>
             <th className="w-20" />
@@ -232,15 +260,19 @@ function TemplateItemTable({ divisionId, groupId, items, canEdit }: { divisionId
 
 function TemplateGroupSection({ group, divisionId, canEdit }: { group: Group; divisionId: string; canEdit: boolean }) {
   const [isPending, startTransition] = useTransition();
+  const total = groupTotal(group.items);
   return (
     <div className="mt-3">
       <div className="flex items-center justify-between px-3 py-1.5 bg-slate-100 rounded">
         <span className="text-xs font-semibold text-slate-600 uppercase tracking-wide">{group.name}</span>
-        {canEdit && (
-          <button onClick={() => { if (confirm("Remove group?")) startTransition(async () => { await archiveTemplateGroup(group.id); }); }} disabled={isPending} className="text-xs text-red-400 hover:text-red-600">
-            Remove
-          </button>
-        )}
+        <div className="flex items-center gap-3">
+          {total > 0 && <span className="text-xs font-semibold text-slate-700">${fmt(total)}</span>}
+          {canEdit && (
+            <button onClick={() => { if (confirm("Remove group?")) startTransition(async () => { await archiveTemplateGroup(group.id); }); }} disabled={isPending} className="text-xs text-red-400 hover:text-red-600">
+              Remove
+            </button>
+          )}
+        </div>
       </div>
       <TemplateItemTable divisionId={divisionId} groupId={group.id} items={group.items} canEdit={canEdit} />
     </div>
@@ -253,6 +285,8 @@ function TemplateDivisionSection({ division, canEdit }: { division: Division; ca
   const [addingGroup, setAddingGroup] = useState(false);
   const [groupName, setGroupName] = useState("");
 
+  const total = divisionTotal(division);
+
   function saveGroup() {
     if (!groupName.trim()) return;
     startTransition(async () => {
@@ -262,16 +296,13 @@ function TemplateDivisionSection({ division, canEdit }: { division: Division; ca
     });
   }
 
-  const totalItems = division.groups.reduce((s, g) => s + g.items.length, 0) + division.items.length;
-  const visibleItems = division.groups.reduce((s, g) => s + g.items.filter(i => i.visibleInPdf).length, 0) + division.items.filter(i => i.visibleInPdf).length;
-
   return (
     <div className="bg-white border border-slate-200 rounded-xl overflow-hidden">
       <button onClick={() => setOpen(!open)} className="w-full flex items-center gap-3 px-4 py-3 hover:bg-slate-50 transition-colors text-left">
         <span className="text-slate-400 text-xs">{open ? "▼" : "▶"}</span>
         {division.csiCode && <span className="text-xs font-mono text-slate-400">{division.csiCode}</span>}
         <span className="font-semibold text-slate-900">{division.name}</span>
-        <span className="ml-auto text-xs text-slate-400">{visibleItems}/{totalItems} visible</span>
+        {total > 0 && <span className="ml-auto text-sm font-bold text-slate-900">${fmt(total)}</span>}
       </button>
 
       {open && (
@@ -329,8 +360,7 @@ export default function TemplateEditor({
   const [newName, setNewName] = useState(`${template.name} (copy)`);
   const [saveError, setSaveError] = useState("");
 
-  const totalItems = divisions.reduce((s, d) => s + d.groups.reduce((gs, g) => gs + g.items.length, 0) + d.items.length, 0);
-  const visibleItems = divisions.reduce((s, d) => s + d.groups.reduce((gs, g) => gs + g.items.filter(i => i.visibleInPdf).length, 0) + d.items.filter(i => i.visibleInPdf).length, 0);
+  const total = grandTotal(divisions);
 
   function saveHeader() {
     startTransition(async () => {
@@ -382,29 +412,36 @@ export default function TemplateEditor({
             </div>
           </div>
         ) : (
-          <div className="flex items-start justify-between">
+          <div className="flex items-start justify-between gap-6">
             <div>
               <h1 className="text-xl font-bold text-slate-900">{template.name}</h1>
               {template.description && <p className="text-sm text-slate-500 mt-1">{template.description}</p>}
-              <p className="text-xs text-slate-400 mt-2">{divisions.length} divisions · {totalItems} items · {visibleItems} visible in PDF</p>
             </div>
-            <div className="flex items-center gap-2 flex-wrap justify-end">
-              <a
-                href={`/api/${template.companyId}/estimates/${template.id}/pdf`}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-xs bg-slate-800 text-white px-3 py-1.5 rounded-lg hover:bg-slate-900 font-medium"
-              >
-                Export PDF
-              </a>
-              {canEdit && (
-                <>
-                  <button onClick={() => setSaveAsNew(!saveAsNew)} className="text-xs border border-slate-300 text-slate-600 px-3 py-1.5 rounded-lg hover:bg-slate-50 font-medium">
-                    Save as New Template
-                  </button>
-                  <button onClick={() => setEditingHeader(true)} className="text-xs text-blue-600 hover:text-blue-800">Edit</button>
-                </>
-              )}
+            <div className="flex items-center gap-4 shrink-0">
+              {/* Prominent TOTAL card */}
+              <div className="bg-slate-900 text-white rounded-xl px-8 py-5 text-center min-w-[180px]">
+                <div className="text-xs font-semibold text-slate-400 uppercase tracking-widest mb-2">Total</div>
+                <div className="text-5xl font-bold leading-none">${fmt(total)}</div>
+              </div>
+              {/* Actions */}
+              <div className="flex flex-col gap-2 items-start">
+                <a
+                  href={`/api/${template.companyId}/estimates/${template.id}/pdf`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-xs bg-slate-800 text-white px-3 py-1.5 rounded-lg hover:bg-slate-900 font-medium"
+                >
+                  Export PDF
+                </a>
+                {canEdit && (
+                  <>
+                    <button onClick={() => setSaveAsNew(!saveAsNew)} className="text-xs border border-slate-300 text-slate-600 px-3 py-1.5 rounded-lg hover:bg-slate-50 font-medium">
+                      Save as New Template
+                    </button>
+                    <button onClick={() => setEditingHeader(true)} className="text-xs text-blue-600 hover:text-blue-800">Edit</button>
+                  </>
+                )}
+              </div>
             </div>
           </div>
         )}
@@ -460,6 +497,12 @@ export default function TemplateEditor({
           )}
         </div>
       )}
+
+      {/* Summary footer */}
+      <div className="bg-slate-900 text-white rounded-xl p-5 flex justify-between items-center">
+        <span className="font-semibold text-lg">Estimate Total</span>
+        <span className="text-4xl font-bold">${fmt(total)}</span>
+      </div>
     </div>
   );
 }
