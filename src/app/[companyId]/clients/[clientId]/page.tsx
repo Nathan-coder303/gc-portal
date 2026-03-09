@@ -19,7 +19,7 @@ export default async function ClientDetailPage({ params }: { params: { companyId
             divisions: {
               where: { archivedAt: null },
               include: {
-                items: { where: { archivedAt: null } },
+                items: { where: { archivedAt: null, groupId: null } },
                 groups: { where: { archivedAt: null }, include: { items: { where: { archivedAt: null } } } },
               },
             },
