@@ -66,7 +66,7 @@ const styles = StyleSheet.create({
   cellBold: { fontSize: 8, color: "#0f172a", fontFamily: "Helvetica-Bold" },
 
   grandTotalBar: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", backgroundColor: DARK, padding: 10, marginTop: 14, borderRadius: 3 },
-  grandTotalLabel: { fontSize: 12, fontFamily: "Helvetica-Bold", color: "#ffffff" },
+  grandTotalLabel: { fontSize: 12, fontFamily: "Helvetica-Bold", color: "#C9A84C" },
 
   pageNumber: { position: "absolute", bottom: 24, right: 40, fontSize: 8, color: "#94a3b8" },
 });
