@@ -29,7 +29,7 @@ function fmtDate(dateStr: string | null): string {
 }
 
 const styles = StyleSheet.create({
-  page: { fontFamily: "Helvetica", fontSize: 9, paddingTop: 36, paddingBottom: 48, paddingHorizontal: 40, color: DARK },
+  page: { fontFamily: "Helvetica", fontSize: 9, paddingTop: 36, paddingBottom: 48, paddingHorizontal: 40 },
   header: { flexDirection: "row", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 20, paddingBottom: 12, borderBottomWidth: 2, borderBottomColor: GOLD },
 
   // Left column
@@ -42,7 +42,6 @@ const styles = StyleSheet.create({
 
   // Right column
   clientName: { fontSize: 13, fontFamily: "Helvetica-Bold", color: "#0f172a", marginBottom: 3, textAlign: "right" },
-  clientAddress: { fontSize: 9, color: "#475569", textAlign: "right" },
 
   // Division header row — text/total both white
   divisionHeader: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", backgroundColor: DARK, paddingHorizontal: 8, paddingVertical: 5, marginTop: 12, borderRadius: 3 },
@@ -71,6 +70,9 @@ const styles = StyleSheet.create({
 
   pageNumber: { position: "absolute", bottom: 24, right: 40, fontSize: 8, color: "#94a3b8" },
 });
+
+// Defined outside StyleSheet.create to avoid any style inheritance/override issues
+const GRAND_TOTAL_VALUE_STYLE = { fontSize: 16 as const, fontFamily: "Helvetica-Bold" as const, color: "#C9A84C" as const };
 
 type Item = { id: string; name: string; unit: string | null; defaultQty: number | null; defaultUnitCost: number | null; defaultMarkupPct: number | null; visibleInPdf: boolean };
 type Group = { id: string; name: string; items: Item[] };
@@ -200,9 +202,7 @@ function TemplatePdfDocument({ companyName, template, client, divisions }: Templ
         {/* Grand total */}
         <View style={styles.grandTotalBar}>
           <Text style={styles.grandTotalLabel}>ESTIMATE TOTAL</Text>
-          <View style={{ backgroundColor: "#1e293b" }}>
-            <Text style={{ fontSize: 16, fontFamily: "Helvetica-Bold", color: "#C9A84C" }}>${fmt(grandTotal)}</Text>
-          </View>
+          <Text style={GRAND_TOTAL_VALUE_STYLE}>${fmt(grandTotal)}</Text>
         </View>
 
         <Text style={styles.pageNumber} render={({ pageNumber, totalPages }) => `Page ${pageNumber} of ${totalPages}`} fixed />

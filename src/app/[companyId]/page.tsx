@@ -21,7 +21,7 @@ export default async function HubPage({ params }: { params: { companyId: string 
       },
     }),
     prisma.company.findUnique({ where: { id: params.companyId } }),
-    prisma.estimateTemplate.count({ where: { companyId: params.companyId, archivedAt: null } }),
+    prisma.estimateTemplate.count({ where: { companyId: params.companyId, archivedAt: null, type: "TEMPLATE" } }),
     prisma.client.count({ where: { companyId: params.companyId } }),
   ]);
 
