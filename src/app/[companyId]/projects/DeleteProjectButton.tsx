@@ -7,7 +7,6 @@ import { deleteProject } from "./actions";
 export default function DeleteProjectButton({
   projectId,
   projectName,
-  companyId,
 }: {
   projectId: string;
   projectName: string;
