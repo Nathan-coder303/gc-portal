@@ -6,7 +6,7 @@ import { updateProject } from "@/app/[companyId]/[projectId]/settings/actions";
 type Project = {
   id: string;
   name: string;
-  code: string;
+  address: string | null;
   startDate: string; // "YYYY-MM-DD"
   budget: number;
   status: string;
@@ -61,8 +61,8 @@ export default function ProjectEditor({ project }: { project: Project }) {
             <input type="text" name="name" required defaultValue={project.name} className={field} />
           </div>
           <div>
-            <label className="block text-xs font-medium text-slate-600 mb-1">Code</label>
-            <input type="text" name="code" required defaultValue={project.code} className={field} />
+            <label className="block text-xs font-medium text-slate-600 mb-1">Address</label>
+            <input type="text" name="address" defaultValue={project.address ?? ""} className={field} />
           </div>
           <div>
             <label className="block text-xs font-medium text-slate-600 mb-1">Start Date</label>
@@ -100,8 +100,8 @@ export default function ProjectEditor({ project }: { project: Project }) {
             <dd className="font-medium text-slate-800">{project.name}</dd>
           </div>
           <div>
-            <dt className="text-slate-500">Code</dt>
-            <dd className="font-medium text-slate-800">{project.code}</dd>
+            <dt className="text-slate-500">Address</dt>
+            <dd className="font-medium text-slate-800">{project.address ?? "—"}</dd>
           </div>
           <div>
             <dt className="text-slate-500">Start Date</dt>

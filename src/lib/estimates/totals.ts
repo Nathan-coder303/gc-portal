@@ -9,7 +9,7 @@ export type ItemLike = {
 
 export function computeItemTotal(item: ItemLike): number {
   if (item.manualTotal !== null && item.manualTotal !== undefined) return item.manualTotal;
-  const base = item.qty * item.unitCost + item.laborCost + item.materialCost;
+  const base = item.qty * item.unitCost;
   return base * (1 + item.markupPct / 100);
 }
 

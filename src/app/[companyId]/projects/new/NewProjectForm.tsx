@@ -37,14 +37,10 @@ export default function NewProjectForm({ companyId }: { companyId: string }) {
             className={field} />
         </div>
 
-        <div>
-          <label className="block text-xs font-medium text-slate-600 mb-1">
-            Project Code <span className="text-red-500">*</span>
-          </label>
-          <input type="text" name="code" required placeholder="e.g. PROJ-2026"
-            maxLength={20}
-            className={field}
-            style={{ textTransform: "uppercase" }} />
+        <div className="col-span-2">
+          <label className="block text-xs font-medium text-slate-600 mb-1">Project Address</label>
+          <input type="text" name="address" placeholder="e.g. 123 Main St, City, State"
+            className={field} />
         </div>
 
         <div>

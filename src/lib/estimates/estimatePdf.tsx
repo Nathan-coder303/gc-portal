@@ -117,13 +117,11 @@ const styles = StyleSheet.create({
     backgroundColor: "#fafafa",
   },
   colName: { flex: 3 },
-  colUnit: { width: 32, textAlign: "center" },
-  colQty: { width: 36, textAlign: "right" },
-  colCost: { width: 52, textAlign: "right" },
-  colLabor: { width: 52, textAlign: "right" },
-  colMaterial: { width: 52, textAlign: "right" },
-  colMarkup: { width: 36, textAlign: "right" },
-  colTotal: { width: 60, textAlign: "right" },
+  colQty: { width: 40, textAlign: "right" },
+  colUnit: { width: 36, textAlign: "center" },
+  colCost: { width: 60, textAlign: "right" },
+  colMarkup: { width: 40, textAlign: "right" },
+  colTotal: { width: 70, textAlign: "right" },
   headerText: { fontSize: 7, color: "#94a3b8", fontFamily: "Helvetica-Bold", textTransform: "uppercase" },
   cellText: { fontSize: 8, color: "#334155" },
   cellTextBold: { fontSize: 8, color: "#0f172a", fontFamily: "Helvetica-Bold" },
@@ -183,13 +181,11 @@ function ItemTableHeader() {
   return (
     <View style={styles.tableHeader}>
       <Text style={[styles.headerText, styles.colName]}>Item</Text>
-      <Text style={[styles.headerText, styles.colUnit]}>Unit</Text>
       <Text style={[styles.headerText, styles.colQty]}>Qty</Text>
-      <Text style={[styles.headerText, styles.colCost]}>Unit Cost</Text>
-      <Text style={[styles.headerText, styles.colLabor]}>Labor</Text>
-      <Text style={[styles.headerText, styles.colMaterial]}>Material</Text>
-      <Text style={[styles.headerText, styles.colMarkup]}>Mrkp%</Text>
-      <Text style={[styles.headerText, styles.colTotal]}>Total</Text>
+      <Text style={[styles.headerText, styles.colUnit]}>Unit</Text>
+      <Text style={[styles.headerText, styles.colCost]}>Cost</Text>
+      <Text style={[styles.headerText, styles.colMarkup]}>Markup</Text>
+      <Text style={[styles.headerText, styles.colTotal]}>TOTAL</Text>
     </View>
   );
 }
@@ -200,11 +196,9 @@ function ItemRow({ item, index }: { item: Item; index: number }) {
   return (
     <View style={style}>
       <Text style={[styles.cellText, styles.colName]}>{item.name}</Text>
-      <Text style={[styles.cellTextMuted, styles.colUnit]}>{item.unit ?? ""}</Text>
       <Text style={[styles.cellText, styles.colQty]}>{item.qty}</Text>
+      <Text style={[styles.cellTextMuted, styles.colUnit]}>{item.unit ?? ""}</Text>
       <Text style={[styles.cellText, styles.colCost]}>{item.unitCost > 0 ? `$${fmt(item.unitCost)}` : "—"}</Text>
-      <Text style={[styles.cellText, styles.colLabor]}>{item.laborCost > 0 ? `$${fmt(item.laborCost)}` : "—"}</Text>
-      <Text style={[styles.cellText, styles.colMaterial]}>{item.materialCost > 0 ? `$${fmt(item.materialCost)}` : "—"}</Text>
       <Text style={[styles.cellTextMuted, styles.colMarkup]}>{item.markupPct > 0 ? `${item.markupPct}%` : "—"}</Text>
       <Text style={[styles.cellTextBold, styles.colTotal]}>${fmt(total)}</Text>
     </View>

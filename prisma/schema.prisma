@@ -72,7 +72,8 @@ model Project {
   companyId      String
   company        Company          @relation(fields: [companyId], references: [id])
   name           String
-  code           String
+  code           String?
+  address        String?
   startDate      DateTime
   budget         Decimal          @db.Decimal(14, 2)
   status         String           @default("ACTIVE")

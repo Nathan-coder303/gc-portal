@@ -159,7 +159,7 @@ export default async function SettingsPage({
               project={{
                 id: project.id,
                 name: project.name,
-                code: project.code,
+                address: project.address,
                 startDate: project.startDate.toISOString().split("T")[0],
                 budget: Number(project.budget),
                 status: project.status,
@@ -174,8 +174,8 @@ export default async function SettingsPage({
                   <dd className="font-medium text-slate-800">{project?.name}</dd>
                 </div>
                 <div>
-                  <dt className="text-slate-500">Code</dt>
-                  <dd className="font-medium text-slate-800">{project?.code}</dd>
+                  <dt className="text-slate-500">Address</dt>
+                  <dd className="font-medium text-slate-800">{project?.address ?? "—"}</dd>
                 </div>
                 <div>
                   <dt className="text-slate-500">Start Date</dt>

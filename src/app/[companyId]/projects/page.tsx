@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 import { can } from "@/lib/auth/permissions";
 import Link from "next/link";
 import { format } from "date-fns";
+import DeleteProjectButton from "./DeleteProjectButton";
 
 export default async function ProjectsPage({
   params,
@@ -82,29 +83,40 @@ export default async function ProjectsPage({
         ) : (
           <div className="grid gap-4">
             {projects.map((p) => (
-              <Link
+              <div
                 key={p.id}
-                href={`/${params.companyId}/${p.id}/dashboard`}
                 className="bg-white rounded-xl border border-slate-200 p-5 hover:border-blue-300 hover:shadow-sm transition-all flex items-center justify-between group"
               >
-                <div className="flex items-center gap-4">
-                  <div className="bg-slate-100 text-slate-600 font-mono text-sm font-bold px-3 py-2 rounded-lg group-hover:bg-blue-50 group-hover:text-blue-700 transition-colors">
-                    {p.code}
-                  </div>
-                  <div>
+                <Link
+                  href={`/${params.companyId}/${p.id}/dashboard`}
+                  className="flex items-center gap-4 flex-1 min-w-0"
+                >
+                  <div className="min-w-0">
                     <div className="font-semibold text-slate-900">{p.name}</div>
                     <div className="text-xs text-slate-400 mt-0.5">
                       Started {format(p.startDate, "MMM d, yyyy")} · Budget ${Number(p.budget).toLocaleString()}
                     </div>
                   </div>
-                </div>
-                <div className="flex items-center gap-3">
+                </Link>
+                <div className="flex items-center gap-3 shrink-0">
                   <span className={`text-xs px-2 py-0.5 rounded font-medium ${statusColors[p.status] ?? "bg-slate-100 text-slate-600"}`}>
                     {p.status}
                   </span>
-                  <span className="text-slate-300 group-hover:text-blue-400 text-lg">→</span>
+                  {isAdmin && (
+                    <DeleteProjectButton
+                      projectId={p.id}
+                      projectName={p.name}
+                      companyId={params.companyId}
+                    />
+                  )}
+                  <Link
+                    href={`/${params.companyId}/${p.id}/dashboard`}
+                    className="text-slate-300 group-hover:text-blue-400 text-lg"
+                  >
+                    →
+                  </Link>
                 </div>
-              </Link>
+              </div>
             ))}
           </div>
         )}

@@ -20,25 +20,25 @@ export async function updateProject(formData: FormData) {
   if (!existing) throw new Error("Project not found");
 
   const name = (formData.get("name") as string).trim();
-  const code = (formData.get("code") as string).trim().toUpperCase();
+  const address = ((formData.get("address") as string) ?? "").trim() || null;
   const startDateStr = formData.get("startDate") as string;
   const budget = parseFloat(formData.get("budget") as string);
   const status = formData.get("status") as string;
 
-  if (!name || !code) throw new Error("Name and code are required");
+  if (!name) throw new Error("Name is required");
   if (isNaN(budget) || budget < 0) throw new Error("Budget must be a positive number");
 
   const startDate = new Date(startDateStr + "T00:00:00");
 
   await prisma.project.update({
     where: { id: projectId },
-    data: { name, code, startDate, budget, status, updatedBy: session.user.id },
+    data: { name, address, startDate, budget, status, updatedBy: session.user.id },
   });
 
   const changes: { field: string; oldValue: string | null; newValue: string | null }[] = [];
   const pairs: [string, unknown, unknown][] = [
     ["name", existing.name, name],
-    ["code", existing.code, code],
+    ["address", existing.address, address],
     ["startDate", existing.startDate.toISOString().split("T")[0], startDateStr],
     ["budget", Number(existing.budget).toFixed(2), budget.toFixed(2)],
     ["status", existing.status, status],

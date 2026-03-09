@@ -46,8 +46,6 @@ function ItemRowEdit({
     unit: item.unit ?? "",
     qty: item.qty,
     unitCost: item.unitCost,
-    laborCost: item.laborCost,
-    materialCost: item.materialCost,
     markupPct: item.markupPct,
     vendor: item.vendor ?? "",
     notes: item.notes ?? "",
@@ -64,8 +62,8 @@ function ItemRowEdit({
         unit: form.unit || null,
         qty: Number(form.qty),
         unitCost: Number(form.unitCost),
-        laborCost: Number(form.laborCost),
-        materialCost: Number(form.materialCost),
+        laborCost: 0,
+        materialCost: 0,
         markupPct: Number(form.markupPct),
         vendor: form.vendor || null,
         notes: form.notes || null,
@@ -78,11 +76,9 @@ function ItemRowEdit({
     return (
       <tr className="border-t border-slate-100 hover:bg-slate-50 group">
         <td className="px-3 py-2 text-sm text-slate-800">{item.name}</td>
-        <td className="px-3 py-2 text-sm text-slate-500 text-center">{item.unit ?? "—"}</td>
         <td className="px-3 py-2 text-sm text-slate-700 text-right">{item.qty}</td>
+        <td className="px-3 py-2 text-sm text-slate-500 text-center">{item.unit ?? "—"}</td>
         <td className="px-3 py-2 text-sm text-slate-700 text-right">${fmt(item.unitCost)}</td>
-        <td className="px-3 py-2 text-sm text-slate-700 text-right">${fmt(item.laborCost)}</td>
-        <td className="px-3 py-2 text-sm text-slate-700 text-right">${fmt(item.materialCost)}</td>
         <td className="px-3 py-2 text-sm text-slate-700 text-right">{item.markupPct}%</td>
         <td className="px-3 py-2 text-sm font-semibold text-slate-900 text-right">${fmt(total)}</td>
         <td className="px-3 py-2 text-right">
@@ -107,31 +103,27 @@ function ItemRowEdit({
     );
   }
 
+  const previewTotal = Number(form.qty) * Number(form.unitCost) * (1 + Number(form.markupPct) / 100);
+
   return (
     <tr className="border-t border-blue-100 bg-blue-50">
       <td className="px-2 py-1">
         <input className="w-full border border-slate-300 rounded px-2 py-1 text-xs" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} />
       </td>
       <td className="px-2 py-1">
-        <input className="w-16 border border-slate-300 rounded px-2 py-1 text-xs text-center" value={form.unit} onChange={(e) => setForm({ ...form, unit: e.target.value })} placeholder="unit" />
+        <input type="number" step="any" className="w-16 border border-slate-300 rounded px-2 py-1 text-xs text-right" value={form.qty} onChange={(e) => setForm({ ...form, qty: Number(e.target.value) })} />
       </td>
       <td className="px-2 py-1">
-        <input type="number" step="any" className="w-16 border border-slate-300 rounded px-2 py-1 text-xs text-right" value={form.qty} onChange={(e) => setForm({ ...form, qty: Number(e.target.value) })} />
+        <input className="w-16 border border-slate-300 rounded px-2 py-1 text-xs text-center" value={form.unit} onChange={(e) => setForm({ ...form, unit: e.target.value })} placeholder="unit" />
       </td>
       <td className="px-2 py-1">
         <input type="number" step="any" className="w-20 border border-slate-300 rounded px-2 py-1 text-xs text-right" value={form.unitCost} onChange={(e) => setForm({ ...form, unitCost: Number(e.target.value) })} />
       </td>
       <td className="px-2 py-1">
-        <input type="number" step="any" className="w-20 border border-slate-300 rounded px-2 py-1 text-xs text-right" value={form.laborCost} onChange={(e) => setForm({ ...form, laborCost: Number(e.target.value) })} />
-      </td>
-      <td className="px-2 py-1">
-        <input type="number" step="any" className="w-20 border border-slate-300 rounded px-2 py-1 text-xs text-right" value={form.materialCost} onChange={(e) => setForm({ ...form, materialCost: Number(e.target.value) })} />
-      </td>
-      <td className="px-2 py-1">
         <input type="number" step="any" className="w-16 border border-slate-300 rounded px-2 py-1 text-xs text-right" value={form.markupPct} onChange={(e) => setForm({ ...form, markupPct: Number(e.target.value) })} />
       </td>
       <td className="px-2 py-1 text-xs font-semibold text-slate-700 text-right">
-        ${fmt(Number(form.qty) * Number(form.unitCost) + Number(form.laborCost) + Number(form.materialCost))}
+        ${fmt(previewTotal)}
       </td>
       <td className="px-2 py-1">
         <div className="flex gap-1 justify-end">
@@ -146,7 +138,7 @@ function ItemRowEdit({
 function AddItemRow({ divisionId, groupId, canEdit }: { divisionId: string; groupId?: string | null; canEdit: boolean }) {
   const [open, setOpen] = useState(false);
   const [isPending, startTransition] = useTransition();
-  const [form, setForm] = useState({ name: "", unit: "", qty: "1", unitCost: "0", laborCost: "0", materialCost: "0", markupPct: "0" });
+  const [form, setForm] = useState({ name: "", unit: "", qty: "1", unitCost: "0", markupPct: "0" });
 
   if (!canEdit) return null;
 
@@ -159,11 +151,11 @@ function AddItemRow({ divisionId, groupId, canEdit }: { divisionId: string; grou
         unit: form.unit || null,
         qty: Number(form.qty),
         unitCost: Number(form.unitCost),
-        laborCost: Number(form.laborCost),
-        materialCost: Number(form.materialCost),
+        laborCost: 0,
+        materialCost: 0,
         markupPct: Number(form.markupPct),
       });
-      setForm({ name: "", unit: "", qty: "1", unitCost: "0", laborCost: "0", materialCost: "0", markupPct: "0" });
+      setForm({ name: "", unit: "", qty: "1", unitCost: "0", markupPct: "0" });
       setOpen(false);
     });
   }
@@ -171,7 +163,7 @@ function AddItemRow({ divisionId, groupId, canEdit }: { divisionId: string; grou
   if (!open) {
     return (
       <tr>
-        <td colSpan={9} className="px-3 py-1">
+        <td colSpan={7} className="px-3 py-1">
           <button onClick={() => setOpen(true)} className="text-xs text-blue-600 hover:text-blue-800">+ Add Item</button>
         </td>
       </tr>
@@ -184,19 +176,13 @@ function AddItemRow({ divisionId, groupId, canEdit }: { divisionId: string; grou
         <input autoFocus className="w-full border border-slate-300 rounded px-2 py-1 text-xs" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} placeholder="Item name" />
       </td>
       <td className="px-2 py-1">
-        <input className="w-16 border border-slate-300 rounded px-2 py-1 text-xs text-center" value={form.unit} onChange={(e) => setForm({ ...form, unit: e.target.value })} placeholder="unit" />
-      </td>
-      <td className="px-2 py-1">
         <input type="number" step="any" className="w-16 border border-slate-300 rounded px-2 py-1 text-xs text-right" value={form.qty} onChange={(e) => setForm({ ...form, qty: e.target.value })} />
       </td>
       <td className="px-2 py-1">
+        <input className="w-16 border border-slate-300 rounded px-2 py-1 text-xs text-center" value={form.unit} onChange={(e) => setForm({ ...form, unit: e.target.value })} placeholder="unit" />
+      </td>
+      <td className="px-2 py-1">
         <input type="number" step="any" className="w-20 border border-slate-300 rounded px-2 py-1 text-xs text-right" value={form.unitCost} onChange={(e) => setForm({ ...form, unitCost: e.target.value })} />
-      </td>
-      <td className="px-2 py-1">
-        <input type="number" step="any" className="w-20 border border-slate-300 rounded px-2 py-1 text-xs text-right" value={form.laborCost} onChange={(e) => setForm({ ...form, laborCost: e.target.value })} />
-      </td>
-      <td className="px-2 py-1">
-        <input type="number" step="any" className="w-20 border border-slate-300 rounded px-2 py-1 text-xs text-right" value={form.materialCost} onChange={(e) => setForm({ ...form, materialCost: e.target.value })} />
       </td>
       <td className="px-2 py-1">
         <input type="number" step="any" className="w-16 border border-slate-300 rounded px-2 py-1 text-xs text-right" value={form.markupPct} onChange={(e) => setForm({ ...form, markupPct: e.target.value })} />
@@ -231,13 +217,11 @@ function ItemTable({
         <thead>
           <tr className="text-xs text-slate-500 bg-slate-50">
             <th className="px-3 py-1.5 text-left font-medium">Item</th>
-            <th className="px-3 py-1.5 text-center font-medium w-16">Unit</th>
             <th className="px-3 py-1.5 text-right font-medium w-16">Qty</th>
-            <th className="px-3 py-1.5 text-right font-medium w-24">Unit Cost</th>
-            <th className="px-3 py-1.5 text-right font-medium w-24">Labor</th>
-            <th className="px-3 py-1.5 text-right font-medium w-24">Material</th>
+            <th className="px-3 py-1.5 text-center font-medium w-16">Unit</th>
+            <th className="px-3 py-1.5 text-right font-medium w-24">Cost</th>
             <th className="px-3 py-1.5 text-right font-medium w-16">Markup</th>
-            <th className="px-3 py-1.5 text-right font-medium w-24">Total</th>
+            <th className="px-3 py-1.5 text-right font-medium w-28 text-slate-800">TOTAL</th>
             <th className="w-20" />
           </tr>
         </thead>
@@ -456,16 +440,20 @@ export default function ProjectEstimateEditor({
             </div>
           </div>
         ) : (
-          <div className="flex items-start justify-between">
+          <div className="flex items-start justify-between gap-6">
             <div>
               <h1 className="text-xl font-bold text-slate-900">{estimate.name}</h1>
               {estimate.description && <p className="text-sm text-slate-500 mt-1">{estimate.description}</p>}
               <span className="inline-block mt-2 text-xs px-2 py-0.5 rounded bg-slate-100 text-slate-600 font-medium">{estimate.status}</span>
             </div>
-            <div className="text-right">
-              <div className="text-2xl font-bold text-slate-900">${fmt(grandTotal)}</div>
-              <div className="text-xs text-slate-400 mt-0.5">Estimate Total</div>
-              <div className="flex gap-3 justify-end mt-2">
+            <div className="flex items-center gap-4 shrink-0">
+              {/* Prominent TOTAL card */}
+              <div className="bg-slate-900 text-white rounded-xl px-8 py-5 text-center min-w-[180px]">
+                <div className="text-xs font-semibold text-slate-400 uppercase tracking-widest mb-2">Total</div>
+                <div className="text-5xl font-bold leading-none">${fmt(grandTotal)}</div>
+              </div>
+              {/* Actions */}
+              <div className="flex flex-col gap-2 items-start">
                 <a
                   href={`/api/${companyId}/${projectId}/estimates/${estimate.id}/pdf`}
                   target="_blank"
@@ -516,8 +504,8 @@ export default function ProjectEstimateEditor({
 
       {/* Summary footer */}
       <div className="bg-slate-900 text-white rounded-xl p-5 flex justify-between items-center">
-        <span className="font-semibold">Estimate Total</span>
-        <span className="text-2xl font-bold">${fmt(grandTotal)}</span>
+        <span className="font-semibold text-lg">Estimate Total</span>
+        <span className="text-4xl font-bold">${fmt(grandTotal)}</span>
       </div>
     </div>
   );
