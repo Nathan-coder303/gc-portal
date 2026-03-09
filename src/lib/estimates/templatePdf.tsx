@@ -17,26 +17,34 @@ function isItemFilled(item: Item): boolean {
   return item.defaultQty !== null || item.defaultUnitCost !== null;
 }
 
+// Format ISO date (YYYY-MM-DD) to "March 9, 2026", or pass through free text
+function fmtDate(dateStr: string | null): string {
+  if (!dateStr) return "";
+  const iso = dateStr.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if (iso) {
+    const d = new Date(dateStr + "T00:00:00");
+    return d.toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" });
+  }
+  return dateStr;
+}
+
 const styles = StyleSheet.create({
   page: { fontFamily: "Helvetica", fontSize: 9, paddingTop: 36, paddingBottom: 48, paddingHorizontal: 40, color: DARK },
   header: { flexDirection: "row", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 20, paddingBottom: 12, borderBottomWidth: 2, borderBottomColor: GOLD },
 
   // Left column
   logo: { width: 90, height: 90, marginBottom: 4 },
-  companyAddress: { fontSize: 9, color: "#475569" },
-  companyPhone: { fontSize: 9, color: "#475569", marginTop: 2 },
-  companyLicense: { fontSize: 11, fontFamily: "Helvetica-Bold", color: DARK, marginTop: 5 },
+  companyInfo: { fontSize: 11, fontFamily: "Helvetica-Bold", color: DARK, marginTop: 2 },
 
   // Center column
   centerSection: { flex: 1, alignItems: "center", paddingHorizontal: 16, paddingTop: 4 },
-  scopeLabel: { fontSize: 15, fontFamily: "Helvetica-Bold", color: DARK, textAlign: "center", marginBottom: 5 },
-  estimateMetaText: { fontSize: 9, color: "#475569", textAlign: "center", marginTop: 2 },
+  centerBold: { fontSize: 15, fontFamily: "Helvetica-Bold", color: DARK, textAlign: "center", marginBottom: 4 },
 
   // Right column
   clientName: { fontSize: 13, fontFamily: "Helvetica-Bold", color: "#0f172a", marginBottom: 3, textAlign: "right" },
   clientAddress: { fontSize: 9, color: "#475569", textAlign: "right" },
 
-  // Division header row — text/total both white (not gold)
+  // Division header row — text/total both white
   divisionHeader: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", backgroundColor: DARK, paddingHorizontal: 8, paddingVertical: 5, marginTop: 12, borderRadius: 3 },
   divisionLeft: { flexDirection: "row", alignItems: "center", gap: 6 },
   divisionCsi: { fontSize: 8, color: "#ffffff" },
@@ -58,10 +66,8 @@ const styles = StyleSheet.create({
   cellMuted: { fontSize: 8, color: "#94a3b8" },
   cellBold: { fontSize: 8, color: "#0f172a", fontFamily: "Helvetica-Bold" },
 
-  // Grand total bar — label white, value GOLD
   grandTotalBar: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", backgroundColor: DARK, padding: 10, marginTop: 14, borderRadius: 3 },
   grandTotalLabel: { fontSize: 12, fontFamily: "Helvetica-Bold", color: "#ffffff" },
-  grandTotalValue: { fontSize: 16, fontFamily: "Helvetica-Bold", color: "#C9A84C" },
 
   pageNumber: { position: "absolute", bottom: 24, right: 40, fontSize: 8, color: "#94a3b8" },
 });
@@ -110,28 +116,26 @@ function TemplatePdfDocument({ companyName, template, client, divisions }: Templ
     return sum + divSum;
   }, 0);
 
+  const dateDisplay = fmtDate(template.estimateDate);
+
   return (
     <Document title={`${template.name} — Estimate`} author={companyName}>
       <Page size="LETTER" style={styles.page} orientation="landscape">
         {/* Header: 3 columns */}
         <View style={styles.header}>
-          {/* Left: Company */}
+          {/* Left: Logo + company info all bold same size */}
           <View>
             <Image style={styles.logo} src={path.join(process.cwd(), "public", "logo.png")} />
-            <Text style={styles.companyAddress}>2950 N 28 Terr, Hollywood, FL 33020</Text>
-            <Text style={styles.companyPhone}>Tel: 305-746-7307</Text>
-            <Text style={styles.companyLicense}>CGC1527069 | CCC1336817</Text>
+            <Text style={styles.companyInfo}>2950 N 28 Terr, Hollywood, FL 33020</Text>
+            <Text style={styles.companyInfo}>Tel: 305-746-7307</Text>
+            <Text style={styles.companyInfo}>CGC1527069 | CCC1336817</Text>
           </View>
 
-          {/* Center: Scope of Work, Date, Estimate # */}
+          {/* Center: Scope of Work, Date, Estimate # — all same bold size */}
           <View style={styles.centerSection}>
-            <Text style={styles.scopeLabel}>Scope of Work: {template.name}</Text>
-            {template.estimateDate ? (
-              <Text style={styles.estimateMetaText}>{template.estimateDate}</Text>
-            ) : null}
-            {template.estimateNumber ? (
-              <Text style={styles.estimateMetaText}>Estimate #{template.estimateNumber}</Text>
-            ) : null}
+            <Text style={styles.centerBold}>Scope of Work: {template.name}</Text>
+            {dateDisplay ? <Text style={styles.centerBold}>{dateDisplay}</Text> : null}
+            {template.estimateNumber ? <Text style={styles.centerBold}>Estimate #{template.estimateNumber}</Text> : null}
           </View>
 
           {/* Right: Client */}
@@ -190,10 +194,10 @@ function TemplatePdfDocument({ companyName, template, client, divisions }: Templ
           );
         })}
 
-        {/* Grand total — label white, value gold */}
+        {/* Grand total — inline color to guarantee gold, bypassing style inheritance */}
         <View style={styles.grandTotalBar}>
           <Text style={styles.grandTotalLabel}>ESTIMATE TOTAL</Text>
-          <Text style={styles.grandTotalValue}>${fmt(grandTotal)}</Text>
+          <Text style={{ fontSize: 16, fontFamily: "Helvetica-Bold", color: "#C9A84C" }}>${fmt(grandTotal)}</Text>
         </View>
 
         <Text style={styles.pageNumber} render={({ pageNumber, totalPages }) => `Page ${pageNumber} of ${totalPages}`} fixed />

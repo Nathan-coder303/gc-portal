@@ -439,7 +439,9 @@ export default function TemplateEditor({
   const [name, setName] = useState(template.name);
   const [description] = useState(template.description ?? "");
   const [estimateNumber, setEstimateNumber] = useState(template.estimateNumber ?? "");
-  const [estimateDate, setEstimateDate] = useState(template.estimateDate ?? "");
+  const [estimateDate, setEstimateDate] = useState(
+    template.estimateDate ?? new Date().toISOString().split("T")[0]
+  );
   const [addingDiv, setAddingDiv] = useState(false);
   const [divName, setDivName] = useState("");
   const [divCsi, setDivCsi] = useState("");
@@ -520,7 +522,7 @@ export default function TemplateEditor({
               </div>
               <div>
                 <label className="block text-xs font-medium text-slate-600 mb-1">Date</label>
-                <input value={estimateDate} onChange={(e) => setEstimateDate(e.target.value)} placeholder="e.g. March 9, 2026" className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm" />
+                <input type="date" value={estimateDate} onChange={(e) => setEstimateDate(e.target.value)} className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm" />
               </div>
             </div>
             <div className="flex gap-2">
@@ -547,11 +549,11 @@ export default function TemplateEditor({
                   <div className="flex items-center gap-2">
                     <span className="text-xs font-medium text-slate-500 shrink-0">Date</span>
                     <input
+                      type="date"
                       value={estimateDate}
                       onChange={(e) => setEstimateDate(e.target.value)}
                       onBlur={saveEstimateMeta}
-                      placeholder="e.g. March 9, 2026"
-                      className="text-sm border-b border-dashed border-slate-300 bg-transparent w-40 px-1 focus:outline-none focus:border-blue-400 focus:border-solid"
+                      className="text-sm border-b border-dashed border-slate-300 bg-transparent px-1 focus:outline-none focus:border-blue-400 focus:border-solid"
                     />
                   </div>
                 </div>
