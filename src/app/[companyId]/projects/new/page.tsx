@@ -14,8 +14,7 @@ export default async function NewProjectPage({
   if (!can(session.user.role, "project:edit")) redirect(`/${params.companyId}/projects`);
 
   return (
-    <div className="min-h-screen" style={{ background: "#0d1117" }}>
-      <main className="max-w-lg mx-auto px-6 py-10">
+    <div className="max-w-lg mx-auto px-6 py-10">
         {/* Back link */}
         <Link
           href={`/${params.companyId}/projects`}
@@ -33,7 +32,6 @@ export default async function NewProjectPage({
         </p>
 
         <NewProjectForm companyId={params.companyId} />
-      </main>
     </div>
   );
 }

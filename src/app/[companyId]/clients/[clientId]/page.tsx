@@ -1,8 +1,7 @@
 import { prisma } from "@/lib/prisma";
-import { auth, signOut } from "@/lib/auth";
+import { auth } from "@/lib/auth";
 import { redirect } from "next/navigation";
 import Link from "next/link";
-import Image from "next/image";
 import { format } from "date-fns";
 
 export default async function ClientDetailPage({ params }: { params: { companyId: string; clientId: string } }) {
@@ -51,33 +50,7 @@ export default async function ClientDetailPage({ params }: { params: { companyId
   }
 
   return (
-    <div className="min-h-screen" style={{ background: "#0d1117" }}>
-      <header style={{ background: "#161b22", borderBottom: "1px solid #30373f" }}>
-        <div className="max-w-5xl mx-auto px-4 flex items-center justify-between h-14">
-          <div className="flex items-center gap-3">
-            <Link href={`/${params.companyId}`}>
-              <Image src="/logo.png" alt="MIBH" width={28} height={28} className="rounded object-contain" />
-            </Link>
-            <span style={{ color: "#30373f" }}>|</span>
-            <Link href={`/${params.companyId}/clients`} className="text-sm font-medium transition-colors" style={{ color: "#8b949e" }}>
-              Clients
-            </Link>
-            <span style={{ color: "#30373f" }}>/</span>
-            <span className="text-sm font-semibold" style={{ color: "#e6edf3" }}>{safeClient.name}</span>
-          </div>
-          <div className="flex items-center gap-4">
-            <Link href={`/${params.companyId}/clients`} className="text-sm transition-colors" style={{ color: "#8b949e" }}>
-              ← Clients
-            </Link>
-            <span className="text-sm" style={{ color: "#8b949e" }}>{session.user.name}</span>
-            <form action={async () => { "use server"; await signOut({ redirectTo: "/login" }); }}>
-              <button className="text-sm transition-colors" style={{ color: "#8b949e" }}>Sign out →</button>
-            </form>
-          </div>
-        </div>
-      </header>
-
-      <main className="max-w-5xl mx-auto px-4 py-8">
+    <div className="max-w-5xl mx-auto px-8 py-8">
         {/* Client info */}
         <div className="rounded-xl p-5 mb-6" style={{ background: "#1e2736", border: "1px solid #30373f" }}>
           <h1 className="text-xl font-bold" style={{ color: "#e6edf3" }}>{safeClient.name}</h1>
@@ -133,7 +106,6 @@ export default async function ClientDetailPage({ params }: { params: { companyId
             </div>
           )}
         </div>
-      </main>
     </div>
   );
 }
