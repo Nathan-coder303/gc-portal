@@ -11,7 +11,7 @@ export default async function EstimatesPage({ params }: { params: { companyId: s
   if (!can(session.user.role, "estimate:read")) redirect(`/${params.companyId}/projects`);
 
   const templates = await prisma.estimateTemplate.findMany({
-    where: { companyId: params.companyId, archivedAt: null },
+    where: { companyId: params.companyId, archivedAt: null, type: "TEMPLATE" },
     orderBy: { sortOrder: "asc" },
     include: {
       divisions: {

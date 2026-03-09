@@ -12,7 +12,7 @@ export default async function HubPage({ params }: { params: { companyId: string 
 
   const isAdmin = can(session.user.role, "project:edit");
 
-  const [projects, company, templateCount] = await Promise.all([
+  const [projects, company, templateCount, clientCount] = await Promise.all([
     prisma.project.findMany({
       where: { companyId: params.companyId },
       orderBy: { createdAt: "desc" },
@@ -22,6 +22,7 @@ export default async function HubPage({ params }: { params: { companyId: string 
     }),
     prisma.company.findUnique({ where: { id: params.companyId } }),
     prisma.estimateTemplate.count({ where: { companyId: params.companyId, archivedAt: null } }),
+    prisma.client.count({ where: { companyId: params.companyId } }),
   ]);
 
   const statusColors: Record<string, string> = {
@@ -53,7 +54,7 @@ export default async function HubPage({ params }: { params: { companyId: string 
 
       <main className="max-w-5xl mx-auto px-4 py-8 space-y-8">
         {/* Action cards */}
-        <div className="grid grid-cols-3 gap-4">
+        <div className="grid grid-cols-4 gap-4">
           {/* Existing Projects */}
           <Link
             href={`/${params.companyId}/projects`}
@@ -91,6 +92,16 @@ export default async function HubPage({ params }: { params: { companyId: string 
             <div className="font-bold text-slate-900 text-lg group-hover:text-blue-600">Estimates & Templates</div>
             <div className="text-sm text-slate-500 mt-1">{templateCount} template{templateCount !== 1 ? "s" : ""}</div>
           </Link>
+
+          {/* Clients */}
+          <Link
+            href={`/${params.companyId}/clients`}
+            className="bg-white border border-slate-200 rounded-xl p-6 hover:border-blue-300 hover:shadow-sm transition-all group"
+          >
+            <div className="text-3xl mb-3">👥</div>
+            <div className="font-bold text-slate-900 text-lg group-hover:text-blue-600">Clients</div>
+            <div className="text-sm text-slate-500 mt-1">{clientCount} client{clientCount !== 1 ? "s" : ""}</div>
+          </Link>
         </div>
 
         {/* Projects list */}
@@ -110,7 +121,7 @@ export default async function HubPage({ params }: { params: { companyId: string 
               {projects.map((p) => (
                 <div key={p.id} className="bg-white rounded-xl border border-slate-200 p-4 flex items-center gap-4 hover:border-blue-200 transition-colors">
                   <div className="bg-slate-100 text-slate-600 font-mono text-sm font-bold px-3 py-2 rounded-lg min-w-fit">
-                    {p.code}
+                    {p.name.slice(0, 2).toUpperCase()}
                   </div>
                   <div className="flex-1 min-w-0">
                     <div className="font-semibold text-slate-900">{p.name}</div>

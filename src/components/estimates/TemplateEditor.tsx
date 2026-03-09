@@ -13,6 +13,7 @@ import {
   saveAsNewTemplate,
   setTemplateClient,
   upsertClient,
+  saveAsClientEstimate,
 } from "@/app/[companyId]/estimates/actions";
 
 type Item = {
@@ -443,6 +444,9 @@ export default function TemplateEditor({
   const [saveAsNew, setSaveAsNew] = useState(false);
   const [newName, setNewName] = useState(`${template.name} (copy)`);
   const [saveError, setSaveError] = useState("");
+  const [savingToClient, setSavingToClient] = useState(false);
+  const [saveEstimateName, setSaveEstimateName] = useState("");
+  const [saveClientError, setSaveClientError] = useState("");
 
   const total = grandTotal(divisions);
 
@@ -458,6 +462,21 @@ export default function TemplateEditor({
     startTransition(async () => {
       await upsertTemplateDivision(template.id, { csiCode: divCsi || undefined, name: divName });
       setDivName(""); setDivCsi(""); setAddingDiv(false);
+    });
+  }
+
+  function handleSaveToClient() {
+    if (!saveEstimateName.trim() || !currentClient) return;
+    setSaveClientError("");
+    startTransition(async () => {
+      try {
+        const result = await saveAsClientEstimate(template.id, currentClient.id, saveEstimateName);
+        if (result.success) {
+          router.push(`/${template.companyId}/clients/${result.clientId}`);
+        }
+      } catch (e) {
+        setSaveClientError(e instanceof Error ? e.message : "Failed");
+      }
     });
   }
 
@@ -523,6 +542,14 @@ export default function TemplateEditor({
                       <button onClick={() => setSaveAsNew(!saveAsNew)} className="text-xs border border-slate-300 text-slate-600 px-3 py-1.5 rounded-lg hover:bg-slate-50 font-medium">
                         Save as New Template
                       </button>
+                      {canEdit && currentClient && (
+                        <button
+                          onClick={() => { setSavingToClient(!savingToClient); setSaveEstimateName(template.name); }}
+                          className="text-xs bg-green-600 text-white px-3 py-1.5 rounded-lg hover:bg-green-700 font-medium"
+                        >
+                          Save to Client
+                        </button>
+                      )}
                       <button onClick={() => setEditingHeader(true)} className="text-xs text-blue-600 hover:text-blue-800">Edit</button>
                     </>
                   )}
@@ -555,6 +582,26 @@ export default function TemplateEditor({
               <button onClick={() => setSaveAsNew(false)} className="text-sm text-slate-500 px-2">Cancel</button>
             </div>
             {saveError && <p className="text-xs text-red-600">{saveError}</p>}
+          </div>
+        )}
+
+        {savingToClient && currentClient && (
+          <div className="mt-4 pt-4 border-t border-slate-100 space-y-2">
+            <label className="block text-xs font-medium text-slate-700">Estimate Name</label>
+            <div className="flex gap-2 items-center">
+              <input
+                autoFocus
+                value={saveEstimateName}
+                onChange={(e) => setSaveEstimateName(e.target.value)}
+                className="flex-1 border border-slate-300 rounded-lg px-3 py-2 text-sm"
+                placeholder="e.g. Kitchen Remodel 2026"
+              />
+              <button onClick={handleSaveToClient} disabled={isPending || !saveEstimateName.trim()} className="bg-green-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-green-700 disabled:opacity-50">
+                {isPending ? "Saving..." : `Save for ${currentClient.name}`}
+              </button>
+              <button onClick={() => setSavingToClient(false)} className="text-sm text-slate-500 px-2">Cancel</button>
+            </div>
+            {saveClientError && <p className="text-xs text-red-600">{saveClientError}</p>}
           </div>
         )}
       </div>
