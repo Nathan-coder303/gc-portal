@@ -20,11 +20,11 @@ export default async function CompanyLayout({
   const company = await prisma.company.findUnique({ where: { id: params.companyId } });
 
   return (
-    <div className="flex h-screen overflow-hidden" style={{ background: "#0d1117" }}>
+    <div className="flex min-h-screen" style={{ background: "#0d1117" }}>
       {/* ── Sidebar ── */}
       <aside
-        className="w-56 flex-shrink-0 flex flex-col"
-        style={{ background: "#161b22", borderRight: "1px solid #30373f", minHeight: "100vh" }}
+        className="w-56 flex-shrink-0 flex flex-col sticky top-0 h-screen overflow-y-auto"
+        style={{ background: "#161b22", borderRight: "1px solid #30373f" }}
       >
         {/* Logo */}
         <div className="flex flex-col items-center pt-6 pb-4 px-4">
@@ -81,7 +81,7 @@ export default async function CompanyLayout({
       </aside>
 
       {/* ── Main content ── */}
-      <main className="flex-1 overflow-y-auto">
+      <main className="flex-1 min-w-0">
         {children}
       </main>
     </div>
