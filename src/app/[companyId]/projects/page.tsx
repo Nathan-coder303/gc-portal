@@ -17,13 +17,10 @@ export default async function ProjectsPage({
 
   const isAdmin = can(session.user.role, "project:edit");
 
-  const [projects, company] = await Promise.all([
-    prisma.project.findMany({
-      where: { companyId: params.companyId },
-      orderBy: { createdAt: "desc" },
-    }),
-    prisma.company.findUnique({ where: { id: params.companyId } }),
-  ]);
+  const projects = await prisma.project.findMany({
+    where: { companyId: params.companyId },
+    orderBy: { createdAt: "desc" },
+  });
 
   const statusStyle: Record<string, { background: string; color: string; border: string }> = {
     ACTIVE:   { background: "#0d2a1a", color: "#4ade80", border: "1px solid #166534" },

@@ -9,16 +9,13 @@ export default async function ClientsPage({ params }: { params: { companyId: str
   if (!session) redirect("/login");
   if (session.user.companyId !== params.companyId) redirect(`/${session.user.companyId}`);
 
-  const [clients, company] = await Promise.all([
-    prisma.client.findMany({
-      where: { companyId: params.companyId },
-      orderBy: { name: "asc" },
-      include: {
-        _count: { select: { templates: { where: { type: "CLIENT_ESTIMATE", archivedAt: null } } } },
-      },
-    }),
-    prisma.company.findUnique({ where: { id: params.companyId } }),
-  ]);
+  const clients = await prisma.client.findMany({
+    where: { companyId: params.companyId },
+    orderBy: { name: "asc" },
+    include: {
+      _count: { select: { templates: { where: { type: "CLIENT_ESTIMATE", archivedAt: null } } } },
+    },
+  });
 
   const isAdmin = can(session.user.role, "estimateTemplate:edit");
 
