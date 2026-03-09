@@ -91,6 +91,9 @@ model Project {
   name           String
   code           String?
   address        String?
+  city           String?
+  state          String?
+  zip            String?
   startDate      DateTime
   budget         Decimal          @db.Decimal(14, 2)
   status         String           @default("ACTIVE")

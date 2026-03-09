@@ -49,14 +49,29 @@ export default function NewProjectForm({ companyId }: { companyId: string }) {
 
       {/* Address */}
       <div>
-        <label className={labelClass}>Project Address</label>
+        <label className={labelClass}>Street Address</label>
         <input
           type="text"
           name="address"
-          placeholder="e.g., 123 Main St, Hollywood, FL 33020"
+          placeholder="e.g., 123 Main St"
           className={inputClass}
         />
-        <p className={helperClass}>Optional: physical location of the project</p>
+      </div>
+
+      {/* City / State / Zip */}
+      <div className="grid grid-cols-3 gap-3">
+        <div className="col-span-1">
+          <label className={labelClass}>City</label>
+          <input type="text" name="city" placeholder="Hollywood" className={inputClass} />
+        </div>
+        <div>
+          <label className={labelClass}>State</label>
+          <input type="text" name="state" placeholder="FL" className={inputClass} />
+        </div>
+        <div>
+          <label className={labelClass}>Zip</label>
+          <input type="text" name="zip" placeholder="33020" className={inputClass} />
+        </div>
       </div>
 
       {/* Start Date + Budget side by side */}

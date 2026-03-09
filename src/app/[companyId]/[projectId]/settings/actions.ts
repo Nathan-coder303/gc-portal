@@ -21,6 +21,9 @@ export async function updateProject(formData: FormData) {
 
   const name = (formData.get("name") as string).trim();
   const address = ((formData.get("address") as string) ?? "").trim() || null;
+  const city = ((formData.get("city") as string) ?? "").trim() || null;
+  const state = ((formData.get("state") as string) ?? "").trim() || null;
+  const zip = ((formData.get("zip") as string) ?? "").trim() || null;
   const startDateStr = formData.get("startDate") as string;
   const budget = parseFloat(formData.get("budget") as string);
   const status = formData.get("status") as string;
@@ -32,7 +35,7 @@ export async function updateProject(formData: FormData) {
 
   await prisma.project.update({
     where: { id: projectId },
-    data: { name, address, startDate, budget, status, updatedBy: session.user.id },
+    data: { name, address, city, state, zip, startDate, budget, status, updatedBy: session.user.id },
   });
 
   const changes: { field: string; oldValue: string | null; newValue: string | null }[] = [];

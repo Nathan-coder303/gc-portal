@@ -10,6 +10,9 @@ import { AccountType } from "@prisma/client";
 const ProjectSchema = z.object({
   name: z.string().min(1, "Name is required"),
   address: z.string().optional(),
+  city: z.string().optional(),
+  state: z.string().optional(),
+  zip: z.string().optional(),
   startDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Must be YYYY-MM-DD"),
   budget: z.coerce.number().positive("Budget must be positive"),
   status: z.string().default("ACTIVE"),
@@ -30,6 +33,9 @@ export async function createProject(formData: FormData) {
   const data = ProjectSchema.parse({
     name:      formData.get("name"),
     address:   formData.get("address") || undefined,
+    city:      formData.get("city") || undefined,
+    state:     formData.get("state") || undefined,
+    zip:       formData.get("zip") || undefined,
     startDate: formData.get("startDate"),
     budget:    formData.get("budget"),
     status:    formData.get("status") || "ACTIVE",
@@ -39,7 +45,10 @@ export async function createProject(formData: FormData) {
     data: {
       companyId: session.user.companyId,
       name:      data.name,
-      address:   data.address,
+      address:   data.address ?? null,
+      city:      data.city ?? null,
+      state:     data.state ?? null,
+      zip:       data.zip ?? null,
       startDate: new Date(data.startDate + "T00:00:00"),
       budget:    data.budget,
       status:    data.status,

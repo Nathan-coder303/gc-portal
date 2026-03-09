@@ -7,6 +7,9 @@ type Project = {
   id: string;
   name: string;
   address: string | null;
+  city: string | null;
+  state: string | null;
+  zip: string | null;
   startDate: string; // "YYYY-MM-DD"
   budget: number;
   status: string;
@@ -60,9 +63,23 @@ export default function ProjectEditor({ project }: { project: Project }) {
             <label className="block text-xs font-medium text-slate-600 mb-1">Project Name</label>
             <input type="text" name="name" required defaultValue={project.name} className={field} />
           </div>
-          <div>
-            <label className="block text-xs font-medium text-slate-600 mb-1">Address</label>
+          <div className="col-span-2">
+            <label className="block text-xs font-medium text-slate-600 mb-1">Street Address</label>
             <input type="text" name="address" defaultValue={project.address ?? ""} className={field} />
+          </div>
+          <div>
+            <label className="block text-xs font-medium text-slate-600 mb-1">City</label>
+            <input type="text" name="city" defaultValue={project.city ?? ""} className={field} />
+          </div>
+          <div className="grid grid-cols-2 gap-2">
+            <div>
+              <label className="block text-xs font-medium text-slate-600 mb-1">State</label>
+              <input type="text" name="state" defaultValue={project.state ?? ""} className={field} />
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-slate-600 mb-1">Zip</label>
+              <input type="text" name="zip" defaultValue={project.zip ?? ""} className={field} />
+            </div>
           </div>
           <div>
             <label className="block text-xs font-medium text-slate-600 mb-1">Start Date</label>
@@ -99,9 +116,14 @@ export default function ProjectEditor({ project }: { project: Project }) {
             <dt className="text-slate-500">Project Name</dt>
             <dd className="font-medium text-slate-800">{project.name}</dd>
           </div>
-          <div>
+          <div className="col-span-2">
             <dt className="text-slate-500">Address</dt>
-            <dd className="font-medium text-slate-800">{project.address ?? "—"}</dd>
+            <dd className="font-medium text-slate-800">
+              {project.address ?? "—"}
+              {(project.city || project.state || project.zip) && (
+                <span className="block">{[project.city, project.state, project.zip].filter(Boolean).join(", ")}</span>
+              )}
+            </dd>
           </div>
           <div>
             <dt className="text-slate-500">Start Date</dt>

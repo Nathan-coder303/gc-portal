@@ -160,6 +160,9 @@ export default async function SettingsPage({
                 id: project.id,
                 name: project.name,
                 address: project.address,
+                city: project.city,
+                state: project.state,
+                zip: project.zip,
                 startDate: project.startDate.toISOString().split("T")[0],
                 budget: Number(project.budget),
                 status: project.status,
@@ -173,9 +176,14 @@ export default async function SettingsPage({
                   <dt className="text-slate-500">Project Name</dt>
                   <dd className="font-medium text-slate-800">{project?.name}</dd>
                 </div>
-                <div>
+                <div className="col-span-2">
                   <dt className="text-slate-500">Address</dt>
-                  <dd className="font-medium text-slate-800">{project?.address ?? "—"}</dd>
+                  <dd className="font-medium text-slate-800">
+                    {project?.address ?? "—"}
+                    {(project?.city || project?.state || project?.zip) && (
+                      <span className="block">{[project?.city, project?.state, project?.zip].filter(Boolean).join(", ")}</span>
+                    )}
+                  </dd>
                 </div>
                 <div>
                   <dt className="text-slate-500">Start Date</dt>
