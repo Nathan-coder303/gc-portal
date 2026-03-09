@@ -11,6 +11,8 @@ import {
   archiveTemplateGroup,
   updateTemplate,
   saveAsNewTemplate,
+  setTemplateClient,
+  upsertClient,
 } from "@/app/[companyId]/estimates/actions";
 
 type Item = {
@@ -84,30 +86,11 @@ function ItemRow({ item, divisionId, groupId, canEdit }: { item: Item; divisionI
     });
   }
 
-  function toggleVisible() {
-    startTransition(async () => {
-      await upsertTemplateItem(divisionId, {
-        id: item.id,
-        groupId: groupId ?? null,
-        name: item.name,
-        unit: item.unit,
-        defaultQty: item.defaultQty,
-        defaultUnitCost: item.defaultUnitCost,
-        defaultLaborCost: item.defaultLaborCost,
-        defaultMaterialCost: item.defaultMaterialCost,
-        defaultMarkupPct: item.defaultMarkupPct,
-        notes: item.notes,
-        visibleInPdf: !item.visibleInPdf,
-      });
-    });
-  }
-
   const total = itemTotal(item);
-  const rowClass = item.visibleInPdf ? "" : "opacity-50";
 
   if (!editing) {
     return (
-      <tr className={`border-t border-slate-100 hover:bg-slate-50 group text-sm ${rowClass}`}>
+      <tr className="border-t border-slate-100 hover:bg-slate-50 group text-sm">
         <td className="px-3 py-2 text-slate-800">{item.name}</td>
         <td className="px-3 py-2 text-slate-500 text-right">{item.defaultQty ?? "—"}</td>
         <td className="px-3 py-2 text-slate-500 text-center">{item.unit ?? "—"}</td>
@@ -115,22 +98,6 @@ function ItemRow({ item, divisionId, groupId, canEdit }: { item: Item; divisionI
         <td className="px-3 py-2 text-slate-500 text-right">{item.defaultMarkupPct != null ? `${item.defaultMarkupPct}%` : "—"}</td>
         <td className="px-3 py-2 text-slate-900 font-semibold text-right">{total > 0 ? `$${fmt(total)}` : "—"}</td>
         <td className="px-3 py-2 text-slate-400 text-sm italic truncate max-w-[120px]">{item.notes ?? ""}</td>
-        <td className="px-3 py-2 text-center">
-          {canEdit ? (
-            <button
-              onClick={toggleVisible}
-              disabled={isPending}
-              title={item.visibleInPdf ? "Visible in PDF — click to hide" : "Hidden in PDF — click to show"}
-              className={`text-base leading-none transition-opacity ${item.visibleInPdf ? "opacity-100" : "opacity-30"}`}
-            >
-              {item.visibleInPdf ? "👁" : "🚫"}
-            </button>
-          ) : (
-            <span className={`text-xs ${item.visibleInPdf ? "text-green-600" : "text-slate-400"}`}>
-              {item.visibleInPdf ? "✓" : "✗"}
-            </span>
-          )}
-        </td>
         <td className="px-3 py-2 text-right">
           <div className="flex gap-1 justify-end opacity-0 group-hover:opacity-100 transition-opacity">
             {canEdit && (
@@ -156,11 +123,6 @@ function ItemRow({ item, divisionId, groupId, canEdit }: { item: Item; divisionI
       <td className="px-2 py-1"><input type="number" step="any" className="w-14 border border-slate-300 rounded px-2 py-1 text-xs text-right" value={form.defaultMarkupPct} onChange={(e) => setForm({ ...form, defaultMarkupPct: e.target.value })} /></td>
       <td className="px-2 py-1 text-xs font-semibold text-slate-700 text-right">{previewTotal > 0 ? `$${fmt(previewTotal)}` : "—"}</td>
       <td className="px-2 py-1"><input className="w-full border border-slate-300 rounded px-2 py-1 text-xs" value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} placeholder="notes" /></td>
-      <td className="px-2 py-1 text-center">
-        <button onClick={() => setForm({ ...form, visibleInPdf: !form.visibleInPdf })} className={`text-base ${form.visibleInPdf ? "opacity-100" : "opacity-40"}`}>
-          {form.visibleInPdf ? "👁" : "🚫"}
-        </button>
-      </td>
       <td className="px-2 py-1">
         <div className="flex gap-1 justify-end">
           <button onClick={save} disabled={isPending} className="text-xs bg-blue-600 text-white px-2 py-1 rounded">Save</button>
@@ -199,7 +161,7 @@ function AddTemplateItemRow({ divisionId, groupId, canEdit }: { divisionId: stri
   if (!open) {
     return (
       <tr>
-        <td colSpan={9} className="px-3 py-1">
+        <td colSpan={8} className="px-3 py-1">
           <button onClick={() => setOpen(true)} className="text-xs text-blue-600 hover:text-blue-800">+ Add Item</button>
         </td>
       </tr>
@@ -215,11 +177,6 @@ function AddTemplateItemRow({ divisionId, groupId, canEdit }: { divisionId: stri
       <td className="px-2 py-1"><input type="number" step="any" className="w-14 border border-slate-300 rounded px-2 py-1 text-xs text-right" value={form.defaultMarkupPct} onChange={(e) => setForm({ ...form, defaultMarkupPct: e.target.value })} /></td>
       <td />
       <td className="px-2 py-1"><input className="w-full border border-slate-300 rounded px-2 py-1 text-xs" value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} placeholder="notes" /></td>
-      <td className="px-2 py-1 text-center">
-        <button onClick={() => setForm({ ...form, visibleInPdf: !form.visibleInPdf })} className={`text-base ${form.visibleInPdf ? "opacity-100" : "opacity-40"}`}>
-          {form.visibleInPdf ? "👁" : "🚫"}
-        </button>
-      </td>
       <td className="px-2 py-1">
         <div className="flex gap-1 justify-end">
           <button onClick={save} disabled={isPending} className="text-xs bg-green-600 text-white px-2 py-1 rounded">Add</button>
@@ -243,7 +200,6 @@ function TemplateItemTable({ divisionId, groupId, items, canEdit }: { divisionId
             <th className="px-3 py-1.5 text-right font-medium w-16">Markup</th>
             <th className="px-3 py-1.5 text-right font-medium w-28 text-slate-800">TOTAL</th>
             <th className="px-3 py-1.5 text-left font-medium">Notes</th>
-            <th className="px-3 py-1.5 text-center font-medium w-14" title="Visible in PDF">PDF</th>
             <th className="w-20" />
           </tr>
         </thead>
@@ -339,14 +295,142 @@ function TemplateDivisionSection({ division, canEdit }: { division: Division; ca
   );
 }
 
+type ClientData = { id: string; name: string; address: string | null; email: string | null; phone: string | null };
+
+function ClientSelector({
+  templateId,
+  currentClient,
+  allClients,
+  canEdit,
+}: {
+  templateId: string;
+  currentClient: ClientData | null;
+  allClients: ClientData[];
+  canEdit: boolean;
+}) {
+  const [mode, setMode] = useState<"view" | "select" | "new">("view");
+  const [isPending, startTransition] = useTransition();
+  const [selectedId, setSelectedId] = useState(currentClient?.id ?? "");
+  const [newName, setNewName] = useState("");
+  const [newAddress, setNewAddress] = useState("");
+  const [newEmail, setNewEmail] = useState("");
+  const [displayClient, setDisplayClient] = useState<ClientData | null>(currentClient);
+
+  function handleAssignExisting() {
+    if (!selectedId) return;
+    startTransition(async () => {
+      await setTemplateClient(templateId, selectedId);
+      const found = allClients.find(c => c.id === selectedId) ?? null;
+      setDisplayClient(found);
+      setMode("view");
+    });
+  }
+
+  function handleCreateNew() {
+    if (!newName.trim()) return;
+    startTransition(async () => {
+      const client = await upsertClient({ name: newName, address: newAddress, email: newEmail });
+      await setTemplateClient(templateId, client.id);
+      setDisplayClient({ id: client.id, name: client.name, address: client.address, email: client.email, phone: client.phone });
+      setNewName(""); setNewAddress(""); setNewEmail("");
+      setMode("view");
+    });
+  }
+
+  function handleClear() {
+    startTransition(async () => {
+      await setTemplateClient(templateId, null);
+      setDisplayClient(null);
+      setMode("view");
+    });
+  }
+
+  return (
+    <div className="mt-4 pt-4 border-t border-slate-100">
+      <div className="flex items-start justify-between">
+        <div>
+          <p className="text-xs font-medium text-slate-600 mb-1">Client</p>
+          {displayClient ? (
+            <div>
+              <p className="text-sm font-semibold text-slate-900">{displayClient.name}</p>
+              {displayClient.address && <p className="text-xs text-slate-500">{displayClient.address}</p>}
+              {displayClient.email && <p className="text-xs text-slate-400">{displayClient.email}</p>}
+            </div>
+          ) : (
+            <p className="text-sm text-slate-400">No client assigned</p>
+          )}
+        </div>
+        {canEdit && mode === "view" && (
+          <div className="flex gap-2">
+            <button onClick={() => setMode("select")} className="text-xs text-blue-600 hover:text-blue-800 px-2 py-1 border border-slate-200 rounded">
+              {displayClient ? "Change" : "Assign Client"}
+            </button>
+            {displayClient && (
+              <button onClick={handleClear} disabled={isPending} className="text-xs text-red-400 hover:text-red-600 px-2 py-1">
+                Remove
+              </button>
+            )}
+          </div>
+        )}
+      </div>
+
+      {canEdit && mode === "select" && (
+        <div className="mt-3 flex gap-2 items-end flex-wrap">
+          <div className="flex-1">
+            <label className="block text-xs font-medium text-slate-600 mb-1">Select existing client</label>
+            <select
+              value={selectedId}
+              onChange={(e) => setSelectedId(e.target.value)}
+              className="w-full border border-slate-300 rounded px-2 py-1.5 text-sm"
+            >
+              <option value="">— choose —</option>
+              {allClients.map(c => (
+                <option key={c.id} value={c.id}>{c.name}{c.address ? ` — ${c.address}` : ""}</option>
+              ))}
+            </select>
+          </div>
+          <button onClick={handleAssignExisting} disabled={isPending || !selectedId} className="text-xs bg-blue-600 text-white px-3 py-1.5 rounded">Assign</button>
+          <button onClick={() => setMode("new")} className="text-xs border border-slate-300 text-slate-600 px-3 py-1.5 rounded">+ New Client</button>
+          <button onClick={() => setMode("view")} className="text-xs text-slate-400 px-2">Cancel</button>
+        </div>
+      )}
+
+      {canEdit && mode === "new" && (
+        <div className="mt-3 grid grid-cols-2 gap-2">
+          <div className="col-span-2">
+            <label className="block text-xs font-medium text-slate-600 mb-1">Name *</label>
+            <input autoFocus value={newName} onChange={e => setNewName(e.target.value)} placeholder="Client name" className="w-full border border-slate-300 rounded px-2 py-1.5 text-sm" />
+          </div>
+          <div className="col-span-2">
+            <label className="block text-xs font-medium text-slate-600 mb-1">Address</label>
+            <input value={newAddress} onChange={e => setNewAddress(e.target.value)} placeholder="123 Main St, City, State" className="w-full border border-slate-300 rounded px-2 py-1.5 text-sm" />
+          </div>
+          <div>
+            <label className="block text-xs font-medium text-slate-600 mb-1">Email</label>
+            <input type="email" value={newEmail} onChange={e => setNewEmail(e.target.value)} placeholder="client@email.com" className="w-full border border-slate-300 rounded px-2 py-1.5 text-sm" />
+          </div>
+          <div className="flex items-end gap-2">
+            <button onClick={handleCreateNew} disabled={isPending || !newName.trim()} className="text-xs bg-green-600 text-white px-3 py-1.5 rounded">Create & Assign</button>
+            <button onClick={() => setMode("select")} className="text-xs text-slate-400 px-2">Back</button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 export default function TemplateEditor({
   template,
   divisions,
   canEdit,
+  currentClient,
+  allClients,
 }: {
   template: Template;
   divisions: Division[];
   canEdit: boolean;
+  currentClient: { id: string; name: string; address: string | null; email: string | null; phone: string | null } | null;
+  allClients: { id: string; name: string; address: string | null; email: string | null; phone: string | null }[];
 }) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
@@ -412,37 +496,45 @@ export default function TemplateEditor({
             </div>
           </div>
         ) : (
-          <div className="flex items-start justify-between gap-6">
-            <div>
-              <h1 className="text-xl font-bold text-slate-900">{template.name}</h1>
-              {template.description && <p className="text-sm text-slate-500 mt-1">{template.description}</p>}
-            </div>
-            <div className="flex items-center gap-4 shrink-0">
-              {/* Prominent TOTAL card */}
-              <div className="bg-slate-900 text-white rounded-xl px-8 py-5 text-center min-w-[180px]">
-                <div className="text-xs font-semibold text-slate-400 uppercase tracking-widest mb-2">Total</div>
-                <div className="text-5xl font-bold leading-none">${fmt(total)}</div>
+          <div>
+            <div className="flex items-start justify-between gap-6">
+              <div>
+                <h1 className="text-xl font-bold text-slate-900">{template.name}</h1>
+                {template.description && <p className="text-sm text-slate-500 mt-1">{template.description}</p>}
               </div>
-              {/* Actions */}
-              <div className="flex flex-col gap-2 items-start">
-                <a
-                  href={`/api/${template.companyId}/estimates/${template.id}/pdf`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="text-xs bg-slate-800 text-white px-3 py-1.5 rounded-lg hover:bg-slate-900 font-medium"
-                >
-                  Export PDF
-                </a>
-                {canEdit && (
-                  <>
-                    <button onClick={() => setSaveAsNew(!saveAsNew)} className="text-xs border border-slate-300 text-slate-600 px-3 py-1.5 rounded-lg hover:bg-slate-50 font-medium">
-                      Save as New Template
-                    </button>
-                    <button onClick={() => setEditingHeader(true)} className="text-xs text-blue-600 hover:text-blue-800">Edit</button>
-                  </>
-                )}
+              <div className="flex items-center gap-4 shrink-0">
+                {/* Prominent TOTAL card */}
+                <div className="bg-slate-900 text-white rounded-xl px-8 py-5 text-center min-w-[180px]">
+                  <div className="text-xs font-semibold text-slate-400 uppercase tracking-widest mb-2">Total</div>
+                  <div className="text-5xl font-bold leading-none">${fmt(total)}</div>
+                </div>
+                {/* Actions */}
+                <div className="flex flex-col gap-2 items-start">
+                  <a
+                    href={`/api/${template.companyId}/estimates/${template.id}/pdf`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-xs bg-slate-800 text-white px-3 py-1.5 rounded-lg hover:bg-slate-900 font-medium"
+                  >
+                    Export PDF
+                  </a>
+                  {canEdit && (
+                    <>
+                      <button onClick={() => setSaveAsNew(!saveAsNew)} className="text-xs border border-slate-300 text-slate-600 px-3 py-1.5 rounded-lg hover:bg-slate-50 font-medium">
+                        Save as New Template
+                      </button>
+                      <button onClick={() => setEditingHeader(true)} className="text-xs text-blue-600 hover:text-blue-800">Edit</button>
+                    </>
+                  )}
+                </div>
               </div>
             </div>
+            <ClientSelector
+              templateId={template.id}
+              currentClient={currentClient}
+              allClients={allClients}
+              canEdit={canEdit}
+            />
           </div>
         )}
 

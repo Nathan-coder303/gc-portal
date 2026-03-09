@@ -65,6 +65,20 @@ model Company {
   users             User[]
   partners          Partner[]
   estimateTemplates EstimateTemplate[]
+  clients           Client[]
+}
+
+model Client {
+  id        String            @id @default(cuid())
+  companyId String
+  company   Company           @relation(fields: [companyId], references: [id])
+  name      String
+  address   String?
+  email     String?
+  phone     String?
+  createdAt DateTime          @default(now())
+  updatedAt DateTime          @updatedAt
+  templates EstimateTemplate[]
 }
 
 model Project {
@@ -277,6 +291,8 @@ model EstimateTemplate {
   id          String                     @id @default(cuid())
   companyId   String
   company     Company                    @relation(fields: [companyId], references: [id])
+  clientId    String?
+  client      Client?                    @relation(fields: [clientId], references: [id])
   name        String
   description String?
   sortOrder   Int                        @default(0)

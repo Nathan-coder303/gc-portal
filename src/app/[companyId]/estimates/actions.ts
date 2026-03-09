@@ -278,6 +278,57 @@ export async function reorderTemplateItems(parentId: string, parentType: "divisi
   return { success: true };
 }
 
+// ─── Client CRUD ──────────────────────────────────────────────────────────────
+
+export async function listClients() {
+  const session = await auth();
+  if (!session) throw new Error("Unauthorized");
+  const clients = await prisma.client.findMany({
+    where: { companyId: session.user.companyId },
+    orderBy: { name: "asc" },
+  });
+  return clients;
+}
+
+export async function upsertClient(data: { id?: string; name: string; address?: string; email?: string; phone?: string }) {
+  const session = await auth();
+  if (!session) throw new Error("Unauthorized");
+  requirePermission(session, "estimateTemplate:edit");
+
+  if (data.id) {
+    const client = await prisma.client.update({
+      where: { id: data.id },
+      data: { name: data.name.trim(), address: data.address?.trim() || null, email: data.email?.trim() || null, phone: data.phone?.trim() || null },
+    });
+    return client;
+  }
+
+  const client = await prisma.client.create({
+    data: {
+      companyId: session.user.companyId,
+      name: data.name.trim(),
+      address: data.address?.trim() || null,
+      email: data.email?.trim() || null,
+      phone: data.phone?.trim() || null,
+    },
+  });
+  return client;
+}
+
+export async function setTemplateClient(templateId: string, clientId: string | null) {
+  const session = await auth();
+  if (!session) throw new Error("Unauthorized");
+  requirePermission(session, "estimateTemplate:edit");
+
+  await prisma.estimateTemplate.update({
+    where: { id: templateId },
+    data: { clientId, updatedBy: session.user.id },
+  });
+
+  revalidatePath(`/${session.user.companyId}/estimates`);
+  return { success: true };
+}
+
 // ─── Save as new template (deep copy) ────────────────────────────────────────
 
 export async function saveAsNewTemplate(sourceTemplateId: string, newName: string) {

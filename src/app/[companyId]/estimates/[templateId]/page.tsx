@@ -13,28 +13,32 @@ export default async function TemplateEditorPage({
   if (!session) redirect("/login");
   if (!can(session.user.role, "estimate:read")) redirect(`/${params.companyId}`);
 
-  const template = await prisma.estimateTemplate.findFirst({
-    where: { id: params.templateId, companyId: params.companyId, archivedAt: null },
-    include: {
-      divisions: {
-        where: { archivedAt: null },
-        orderBy: { sortOrder: "asc" },
-        include: {
-          groups: {
-            where: { archivedAt: null },
-            orderBy: { sortOrder: "asc" },
-            include: {
-              items: { where: { archivedAt: null }, orderBy: { sortOrder: "asc" } },
+  const [template, clients] = await Promise.all([
+    prisma.estimateTemplate.findFirst({
+      where: { id: params.templateId, companyId: params.companyId, archivedAt: null },
+      include: {
+        client: true,
+        divisions: {
+          where: { archivedAt: null },
+          orderBy: { sortOrder: "asc" },
+          include: {
+            groups: {
+              where: { archivedAt: null },
+              orderBy: { sortOrder: "asc" },
+              include: {
+                items: { where: { archivedAt: null }, orderBy: { sortOrder: "asc" } },
+              },
             },
-          },
-          items: {
-            where: { archivedAt: null, groupId: null },
-            orderBy: { sortOrder: "asc" },
+            items: {
+              where: { archivedAt: null, groupId: null },
+              orderBy: { sortOrder: "asc" },
+            },
           },
         },
       },
-    },
-  });
+    }),
+    prisma.client.findMany({ where: { companyId: params.companyId }, orderBy: { name: "asc" } }),
+  ]);
 
   if (!template) redirect(`/${params.companyId}/estimates`);
 
@@ -93,6 +97,14 @@ export default async function TemplateEditorPage({
           template={{ id: template.id, name: template.name, description: template.description, companyId: params.companyId }}
           divisions={divisions}
           canEdit={can(session.user.role, "estimateTemplate:edit")}
+          currentClient={template.client ? {
+            id: template.client.id,
+            name: template.client.name,
+            address: template.client.address,
+            email: template.client.email,
+            phone: template.client.phone,
+          } : null}
+          allClients={clients.map(c => ({ id: c.id, name: c.name, address: c.address, email: c.email, phone: c.phone }))}
         />
       </main>
     </div>

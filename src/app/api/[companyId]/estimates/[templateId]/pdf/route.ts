@@ -19,6 +19,7 @@ export async function GET(
     prisma.estimateTemplate.findFirst({
       where: { id: params.templateId, companyId: params.companyId, archivedAt: null },
       include: {
+        client: true,
         divisions: {
           where: { archivedAt: null },
           orderBy: { sortOrder: "asc" },
@@ -69,6 +70,7 @@ export async function GET(
   const buffer = await renderTemplatePdf({
     companyName: company.name,
     template: { name: template.name, description: template.description },
+    client: template.client ? { name: template.client.name, address: template.client.address } : null,
     divisions,
   });
 

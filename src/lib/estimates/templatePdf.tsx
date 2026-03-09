@@ -1,31 +1,52 @@
 import { Document, Page, Text, View, StyleSheet, renderToBuffer } from "@react-pdf/renderer";
 import React from "react";
 
+const GOLD = "#C9A84C";
+const DARK = "#1e293b";
+
+function fmt(n: number) {
+  return n.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+}
+
+function calcTotal(qty: number | null, cost: number | null, markup: number | null): number {
+  return (qty ?? 0) * (cost ?? 0) * (1 + (markup ?? 0) / 100);
+}
+
+function isItemFilled(item: Item): boolean {
+  return item.defaultQty !== null || item.defaultUnitCost !== null;
+}
+
 const styles = StyleSheet.create({
-  page: { fontFamily: "Helvetica", fontSize: 9, paddingTop: 36, paddingBottom: 48, paddingHorizontal: 40, color: "#1e293b" },
-  header: { flexDirection: "row", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 20, paddingBottom: 12, borderBottomWidth: 2, borderBottomColor: "#2563eb" },
-  companyName: { fontSize: 18, fontFamily: "Helvetica-Bold", color: "#2563eb", marginBottom: 2 },
-  templateTitle: { fontSize: 14, fontFamily: "Helvetica-Bold", color: "#0f172a", marginBottom: 4 },
-  metaText: { fontSize: 8, color: "#94a3b8", textAlign: "right" },
-  divisionHeader: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", backgroundColor: "#1e293b", paddingHorizontal: 8, paddingVertical: 5, marginTop: 10, borderRadius: 3 },
+  page: { fontFamily: "Helvetica", fontSize: 9, paddingTop: 36, paddingBottom: 48, paddingHorizontal: 40, color: DARK },
+  header: { flexDirection: "row", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 20, paddingBottom: 12, borderBottomWidth: 2, borderBottomColor: GOLD },
+  companyName: { fontSize: 18, fontFamily: "Helvetica-Bold", color: GOLD, marginBottom: 3 },
+  companyAddress: { fontSize: 9, color: "#475569" },
+  clientName: { fontSize: 13, fontFamily: "Helvetica-Bold", color: "#0f172a", marginBottom: 3, textAlign: "right" },
+  clientAddress: { fontSize: 9, color: "#475569", textAlign: "right" },
+  templateName: { fontSize: 10, color: "#64748b", textAlign: "right", marginBottom: 2 },
+  metaText: { fontSize: 7, color: "#94a3b8", textAlign: "right" },
+  divisionHeader: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", backgroundColor: DARK, paddingHorizontal: 8, paddingVertical: 5, marginTop: 12, borderRadius: 3 },
   divisionLeft: { flexDirection: "row", alignItems: "center", gap: 6 },
   divisionCsi: { fontSize: 8, color: "#94a3b8" },
   divisionName: { fontSize: 10, fontFamily: "Helvetica-Bold", color: "#ffffff" },
+  divisionTotal: { fontSize: 10, fontFamily: "Helvetica-Bold", color: GOLD },
   groupHeader: { flexDirection: "row", justifyContent: "space-between", backgroundColor: "#f1f5f9", paddingHorizontal: 8, paddingVertical: 3, marginTop: 4 },
   groupName: { fontSize: 8, fontFamily: "Helvetica-Bold", color: "#475569", textTransform: "uppercase" },
+  groupTotal: { fontSize: 8, fontFamily: "Helvetica-Bold", color: "#475569" },
   tableHeader: { flexDirection: "row", backgroundColor: "#f8fafc", paddingHorizontal: 8, paddingVertical: 3, borderBottomWidth: 1, borderBottomColor: "#e2e8f0" },
-  tableRow: { flexDirection: "row", paddingHorizontal: 8, paddingVertical: 2.5, borderBottomWidth: 1, borderBottomColor: "#f1f5f9" },
-  tableRowAlt: { flexDirection: "row", paddingHorizontal: 8, paddingVertical: 2.5, borderBottomWidth: 1, borderBottomColor: "#f1f5f9", backgroundColor: "#fafafa" },
-  tableRowHidden: { flexDirection: "row", paddingHorizontal: 8, paddingVertical: 2.5, borderBottomWidth: 1, borderBottomColor: "#f1f5f9", opacity: 0.35 },
+  tableRow: { flexDirection: "row", paddingHorizontal: 8, paddingVertical: 3, borderBottomWidth: 1, borderBottomColor: "#f1f5f9" },
+  tableRowAlt: { flexDirection: "row", paddingHorizontal: 8, paddingVertical: 3, borderBottomWidth: 1, borderBottomColor: "#f1f5f9", backgroundColor: "#fafafa" },
   colName: { flex: 3 },
-  colUnit: { width: 36, textAlign: "center" },
   colQty: { width: 40, textAlign: "right" },
-  colCost: { width: 60, textAlign: "right" },
-  colMarkup: { width: 40, textAlign: "right" },
-  colVisible: { width: 40, textAlign: "center" },
+  colUnit: { width: 40, textAlign: "center" },
+  colTotal: { width: 80, textAlign: "right" },
   headerText: { fontSize: 7, color: "#94a3b8", fontFamily: "Helvetica-Bold", textTransform: "uppercase" },
   cellText: { fontSize: 8, color: "#334155" },
   cellMuted: { fontSize: 8, color: "#94a3b8" },
+  cellBold: { fontSize: 8, color: "#0f172a", fontFamily: "Helvetica-Bold" },
+  grandTotalBar: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", backgroundColor: DARK, padding: 10, marginTop: 14, borderRadius: 3 },
+  grandTotalLabel: { fontSize: 12, fontFamily: "Helvetica-Bold", color: "#ffffff" },
+  grandTotalValue: { fontSize: 16, fontFamily: "Helvetica-Bold", color: GOLD },
   pageNumber: { position: "absolute", bottom: 24, right: 40, fontSize: 8, color: "#94a3b8" },
 });
 
@@ -36,6 +57,7 @@ type Division = { id: string; csiCode: string | null; name: string; groups: Grou
 type TemplatePdfProps = {
   companyName: string;
   template: { name: string; description: string | null };
+  client: { name: string; address: string | null } | null;
   divisions: Division[];
 };
 
@@ -43,80 +65,106 @@ function ItemTableHeader() {
   return (
     <View style={styles.tableHeader}>
       <Text style={[styles.headerText, styles.colName]}>Item</Text>
+      <Text style={[styles.headerText, styles.colQty]}>Qty</Text>
       <Text style={[styles.headerText, styles.colUnit]}>Unit</Text>
-      <Text style={[styles.headerText, styles.colQty]}>Def Qty</Text>
-      <Text style={[styles.headerText, styles.colCost]}>Def Cost</Text>
-      <Text style={[styles.headerText, styles.colMarkup]}>Markup</Text>
-      <Text style={[styles.headerText, styles.colVisible]}>In PDF</Text>
+      <Text style={[styles.headerText, styles.colTotal]}>Total</Text>
     </View>
   );
 }
 
-function TemplateItemRow({ item, index }: { item: Item; index: number }) {
-  const rowStyle = !item.visibleInPdf ? styles.tableRowHidden : index % 2 === 0 ? styles.tableRow : styles.tableRowAlt;
+function ItemRow({ item, index }: { item: Item; index: number }) {
+  const total = calcTotal(item.defaultQty, item.defaultUnitCost, item.defaultMarkupPct);
+  const style = index % 2 === 0 ? styles.tableRow : styles.tableRowAlt;
   return (
-    <View style={rowStyle}>
+    <View style={style}>
       <Text style={[styles.cellText, styles.colName]}>{item.name}</Text>
-      <Text style={[styles.cellMuted, styles.colUnit]}>{item.unit ?? "—"}</Text>
       <Text style={[styles.cellMuted, styles.colQty]}>{item.defaultQty ?? "—"}</Text>
-      <Text style={[styles.cellMuted, styles.colCost]}>{item.defaultUnitCost != null ? `$${item.defaultUnitCost}` : "—"}</Text>
-      <Text style={[styles.cellMuted, styles.colMarkup]}>{item.defaultMarkupPct != null ? `${item.defaultMarkupPct}%` : "—"}</Text>
-      <Text style={[styles.cellMuted, styles.colVisible]}>{item.visibleInPdf ? "✓" : "✗"}</Text>
+      <Text style={[styles.cellMuted, styles.colUnit]}>{item.unit ?? ""}</Text>
+      <Text style={[styles.cellBold, styles.colTotal]}>{total > 0 ? `$${fmt(total)}` : "—"}</Text>
     </View>
   );
 }
 
-function TemplatePdfDocument({ companyName, template, divisions }: TemplatePdfProps) {
-  const totalItems = divisions.reduce((s, d) => s + d.items.length + d.groups.reduce((gs, g) => gs + g.items.length, 0), 0);
-  const visibleItems = divisions.reduce((s, d) => s + d.items.filter(i => i.visibleInPdf).length + d.groups.reduce((gs, g) => gs + g.items.filter(i => i.visibleInPdf).length, 0), 0);
+function TemplatePdfDocument({ companyName, template, client, divisions }: TemplatePdfProps) {
+  const grandTotal = divisions.reduce((sum, div) => {
+    const divSum = [
+      ...div.items.filter(isItemFilled),
+      ...div.groups.flatMap(g => g.items.filter(isItemFilled)),
+    ].reduce((s, i) => s + calcTotal(i.defaultQty, i.defaultUnitCost, i.defaultMarkupPct), 0);
+    return sum + divSum;
+  }, 0);
 
   return (
-    <Document title={`${template.name} — Template`} author={companyName}>
+    <Document title={`${template.name} — Estimate`} author={companyName}>
       <Page size="LETTER" style={styles.page} orientation="landscape">
+        {/* Header */}
         <View style={styles.header}>
           <View>
             <Text style={styles.companyName}>{companyName}</Text>
-            <Text style={{ fontSize: 9, color: "#475569" }}>Estimate Template</Text>
+            <Text style={styles.companyAddress}>2950 N 28 Terr, Hollywood, FL 33020</Text>
           </View>
           <View>
-            <Text style={styles.templateTitle}>{template.name}</Text>
-            {template.description && <Text style={styles.metaText}>{template.description}</Text>}
-            <Text style={styles.metaText}>{divisions.length} divisions · {totalItems} items · {visibleItems} visible in PDF</Text>
+            {client ? (
+              <>
+                <Text style={styles.clientName}>{client.name}</Text>
+                {client.address && <Text style={styles.clientAddress}>{client.address}</Text>}
+              </>
+            ) : null}
+            <Text style={styles.templateName}>{template.name}</Text>
             <Text style={styles.metaText}>Generated {new Date().toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" })}</Text>
           </View>
         </View>
 
-        {divisions.map((div) => (
-          <View key={div.id}>
-            <View style={styles.divisionHeader}>
-              <View style={styles.divisionLeft}>
-                {div.csiCode && <Text style={styles.divisionCsi}>{div.csiCode}</Text>}
-                <Text style={styles.divisionName}>{div.name}</Text>
-              </View>
-              <Text style={{ fontSize: 8, color: "#94a3b8" }}>
-                {div.groups.reduce((s, g) => s + g.items.length, 0) + div.items.length} items
-              </Text>
-            </View>
+        {/* Divisions */}
+        {divisions.map((div) => {
+          const divFilledItems = div.items.filter(isItemFilled);
+          const divGroupsWithItems = div.groups.map(g => ({ ...g, items: g.items.filter(isItemFilled) })).filter(g => g.items.length > 0);
+          if (divFilledItems.length === 0 && divGroupsWithItems.length === 0) return null;
 
-            {div.groups.map((grp) => (
-              <View key={grp.id}>
-                <View style={styles.groupHeader}>
-                  <Text style={styles.groupName}>{grp.name}</Text>
-                  <Text style={{ fontSize: 7, color: "#94a3b8" }}>{grp.items.length} items</Text>
+          const divTotal = [
+            ...divFilledItems,
+            ...divGroupsWithItems.flatMap(g => g.items),
+          ].reduce((s, i) => s + calcTotal(i.defaultQty, i.defaultUnitCost, i.defaultMarkupPct), 0);
+
+          return (
+            <View key={div.id}>
+              <View style={styles.divisionHeader}>
+                <View style={styles.divisionLeft}>
+                  {div.csiCode && <Text style={styles.divisionCsi}>{div.csiCode}</Text>}
+                  <Text style={styles.divisionName}>{div.name}</Text>
                 </View>
-                <ItemTableHeader />
-                {grp.items.map((item, idx) => <TemplateItemRow key={item.id} item={item} index={idx} />)}
+                <Text style={styles.divisionTotal}>${fmt(divTotal)}</Text>
               </View>
-            ))}
 
-            {div.items.length > 0 && (
-              <View>
-                <ItemTableHeader />
-                {div.items.map((item, idx) => <TemplateItemRow key={item.id} item={item} index={idx} />)}
-              </View>
-            )}
-          </View>
-        ))}
+              {divGroupsWithItems.map((grp) => {
+                const grpTotal = grp.items.reduce((s, i) => s + calcTotal(i.defaultQty, i.defaultUnitCost, i.defaultMarkupPct), 0);
+                return (
+                  <View key={grp.id}>
+                    <View style={styles.groupHeader}>
+                      <Text style={styles.groupName}>{grp.name}</Text>
+                      <Text style={styles.groupTotal}>{grpTotal > 0 ? `$${fmt(grpTotal)}` : ""}</Text>
+                    </View>
+                    <ItemTableHeader />
+                    {grp.items.map((item, idx) => <ItemRow key={item.id} item={item} index={idx} />)}
+                  </View>
+                );
+              })}
+
+              {divFilledItems.length > 0 && (
+                <View>
+                  <ItemTableHeader />
+                  {divFilledItems.map((item, idx) => <ItemRow key={item.id} item={item} index={idx} />)}
+                </View>
+              )}
+            </View>
+          );
+        })}
+
+        {/* Grand total */}
+        <View style={styles.grandTotalBar}>
+          <Text style={styles.grandTotalLabel}>ESTIMATE TOTAL</Text>
+          <Text style={styles.grandTotalValue}>${fmt(grandTotal)}</Text>
+        </View>
 
         <Text style={styles.pageNumber} render={({ pageNumber, totalPages }) => `Page ${pageNumber} of ${totalPages}`} fixed />
       </Page>
