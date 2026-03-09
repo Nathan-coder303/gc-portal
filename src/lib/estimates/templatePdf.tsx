@@ -1,5 +1,6 @@
-import { Document, Page, Text, View, StyleSheet, renderToBuffer } from "@react-pdf/renderer";
+import { Document, Page, Text, View, StyleSheet, renderToBuffer, Image } from "@react-pdf/renderer";
 import React from "react";
+import path from "path";
 
 const GOLD = "#C9A84C";
 const DARK = "#1e293b";
@@ -21,7 +22,7 @@ const styles = StyleSheet.create({
   header: { flexDirection: "row", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 20, paddingBottom: 12, borderBottomWidth: 2, borderBottomColor: GOLD },
 
   // Left column
-  companyName: { fontSize: 18, fontFamily: "Helvetica-Bold", color: GOLD, marginBottom: 3 },
+  logo: { width: 90, height: 90, marginBottom: 4 },
   companyAddress: { fontSize: 9, color: "#475569" },
   companyPhone: { fontSize: 9, color: "#475569", marginTop: 2 },
   companyLicense: { fontSize: 11, fontFamily: "Helvetica-Bold", color: DARK, marginTop: 5 },
@@ -116,7 +117,7 @@ function TemplatePdfDocument({ companyName, template, client, divisions }: Templ
         <View style={styles.header}>
           {/* Left: Company */}
           <View>
-            <Text style={styles.companyName}>{companyName}</Text>
+            <Image style={styles.logo} src={path.join(process.cwd(), "public", "logo.png")} />
             <Text style={styles.companyAddress}>2950 N 28 Terr, Hollywood, FL 33020</Text>
             <Text style={styles.companyPhone}>Tel: 305-746-7307</Text>
             <Text style={styles.companyLicense}>CGC1527069 | CCC1336817</Text>
