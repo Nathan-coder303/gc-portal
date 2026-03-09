@@ -313,6 +313,283 @@ async function main() {
     });
   }
 
+  // ─── Estimate Template: Addition ─────────────────────────────────────────────
+  const existingTemplate = await prisma.estimateTemplate.findFirst({
+    where: { companyId: company.id, name: "Addition" },
+  });
+
+  if (!existingTemplate) {
+    const additionTemplate = await prisma.estimateTemplate.create({
+      data: {
+        companyId: company.id,
+        name: "Addition",
+        description: "Standard CSI MasterFormat template for residential additions",
+        sortOrder: 0,
+        createdBy: admin.id,
+        updatedBy: admin.id,
+      },
+    });
+
+    const divisionData = [
+      {
+        csiCode: "01", name: "General Requirements", sortOrder: 0,
+        groups: [
+          {
+            name: "Supervision", sortOrder: 0,
+            items: [
+              { name: "Site Superintendent", unit: "LS", sortOrder: 0 },
+              { name: "Safety Officer", unit: "LS", sortOrder: 1 },
+              { name: "PM / Admin", unit: "LS", sortOrder: 2 },
+            ],
+          },
+          {
+            name: "Temporary Facilities", sortOrder: 1,
+            items: [
+              { name: "Temporary Power", unit: "LS", sortOrder: 0 },
+              { name: "Portable Toilets", unit: "MO", sortOrder: 1 },
+              { name: "Dumpster (2 Pulls)", unit: "EA", sortOrder: 2 },
+              { name: "Site Fencing", unit: "LF", sortOrder: 3 },
+            ],
+          },
+        ],
+      },
+      {
+        csiCode: "03", name: "Concrete", sortOrder: 1,
+        groups: [
+          {
+            name: "Foundation", sortOrder: 0,
+            items: [
+              { name: "Excavation", unit: "CY", sortOrder: 0 },
+              { name: "Footings & Foundation Walls", unit: "CY", sortOrder: 1 },
+              { name: "Slab On Grade", unit: "SF", sortOrder: 2 },
+            ],
+          },
+          {
+            name: "Flatwork", sortOrder: 1,
+            items: [
+              { name: "Concrete Steps", unit: "LS", sortOrder: 0 },
+              { name: "Concrete Patio / Apron", unit: "SF", sortOrder: 1 },
+            ],
+          },
+        ],
+      },
+      {
+        csiCode: "06", name: "Wood & Plastics", sortOrder: 2,
+        groups: [
+          {
+            name: "Rough Framing", sortOrder: 0,
+            items: [
+              { name: "Framing Labor & Material", unit: "SF", sortOrder: 0 },
+              { name: "Structural Beams / Headers", unit: "LF", sortOrder: 1 },
+              { name: "Exterior Sheathing", unit: "SF", sortOrder: 2 },
+              { name: "Hurricane Straps & Hardware", unit: "LS", sortOrder: 3 },
+            ],
+          },
+          {
+            name: "Exterior Trim & Millwork", sortOrder: 1,
+            items: [
+              { name: "Fascia / Soffit", unit: "LF", sortOrder: 0 },
+              { name: "Corner Boards", unit: "LF", sortOrder: 1 },
+              { name: "Trim Boards", unit: "LF", sortOrder: 2 },
+            ],
+          },
+          {
+            name: "Interior Trim & Millwork", sortOrder: 2,
+            items: [
+              { name: "Interior Door Casings", unit: "EA", sortOrder: 0 },
+              { name: "Base Molding", unit: "LF", sortOrder: 1 },
+              { name: "Window Stools & Aprons", unit: "EA", sortOrder: 2 },
+              { name: "Crown Molding (optional)", unit: "LF", sortOrder: 3 },
+            ],
+          },
+          {
+            name: "Rough Carpentry - Misc", sortOrder: 3,
+            items: [
+              { name: "Blocking", unit: "LS", sortOrder: 0 },
+              { name: "Misc Framing Hardware", unit: "LS", sortOrder: 1 },
+            ],
+          },
+        ],
+      },
+      {
+        csiCode: "07", name: "Thermal & Moisture Protection", sortOrder: 3,
+        groups: [
+          {
+            name: "Roofing", sortOrder: 0,
+            items: [
+              { name: "Shingle Roofing (tear-off + install)", unit: "SQ", sortOrder: 0 },
+              { name: "Underlayment & Ice Shield", unit: "SQ", sortOrder: 1 },
+              { name: "Ridge Vent", unit: "LF", sortOrder: 2 },
+            ],
+          },
+          {
+            name: "Insulation", sortOrder: 1,
+            items: [
+              { name: "Batt Insulation (walls / ceiling)", unit: "SF", sortOrder: 0 },
+              { name: "Spray Foam (rim joist / transitions)", unit: "BF", sortOrder: 1 },
+            ],
+          },
+          {
+            name: "Waterproofing & Sealants", sortOrder: 2,
+            items: [
+              { name: "Flashing (step, counter, base)", unit: "LF", sortOrder: 0 },
+              { name: "Caulking & Sealants", unit: "LS", sortOrder: 1 },
+            ],
+          },
+        ],
+      },
+      {
+        csiCode: "08", name: "Openings", sortOrder: 4,
+        groups: [
+          {
+            name: "Doors & Frames", sortOrder: 0,
+            items: [
+              { name: "Exterior Entry Door & Hardware", unit: "EA", sortOrder: 0 },
+              { name: "Interior Doors & Hardware", unit: "EA", sortOrder: 1 },
+              { name: "Exterior Door Frames", unit: "EA", sortOrder: 2 },
+            ],
+          },
+          {
+            name: "Windows", sortOrder: 1,
+            items: [
+              { name: "Windows (installed)", unit: "EA", sortOrder: 0 },
+              { name: "Window Screens & Accessories", unit: "LS", sortOrder: 1 },
+            ],
+          },
+        ],
+      },
+      {
+        csiCode: "09", name: "Finishes", sortOrder: 5,
+        groups: [
+          {
+            name: "Drywall", sortOrder: 0,
+            items: [
+              { name: "Drywall Hang & Finish (Level 4)", unit: "SF", sortOrder: 0 },
+              { name: "Blueboard & Skim Coat (optional)", unit: "SF", sortOrder: 1 },
+            ],
+          },
+          {
+            name: "Tile", sortOrder: 1,
+            items: [
+              { name: "Bathroom Tile (floor / wall)", unit: "SF", sortOrder: 0 },
+              { name: "Kitchen Backsplash", unit: "SF", sortOrder: 1 },
+            ],
+          },
+          {
+            name: "Flooring", sortOrder: 2,
+            items: [
+              { name: "Hardwood (install + sand + finish)", unit: "SF", sortOrder: 0 },
+              { name: "Engineered Hardwood", unit: "SF", sortOrder: 1 },
+              { name: "LVP / LVT", unit: "SF", sortOrder: 2 },
+              { name: "Carpet", unit: "SY", sortOrder: 3 },
+            ],
+          },
+          {
+            name: "Painting", sortOrder: 3,
+            items: [
+              { name: "Interior Paint (walls / ceilings / trim)", unit: "SF", sortOrder: 0 },
+              { name: "Exterior Paint / Stain", unit: "SF", sortOrder: 1 },
+              { name: "Primer Coat", unit: "SF", sortOrder: 2 },
+            ],
+          },
+        ],
+      },
+      {
+        csiCode: "10", name: "Specialties", sortOrder: 6,
+        groups: [
+          {
+            name: "Misc. Specialties", sortOrder: 0,
+            items: [
+              { name: "Bathroom Accessories (TP holder, towel bars)", unit: "LS", sortOrder: 0 },
+              { name: "Medicine Cabinet", unit: "EA", sortOrder: 1 },
+              { name: "Mirrors", unit: "EA", sortOrder: 2 },
+            ],
+          },
+        ],
+      },
+      {
+        csiCode: "11", name: "Equipment", sortOrder: 7,
+        groups: [],
+      },
+      {
+        csiCode: "15", name: "Mechanical", sortOrder: 8,
+        groups: [
+          {
+            name: "Plumbing", sortOrder: 0,
+            items: [
+              { name: "Rough Plumbing", unit: "LS", sortOrder: 0 },
+              { name: "Finish Plumbing (fixtures)", unit: "LS", sortOrder: 1 },
+              { name: "Water Heater", unit: "EA", sortOrder: 2 },
+            ],
+          },
+          {
+            name: "HVAC", sortOrder: 1,
+            items: [
+              { name: "HVAC Equipment & Install", unit: "LS", sortOrder: 0 },
+              { name: "Ductwork & Registers", unit: "LS", sortOrder: 1 },
+              { name: "Thermostat", unit: "EA", sortOrder: 2 },
+            ],
+          },
+        ],
+      },
+      {
+        csiCode: "16", name: "Electrical", sortOrder: 9,
+        groups: [
+          {
+            name: "Rough Electrical", sortOrder: 0,
+            items: [
+              { name: "Electrical Panel Upgrade", unit: "EA", sortOrder: 0 },
+              { name: "Rough Wiring & Boxes", unit: "LS", sortOrder: 1 },
+            ],
+          },
+          {
+            name: "Finish Electrical", sortOrder: 1,
+            items: [
+              { name: "Devices & Cover Plates", unit: "LS", sortOrder: 0 },
+              { name: "Fixtures & Lighting", unit: "LS", sortOrder: 1 },
+              { name: "Ceiling Fans", unit: "EA", sortOrder: 2 },
+            ],
+          },
+        ],
+      },
+    ];
+
+    for (const divData of divisionData) {
+      const division = await prisma.estimateTemplateDivision.create({
+        data: {
+          templateId: additionTemplate.id,
+          csiCode: divData.csiCode,
+          name: divData.name,
+          sortOrder: divData.sortOrder,
+        },
+      });
+
+      for (const grpData of divData.groups) {
+        const group = await prisma.estimateTemplateGroup.create({
+          data: {
+            divisionId: division.id,
+            name: grpData.name,
+            sortOrder: grpData.sortOrder,
+          },
+        });
+
+        for (const itemData of grpData.items) {
+          await prisma.estimateTemplateItem.create({
+            data: {
+              divisionId: division.id,
+              groupId: group.id,
+              name: itemData.name,
+              unit: itemData.unit,
+              sortOrder: itemData.sortOrder,
+            },
+          });
+        }
+      }
+    }
+
+    console.log(`Addition template created with ${divisionData.length} divisions`);
+  }
+
   console.log("Seed complete!");
   console.log(`Company: ${company.slug} (id: ${company.id})`);
   console.log(`Project: ${project.id}`);

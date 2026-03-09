@@ -25,7 +25,14 @@ export type Action =
   | "user:archive"
   | "project:edit"
   | "settings:edit"
-  | "auditLog:read";
+  | "auditLog:read"
+  | "estimate:read"
+  | "estimate:create"
+  | "estimate:edit"
+  | "estimate:archive"
+  | "estimateTemplate:create"
+  | "estimateTemplate:edit"
+  | "estimateTemplate:archive";
 
 type Role = "ADMIN" | "PM" | "BOOKKEEPER" | "PARTNER";
 
@@ -52,9 +59,16 @@ const matrix: Record<Action, Role[]> = {
   "user:create":         ["ADMIN"],
   "user:edit":           ["ADMIN"],
   "user:archive":        ["ADMIN"],
-  "project:edit":        ["ADMIN"],
-  "settings:edit":       ["ADMIN", "PM"],
-  "auditLog:read":       ["ADMIN"],
+  "project:edit":               ["ADMIN"],
+  "settings:edit":              ["ADMIN", "PM"],
+  "auditLog:read":              ["ADMIN"],
+  "estimate:read":              ["ADMIN", "PM", "BOOKKEEPER", "PARTNER"],
+  "estimate:create":            ["ADMIN", "PM"],
+  "estimate:edit":              ["ADMIN", "PM"],
+  "estimate:archive":           ["ADMIN"],
+  "estimateTemplate:create":    ["ADMIN", "PM"],
+  "estimateTemplate:edit":      ["ADMIN", "PM"],
+  "estimateTemplate:archive":   ["ADMIN"],
 };
 
 export function can(role: string, action: Action): boolean {

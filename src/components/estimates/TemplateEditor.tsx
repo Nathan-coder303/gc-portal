@@ -1,0 +1,373 @@
+"use client";
+
+import { useState, useTransition } from "react";
+import {
+  upsertTemplateItem,
+  archiveTemplateItem,
+  upsertTemplateDivision,
+  archiveTemplateDivision,
+  upsertTemplateGroup,
+  archiveTemplateGroup,
+  updateTemplate,
+} from "@/app/[companyId]/estimates/actions";
+
+type Item = {
+  id: string;
+  name: string;
+  unit: string | null;
+  defaultQty: number | null;
+  defaultUnitCost: number | null;
+  defaultLaborCost: number | null;
+  defaultMaterialCost: number | null;
+  defaultMarkupPct: number | null;
+  notes: string | null;
+};
+type Group = { id: string; name: string; items: Item[] };
+type Division = { id: string; csiCode: string | null; name: string; groups: Group[]; items: Item[] };
+type Template = { id: string; name: string; description: string | null };
+
+function ItemRow({ item, divisionId, groupId, canEdit }: { item: Item; divisionId: string; groupId?: string | null; canEdit: boolean }) {
+  const [editing, setEditing] = useState(false);
+  const [isPending, startTransition] = useTransition();
+  const [form, setForm] = useState({
+    name: item.name,
+    unit: item.unit ?? "",
+    defaultQty: item.defaultQty?.toString() ?? "",
+    defaultUnitCost: item.defaultUnitCost?.toString() ?? "",
+    defaultLaborCost: item.defaultLaborCost?.toString() ?? "",
+    defaultMaterialCost: item.defaultMaterialCost?.toString() ?? "",
+    defaultMarkupPct: item.defaultMarkupPct?.toString() ?? "",
+    notes: item.notes ?? "",
+  });
+
+  function save() {
+    startTransition(async () => {
+      await upsertTemplateItem(divisionId, {
+        id: item.id,
+        groupId: groupId ?? null,
+        name: form.name,
+        unit: form.unit || null,
+        defaultQty: form.defaultQty ? Number(form.defaultQty) : null,
+        defaultUnitCost: form.defaultUnitCost ? Number(form.defaultUnitCost) : null,
+        defaultLaborCost: form.defaultLaborCost ? Number(form.defaultLaborCost) : null,
+        defaultMaterialCost: form.defaultMaterialCost ? Number(form.defaultMaterialCost) : null,
+        defaultMarkupPct: form.defaultMarkupPct ? Number(form.defaultMarkupPct) : null,
+        notes: form.notes || null,
+      });
+      setEditing(false);
+    });
+  }
+
+  if (!editing) {
+    return (
+      <tr className="border-t border-slate-100 hover:bg-slate-50 group text-sm">
+        <td className="px-3 py-2 text-slate-800">{item.name}</td>
+        <td className="px-3 py-2 text-slate-500 text-center">{item.unit ?? "—"}</td>
+        <td className="px-3 py-2 text-slate-500 text-right">{item.defaultQty ?? "—"}</td>
+        <td className="px-3 py-2 text-slate-500 text-right">{item.defaultUnitCost != null ? `$${item.defaultUnitCost}` : "—"}</td>
+        <td className="px-3 py-2 text-slate-500 text-right">{item.defaultMarkupPct != null ? `${item.defaultMarkupPct}%` : "—"}</td>
+        <td className="px-3 py-2 text-slate-400 text-sm italic">{item.notes ?? ""}</td>
+        <td className="px-3 py-2 text-right">
+          <div className="flex gap-1 justify-end opacity-0 group-hover:opacity-100 transition-opacity">
+            {canEdit && (
+              <>
+                <button onClick={() => setEditing(true)} className="text-xs text-blue-600 hover:text-blue-800 px-2">Edit</button>
+                <button onClick={() => { if (confirm("Remove item?")) startTransition(async () => { await archiveTemplateItem(item.id); }); }} disabled={isPending} className="text-xs text-red-500 hover:text-red-700 px-2">Remove</button>
+              </>
+            )}
+          </div>
+        </td>
+      </tr>
+    );
+  }
+
+  return (
+    <tr className="border-t border-blue-100 bg-blue-50">
+      <td className="px-2 py-1"><input className="w-full border border-slate-300 rounded px-2 py-1 text-xs" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} /></td>
+      <td className="px-2 py-1"><input className="w-14 border border-slate-300 rounded px-2 py-1 text-xs" value={form.unit} onChange={(e) => setForm({ ...form, unit: e.target.value })} placeholder="unit" /></td>
+      <td className="px-2 py-1"><input type="number" step="any" className="w-14 border border-slate-300 rounded px-2 py-1 text-xs text-right" value={form.defaultQty} onChange={(e) => setForm({ ...form, defaultQty: e.target.value })} placeholder="qty" /></td>
+      <td className="px-2 py-1"><input type="number" step="any" className="w-20 border border-slate-300 rounded px-2 py-1 text-xs text-right" value={form.defaultUnitCost} onChange={(e) => setForm({ ...form, defaultUnitCost: e.target.value })} placeholder="cost" /></td>
+      <td className="px-2 py-1"><input type="number" step="any" className="w-14 border border-slate-300 rounded px-2 py-1 text-xs text-right" value={form.defaultMarkupPct} onChange={(e) => setForm({ ...form, defaultMarkupPct: e.target.value })} placeholder="%" /></td>
+      <td className="px-2 py-1"><input className="w-full border border-slate-300 rounded px-2 py-1 text-xs" value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} placeholder="notes" /></td>
+      <td className="px-2 py-1">
+        <div className="flex gap-1 justify-end">
+          <button onClick={save} disabled={isPending} className="text-xs bg-blue-600 text-white px-2 py-1 rounded">Save</button>
+          <button onClick={() => setEditing(false)} className="text-xs text-slate-500 px-2">Cancel</button>
+        </div>
+      </td>
+    </tr>
+  );
+}
+
+function AddTemplateItemRow({ divisionId, groupId, canEdit }: { divisionId: string; groupId?: string | null; canEdit: boolean }) {
+  const [open, setOpen] = useState(false);
+  const [isPending, startTransition] = useTransition();
+  const [form, setForm] = useState({ name: "", unit: "", defaultQty: "", defaultUnitCost: "", defaultMarkupPct: "", notes: "" });
+
+  if (!canEdit) return null;
+
+  function save() {
+    if (!form.name.trim()) return;
+    startTransition(async () => {
+      await upsertTemplateItem(divisionId, {
+        groupId: groupId ?? null,
+        name: form.name,
+        unit: form.unit || null,
+        defaultQty: form.defaultQty ? Number(form.defaultQty) : null,
+        defaultUnitCost: form.defaultUnitCost ? Number(form.defaultUnitCost) : null,
+        defaultMarkupPct: form.defaultMarkupPct ? Number(form.defaultMarkupPct) : null,
+        notes: form.notes || null,
+      });
+      setForm({ name: "", unit: "", defaultQty: "", defaultUnitCost: "", defaultMarkupPct: "", notes: "" });
+      setOpen(false);
+    });
+  }
+
+  if (!open) {
+    return (
+      <tr>
+        <td colSpan={7} className="px-3 py-1">
+          <button onClick={() => setOpen(true)} className="text-xs text-blue-600 hover:text-blue-800">+ Add Item</button>
+        </td>
+      </tr>
+    );
+  }
+
+  return (
+    <tr className="bg-green-50 border-t border-green-100">
+      <td className="px-2 py-1"><input autoFocus className="w-full border border-slate-300 rounded px-2 py-1 text-xs" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} placeholder="Item name" /></td>
+      <td className="px-2 py-1"><input className="w-14 border border-slate-300 rounded px-2 py-1 text-xs" value={form.unit} onChange={(e) => setForm({ ...form, unit: e.target.value })} placeholder="unit" /></td>
+      <td className="px-2 py-1"><input type="number" step="any" className="w-14 border border-slate-300 rounded px-2 py-1 text-xs text-right" value={form.defaultQty} onChange={(e) => setForm({ ...form, defaultQty: e.target.value })} placeholder="qty" /></td>
+      <td className="px-2 py-1"><input type="number" step="any" className="w-20 border border-slate-300 rounded px-2 py-1 text-xs text-right" value={form.defaultUnitCost} onChange={(e) => setForm({ ...form, defaultUnitCost: e.target.value })} placeholder="cost" /></td>
+      <td className="px-2 py-1"><input type="number" step="any" className="w-14 border border-slate-300 rounded px-2 py-1 text-xs text-right" value={form.defaultMarkupPct} onChange={(e) => setForm({ ...form, defaultMarkupPct: e.target.value })} placeholder="%" /></td>
+      <td className="px-2 py-1"><input className="w-full border border-slate-300 rounded px-2 py-1 text-xs" value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} placeholder="notes" /></td>
+      <td className="px-2 py-1">
+        <div className="flex gap-1 justify-end">
+          <button onClick={save} disabled={isPending} className="text-xs bg-green-600 text-white px-2 py-1 rounded">Add</button>
+          <button onClick={() => setOpen(false)} className="text-xs text-slate-500 px-2">Cancel</button>
+        </div>
+      </td>
+    </tr>
+  );
+}
+
+function TemplateItemTable({ divisionId, groupId, items, canEdit }: { divisionId: string; groupId?: string | null; items: Item[]; canEdit: boolean }) {
+  return (
+    <div className="overflow-x-auto">
+      <table className="w-full text-sm">
+        <thead>
+          <tr className="text-xs text-slate-500 bg-slate-50">
+            <th className="px-3 py-1.5 text-left font-medium">Item</th>
+            <th className="px-3 py-1.5 text-center font-medium w-16">Unit</th>
+            <th className="px-3 py-1.5 text-right font-medium w-16">Def Qty</th>
+            <th className="px-3 py-1.5 text-right font-medium w-24">Def Cost</th>
+            <th className="px-3 py-1.5 text-right font-medium w-16">Markup</th>
+            <th className="px-3 py-1.5 text-left font-medium">Notes</th>
+            <th className="w-20" />
+          </tr>
+        </thead>
+        <tbody>
+          {items.map((item) => (
+            <ItemRow key={item.id} item={item} divisionId={divisionId} groupId={groupId} canEdit={canEdit} />
+          ))}
+          <AddTemplateItemRow divisionId={divisionId} groupId={groupId} canEdit={canEdit} />
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
+function TemplateGroupSection({ group, divisionId, canEdit }: { group: Group; divisionId: string; canEdit: boolean }) {
+  const [isPending, startTransition] = useTransition();
+
+  return (
+    <div className="mt-3">
+      <div className="flex items-center justify-between px-3 py-1.5 bg-slate-100 rounded">
+        <span className="text-xs font-semibold text-slate-600 uppercase tracking-wide">{group.name}</span>
+        {canEdit && (
+          <button
+            onClick={() => { if (confirm("Remove group?")) startTransition(async () => { await archiveTemplateGroup(group.id); }); }}
+            disabled={isPending}
+            className="text-xs text-red-400 hover:text-red-600"
+          >
+            Remove
+          </button>
+        )}
+      </div>
+      <TemplateItemTable divisionId={divisionId} groupId={group.id} items={group.items} canEdit={canEdit} />
+    </div>
+  );
+}
+
+function TemplateDivisionSection({ division, canEdit }: { division: Division; canEdit: boolean }) {
+  const [open, setOpen] = useState(true);
+  const [isPending, startTransition] = useTransition();
+  const [addingGroup, setAddingGroup] = useState(false);
+  const [groupName, setGroupName] = useState("");
+
+  function saveGroup() {
+    if (!groupName.trim()) return;
+    startTransition(async () => {
+      await upsertTemplateGroup(division.id, { name: groupName });
+      setGroupName("");
+      setAddingGroup(false);
+    });
+  }
+
+  return (
+    <div className="bg-white border border-slate-200 rounded-xl overflow-hidden">
+      <button
+        onClick={() => setOpen(!open)}
+        className="w-full flex items-center gap-3 px-4 py-3 hover:bg-slate-50 transition-colors text-left"
+      >
+        <span className="text-slate-400 text-xs">{open ? "▼" : "▶"}</span>
+        {division.csiCode && <span className="text-xs font-mono text-slate-400">{division.csiCode}</span>}
+        <span className="font-semibold text-slate-900">{division.name}</span>
+        <span className="ml-auto text-xs text-slate-400">
+          {division.groups.reduce((s, g) => s + g.items.length, 0) + division.items.length} items
+        </span>
+      </button>
+
+      {open && (
+        <div className="border-t border-slate-100 pb-2">
+          {division.groups.map((grp) => (
+            <TemplateGroupSection key={grp.id} group={grp} divisionId={division.id} canEdit={canEdit} />
+          ))}
+
+          {division.items.length > 0 && (
+            <TemplateItemTable divisionId={division.id} groupId={null} items={division.items} canEdit={canEdit} />
+          )}
+
+          {canEdit && (
+            <div className="px-3 pt-2">
+              {addingGroup ? (
+                <div className="flex gap-2 items-center">
+                  <input autoFocus value={groupName} onChange={(e) => setGroupName(e.target.value)} placeholder="Group name" className="border border-slate-300 rounded px-2 py-1 text-xs flex-1" />
+                  <button onClick={saveGroup} disabled={isPending} className="text-xs bg-blue-600 text-white px-2 py-1 rounded">Add</button>
+                  <button onClick={() => setAddingGroup(false)} className="text-xs text-slate-500">Cancel</button>
+                </div>
+              ) : (
+                <button onClick={() => setAddingGroup(true)} className="text-xs text-slate-400 hover:text-blue-600">+ Add Group</button>
+              )}
+            </div>
+          )}
+
+          {canEdit && (
+            <div className="px-3 pt-1">
+              <button
+                onClick={() => { if (confirm("Remove division?")) startTransition(async () => { await archiveTemplateDivision(division.id); }); }}
+                disabled={isPending}
+                className="text-xs text-red-400 hover:text-red-600"
+              >
+                Remove Division
+              </button>
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+export default function TemplateEditor({
+  template,
+  divisions,
+  canEdit,
+}: {
+  template: Template;
+  divisions: Division[];
+  canEdit: boolean;
+}) {
+  const [isPending, startTransition] = useTransition();
+  const [editingHeader, setEditingHeader] = useState(false);
+  const [name, setName] = useState(template.name);
+  const [description, setDescription] = useState(template.description ?? "");
+  const [addingDiv, setAddingDiv] = useState(false);
+  const [divName, setDivName] = useState("");
+  const [divCsi, setDivCsi] = useState("");
+
+  const totalItems = divisions.reduce((s, d) => s + d.groups.reduce((gs, g) => gs + g.items.length, 0) + d.items.length, 0);
+
+  function saveHeader() {
+    startTransition(async () => {
+      await updateTemplate(template.id, name, description || null);
+      setEditingHeader(false);
+    });
+  }
+
+  function saveDiv() {
+    if (!divName.trim()) return;
+    startTransition(async () => {
+      await upsertTemplateDivision(template.id, { csiCode: divCsi || undefined, name: divName });
+      setDivName("");
+      setDivCsi("");
+      setAddingDiv(false);
+    });
+  }
+
+  return (
+    <div className="space-y-4">
+      {/* Header */}
+      <div className="bg-white border border-slate-200 rounded-xl p-5">
+        {editingHeader ? (
+          <div className="space-y-3">
+            <div>
+              <label className="block text-xs font-medium text-slate-600 mb-1">Name</label>
+              <input value={name} onChange={(e) => setName(e.target.value)} className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm" />
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-slate-600 mb-1">Description</label>
+              <input value={description} onChange={(e) => setDescription(e.target.value)} className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm" />
+            </div>
+            <div className="flex gap-2">
+              <button onClick={saveHeader} disabled={isPending} className="bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-medium">Save</button>
+              <button onClick={() => setEditingHeader(false)} className="border border-slate-200 text-slate-600 px-4 py-2 rounded-lg text-sm">Cancel</button>
+            </div>
+          </div>
+        ) : (
+          <div className="flex items-start justify-between">
+            <div>
+              <h1 className="text-xl font-bold text-slate-900">{template.name}</h1>
+              {template.description && <p className="text-sm text-slate-500 mt-1">{template.description}</p>}
+              <p className="text-xs text-slate-400 mt-2">{divisions.length} divisions · {totalItems} items</p>
+            </div>
+            {canEdit && (
+              <button onClick={() => setEditingHeader(true)} className="text-xs text-blue-600 hover:text-blue-800">Edit</button>
+            )}
+          </div>
+        )}
+      </div>
+
+      {/* Divisions */}
+      <div className="space-y-3">
+        {divisions.map((div) => (
+          <TemplateDivisionSection key={div.id} division={div} canEdit={canEdit} />
+        ))}
+      </div>
+
+      {/* Add Division */}
+      {canEdit && (
+        <div className="bg-white border border-dashed border-slate-300 rounded-xl p-4">
+          {addingDiv ? (
+            <div className="flex gap-2 items-end flex-wrap">
+              <div>
+                <label className="block text-xs font-medium text-slate-600 mb-1">CSI Code (optional)</label>
+                <input value={divCsi} onChange={(e) => setDivCsi(e.target.value)} placeholder="e.g. 03" className="border border-slate-300 rounded px-2 py-1.5 text-sm w-24" />
+              </div>
+              <div className="flex-1">
+                <label className="block text-xs font-medium text-slate-600 mb-1">Division Name</label>
+                <input autoFocus value={divName} onChange={(e) => setDivName(e.target.value)} placeholder="e.g. Concrete" className="w-full border border-slate-300 rounded px-2 py-1.5 text-sm" />
+              </div>
+              <button onClick={saveDiv} disabled={isPending} className="bg-blue-600 text-white px-3 py-1.5 rounded text-sm">Add</button>
+              <button onClick={() => setAddingDiv(false)} className="text-slate-500 text-sm px-2">Cancel</button>
+            </div>
+          ) : (
+            <button onClick={() => setAddingDiv(true)} className="text-sm text-slate-400 hover:text-blue-600 w-full text-center">
+              + Add Division
+            </button>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}

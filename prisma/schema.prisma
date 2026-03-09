@@ -50,18 +50,21 @@ enum EntityType {
   USER
   PROJECT
   PROJECT_SETTINGS
+  ESTIMATE_TEMPLATE
+  PROJECT_ESTIMATE
 }
 
 // ─── Core ────────────────────────────────────────────────────────────────────
 
 model Company {
-  id        String    @id @default(cuid())
-  name      String
-  slug      String    @unique
-  createdAt DateTime  @default(now())
-  projects  Project[]
-  users     User[]
-  partners  Partner[]
+  id                String             @id @default(cuid())
+  name              String
+  slug              String             @unique
+  createdAt         DateTime           @default(now())
+  projects          Project[]
+  users             User[]
+  partners          Partner[]
+  estimateTemplates EstimateTemplate[]
 }
 
 model Project {
@@ -83,6 +86,7 @@ model Project {
   journalEntries JournalEntry[]
   auditLogs      AuditLog[]
   settings       ProjectSettings[]
+  estimates      ProjectEstimate[]
 }
 
 model User {
@@ -263,6 +267,151 @@ model AuditLog {
   @@index([projectId, entityType, createdAt])
   @@index([entityId])
   @@index([userId])
+}
+
+// ─── Estimates ───────────────────────────────────────────────────────────────
+
+/// Company-level reusable estimate template (e.g. "Addition", "Remodel").
+model EstimateTemplate {
+  id          String                     @id @default(cuid())
+  companyId   String
+  company     Company                    @relation(fields: [companyId], references: [id])
+  name        String
+  description String?
+  sortOrder   Int                        @default(0)
+  createdBy   String
+  createdAt   DateTime                   @default(now())
+  updatedAt   DateTime                   @updatedAt
+  updatedBy   String?
+  archivedAt  DateTime?
+  archivedBy  String?
+  divisions   EstimateTemplateDivision[]
+  estimates   ProjectEstimate[]
+
+  @@index([companyId])
+}
+
+model EstimateTemplateDivision {
+  id         String                  @id @default(cuid())
+  templateId String
+  template   EstimateTemplate        @relation(fields: [templateId], references: [id])
+  csiCode    String?
+  name       String
+  sortOrder  Int                     @default(0)
+  archivedAt DateTime?
+  archivedBy String?
+  groups     EstimateTemplateGroup[]
+  items      EstimateTemplateItem[]
+
+  @@index([templateId])
+}
+
+model EstimateTemplateGroup {
+  id         String                   @id @default(cuid())
+  divisionId String
+  division   EstimateTemplateDivision @relation(fields: [divisionId], references: [id])
+  name       String
+  sortOrder  Int                      @default(0)
+  archivedAt DateTime?
+  archivedBy String?
+  items      EstimateTemplateItem[]
+
+  @@index([divisionId])
+}
+
+model EstimateTemplateItem {
+  id                  String                   @id @default(cuid())
+  divisionId          String
+  division            EstimateTemplateDivision @relation(fields: [divisionId], references: [id])
+  groupId             String?
+  group               EstimateTemplateGroup?   @relation(fields: [groupId], references: [id])
+  name                String
+  unit                String?
+  defaultQty          Decimal?                 @db.Decimal(14, 4)
+  defaultUnitCost     Decimal?                 @db.Decimal(14, 2)
+  defaultLaborCost    Decimal?                 @db.Decimal(14, 2)
+  defaultMaterialCost Decimal?                 @db.Decimal(14, 2)
+  defaultMarkupPct    Decimal?                 @db.Decimal(5, 2)
+  notes               String?
+  sortOrder           Int                      @default(0)
+  archivedAt          DateTime?
+  archivedBy          String?
+
+  @@index([divisionId])
+  @@index([groupId])
+}
+
+/// Project-specific estimate, cloned from a template or created from scratch.
+model ProjectEstimate {
+  id          String                    @id @default(cuid())
+  projectId   String
+  project     Project                   @relation(fields: [projectId], references: [id])
+  templateId  String?
+  template    EstimateTemplate?         @relation(fields: [templateId], references: [id])
+  name        String
+  description String?
+  status      String                    @default("DRAFT")
+  createdBy   String
+  createdAt   DateTime                  @default(now())
+  updatedAt   DateTime                  @updatedAt
+  updatedBy   String?
+  archivedAt  DateTime?
+  archivedBy  String?
+  divisions   ProjectEstimateDivision[]
+
+  @@index([projectId])
+}
+
+model ProjectEstimateDivision {
+  id          String                  @id @default(cuid())
+  estimateId  String
+  estimate    ProjectEstimate         @relation(fields: [estimateId], references: [id])
+  csiCode     String?
+  name        String
+  sortOrder   Int                     @default(0)
+  archivedAt  DateTime?
+  archivedBy  String?
+  groups      ProjectEstimateGroup[]
+  items       ProjectEstimateItem[]
+
+  @@index([estimateId])
+}
+
+model ProjectEstimateGroup {
+  id          String                  @id @default(cuid())
+  divisionId  String
+  division    ProjectEstimateDivision @relation(fields: [divisionId], references: [id])
+  name        String
+  sortOrder   Int                     @default(0)
+  archivedAt  DateTime?
+  archivedBy  String?
+  items       ProjectEstimateItem[]
+
+  @@index([divisionId])
+}
+
+model ProjectEstimateItem {
+  id           String                  @id @default(cuid())
+  divisionId   String
+  division     ProjectEstimateDivision @relation(fields: [divisionId], references: [id])
+  groupId      String?
+  group        ProjectEstimateGroup?   @relation(fields: [groupId], references: [id])
+  name         String
+  unit         String?
+  qty          Decimal                 @default(1)  @db.Decimal(14, 4)
+  unitCost     Decimal                 @default(0)  @db.Decimal(14, 2)
+  laborCost    Decimal                 @default(0)  @db.Decimal(14, 2)
+  materialCost Decimal                 @default(0)  @db.Decimal(14, 2)
+  markupPct    Decimal                 @default(0)  @db.Decimal(5, 2)
+  manualTotal  Decimal?                @db.Decimal(14, 2)
+  vendor       String?
+  notes        String?
+  sortOrder    Int                     @default(0)
+  archivedAt   DateTime?
+  archivedBy   String?
+
+  @@index([divisionId])
+  @@index([groupId])
 }
 
 /// Per-project key-value settings (KPI assumptions, widget config, alert thresholds).
