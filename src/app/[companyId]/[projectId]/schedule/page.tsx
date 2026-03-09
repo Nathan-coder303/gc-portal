@@ -6,6 +6,10 @@ import { computeCriticalPath } from "@/lib/schedule/gantt";
 import { auth } from "@/lib/auth";
 import { can } from "@/lib/auth/permissions";
 
+const CARD = { background: "#1e2736", border: "1px solid #30373f" } as const;
+const CARD_RED = { background: "#2d1b1b", border: "1px solid #6b2a2a" } as const;
+const CARD_AMBER = { background: "#2d2410", border: "1px solid #6b4f10" } as const;
+
 export default async function SchedulePage({
   params,
 }: {
@@ -48,26 +52,11 @@ export default async function SchedulePage({
     assignee: t.assignee,
   }));
 
-  // KPIs
   const totalTasks = tasks.length;
   const doneTasks = tasks.filter((t) => t.status === "DONE").length;
-  const lateTasks = tasks.filter(
-    (t) => t.status !== "DONE" && t.endDate && t.endDate < today
-  ).length;
-  const dueSoon7 = tasks.filter(
-    (t) =>
-      t.status !== "DONE" &&
-      t.endDate &&
-      t.endDate >= today &&
-      t.endDate <= in7
-  ).length;
-  const dueSoon14 = tasks.filter(
-    (t) =>
-      t.status !== "DONE" &&
-      t.endDate &&
-      t.endDate > in7 &&
-      t.endDate <= in14
-  ).length;
+  const lateTasks = tasks.filter((t) => t.status !== "DONE" && t.endDate && t.endDate < today).length;
+  const dueSoon7 = tasks.filter((t) => t.status !== "DONE" && t.endDate && t.endDate >= today && t.endDate <= in7).length;
+  const dueSoon14 = tasks.filter((t) => t.status !== "DONE" && t.endDate && t.endDate > in7 && t.endDate <= in14).length;
   const criticalPathIds = computeCriticalPath(ganttTasks);
   const criticalCount = criticalPathIds.size;
 
@@ -75,114 +64,102 @@ export default async function SchedulePage({
     <div>
       <div className="flex items-center justify-between mb-6">
         <div>
-          <h1 className="text-xl font-bold text-slate-900">Schedule</h1>
-          <p className="text-sm text-slate-500 mt-0.5">
+          <h1 className="text-xl font-bold" style={{ color: "#e6edf3" }}>Schedule</h1>
+          <p className="text-sm mt-0.5" style={{ color: "#8b949e" }}>
             {totalTasks} tasks · Project start:{" "}
-            {project?.startDate.toLocaleDateString("en-US", {
-              month: "short",
-              day: "numeric",
-              year: "numeric",
-            })}
+            {project?.startDate.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
           </p>
         </div>
         <a
           href={`/api/${params.companyId}/${params.projectId}/export/schedule`}
-          className="px-3 py-1.5 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+          className="px-3 py-1.5 text-sm rounded-lg font-medium"
+          style={{ background: "#C9A84C", color: "#0d1117" }}
         >
           Export CSV
         </a>
       </div>
 
-      {/* KPI cards */}
       {totalTasks > 0 && (
         <div className="grid grid-cols-2 sm:grid-cols-5 gap-3 mb-6">
-          <div className="bg-white rounded-xl border border-slate-200 p-4">
-            <div className="text-2xl font-bold text-slate-900">{doneTasks}/{totalTasks}</div>
-            <div className="text-xs text-slate-500 mt-0.5">Tasks Complete</div>
-            <div className="mt-2 h-1.5 bg-slate-100 rounded-full overflow-hidden">
-              <div
-                className="h-full bg-green-500 rounded-full"
-                style={{ width: `${totalTasks > 0 ? (doneTasks / totalTasks) * 100 : 0}%` }}
-              />
+          <div className="rounded-xl p-4" style={CARD}>
+            <div className="text-2xl font-bold" style={{ color: "#e6edf3" }}>{doneTasks}/{totalTasks}</div>
+            <div className="text-xs mt-0.5" style={{ color: "#8b949e" }}>Tasks Complete</div>
+            <div className="mt-2 h-1.5 rounded-full overflow-hidden" style={{ background: "#30373f" }}>
+              <div className="h-full rounded-full" style={{ width: `${totalTasks > 0 ? (doneTasks / totalTasks) * 100 : 0}%`, background: "#4ade80" }} />
             </div>
           </div>
-          <div className={`bg-white rounded-xl border p-4 ${lateTasks > 0 ? "border-red-300 bg-red-50" : "border-slate-200"}`}>
-            <div className={`text-2xl font-bold ${lateTasks > 0 ? "text-red-600" : "text-slate-900"}`}>{lateTasks}</div>
-            <div className="text-xs text-slate-500 mt-0.5">Late Tasks</div>
+          <div className="rounded-xl p-4" style={lateTasks > 0 ? CARD_RED : CARD}>
+            <div className="text-2xl font-bold" style={{ color: lateTasks > 0 ? "#f87171" : "#e6edf3" }}>{lateTasks}</div>
+            <div className="text-xs mt-0.5" style={{ color: "#8b949e" }}>Late Tasks</div>
           </div>
-          <div className={`bg-white rounded-xl border p-4 ${dueSoon7 > 0 ? "border-amber-300 bg-amber-50" : "border-slate-200"}`}>
-            <div className={`text-2xl font-bold ${dueSoon7 > 0 ? "text-amber-600" : "text-slate-900"}`}>{dueSoon7}</div>
-            <div className="text-xs text-slate-500 mt-0.5">Due in 7 Days</div>
+          <div className="rounded-xl p-4" style={dueSoon7 > 0 ? CARD_AMBER : CARD}>
+            <div className="text-2xl font-bold" style={{ color: dueSoon7 > 0 ? "#fbbf24" : "#e6edf3" }}>{dueSoon7}</div>
+            <div className="text-xs mt-0.5" style={{ color: "#8b949e" }}>Due in 7 Days</div>
           </div>
-          <div className="bg-white rounded-xl border border-slate-200 p-4">
-            <div className="text-2xl font-bold text-slate-900">{dueSoon14}</div>
-            <div className="text-xs text-slate-500 mt-0.5">Due in 14 Days</div>
+          <div className="rounded-xl p-4" style={CARD}>
+            <div className="text-2xl font-bold" style={{ color: "#e6edf3" }}>{dueSoon14}</div>
+            <div className="text-xs mt-0.5" style={{ color: "#8b949e" }}>Due in 14 Days</div>
           </div>
-          <div className="bg-white rounded-xl border border-slate-200 p-4">
-            <div className="text-2xl font-bold text-slate-900">{criticalCount}</div>
-            <div className="text-xs text-slate-500 mt-0.5">
+          <div className="rounded-xl p-4" style={CARD}>
+            <div className="text-2xl font-bold" style={{ color: "#e6edf3" }}>{criticalCount}</div>
+            <div className="text-xs mt-0.5" style={{ color: "#8b949e" }}>
               Critical Path{" "}
-              <span className="text-xs bg-slate-100 text-slate-500 px-1 rounded">beta</span>
+              <span className="text-xs px-1 rounded" style={{ background: "#30373f", color: "#8b949e" }}>beta</span>
             </div>
           </div>
         </div>
       )}
 
       {tasks.length === 0 ? (
-        <div className="bg-white rounded-xl border border-slate-200 p-12 text-center">
-          <p className="text-slate-500">No tasks yet. Import a schedule CSV in Settings.</p>
+        <div className="rounded-xl p-12 text-center" style={CARD}>
+          <p style={{ color: "#8b949e" }}>No tasks yet. Import a schedule CSV in Settings.</p>
         </div>
       ) : (
         <div className="space-y-6">
-          <div className="bg-white rounded-xl border border-slate-200 overflow-hidden">
-            <div className="px-4 py-3 border-b border-slate-200">
-              <h2 className="font-semibold text-slate-800">Gantt Chart</h2>
-              <p className="text-xs text-slate-400 mt-0.5">Click phase headers to expand/collapse</p>
+          <div className="rounded-xl overflow-hidden" style={CARD}>
+            <div className="px-4 py-3" style={{ borderBottom: "1px solid #30373f" }}>
+              <h2 className="font-semibold" style={{ color: "#e6edf3" }}>Gantt Chart</h2>
+              <p className="text-xs mt-0.5" style={{ color: "#8b949e" }}>Click phase headers to expand/collapse</p>
             </div>
             <div className="p-4">
               <GanttChart tasks={ganttTasks} projectStart={project?.startDate ?? new Date()} />
             </div>
           </div>
 
-          <div className="bg-white rounded-xl border border-slate-200 overflow-hidden">
-            <div className="px-4 py-3 border-b border-slate-200">
-              <h2 className="font-semibold text-slate-800">Task List</h2>
-              <p className="text-xs text-slate-400 mt-0.5">Click phase headers to expand/collapse · Select status to update</p>
+          <div className="rounded-xl overflow-hidden" style={CARD}>
+            <div className="px-4 py-3" style={{ borderBottom: "1px solid #30373f" }}>
+              <h2 className="font-semibold" style={{ color: "#e6edf3" }}>Task List</h2>
+              <p className="text-xs mt-0.5" style={{ color: "#8b949e" }}>Click phase headers to expand/collapse · Select status to update</p>
             </div>
             <TaskTable tasks={ganttTasks} projectId={params.projectId} canEdit={canEdit} />
           </div>
 
-          {/* Recent change log */}
           {recentLogs.length > 0 && (
-            <div className="bg-white rounded-xl border border-slate-200 overflow-hidden">
-              <div className="px-4 py-3 border-b border-slate-200">
-                <h2 className="font-semibold text-slate-800">Recent Changes</h2>
+            <div className="rounded-xl overflow-hidden" style={CARD}>
+              <div className="px-4 py-3" style={{ borderBottom: "1px solid #30373f" }}>
+                <h2 className="font-semibold" style={{ color: "#e6edf3" }}>Recent Changes</h2>
               </div>
               <table className="w-full text-sm">
-                <thead className="bg-slate-50 border-b border-slate-200">
-                  <tr>
-                    <th className="text-left px-4 py-2 text-slate-500 font-medium">Task</th>
-                    <th className="text-left px-4 py-2 text-slate-500 font-medium">Field</th>
-                    <th className="text-left px-4 py-2 text-slate-500 font-medium">From</th>
-                    <th className="text-left px-4 py-2 text-slate-500 font-medium">To</th>
-                    <th className="text-left px-4 py-2 text-slate-500 font-medium">When</th>
+                <thead>
+                  <tr style={{ background: "#161b22", borderBottom: "1px solid #30373f" }}>
+                    <th className="text-left px-4 py-2 font-medium" style={{ color: "#8b949e" }}>Task</th>
+                    <th className="text-left px-4 py-2 font-medium" style={{ color: "#8b949e" }}>Field</th>
+                    <th className="text-left px-4 py-2 font-medium" style={{ color: "#8b949e" }}>From</th>
+                    <th className="text-left px-4 py-2 font-medium" style={{ color: "#8b949e" }}>To</th>
+                    <th className="text-left px-4 py-2 font-medium" style={{ color: "#8b949e" }}>When</th>
                   </tr>
                 </thead>
                 <tbody>
                   {recentLogs.map((log) => (
-                    <tr key={log.id} className="border-b border-slate-50">
-                      <td className="px-4 py-2 font-medium text-slate-800">
-                        <span className="text-xs text-slate-400 mr-1">{log.task.phase}</span>
+                    <tr key={log.id} style={{ borderBottom: "1px solid #30373f" }}>
+                      <td className="px-4 py-2 font-medium" style={{ color: "#e6edf3" }}>
+                        <span className="text-xs mr-1" style={{ color: "#8b949e" }}>{log.task.phase}</span>
                         {log.task.name}
                       </td>
-                      <td className="px-4 py-2 text-slate-500 capitalize">{log.field}</td>
-                      <td className="px-4 py-2 text-slate-400 text-xs">
-                        {log.oldValue ?? "—"}
-                      </td>
-                      <td className="px-4 py-2 text-slate-800 text-xs font-medium">
-                        {log.newValue ?? "—"}
-                      </td>
-                      <td className="px-4 py-2 text-slate-400 text-xs whitespace-nowrap">
+                      <td className="px-4 py-2 capitalize" style={{ color: "#8b949e" }}>{log.field}</td>
+                      <td className="px-4 py-2 text-xs" style={{ color: "#8b949e" }}>{log.oldValue ?? "—"}</td>
+                      <td className="px-4 py-2 text-xs font-medium" style={{ color: "#e6edf3" }}>{log.newValue ?? "—"}</td>
+                      <td className="px-4 py-2 text-xs whitespace-nowrap" style={{ color: "#8b949e" }}>
                         {format(log.changedAt, "MMM d, h:mm a")}
                       </td>
                     </tr>

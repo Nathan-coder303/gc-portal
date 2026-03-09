@@ -1,6 +1,7 @@
 import { auth } from "@/lib/auth";
 import { redirect } from "next/navigation";
 import { can } from "@/lib/auth/permissions";
+import Link from "next/link";
 import NewProjectForm from "./NewProjectForm";
 
 export default async function NewProjectPage({
@@ -13,20 +14,21 @@ export default async function NewProjectPage({
   if (!can(session.user.role, "project:edit")) redirect(`/${params.companyId}/projects`);
 
   return (
-    <div className="min-h-screen bg-white">
+    <div className="min-h-screen" style={{ background: "#0d1117" }}>
       <main className="max-w-lg mx-auto px-6 py-10">
         {/* Back link */}
-        <a
+        <Link
           href={`/${params.companyId}/projects`}
-          className="inline-flex items-center gap-1.5 text-sm text-slate-500 hover:text-slate-800 mb-8"
+          className="inline-flex items-center gap-1.5 text-sm mb-8 transition-colors"
+          style={{ color: "#8b949e" }}
         >
           <span>←</span>
           <span>Projects</span>
-        </a>
+        </Link>
 
         {/* Heading */}
-        <h1 className="text-3xl font-bold text-slate-900 mb-1">New project</h1>
-        <p className="text-sm text-slate-500 mb-8">
+        <h1 className="text-3xl font-bold mb-1" style={{ color: "#e6edf3" }}>New project</h1>
+        <p className="text-sm mb-8" style={{ color: "#8b949e" }}>
           Set up a project to track budget, expenses, schedule, and team collaboration.
         </p>
 

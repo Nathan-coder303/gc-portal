@@ -8,6 +8,8 @@ import ProjectEditor from "@/components/settings/ProjectEditor";
 import UserManager from "@/components/settings/UserManager";
 import AccountManager from "@/components/settings/AccountManager";
 
+const CARD = { background: "#1e2736", border: "1px solid #30373f" } as const;
+
 export default async function SettingsPage({
   params,
 }: {
@@ -27,22 +29,23 @@ export default async function SettingsPage({
   return (
     <div>
       <div className="mb-6">
-        <h1 className="text-xl font-bold text-slate-900">Settings & Imports</h1>
-        <p className="text-sm text-slate-500 mt-0.5">Manage project configuration and import data</p>
+        <h1 className="text-xl font-bold" style={{ color: "#e6edf3" }}>Settings & Imports</h1>
+        <p className="text-sm mt-0.5" style={{ color: "#8b949e" }}>Manage project configuration and import data</p>
       </div>
 
       <div className="space-y-6">
         {/* Import Expenses CSV */}
-        <div className="bg-white rounded-xl border border-slate-200 p-5">
-          <h2 className="font-semibold text-slate-800 mb-1">Import Expenses CSV</h2>
-          <p className="text-sm text-slate-500 mb-4">
+        <div className="rounded-xl p-5" style={CARD}>
+          <h2 className="font-semibold mb-1" style={{ color: "#e6edf3" }}>Import Expenses CSV</h2>
+          <p className="text-sm mb-4" style={{ color: "#8b949e" }}>
             Upload a CSV file with columns: date, vendor, description, cost_code, category, amount, tax, payment_method, paid_by, receipt_url
           </p>
           <div className="mb-3">
             <a
               href="/samples/sample-expenses.csv"
               download
-              className="text-sm text-blue-600 hover:underline"
+              className="text-sm transition-colors"
+              style={{ color: "#C9A84C" }}
             >
               Download sample CSV
             </a>
@@ -51,16 +54,17 @@ export default async function SettingsPage({
         </div>
 
         {/* Import Schedule CSV */}
-        <div className="bg-white rounded-xl border border-slate-200 p-5">
-          <h2 className="font-semibold text-slate-800 mb-1">Import Schedule CSV</h2>
-          <p className="text-sm text-slate-500 mb-4">
+        <div className="rounded-xl p-5" style={CARD}>
+          <h2 className="font-semibold mb-1" style={{ color: "#e6edf3" }}>Import Schedule CSV</h2>
+          <p className="text-sm mb-4" style={{ color: "#8b949e" }}>
             Upload a CSV file with columns: phase, task_name, duration_days, predecessor_task, trade, milestone, default_assignee
           </p>
           <div className="mb-3">
             <a
               href="/samples/sample-schedule.csv"
               download
-              className="text-sm text-blue-600 hover:underline"
+              className="text-sm transition-colors"
+              style={{ color: "#C9A84C" }}
             >
               Download sample CSV
             </a>
@@ -69,7 +73,7 @@ export default async function SettingsPage({
         </div>
 
         {/* Cost Codes */}
-        <div className="bg-white rounded-xl border border-slate-200 p-5">
+        <div className="rounded-xl p-5" style={CARD}>
           <CostCodeManager
             projectId={params.projectId}
             costCodes={costCodes.map(cc => ({
@@ -82,7 +86,7 @@ export default async function SettingsPage({
         </div>
 
         {/* Ledger Accounts */}
-        <div className="bg-white rounded-xl border border-slate-200 p-5">
+        <div className="rounded-xl p-5" style={CARD}>
           {isAdmin ? (
             <AccountManager
               accounts={accounts.map((a) => ({
@@ -95,21 +99,21 @@ export default async function SettingsPage({
             />
           ) : (
             <>
-              <h2 className="font-semibold text-slate-800 mb-4">Ledger Accounts</h2>
+              <h2 className="font-semibold mb-4" style={{ color: "#e6edf3" }}>Ledger Accounts</h2>
               <table className="w-full text-sm">
-                <thead className="border-b border-slate-200">
+                <thead style={{ borderBottom: "1px solid #30373f" }}>
                   <tr>
-                    <th className="text-left py-2 text-slate-500 font-medium">Account</th>
-                    <th className="text-left py-2 text-slate-500 font-medium">Type</th>
-                    <th className="text-left py-2 text-slate-500 font-medium">Partner Capital</th>
+                    <th className="text-left py-2 font-medium" style={{ color: "#8b949e" }}>Account</th>
+                    <th className="text-left py-2 font-medium" style={{ color: "#8b949e" }}>Type</th>
+                    <th className="text-left py-2 font-medium" style={{ color: "#8b949e" }}>Partner Capital</th>
                   </tr>
                 </thead>
                 <tbody>
                   {accounts.map((a) => (
-                    <tr key={a.id} className="border-b border-slate-50">
-                      <td className="py-2 text-slate-700">{a.name}</td>
-                      <td className="py-2 text-slate-500">{a.type}</td>
-                      <td className="py-2 text-slate-500">{a.isPartnerCapital ? "Yes" : "—"}</td>
+                    <tr key={a.id} style={{ borderBottom: "1px solid #30373f" }}>
+                      <td className="py-2" style={{ color: "#e6edf3" }}>{a.name}</td>
+                      <td className="py-2" style={{ color: "#8b949e" }}>{a.type}</td>
+                      <td className="py-2" style={{ color: "#8b949e" }}>{a.isPartnerCapital ? "Yes" : "—"}</td>
                     </tr>
                   ))}
                 </tbody>
@@ -119,7 +123,7 @@ export default async function SettingsPage({
         </div>
 
         {/* Users */}
-        <div className="bg-white rounded-xl border border-slate-200 p-5">
+        <div className="rounded-xl p-5" style={CARD}>
           {isAdmin ? (
             <UserManager
               users={users.map((u) => ({ id: u.id, name: u.name, email: u.email, role: u.role }))}
@@ -127,22 +131,25 @@ export default async function SettingsPage({
             />
           ) : (
             <>
-              <h2 className="font-semibold text-slate-800 mb-4">Users</h2>
+              <h2 className="font-semibold mb-4" style={{ color: "#e6edf3" }}>Users</h2>
               <table className="w-full text-sm">
-                <thead className="border-b border-slate-200">
+                <thead style={{ borderBottom: "1px solid #30373f" }}>
                   <tr>
-                    <th className="text-left py-2 text-slate-500 font-medium">Name</th>
-                    <th className="text-left py-2 text-slate-500 font-medium">Email</th>
-                    <th className="text-left py-2 text-slate-500 font-medium">Role</th>
+                    <th className="text-left py-2 font-medium" style={{ color: "#8b949e" }}>Name</th>
+                    <th className="text-left py-2 font-medium" style={{ color: "#8b949e" }}>Email</th>
+                    <th className="text-left py-2 font-medium" style={{ color: "#8b949e" }}>Role</th>
                   </tr>
                 </thead>
                 <tbody>
                   {users.map((u) => (
-                    <tr key={u.id} className="border-b border-slate-50">
-                      <td className="py-2 font-medium text-slate-800">{u.name}</td>
-                      <td className="py-2 text-slate-500">{u.email}</td>
+                    <tr key={u.id} style={{ borderBottom: "1px solid #30373f" }}>
+                      <td className="py-2 font-medium" style={{ color: "#e6edf3" }}>{u.name}</td>
+                      <td className="py-2" style={{ color: "#8b949e" }}>{u.email}</td>
                       <td className="py-2">
-                        <span className="text-xs bg-blue-50 text-blue-700 px-2 py-0.5 rounded font-medium">{u.role}</span>
+                        <span className="text-xs px-2 py-0.5 rounded font-medium"
+                          style={{ background: "#C9A84C22", color: "#C9A84C", border: "1px solid #C9A84C44" }}>
+                          {u.role}
+                        </span>
                       </td>
                     </tr>
                   ))}
@@ -153,7 +160,7 @@ export default async function SettingsPage({
         </div>
 
         {/* Project Info */}
-        <div className="bg-white rounded-xl border border-slate-200 p-5">
+        <div className="rounded-xl p-5" style={CARD}>
           {isAdmin && project ? (
             <ProjectEditor
               project={{
@@ -170,15 +177,15 @@ export default async function SettingsPage({
             />
           ) : (
             <>
-              <h2 className="font-semibold text-slate-800 mb-4">Project Info</h2>
+              <h2 className="font-semibold mb-4" style={{ color: "#e6edf3" }}>Project Info</h2>
               <dl className="grid grid-cols-2 gap-3 text-sm">
                 <div>
-                  <dt className="text-slate-500">Project Name</dt>
-                  <dd className="font-medium text-slate-800">{project?.name}</dd>
+                  <dt style={{ color: "#8b949e" }}>Project Name</dt>
+                  <dd className="font-medium" style={{ color: "#e6edf3" }}>{project?.name}</dd>
                 </div>
                 <div className="col-span-2">
-                  <dt className="text-slate-500">Address</dt>
-                  <dd className="font-medium text-slate-800">
+                  <dt style={{ color: "#8b949e" }}>Address</dt>
+                  <dd className="font-medium" style={{ color: "#e6edf3" }}>
                     {project?.address ?? "—"}
                     {(project?.city || project?.state || project?.zip) && (
                       <span className="block">{[project?.city, project?.state, project?.zip].filter(Boolean).join(", ")}</span>
@@ -186,20 +193,20 @@ export default async function SettingsPage({
                   </dd>
                 </div>
                 <div>
-                  <dt className="text-slate-500">Start Date</dt>
-                  <dd className="font-medium text-slate-800">
+                  <dt style={{ color: "#8b949e" }}>Start Date</dt>
+                  <dd className="font-medium" style={{ color: "#e6edf3" }}>
                     {project?.startDate.toLocaleDateString("en-US")}
                   </dd>
                 </div>
                 <div>
-                  <dt className="text-slate-500">Budget</dt>
-                  <dd className="font-medium text-slate-800">
+                  <dt style={{ color: "#8b949e" }}>Budget</dt>
+                  <dd className="font-medium" style={{ color: "#e6edf3" }}>
                     ${Number(project?.budget).toLocaleString()}
                   </dd>
                 </div>
                 <div>
-                  <dt className="text-slate-500">Status</dt>
-                  <dd className="font-medium text-slate-800">{project?.status}</dd>
+                  <dt style={{ color: "#8b949e" }}>Status</dt>
+                  <dd className="font-medium" style={{ color: "#e6edf3" }}>{project?.status}</dd>
                 </div>
               </dl>
             </>

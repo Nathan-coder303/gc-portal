@@ -2,6 +2,8 @@ import { prisma } from "@/lib/prisma";
 import { auth, signOut } from "@/lib/auth";
 import { redirect } from "next/navigation";
 import { can } from "@/lib/auth/permissions";
+import Image from "next/image";
+import Link from "next/link";
 import ClientsManager from "./ClientsManager";
 
 export default async function ClientsPage({ params }: { params: { companyId: string } }) {
@@ -23,22 +25,31 @@ export default async function ClientsPage({ params }: { params: { companyId: str
   const isAdmin = can(session.user.role, "estimateTemplate:edit");
 
   return (
-    <div className="min-h-screen bg-slate-50">
-      <header className="bg-white border-b border-slate-200">
+    <div className="min-h-screen" style={{ background: "#0d1117" }}>
+      <header style={{ background: "#161b22", borderBottom: "1px solid #30373f" }}>
         <div className="max-w-5xl mx-auto px-4 flex items-center justify-between h-14">
           <div className="flex items-center gap-3">
-            <a href={`/${params.companyId}`} className="font-bold text-slate-900 hover:text-blue-600">GC Portal</a>
-            <span className="text-slate-300">|</span>
-            <span className="text-sm text-slate-600 font-medium">{company?.name}</span>
-            <span className="text-slate-300">|</span>
-            <span className="text-sm text-slate-800 font-medium">Clients</span>
+            <Link href={`/${params.companyId}`}>
+              <Image src="/logo.png" alt="MIBH" width={28} height={28} className="rounded object-contain" />
+            </Link>
+            <span style={{ color: "#30373f" }}>|</span>
+            <Link href={`/${params.companyId}`} className="text-sm font-medium" style={{ color: "#8b949e" }}>
+              Dashboard
+            </Link>
+            <span style={{ color: "#30373f" }}>/</span>
+            <span className="text-sm font-semibold" style={{ color: "#e6edf3" }}>Clients</span>
           </div>
           <div className="flex items-center gap-4">
-            <a href={`/${params.companyId}`} className="text-sm text-slate-500 hover:text-slate-900">← Dashboard</a>
-            <span className="text-sm text-slate-600">{session.user.name}</span>
-            <span className="text-xs bg-blue-100 text-blue-700 px-2 py-0.5 rounded font-medium">{session.user.role}</span>
+            <Link href={`/${params.companyId}`} className="text-sm transition-colors" style={{ color: "#8b949e" }}>
+              ← Dashboard
+            </Link>
+            <span className="text-sm" style={{ color: "#8b949e" }}>{session.user.name}</span>
+            <span className="text-xs px-2 py-0.5 rounded font-bold uppercase tracking-wider"
+              style={{ background: "#C9A84C22", color: "#C9A84C", border: "1px solid #C9A84C55" }}>
+              {session.user.role}
+            </span>
             <form action={async () => { "use server"; await signOut({ redirectTo: "/login" }); }}>
-              <button className="text-sm text-slate-500 hover:text-slate-900">Sign out</button>
+              <button className="text-sm transition-colors" style={{ color: "#8b949e" }}>Sign out →</button>
             </form>
           </div>
         </div>

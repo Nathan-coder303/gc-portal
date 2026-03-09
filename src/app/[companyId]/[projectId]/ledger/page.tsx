@@ -9,6 +9,8 @@ import PartnerManager from "@/components/ledger/PartnerManager";
 import { auth } from "@/lib/auth";
 import { can } from "@/lib/auth/permissions";
 
+const CARD = { background: "#1e2736", border: "1px solid #30373f" } as const;
+
 export default async function LedgerPage({
   params,
 }: {
@@ -30,11 +32,8 @@ export default async function LedgerPage({
     }),
   ]);
 
-  const reversedIds = new Set(
-    entries.filter((e) => e.reversesId).map((e) => e.reversesId!)
-  );
+  const reversedIds = new Set(entries.filter((e) => e.reversesId).map((e) => e.reversesId!));
 
-  // All journal lines enriched
   const allLines = entries.flatMap((e) =>
     e.lines.map((l) => ({
       accountId: l.accountId,
@@ -45,26 +44,17 @@ export default async function LedgerPage({
     }))
   );
 
-  // Partner capital balances
   const partnerBalances = computePartnerBalances(allLines);
 
-  // Account balances
   const accountBalances = new Map<string, number>();
   for (const line of allLines) {
     const acct = accounts.find((a) => a.id === line.accountId);
     if (!acct) continue;
-    const current = accountBalances.get(line.accountId) ?? 0;
-    accountBalances.set(
-      line.accountId,
-      current + computeAccountBalance(acct.type, line.debit, line.credit)
-    );
+    accountBalances.set(line.accountId, (accountBalances.get(line.accountId) ?? 0) + computeAccountBalance(acct.type, line.debit, line.credit));
   }
 
-  // Cash position
   const cashAccount = accounts.find((a) => a.name === "Cash");
   const cashBalance = cashAccount ? (accountBalances.get(cashAccount.id) ?? 0) : 0;
-
-  // Capital lines for partner statements
   const capitalAccountId = accounts.find((a) => a.isPartnerCapital)?.id;
   const capitalLines = entries.flatMap((e) =>
     e.lines
@@ -80,20 +70,19 @@ export default async function LedgerPage({
         credit: Number(l.credit),
       }))
   );
-
-  // Total partner capital
   const totalCapital = Array.from(partnerBalances.values()).reduce((s, v) => s + v, 0);
 
   return (
     <div>
       <div className="flex items-center justify-between mb-6">
         <div>
-          <h1 className="text-xl font-bold text-slate-900">Partner Ledger</h1>
-          <p className="text-sm text-slate-500 mt-0.5">{entries.length} journal entries</p>
+          <h1 className="text-xl font-bold" style={{ color: "#e6edf3" }}>Partner Ledger</h1>
+          <p className="text-sm mt-0.5" style={{ color: "#8b949e" }}>{entries.length} journal entries</p>
         </div>
         <a
           href={`/api/${params.companyId}/${params.projectId}/export/ledger`}
-          className="px-3 py-1.5 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+          className="px-3 py-1.5 text-sm rounded-lg font-medium"
+          style={{ background: "#C9A84C", color: "#0d1117" }}
         >
           Export CSV
         </a>
@@ -101,27 +90,27 @@ export default async function LedgerPage({
 
       {/* Summary cards */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-6">
-        <div className="bg-white rounded-xl border border-slate-200 p-4">
-          <div className="text-xs text-slate-500 mb-1">Cash Position</div>
-          <div className={`text-xl font-bold font-mono ${cashBalance >= 0 ? "text-green-700" : "text-red-600"}`}>
+        <div className="rounded-xl p-4" style={CARD}>
+          <div className="text-xs mb-1" style={{ color: "#8b949e" }}>Cash Position</div>
+          <div className="text-xl font-bold font-mono" style={{ color: cashBalance >= 0 ? "#4ade80" : "#f87171" }}>
             ${cashBalance.toLocaleString("en-US", { minimumFractionDigits: 2 })}
           </div>
         </div>
-        <div className="bg-white rounded-xl border border-slate-200 p-4">
-          <div className="text-xs text-slate-500 mb-1">Total Partner Capital</div>
-          <div className="text-xl font-bold font-mono text-slate-800">
+        <div className="rounded-xl p-4" style={CARD}>
+          <div className="text-xs mb-1" style={{ color: "#8b949e" }}>Total Partner Capital</div>
+          <div className="text-xl font-bold font-mono" style={{ color: "#e6edf3" }}>
             ${totalCapital.toLocaleString("en-US", { minimumFractionDigits: 2 })}
           </div>
         </div>
         {partners.map((p) => {
           const bal = partnerBalances.get(p.id) ?? 0;
           return (
-            <div key={p.id} className="bg-white rounded-xl border border-slate-200 p-4">
-              <div className="text-xs text-slate-500 mb-1">
+            <div key={p.id} className="rounded-xl p-4" style={CARD}>
+              <div className="text-xs mb-1" style={{ color: "#8b949e" }}>
                 {p.name}
-                {p.ownershipPct != null && <span className="ml-1 text-slate-400">({Number(p.ownershipPct)}%)</span>}
+                {p.ownershipPct != null && <span className="ml-1" style={{ color: "#8b949e" }}>({Number(p.ownershipPct)}%)</span>}
               </div>
-              <div className={`text-xl font-bold font-mono ${bal >= 0 ? "text-slate-800" : "text-red-600"}`}>
+              <div className="text-xl font-bold font-mono" style={{ color: bal >= 0 ? "#e6edf3" : "#f87171" }}>
                 ${bal.toLocaleString("en-US", { minimumFractionDigits: 2 })}
               </div>
             </div>
@@ -130,28 +119,28 @@ export default async function LedgerPage({
       </div>
 
       {/* Account Balances */}
-      <div className="bg-white rounded-xl border border-slate-200 overflow-hidden mb-6">
-        <div className="px-4 py-3 border-b border-slate-200">
-          <h2 className="font-semibold text-slate-800">Account Balances</h2>
+      <div className="rounded-xl overflow-hidden mb-6" style={CARD}>
+        <div className="px-4 py-3" style={{ borderBottom: "1px solid #30373f" }}>
+          <h2 className="font-semibold" style={{ color: "#e6edf3" }}>Account Balances</h2>
         </div>
         <table className="w-full text-sm">
-          <thead className="bg-slate-50 border-b border-slate-200">
-            <tr>
-              <th className="text-left px-4 py-2 text-slate-500 font-medium">Account</th>
-              <th className="text-left px-4 py-2 text-slate-500 font-medium">Type</th>
-              <th className="text-right px-4 py-2 text-slate-500 font-medium">Balance</th>
+          <thead>
+            <tr style={{ background: "#161b22", borderBottom: "1px solid #30373f" }}>
+              <th className="text-left px-4 py-2 font-medium" style={{ color: "#8b949e" }}>Account</th>
+              <th className="text-left px-4 py-2 font-medium" style={{ color: "#8b949e" }}>Type</th>
+              <th className="text-right px-4 py-2 font-medium" style={{ color: "#8b949e" }}>Balance</th>
             </tr>
           </thead>
           <tbody>
             {accounts.map((a) => {
               const bal = accountBalances.get(a.id) ?? 0;
               return (
-                <tr key={a.id} className="border-b border-slate-50">
-                  <td className="px-4 py-2.5 font-medium text-slate-800">{a.name}</td>
-                  <td className="px-4 py-2.5 text-xs text-slate-500">{a.type}</td>
-                  <td className={`px-4 py-2.5 text-right font-mono font-semibold ${
-                    a.type === AccountType.ASSET && bal < 0 ? "text-red-600" : "text-slate-800"
-                  }`}>
+                <tr key={a.id} style={{ borderBottom: "1px solid #30373f" }}>
+                  <td className="px-4 py-2.5 font-medium" style={{ color: "#e6edf3" }}>{a.name}</td>
+                  <td className="px-4 py-2.5 text-xs" style={{ color: "#8b949e" }}>{a.type}</td>
+                  <td className="px-4 py-2.5 text-right font-mono font-semibold" style={{
+                    color: a.type === AccountType.ASSET && bal < 0 ? "#f87171" : "#e6edf3"
+                  }}>
                     ${bal.toLocaleString("en-US", { minimumFractionDigits: 2 })}
                   </td>
                 </tr>
@@ -161,9 +150,9 @@ export default async function LedgerPage({
         </table>
       </div>
 
-      {/* Guided Entry Forms */}
-      <div className="bg-white rounded-xl border border-slate-200 p-5 mb-6">
-        <h2 className="font-semibold text-slate-800 mb-4">New Journal Entry</h2>
+      {/* New Journal Entry */}
+      <div className="rounded-xl p-5 mb-6" style={CARD}>
+        <h2 className="font-semibold mb-4" style={{ color: "#e6edf3" }}>New Journal Entry</h2>
         <LedgerForms
           projectId={params.projectId}
           partners={partners.map((p) => ({ id: p.id, name: p.name }))}
@@ -172,21 +161,21 @@ export default async function LedgerPage({
       </div>
 
       {/* Journal Entries Table */}
-      <div className="bg-white rounded-xl border border-slate-200 overflow-hidden mb-6">
-        <div className="px-4 py-3 border-b border-slate-200">
-          <h2 className="font-semibold text-slate-800">Journal Entries</h2>
-          <p className="text-xs text-slate-400 mt-0.5">Entries are immutable — use Reverse to correct an error</p>
+      <div className="rounded-xl overflow-hidden mb-6" style={CARD}>
+        <div className="px-4 py-3" style={{ borderBottom: "1px solid #30373f" }}>
+          <h2 className="font-semibold" style={{ color: "#e6edf3" }}>Journal Entries</h2>
+          <p className="text-xs mt-0.5" style={{ color: "#8b949e" }}>Entries are immutable — use Reverse to correct an error</p>
         </div>
         <table className="w-full text-sm">
-          <thead className="bg-slate-50 border-b border-slate-200">
-            <tr>
-              <th className="text-left px-4 py-2.5 text-slate-500 font-medium">Date</th>
-              <th className="text-left px-4 py-2.5 text-slate-500 font-medium">Ref</th>
-              <th className="text-left px-4 py-2.5 text-slate-500 font-medium">Memo</th>
-              <th className="text-left px-4 py-2.5 text-slate-500 font-medium">Account</th>
-              <th className="text-left px-4 py-2.5 text-slate-500 font-medium">Partner</th>
-              <th className="text-right px-4 py-2.5 text-slate-500 font-medium">Debit</th>
-              <th className="text-right px-4 py-2.5 text-slate-500 font-medium">Credit</th>
+          <thead>
+            <tr style={{ background: "#161b22", borderBottom: "1px solid #30373f" }}>
+              <th className="text-left px-4 py-2.5 font-medium" style={{ color: "#8b949e" }}>Date</th>
+              <th className="text-left px-4 py-2.5 font-medium" style={{ color: "#8b949e" }}>Ref</th>
+              <th className="text-left px-4 py-2.5 font-medium" style={{ color: "#8b949e" }}>Memo</th>
+              <th className="text-left px-4 py-2.5 font-medium" style={{ color: "#8b949e" }}>Account</th>
+              <th className="text-left px-4 py-2.5 font-medium" style={{ color: "#8b949e" }}>Partner</th>
+              <th className="text-right px-4 py-2.5 font-medium" style={{ color: "#8b949e" }}>Debit</th>
+              <th className="text-right px-4 py-2.5 font-medium" style={{ color: "#8b949e" }}>Credit</th>
               <th className="px-4 py-2.5 w-20"></th>
             </tr>
           </thead>
@@ -195,42 +184,35 @@ export default async function LedgerPage({
               entry.lines.map((line, lineIdx) => (
                 <tr
                   key={`${entry.id}-${line.id}`}
-                  className={`border-b border-slate-50 hover:bg-slate-50 ${entry.isReversal ? "bg-amber-50" : ""}`}
+                  style={{
+                    borderBottom: "1px solid #30373f",
+                    background: entry.isReversal ? "#2d2410" : "transparent",
+                  }}
                 >
-                  <td className="px-4 py-2 text-slate-500 whitespace-nowrap text-xs">
-                    {lineIdx === 0
-                      ? format(
-                          new Date(entry.date.toISOString().split("T")[0] + "T00:00:00"),
-                          "MMM d, yyyy"
-                        )
-                      : ""}
+                  <td className="px-4 py-2 text-xs whitespace-nowrap" style={{ color: "#8b949e" }}>
+                    {lineIdx === 0 ? format(new Date(entry.date.toISOString().split("T")[0] + "T00:00:00"), "MMM d, yyyy") : ""}
                   </td>
-                  <td className="px-4 py-2 text-slate-400 text-xs">
+                  <td className="px-4 py-2 text-xs" style={{ color: "#8b949e" }}>
                     {lineIdx === 0 ? (entry.reference ?? "") : ""}
                   </td>
-                  <td className="px-4 py-2 text-slate-700 max-w-xs">
+                  <td className="px-4 py-2 max-w-xs" style={{ color: "#e6edf3" }}>
                     {lineIdx === 0 && (
                       <span>
                         {entry.isReversal && (
-                          <span className="text-xs bg-amber-100 text-amber-700 px-1.5 py-0.5 rounded mr-1.5">
-                            Reversal
-                          </span>
+                          <span className="text-xs px-1.5 py-0.5 rounded mr-1.5"
+                            style={{ background: "#6b4f10", color: "#fcd34d" }}>Reversal</span>
                         )}
                         {entry.memo}
                       </span>
                     )}
                   </td>
-                  <td className="px-4 py-2 text-slate-600 text-xs">{line.account.name}</td>
-                  <td className="px-4 py-2 text-slate-500 text-xs">{line.partner?.name ?? ""}</td>
-                  <td className="px-4 py-2 text-right font-mono text-slate-800 text-xs">
-                    {Number(line.debit) > 0
-                      ? `$${Number(line.debit).toLocaleString("en-US", { minimumFractionDigits: 2 })}`
-                      : ""}
+                  <td className="px-4 py-2 text-xs" style={{ color: "#8b949e" }}>{line.account.name}</td>
+                  <td className="px-4 py-2 text-xs" style={{ color: "#8b949e" }}>{line.partner?.name ?? ""}</td>
+                  <td className="px-4 py-2 text-right font-mono text-xs" style={{ color: "#e6edf3" }}>
+                    {Number(line.debit) > 0 ? `$${Number(line.debit).toLocaleString("en-US", { minimumFractionDigits: 2 })}` : ""}
                   </td>
-                  <td className="px-4 py-2 text-right font-mono text-slate-800 text-xs">
-                    {Number(line.credit) > 0
-                      ? `$${Number(line.credit).toLocaleString("en-US", { minimumFractionDigits: 2 })}`
-                      : ""}
+                  <td className="px-4 py-2 text-right font-mono text-xs" style={{ color: "#e6edf3" }}>
+                    {Number(line.credit) > 0 ? `$${Number(line.credit).toLocaleString("en-US", { minimumFractionDigits: 2 })}` : ""}
                   </td>
                   <td className="px-4 py-2 text-right">
                     {lineIdx === 0 && (
@@ -248,12 +230,11 @@ export default async function LedgerPage({
         </table>
       </div>
 
-      {/* Partner Capital Statements */}
       {capitalLines.length > 0 && (
-        <div className="bg-white rounded-xl border border-slate-200 overflow-hidden mb-6">
-          <div className="px-4 py-3 border-b border-slate-200">
-            <h2 className="font-semibold text-slate-800">Partner Capital Statements</h2>
-            <p className="text-xs text-slate-400 mt-0.5">Running balance per partner</p>
+        <div className="rounded-xl overflow-hidden mb-6" style={CARD}>
+          <div className="px-4 py-3" style={{ borderBottom: "1px solid #30373f" }}>
+            <h2 className="font-semibold" style={{ color: "#e6edf3" }}>Partner Capital Statements</h2>
+            <p className="text-xs mt-0.5" style={{ color: "#8b949e" }}>Running balance per partner</p>
           </div>
           <div className="p-4">
             <PartnerCapitalStatement
@@ -268,9 +249,8 @@ export default async function LedgerPage({
         </div>
       )}
 
-      {/* Manage Partners (admin only) */}
       {isAdmin && (
-        <div className="bg-white rounded-xl border border-slate-200 p-5">
+        <div className="rounded-xl p-5" style={CARD}>
           <PartnerManager
             partners={partners.map((p) => ({
               id: p.id,

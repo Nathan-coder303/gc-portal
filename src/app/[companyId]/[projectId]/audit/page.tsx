@@ -4,15 +4,19 @@ import { redirect } from "next/navigation";
 import { format } from "date-fns";
 import { AuditAction, EntityType, Prisma } from "@prisma/client";
 
-const ACTION_COLORS: Record<AuditAction, string> = {
-  CREATE: "bg-green-100 text-green-700",
-  UPDATE: "bg-blue-100 text-blue-700",
-  DELETE: "bg-red-100 text-red-700",
-  ARCHIVE: "bg-amber-100 text-amber-700",
-  RESTORE: "bg-purple-100 text-purple-700",
-  IMPORT: "bg-cyan-100 text-cyan-700",
-  REVERSE: "bg-orange-100 text-orange-700",
+const CARD = { background: "#1e2736", border: "1px solid #30373f" } as const;
+
+const ACTION_STYLES: Record<AuditAction, { background: string; color: string }> = {
+  CREATE:  { background: "#0d2a1a", color: "#4ade80" },
+  UPDATE:  { background: "#1a2240", color: "#93c5fd" },
+  DELETE:  { background: "#2d1b1b", color: "#fca5a5" },
+  ARCHIVE: { background: "#2d2410", color: "#fcd34d" },
+  RESTORE: { background: "#1e1a40", color: "#c4b5fd" },
+  IMPORT:  { background: "#0d2a2a", color: "#67e8f9" },
+  REVERSE: { background: "#2d1a0d", color: "#fdba74" },
 };
+
+const INPUT_STYLE = "w-full rounded px-2 py-1.5 text-sm focus:outline-none focus:ring-2" as const;
 
 export default async function AuditPage({
   params,
@@ -30,9 +34,7 @@ export default async function AuditPage({
   const session = await auth();
   if (!session || session.user.role !== "ADMIN") redirect(`/${params.companyId}/${params.projectId}/dashboard`);
 
-  const where: Prisma.AuditLogWhereInput = {
-    projectId: params.projectId,
-  };
+  const where: Prisma.AuditLogWhereInput = { projectId: params.projectId };
   if (searchParams.entityType) where.entityType = searchParams.entityType as EntityType;
   if (searchParams.action) where.action = searchParams.action as AuditAction;
   if (searchParams.user) where.userName = { contains: searchParams.user, mode: "insensitive" };
@@ -48,78 +50,88 @@ export default async function AuditPage({
   const entityTypes = Object.values(EntityType);
   const actions = Object.values(AuditAction);
 
+  const inputStyle = {
+    ...CARD,
+    color: "#e6edf3",
+    outline: "none",
+  };
+
   return (
     <div>
       <div className="mb-6">
-        <h1 className="text-xl font-bold text-slate-900">Audit Log</h1>
-        <p className="text-sm text-slate-500 mt-0.5">Immutable record of all changes — {logs.length} entries shown</p>
+        <h1 className="text-xl font-bold" style={{ color: "#e6edf3" }}>Audit Log</h1>
+        <p className="text-sm mt-0.5" style={{ color: "#8b949e" }}>
+          Immutable record of all changes — {logs.length} entries shown
+        </p>
       </div>
 
       {/* Filters */}
-      <form method="GET" className="bg-white rounded-xl border border-slate-200 p-4 mb-6">
+      <form method="GET" className="rounded-xl p-4 mb-6" style={CARD}>
         <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
           <div>
-            <label className="block text-xs font-medium text-slate-600 mb-1">Entity Type</label>
+            <label className="block text-xs font-medium mb-1" style={{ color: "#8b949e" }}>Entity Type</label>
             <select name="entityType" defaultValue={searchParams.entityType ?? ""}
-              className="w-full border border-slate-200 rounded px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+              className={INPUT_STYLE} style={inputStyle}>
               <option value="">All types</option>
               {entityTypes.map((t) => <option key={t} value={t}>{t}</option>)}
             </select>
           </div>
           <div>
-            <label className="block text-xs font-medium text-slate-600 mb-1">Action</label>
+            <label className="block text-xs font-medium mb-1" style={{ color: "#8b949e" }}>Action</label>
             <select name="action" defaultValue={searchParams.action ?? ""}
-              className="w-full border border-slate-200 rounded px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+              className={INPUT_STYLE} style={inputStyle}>
               <option value="">All actions</option>
               {actions.map((a) => <option key={a} value={a}>{a}</option>)}
             </select>
           </div>
           <div>
-            <label className="block text-xs font-medium text-slate-600 mb-1">User</label>
+            <label className="block text-xs font-medium mb-1" style={{ color: "#8b949e" }}>User</label>
             <input type="text" name="user" defaultValue={searchParams.user ?? ""}
               placeholder="Search name..."
-              className="w-full border border-slate-200 rounded px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+              className={INPUT_STYLE} style={inputStyle} />
           </div>
           <div>
-            <label className="block text-xs font-medium text-slate-600 mb-1">From</label>
+            <label className="block text-xs font-medium mb-1" style={{ color: "#8b949e" }}>From</label>
             <input type="date" name="from" defaultValue={searchParams.from ?? ""}
-              className="w-full border border-slate-200 rounded px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+              className={INPUT_STYLE} style={inputStyle} />
           </div>
           <div>
-            <label className="block text-xs font-medium text-slate-600 mb-1">To</label>
+            <label className="block text-xs font-medium mb-1" style={{ color: "#8b949e" }}>To</label>
             <input type="date" name="to" defaultValue={searchParams.to ?? ""}
-              className="w-full border border-slate-200 rounded px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+              className={INPUT_STYLE} style={inputStyle} />
           </div>
         </div>
         <div className="flex gap-2 mt-3">
           <button type="submit"
-            className="px-4 py-1.5 bg-blue-600 text-white text-sm rounded-lg hover:bg-blue-700 font-medium">
+            className="px-4 py-1.5 text-sm rounded-lg font-medium"
+            style={{ background: "#C9A84C", color: "#0d1117" }}>
             Filter
           </button>
           <a href="?"
-            className="px-3 py-1.5 text-sm border border-slate-200 rounded-lg text-slate-600 hover:bg-slate-50">
+            className="px-3 py-1.5 text-sm rounded-lg transition-colors"
+            style={{ border: "1px solid #30373f", color: "#8b949e" }}>
             Clear
           </a>
         </div>
       </form>
 
       {/* Table */}
-      <div className="bg-white rounded-xl border border-slate-200 overflow-hidden">
+      <div className="rounded-xl overflow-hidden" style={CARD}>
         <table className="w-full text-sm">
-          <thead className="bg-slate-50 border-b border-slate-200">
-            <tr>
-              <th className="text-left px-4 py-2.5 text-slate-500 font-medium whitespace-nowrap">Timestamp</th>
-              <th className="text-left px-4 py-2.5 text-slate-500 font-medium">User</th>
-              <th className="text-left px-4 py-2.5 text-slate-500 font-medium">Action</th>
-              <th className="text-left px-4 py-2.5 text-slate-500 font-medium">Entity</th>
-              <th className="text-left px-4 py-2.5 text-slate-500 font-medium">ID</th>
-              <th className="text-left px-4 py-2.5 text-slate-500 font-medium">Changes</th>
+          <thead>
+            <tr style={{ background: "#161b22", borderBottom: "1px solid #30373f" }}>
+              <th className="text-left px-4 py-2.5 font-medium whitespace-nowrap" style={{ color: "#8b949e" }}>Timestamp</th>
+              <th className="text-left px-4 py-2.5 font-medium" style={{ color: "#8b949e" }}>User</th>
+              <th className="text-left px-4 py-2.5 font-medium" style={{ color: "#8b949e" }}>Action</th>
+              <th className="text-left px-4 py-2.5 font-medium" style={{ color: "#8b949e" }}>Entity</th>
+              <th className="text-left px-4 py-2.5 font-medium" style={{ color: "#8b949e" }}>ID</th>
+              <th className="text-left px-4 py-2.5 font-medium" style={{ color: "#8b949e" }}>Changes</th>
             </tr>
           </thead>
           <tbody>
             {logs.length === 0 && (
               <tr>
-                <td colSpan={6} className="px-4 py-8 text-center text-sm text-slate-400">
+                <td colSpan={6} className="px-4 py-8 text-center text-sm" style={{ color: "#8b949e" }}>
                   No audit log entries match the current filters
                 </td>
               </tr>
@@ -129,38 +141,38 @@ export default async function AuditPage({
               try { changes = JSON.parse(log.changes); } catch { /* empty */ }
 
               return (
-                <tr key={log.id} className="border-b border-slate-50 hover:bg-slate-50 align-top">
-                  <td className="px-4 py-2.5 text-slate-500 text-xs whitespace-nowrap">
+                <tr key={log.id} className="align-top" style={{ borderBottom: "1px solid #30373f" }}>
+                  <td className="px-4 py-2.5 text-xs whitespace-nowrap" style={{ color: "#8b949e" }}>
                     {format(log.createdAt, "MMM d, yyyy HH:mm")}
                   </td>
-                  <td className="px-4 py-2.5 text-slate-700 text-xs font-medium">{log.userName}</td>
+                  <td className="px-4 py-2.5 text-xs font-medium" style={{ color: "#e6edf3" }}>{log.userName}</td>
                   <td className="px-4 py-2.5">
-                    <span className={`text-xs px-2 py-0.5 rounded font-medium ${ACTION_COLORS[log.action]}`}>
+                    <span className="text-xs px-2 py-0.5 rounded font-medium" style={ACTION_STYLES[log.action]}>
                       {log.action}
                     </span>
                   </td>
-                  <td className="px-4 py-2.5 text-xs text-slate-500">{log.entityType}</td>
-                  <td className="px-4 py-2.5 text-xs font-mono text-slate-400">
+                  <td className="px-4 py-2.5 text-xs" style={{ color: "#8b949e" }}>{log.entityType}</td>
+                  <td className="px-4 py-2.5 text-xs font-mono" style={{ color: "#8b949e" }}>
                     {log.entityId === "bulk" ? "bulk" : log.entityId.slice(-8)}
                   </td>
                   <td className="px-4 py-2.5">
                     {changes.length > 0 ? (
                       <ul className="space-y-0.5">
                         {changes.map((c, i) => (
-                          <li key={i} className="text-xs text-slate-600">
-                            <span className="font-medium text-slate-700">{c.field}:</span>{" "}
+                          <li key={i} className="text-xs" style={{ color: "#8b949e" }}>
+                            <span className="font-medium" style={{ color: "#e6edf3" }}>{c.field}:</span>{" "}
                             {c.oldValue != null && (
-                              <span className="line-through text-slate-400 mr-1">{c.oldValue}</span>
+                              <span className="line-through mr-1" style={{ color: "#8b949e" }}>{c.oldValue}</span>
                             )}
-                            <span className="text-slate-800">{c.newValue ?? "—"}</span>
+                            <span style={{ color: "#e6edf3" }}>{c.newValue ?? "—"}</span>
                           </li>
                         ))}
                       </ul>
                     ) : (
-                      <span className="text-xs text-slate-300">—</span>
+                      <span className="text-xs" style={{ color: "#30373f" }}>—</span>
                     )}
                     {log.reason && (
-                      <p className="text-xs text-amber-600 mt-0.5">Reason: {log.reason}</p>
+                      <p className="text-xs mt-0.5" style={{ color: "#fcd34d" }}>Reason: {log.reason}</p>
                     )}
                   </td>
                 </tr>

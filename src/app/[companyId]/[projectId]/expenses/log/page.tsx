@@ -77,21 +77,23 @@ export default async function ExpenseLogPage({
     <div>
       <div className="flex items-center justify-between mb-6">
         <div>
-          <h1 className="text-xl font-bold text-slate-900">Expense Log</h1>
-          <p className="text-sm text-slate-500 mt-0.5">
+          <h1 className="text-xl font-bold" style={{ color: "#e6edf3" }}>Expense Log</h1>
+          <p className="text-sm mt-0.5" style={{ color: "#8b949e" }}>
             {expenses.length} entries · ${grandTotal.toLocaleString("en-US", { minimumFractionDigits: 2 })} total
           </p>
         </div>
         <div className="flex gap-2">
           <Link
             href={`/${params.companyId}/${params.projectId}/expenses`}
-            className="px-3 py-1.5 text-sm bg-white border border-slate-200 rounded-lg hover:bg-slate-50 text-slate-700"
+            className="px-3 py-1.5 text-sm rounded-lg transition-colors"
+            style={{ background: "#1e2736", border: "1px solid #30373f", color: "#e6edf3" }}
           >
             Daily Summary
           </Link>
           <a
             href={`/api/${params.companyId}/${params.projectId}/export/expenses`}
-            className="px-3 py-1.5 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+            className="px-3 py-1.5 text-sm rounded-lg font-medium"
+            style={{ background: "#C9A84C", color: "#0d1117" }}
           >
             Export CSV
           </a>
@@ -99,8 +101,8 @@ export default async function ExpenseLogPage({
       </div>
 
       {canAdd && (
-        <div className="bg-white rounded-xl border border-slate-200 p-5 mb-6">
-          <h2 className="font-semibold text-slate-800 mb-4">Add Expense</h2>
+        <div className="rounded-xl p-5 mb-6" style={{ background: "#1e2736", border: "1px solid #30373f" }}>
+          <h2 className="font-semibold mb-4" style={{ color: "#e6edf3" }}>Add Expense</h2>
           <AddExpenseForm
             projectId={params.projectId}
             costCodes={costCodes.map((c) => ({ id: c.id, code: c.code, name: c.name }))}

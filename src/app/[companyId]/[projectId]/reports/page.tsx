@@ -24,7 +24,6 @@ export default async function ReportsPage({
     prisma.partner.findMany({ where: { companyId: params.companyId, archivedAt: null } }),
   ]);
 
-  // Budget vs Actual
   const budgetVsActual = costCodes.map((cc) => ({
     code: cc.code,
     name: cc.name,
@@ -32,18 +31,13 @@ export default async function ReportsPage({
     actual: expenses.filter((e) => e.costCodeId === cc.id).reduce((s, e) => s + Number(e.amount), 0),
   }));
 
-  // Burn rate (cumulative by date)
   const burnRate: { date: string; cumulative: number }[] = [];
   let cumulative = 0;
   for (const e of expenses) {
     cumulative += Number(e.amount);
-    burnRate.push({
-      date: e.date.toISOString().split("T")[0],
-      cumulative,
-    });
+    burnRate.push({ date: e.date.toISOString().split("T")[0], cumulative });
   }
 
-  // Vendor breakdown
   const vendorMap = new Map<string, number>();
   for (const e of expenses) {
     vendorMap.set(e.vendor, (vendorMap.get(e.vendor) ?? 0) + Number(e.amount));
@@ -53,7 +47,6 @@ export default async function ReportsPage({
     .sort((a, b) => b.amount - a.amount)
     .slice(0, 10);
 
-  // Partner statements
   const allLines = entries.flatMap((e) =>
     e.lines.map((l) => ({
       accountId: l.accountId,
@@ -78,7 +71,6 @@ export default async function ReportsPage({
     return { partner: p.name, rows, total: partnerBalances.get(p.id) ?? 0 };
   });
 
-  // Schedule variance
   const scheduleVariance = tasks.map((t) => ({
     name: t.name,
     phase: t.phase,
@@ -92,19 +84,21 @@ export default async function ReportsPage({
     <div>
       <div className="flex items-center justify-between mb-6">
         <div>
-          <h1 className="text-xl font-bold text-slate-900">Reports</h1>
-          <p className="text-sm text-slate-500 mt-0.5">Financial and schedule analytics</p>
+          <h1 className="text-xl font-bold" style={{ color: "#e6edf3" }}>Reports</h1>
+          <p className="text-sm mt-0.5" style={{ color: "#8b949e" }}>Financial and schedule analytics</p>
         </div>
         <div className="flex gap-2">
           <a
             href={`/api/${params.companyId}/${params.projectId}/export/expenses`}
-            className="px-3 py-1.5 text-sm bg-white border border-slate-200 rounded-lg hover:bg-slate-50 text-slate-700"
+            className="px-3 py-1.5 text-sm rounded-lg transition-colors"
+            style={{ background: "#1e2736", border: "1px solid #30373f", color: "#e6edf3" }}
           >
             Export Expenses
           </a>
           <a
             href={`/api/${params.companyId}/${params.projectId}/export/ledger`}
-            className="px-3 py-1.5 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+            className="px-3 py-1.5 text-sm rounded-lg font-medium"
+            style={{ background: "#C9A84C", color: "#0d1117" }}
           >
             Export Ledger
           </a>

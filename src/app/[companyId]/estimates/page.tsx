@@ -2,6 +2,8 @@ import { auth } from "@/lib/auth";
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { can } from "@/lib/auth/permissions";
+import Image from "next/image";
+import Link from "next/link";
 import TemplateList from "@/components/estimates/TemplateList";
 
 export default async function EstimatesPage({ params }: { params: { companyId: string } }) {
@@ -40,17 +42,19 @@ export default async function EstimatesPage({ params }: { params: { companyId: s
   }));
 
   return (
-    <div className="min-h-screen bg-slate-50">
-      <header className="bg-white border-b border-slate-200">
+    <div className="min-h-screen" style={{ background: "#0d1117" }}>
+      <header style={{ background: "#161b22", borderBottom: "1px solid #30373f" }}>
         <div className="max-w-7xl mx-auto px-4 flex items-center justify-between h-14">
           <div className="flex items-center gap-3">
-            <a href={`/${params.companyId}/projects`} className="font-bold text-slate-900 hover:text-blue-600">GC Portal</a>
-            <span className="text-slate-300">|</span>
-            <span className="text-sm text-slate-600 font-medium">Estimate Templates</span>
+            <Link href={`/${params.companyId}`}>
+              <Image src="/logo.png" alt="MIBH" width={28} height={28} className="rounded object-contain" />
+            </Link>
+            <span style={{ color: "#30373f" }}>|</span>
+            <span className="text-sm font-semibold" style={{ color: "#e6edf3" }}>Estimate Templates</span>
           </div>
-          <a href={`/${params.companyId}/projects`} className="text-sm text-slate-500 hover:text-slate-900">
-            ← Back to Projects
-          </a>
+          <Link href={`/${params.companyId}`} className="text-sm transition-colors" style={{ color: "#8b949e" }}>
+            ← Dashboard
+          </Link>
         </div>
       </header>
       <main className="max-w-7xl mx-auto px-4 py-6">

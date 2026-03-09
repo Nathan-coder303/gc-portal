@@ -2,6 +2,7 @@ import { prisma } from "@/lib/prisma";
 import { auth, signOut } from "@/lib/auth";
 import { redirect } from "next/navigation";
 import Link from "next/link";
+import Image from "next/image";
 import { format } from "date-fns";
 
 export default async function ClientDetailPage({ params }: { params: { companyId: string; clientId: string } }) {
@@ -50,21 +51,27 @@ export default async function ClientDetailPage({ params }: { params: { companyId
   }
 
   return (
-    <div className="min-h-screen bg-slate-50">
-      <header className="bg-white border-b border-slate-200">
+    <div className="min-h-screen" style={{ background: "#0d1117" }}>
+      <header style={{ background: "#161b22", borderBottom: "1px solid #30373f" }}>
         <div className="max-w-5xl mx-auto px-4 flex items-center justify-between h-14">
           <div className="flex items-center gap-3">
-            <a href={`/${params.companyId}`} className="font-bold text-slate-900 hover:text-blue-600">GC Portal</a>
-            <span className="text-slate-300">|</span>
-            <a href={`/${params.companyId}/clients`} className="text-sm text-slate-600 hover:text-blue-600">Clients</a>
-            <span className="text-slate-300">/</span>
-            <span className="text-sm text-slate-800 font-medium">{safeClient.name}</span>
+            <Link href={`/${params.companyId}`}>
+              <Image src="/logo.png" alt="MIBH" width={28} height={28} className="rounded object-contain" />
+            </Link>
+            <span style={{ color: "#30373f" }}>|</span>
+            <Link href={`/${params.companyId}/clients`} className="text-sm font-medium transition-colors" style={{ color: "#8b949e" }}>
+              Clients
+            </Link>
+            <span style={{ color: "#30373f" }}>/</span>
+            <span className="text-sm font-semibold" style={{ color: "#e6edf3" }}>{safeClient.name}</span>
           </div>
           <div className="flex items-center gap-4">
-            <a href={`/${params.companyId}/clients`} className="text-sm text-slate-500 hover:text-slate-900">← Clients</a>
-            <span className="text-sm text-slate-600">{session.user.name}</span>
+            <Link href={`/${params.companyId}/clients`} className="text-sm transition-colors" style={{ color: "#8b949e" }}>
+              ← Clients
+            </Link>
+            <span className="text-sm" style={{ color: "#8b949e" }}>{session.user.name}</span>
             <form action={async () => { "use server"; await signOut({ redirectTo: "/login" }); }}>
-              <button className="text-sm text-slate-500 hover:text-slate-900">Sign out</button>
+              <button className="text-sm transition-colors" style={{ color: "#8b949e" }}>Sign out →</button>
             </form>
           </div>
         </div>
@@ -72,26 +79,30 @@ export default async function ClientDetailPage({ params }: { params: { companyId
 
       <main className="max-w-5xl mx-auto px-4 py-8">
         {/* Client info */}
-        <div className="bg-white border border-slate-200 rounded-xl p-5 mb-6">
-          <h1 className="text-xl font-bold text-slate-900">{safeClient.name}</h1>
+        <div className="rounded-xl p-5 mb-6" style={{ background: "#1e2736", border: "1px solid #30373f" }}>
+          <h1 className="text-xl font-bold" style={{ color: "#e6edf3" }}>{safeClient.name}</h1>
           <div className="flex gap-6 mt-2">
-            {safeClient.address && <span className="text-sm text-slate-500">{safeClient.address}</span>}
-            {safeClient.email && <span className="text-sm text-slate-500">{safeClient.email}</span>}
-            {safeClient.phone && <span className="text-sm text-slate-500">{safeClient.phone}</span>}
+            {safeClient.address && <span className="text-sm" style={{ color: "#8b949e" }}>{safeClient.address}</span>}
+            {safeClient.email && <span className="text-sm" style={{ color: "#8b949e" }}>{safeClient.email}</span>}
+            {safeClient.phone && <span className="text-sm" style={{ color: "#8b949e" }}>{safeClient.phone}</span>}
           </div>
         </div>
 
         {/* Estimates */}
         <div>
           <div className="flex items-center justify-between mb-4">
-            <h2 className="text-base font-semibold text-slate-700">Estimates</h2>
-            <span className="text-sm text-slate-400">{safeClient.templates.length} estimate{safeClient.templates.length !== 1 ? "s" : ""}</span>
+            <h2 className="text-base font-semibold" style={{ color: "#e6edf3" }}>Estimates</h2>
+            <span className="text-sm" style={{ color: "#8b949e" }}>
+              {safeClient.templates.length} estimate{safeClient.templates.length !== 1 ? "s" : ""}
+            </span>
           </div>
 
           {safeClient.templates.length === 0 ? (
-            <div className="bg-white rounded-xl border border-slate-200 p-10 text-center">
-              <p className="text-slate-400 text-sm">No estimates yet.</p>
-              <p className="text-slate-400 text-xs mt-1">Open a template and use &quot;Save to Client&quot; to create one.</p>
+            <div className="rounded-xl p-10 text-center" style={{ background: "#1e2736", border: "1px solid #30373f" }}>
+              <p className="text-sm" style={{ color: "#8b949e" }}>No estimates yet.</p>
+              <p className="text-xs mt-1" style={{ color: "#8b949e" }}>
+                Open a template and use &quot;Save to Client&quot; to create one.
+              </p>
             </div>
           ) : (
             <div className="space-y-3">
@@ -101,17 +112,20 @@ export default async function ClientDetailPage({ params }: { params: { companyId
                   <Link
                     key={est.id}
                     href={`/${params.companyId}/estimates/${est.id}`}
-                    className="bg-white border border-slate-200 rounded-xl p-4 flex items-center justify-between hover:border-blue-300 hover:shadow-sm transition-all group"
+                    className="rounded-xl p-4 flex items-center justify-between transition-all group block"
+                    style={{ background: "#1e2736", border: "1px solid #30373f" }}
                   >
                     <div>
-                      <div className="font-semibold text-slate-900 group-hover:text-blue-600">{est.name}</div>
-                      <div className="text-xs text-slate-400 mt-0.5">
+                      <div className="font-semibold transition-colors group-hover:text-[#C9A84C]" style={{ color: "#e6edf3" }}>
+                        {est.name}
+                      </div>
+                      <div className="text-xs mt-0.5" style={{ color: "#8b949e" }}>
                         Created {format(est.createdAt, "MMM d, yyyy")}
                       </div>
                     </div>
                     <div className="flex items-center gap-4">
-                      <span className="text-lg font-bold text-slate-900">${fmt(total)}</span>
-                      <span className="text-slate-300 group-hover:text-blue-400 text-lg">→</span>
+                      <span className="text-lg font-bold" style={{ color: "#C9A84C" }}>${fmt(total)}</span>
+                      <span className="text-lg transition-colors" style={{ color: "#8b949e" }}>→</span>
                     </div>
                   </Link>
                 );
