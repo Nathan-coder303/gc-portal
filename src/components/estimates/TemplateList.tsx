@@ -53,8 +53,7 @@ export default function TemplateList({
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-xl font-bold" style={{ color: "#e6edf3" }}>Estimate Templates</h1>
-          <p className="text-sm mt-0.5" style={{ color: "#8b949e" }}>Reusable templates for project estimates</p>
+          <h1 className="text-2xl font-bold" style={{ color: "#e6edf3" }}>Create Estimate</h1>
         </div>
         {canEdit && (
           <button
