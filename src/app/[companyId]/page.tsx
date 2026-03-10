@@ -1,5 +1,7 @@
 import { redirect } from "next/navigation";
 import { getDailySummaries } from "@/lib/daily-summary";
+import { prisma } from "@/lib/prisma";
+import DarkCalendar from "@/components/calendar/DarkCalendar";
 
 export default async function HubPage({
   params,
@@ -11,29 +13,38 @@ export default async function HubPage({
   const tab = searchParams?.tab;
 
   if (tab === "calendar") {
+    const tasks = await prisma.task.findMany({
+      where: {
+        archivedAt: null,
+        project: { companyId: params.companyId },
+        OR: [{ startDate: { not: null } }, { endDate: { not: null } }],
+      },
+      select: {
+        id: true,
+        name: true,
+        startDate: true,
+        endDate: true,
+        status: true,
+        phase: true,
+        project: { select: { name: true } },
+      },
+      orderBy: { startDate: "asc" },
+    });
+
+    const events = tasks.map((t) => ({
+      id: t.id,
+      title: t.name,
+      date: t.startDate ? t.startDate.toISOString().split("T")[0] : (t.endDate!.toISOString().split("T")[0]),
+      endDate: t.endDate ? t.endDate.toISOString().split("T")[0] : null,
+      status: t.status,
+      project: t.project.name,
+      phase: t.phase ?? undefined,
+    }));
+
     return (
-      <div className="max-w-5xl mx-auto px-4 md:px-8 py-6 md:py-8 space-y-6">
+      <div className="max-w-7xl mx-auto px-4 md:px-8 py-6 md:py-8 space-y-4">
         <h1 className="text-3xl font-bold tracking-tight" style={{ color: "#e6edf3" }}>Calendar</h1>
-        <div className="rounded-2xl overflow-hidden" style={{ border: "1px solid #30373f" }}>
-          <iframe
-            src="https://calendar.google.com/calendar/embed?src=mikebaruh%40gmail.com&ctz=America%2FNew_York&showTitle=0&showNav=1&showDate=1&showPrint=0&showTabs=1&showCalendars=0&mode=MONTH"
-            width="100%"
-            height="640"
-            style={{ border: 0, display: "block" }}
-            title="Google Calendar"
-          />
-        </div>
-        <p className="text-xs" style={{ color: "#8b949e" }}>
-          Connected to mikebaruh@gmail.com — calendar must be set to <strong>public</strong> in Google Calendar settings for the embed to display.{" "}
-          <a
-            href="https://calendar.google.com"
-            target="_blank"
-            rel="noopener noreferrer"
-            style={{ color: "#C9A84C", textDecoration: "underline" }}
-          >
-            Open in Google Calendar →
-          </a>
-        </p>
+        <DarkCalendar events={events} />
       </div>
     );
   }
