@@ -15,7 +15,7 @@ export default async function HubPage({
         <h1 className="text-3xl font-bold tracking-tight" style={{ color: "#e6edf3" }}>Calendar</h1>
         <div className="rounded-2xl overflow-hidden" style={{ border: "1px solid #30373f" }}>
           <iframe
-            src="https://calendar.google.com/calendar/embed?src=mikebaruh%40gmail.com&ctz=America%2FNew_York&bgcolor=%230d1117&color=%23C9A84C"
+            src="https://calendar.google.com/calendar/embed?src=mikebaruh%40gmail.com&ctz=America%2FNew_York&showTitle=0&showNav=1&showDate=1&showPrint=0&showTabs=1&showCalendars=0&mode=MONTH"
             width="100%"
             height="640"
             style={{ border: 0, display: "block" }}
