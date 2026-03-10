@@ -43,31 +43,23 @@ export default async function ProjectsPage({
           <div key={p.id} className="relative group">
             <Link
               href={`/${params.companyId}/${p.id}/dashboard`}
-              className="flex flex-col items-center justify-center rounded-2xl py-16 px-10 text-center transition-all hover:border-[#C9A84C88]"
-              style={{ background: "#0d1117", border: "1px solid #C9A84C44", minHeight: "340px" }}
+              className="flex flex-col items-center justify-center rounded-2xl py-10 px-10 text-center transition-all hover:border-[#C9A84C88]"
+              style={{ background: "#0d1117", border: "1px solid #C9A84C44", minHeight: "220px" }}
             >
-              {/* Initials */}
-              <div
-                className="text-8xl font-bold leading-none mb-6"
-                style={{ color: "#C9A84C" }}
-              >
-                {p.name.slice(0, 2).toUpperCase()}
-              </div>
-
-              {/* Project name */}
-              <div className="font-bold text-xl mb-5 leading-tight" style={{ color: "#e6edf3" }}>
+              {/* Project name in big gold */}
+              <div className="font-bold text-5xl mb-4 leading-tight" style={{ color: "#C9A84C" }}>
                 {p.name}
               </div>
 
               {/* Status badge */}
               <span
-                className="inline-block text-sm px-4 py-1 rounded-full font-semibold mb-5"
+                className="inline-block text-sm px-4 py-1 rounded-full font-semibold mb-4"
                 style={statusStyle[p.status] ?? { background: "#1e2736", color: "#8b949e", border: "1px solid #30373f" }}
               >
                 {p.status}
               </span>
 
-              {/* Budget */}
+              {/* Budget + date */}
               <div className="text-base font-semibold" style={{ color: "#8b949e" }}>
                 ${Number(p.budget).toLocaleString()}
               </div>
@@ -76,7 +68,6 @@ export default async function ProjectsPage({
               </div>
             </Link>
 
-            {/* Delete button — top-right corner, shows on hover */}
             {isAdmin && (
               <div className="absolute top-3 right-3 opacity-0 group-hover:opacity-100 transition-opacity">
                 <DeleteProjectButton
@@ -93,18 +84,11 @@ export default async function ProjectsPage({
         {isAdmin && (
           <Link
             href={`/${params.companyId}/projects/new`}
-            className="flex flex-col items-center justify-center rounded-2xl py-16 px-10 text-center transition-all hover:border-[#C9A84C88]"
-            style={{ background: "#0d1117", border: "1px dashed #C9A84C66", minHeight: "340px" }}
+            className="flex flex-col items-center justify-center rounded-2xl py-10 px-10 text-center transition-all hover:border-[#C9A84C88]"
+            style={{ background: "#0d1117", border: "1px dashed #C9A84C66", minHeight: "220px" }}
           >
-            <div
-              className="text-8xl font-bold leading-none mb-6"
-              style={{ color: "#C9A84C55" }}
-            >
-              +
-            </div>
-            <div className="text-xl font-semibold" style={{ color: "#C9A84C88" }}>
-              New Project
-            </div>
+            <div className="text-6xl font-bold leading-none mb-4" style={{ color: "#C9A84C55" }}>+</div>
+            <div className="text-xl font-semibold" style={{ color: "#C9A84C88" }}>New Project</div>
           </Link>
         )}
       </div>

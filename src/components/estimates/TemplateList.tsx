@@ -107,16 +107,20 @@ export default function TemplateList({
           <p className="text-sm" style={{ color: "#8b949e" }}>No templates yet. Create one above.</p>
         </div>
       ) : (
-        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+        <div className="grid grid-cols-2 gap-6">
           {templates.map((tpl) => (
-            <div key={tpl.id} className="rounded-xl p-4 transition-colors" style={{ background: "#1e2736", border: "1px solid #30373f" }}>
-              <a href={`/${companyId}/estimates/${tpl.id}`} className="block">
-                <h3 className="font-semibold" style={{ color: "#e6edf3" }}>{tpl.name}</h3>
-                {tpl.description && (
-                  <p className="text-sm mt-1" style={{ color: "#8b949e" }}>{tpl.description}</p>
-                )}
-                <div className="flex gap-3 mt-3 text-xs" style={{ color: "#8b949e" }}>
+            <div key={tpl.id} className="relative group">
+              <a
+                href={`/${companyId}/estimates/${tpl.id}`}
+                className="flex flex-col items-center justify-center rounded-2xl py-10 px-10 text-center transition-all hover:border-[#C9A84C88]"
+                style={{ background: "#0d1117", border: "1px solid #C9A84C44", minHeight: "220px" }}
+              >
+                <div className="font-bold text-5xl mb-4 leading-tight" style={{ color: "#C9A84C" }}>
+                  {tpl.name}
+                </div>
+                <div className="flex gap-3 text-sm" style={{ color: "#8b949e" }}>
                   <span>{tpl.divisionCount} divisions</span>
+                  <span>·</span>
                   <span>{tpl.itemCount} items</span>
                 </div>
               </a>
@@ -127,7 +131,7 @@ export default function TemplateList({
                     startTransition(async () => { await archiveTemplate(tpl.id); });
                   }}
                   disabled={isPending}
-                  className="mt-2 text-xs"
+                  className="absolute top-3 right-3 text-xs opacity-0 group-hover:opacity-100 transition-opacity"
                   style={{ color: "#ef4444" }}
                 >
                   Archive
