@@ -11,13 +11,16 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  // Compute today's date in ET (UTC-5 EST / UTC-4 EDT)
+  // Compute today's window in ET time (UTC-4 EDT / UTC-5 EST)
   const now = new Date();
-  const etOffset = now.getMonth() >= 2 && now.getMonth() <= 10 ? -4 : -5; // rough DST
-  const etNow = new Date(now.getTime() + etOffset * 60 * 60 * 1000);
-  const todayStr = etNow.toISOString().split("T")[0];
+  const etOffsetHours = now.getMonth() >= 2 && now.getMonth() <= 10 ? 4 : 5; // hours behind UTC
+  const etNow = new Date(now.getTime() - etOffsetHours * 60 * 60 * 1000);
+  const todayStr = etNow.toISOString().split("T")[0]; // "YYYY-MM-DD" in ET
+
+  // Convert ET midnight → UTC for DB queries
   const dayStart = new Date(`${todayStr}T00:00:00.000Z`);
-  const dayEnd   = new Date(`${todayStr}T23:59:59.999Z`);
+  dayStart.setTime(dayStart.getTime() + etOffsetHours * 60 * 60 * 1000); // midnight ET in UTC
+  const dayEnd = new Date(dayStart.getTime() + 24 * 60 * 60 * 1000 - 1); // 23:59:59 ET in UTC
 
   const companies = await prisma.company.findMany({ select: { id: true, name: true } });
   const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
@@ -25,16 +28,13 @@ export async function GET(req: NextRequest) {
 
   for (const company of companies) {
     try {
-      const [expenses, taskChanges, journalEntries, estimates] = await Promise.all([
+      const [expenses, taskChanges, journalEntries, projectEstimates, newTemplates] = await Promise.all([
         prisma.expense.findMany({
           where: { companyId: company.id, createdAt: { gte: dayStart, lte: dayEnd } },
           include: { project: { select: { name: true } }, costCode: { select: { name: true } } },
         }),
         prisma.taskChangeLog.findMany({
-          where: {
-            changedAt: { gte: dayStart, lte: dayEnd },
-            task: { project: { companyId: company.id } },
-          },
+          where: { changedAt: { gte: dayStart, lte: dayEnd }, task: { project: { companyId: company.id } } },
           include: { task: { select: { name: true, project: { select: { name: true } } } } },
         }),
         prisma.journalEntry.findMany({
@@ -45,9 +45,17 @@ export async function GET(req: NextRequest) {
           where: { createdAt: { gte: dayStart, lte: dayEnd }, project: { companyId: company.id } },
           include: { project: { select: { name: true } } },
         }),
+        prisma.estimateTemplate.findMany({
+          where: { companyId: company.id, type: "TEMPLATE", createdAt: { gte: dayStart, lte: dayEnd } },
+        }),
       ]);
 
-      const hasActivity = expenses.length > 0 || taskChanges.length > 0 || journalEntries.length > 0 || estimates.length > 0;
+      const hasActivity =
+        expenses.length > 0 ||
+        taskChanges.length > 0 ||
+        journalEntries.length > 0 ||
+        projectEstimates.length > 0 ||
+        newTemplates.length > 0;
 
       let content: string;
 
@@ -77,11 +85,12 @@ export async function GET(req: NextRequest) {
             memo: je.memo,
             reference: je.reference,
           })),
-          newEstimates: estimates.map(pe => ({
+          projectEstimates: projectEstimates.map(pe => ({
             project: pe.project.name,
             name: pe.name,
             status: pe.status,
           })),
+          newEstimateTemplates: newTemplates.map(t => ({ name: t.name, description: t.description })),
         }, null, 2);
 
         const message = await anthropic.messages.create({
@@ -89,7 +98,7 @@ export async function GET(req: NextRequest) {
           max_tokens: 512,
           messages: [{
             role: "user",
-            content: `You are an assistant that writes concise daily activity summaries for a construction project management company. Write a short, plain-English paragraph (3–6 sentences) summarizing today's activity from the data below. Focus on what was meaningful: significant expenses, task progress, journal entries, new estimates. Use dollar amounts and project names. Be direct and factual — no fluff.\n\n${dataBlob}`,
+            content: `You are an assistant that writes concise daily activity summaries for a construction project management company. Write a short, plain-English paragraph (3–6 sentences) summarizing today's activity from the data below. Cover expenses, task progress, journal entries, new estimates, and new estimate templates created. Use dollar amounts and names. Be direct and factual.\n\n${dataBlob}`,
           }],
         });
 
