@@ -83,6 +83,29 @@ model Client {
   createdAt DateTime          @default(now())
   updatedAt DateTime          @updatedAt
   templates EstimateTemplate[]
+  subBids   SubBid[]
+}
+
+model SubBid {
+  id             String   @id @default(cuid())
+  clientId       String
+  client         Client   @relation(fields: [clientId], references: [id])
+  companyId      String
+  divisionCode   String
+  divisionName   String
+  contractorName String?
+  amount         Decimal? @db.Decimal(14, 2)
+  notes          String?
+  fileUrl        String?
+  fileName       String?
+  status         String   @default("MISSING")
+  emailSource    String?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  @@unique([clientId, divisionCode])
+  @@index([clientId])
+  @@index([companyId])
 }
 
 model Project {

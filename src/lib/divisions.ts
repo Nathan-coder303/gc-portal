@@ -1,0 +1,16 @@
+export const STANDARD_DIVISIONS = [
+  { code: "01", name: "General Conditions" },
+  { code: "02", name: "Site Work" },
+  { code: "03", name: "Concrete" },
+  { code: "04", name: "Masonry" },
+  { code: "05", name: "Structural Steel" },
+  { code: "06", name: "Rough Carpentry" },
+  { code: "07", name: "Roofing & Waterproofing" },
+  { code: "08", name: "Doors & Windows" },
+  { code: "09", name: "Finishes" },
+  { code: "10", name: "Specialties" },
+  { code: "11", name: "HVAC / Mechanical" },
+  { code: "15", name: "Plumbing" },
+  { code: "16", name: "Electrical" },
+  { code: "18", name: "Cabinetry & Millwork" },
+] as const;
