@@ -37,48 +37,48 @@ export default async function ProjectsPage({
         </p>
       </div>
 
-      <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
+      <div className="grid grid-cols-2 gap-6">
         {/* Existing project cards */}
         {projects.map((p) => (
           <div key={p.id} className="relative group">
             <Link
               href={`/${params.companyId}/${p.id}/dashboard`}
-              className="block rounded-xl p-6 text-center transition-all hover:border-[#C9A84C88]"
-              style={{ background: "#0d1117", border: "1px solid #C9A84C44" }}
+              className="flex flex-col items-center justify-center rounded-2xl py-16 px-10 text-center transition-all hover:border-[#C9A84C88]"
+              style={{ background: "#0d1117", border: "1px solid #C9A84C44", minHeight: "340px" }}
             >
               {/* Initials */}
               <div
-                className="text-4xl font-bold leading-none mb-3"
+                className="text-8xl font-bold leading-none mb-6"
                 style={{ color: "#C9A84C" }}
               >
                 {p.name.slice(0, 2).toUpperCase()}
               </div>
 
               {/* Project name */}
-              <div className="font-semibold text-sm mb-3 leading-tight" style={{ color: "#e6edf3" }}>
+              <div className="font-bold text-xl mb-5 leading-tight" style={{ color: "#e6edf3" }}>
                 {p.name}
               </div>
 
               {/* Status badge */}
               <span
-                className="inline-block text-xs px-2 py-0.5 rounded font-medium mb-3"
+                className="inline-block text-sm px-4 py-1 rounded-full font-semibold mb-5"
                 style={statusStyle[p.status] ?? { background: "#1e2736", color: "#8b949e", border: "1px solid #30373f" }}
               >
                 {p.status}
               </span>
 
               {/* Budget */}
-              <div className="text-xs" style={{ color: "#8b949e" }}>
+              <div className="text-base font-semibold" style={{ color: "#8b949e" }}>
                 ${Number(p.budget).toLocaleString()}
               </div>
-              <div className="text-xs mt-0.5" style={{ color: "#8b949e" }}>
+              <div className="text-sm mt-1" style={{ color: "#8b949e" }}>
                 {format(p.startDate, "MMM d, yyyy")}
               </div>
             </Link>
 
             {/* Delete button — top-right corner, shows on hover */}
             {isAdmin && (
-              <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity">
+              <div className="absolute top-3 right-3 opacity-0 group-hover:opacity-100 transition-opacity">
                 <DeleteProjectButton
                   projectId={p.id}
                   projectName={p.name}
@@ -93,16 +93,16 @@ export default async function ProjectsPage({
         {isAdmin && (
           <Link
             href={`/${params.companyId}/projects/new`}
-            className="block rounded-xl p-6 text-center transition-all hover:border-[#C9A84C88]"
-            style={{ background: "#0d1117", border: "1px dashed #C9A84C66" }}
+            className="flex flex-col items-center justify-center rounded-2xl py-16 px-10 text-center transition-all hover:border-[#C9A84C88]"
+            style={{ background: "#0d1117", border: "1px dashed #C9A84C66", minHeight: "340px" }}
           >
             <div
-              className="text-4xl font-bold leading-none mb-3"
-              style={{ color: "#C9A84C66" }}
+              className="text-8xl font-bold leading-none mb-6"
+              style={{ color: "#C9A84C55" }}
             >
               +
             </div>
-            <div className="text-sm font-medium" style={{ color: "#C9A84C99" }}>
+            <div className="text-xl font-semibold" style={{ color: "#C9A84C88" }}>
               New Project
             </div>
           </Link>
