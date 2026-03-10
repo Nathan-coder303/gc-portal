@@ -225,34 +225,50 @@ function TemplatePdfDocument({ companyName, template, client, divisions, showTer
           <Text style={GRAND_TOTAL_VALUE_STYLE}>${fmt(grandTotal)}</Text>
         </View>
 
-        {/* T&C section */}
+        <Text style={styles.pageNumber} render={({ pageNumber, totalPages }) => `Page ${pageNumber} of ${totalPages}`} fixed />
+      </Page>
+
+      {/* T&C + Payment Schedule — always on a dedicated final page */}
+      <Page size="LETTER" style={styles.page}>
+        {/* Page header repeat */}
+        <View style={[styles.header, { marginBottom: 12 }]}>
+          <View>
+            <Image style={styles.logo} src={path.join(process.cwd(), "public", "logo.png")} />
+            <Text style={styles.companyInfo}>2950 N 28 Terr, Hollywood, FL 33020</Text>
+            <Text style={styles.companyInfo}>Tel: 305-746-7307</Text>
+            <Text style={styles.companyInfo}>CGC1527069 | CCC1336817</Text>
+          </View>
+          <View style={styles.centerSection}>
+            <Text style={styles.centerBold}>Scope of Work: {template.name}</Text>
+          </View>
+          <View />
+        </View>
+
+        {/* Payment Schedule */}
+        <Text style={styles.sectionTitle}>Payment Schedule</Text>
+        <View style={styles.payTable}>
+          <View style={styles.payHeaderRow}>
+            <Text style={[{ fontSize: 7, fontFamily: "Helvetica-Bold", color: GOLD, textTransform: "uppercase" }, styles.payColPayment]}>Payment</Text>
+            <Text style={[{ fontSize: 7, fontFamily: "Helvetica-Bold", color: GOLD, textTransform: "uppercase" }, styles.payColTrigger]}>Trigger / Milestone</Text>
+            <Text style={[{ fontSize: 7, fontFamily: "Helvetica-Bold", color: GOLD, textTransform: "uppercase", textAlign: "right" }, styles.payColPct]}>%</Text>
+          </View>
+          {(paymentSchedule ?? []).map((row, idx) => (
+            <View key={idx} style={idx % 2 === 0 ? styles.payRow : styles.payRowAlt}>
+              <Text style={[{ color: "#0f172a", fontFamily: "Helvetica-Bold" }, styles.payColPayment]}>{row.payment}</Text>
+              <Text style={[{ color: "#475569" }, styles.payColTrigger]}>{row.trigger}</Text>
+              <Text style={[{ color: GOLD, fontFamily: "Helvetica-Bold", textAlign: "right" }, styles.payColPct]}>{row.pct}%</Text>
+            </View>
+          ))}
+        </View>
+
+        {/* T&C — only when toggled on */}
         {showTerms && termsContent ? (
           <View>
             <View style={styles.sectionDivider} />
             <Text style={styles.sectionTitle}>Terms &amp; Conditions</Text>
-            <Text style={styles.termsText}>{termsContent}</Text>
-          </View>
-        ) : null}
-
-        {/* Payment Schedule section */}
-        {paymentSchedule && paymentSchedule.length > 0 ? (
-          <View>
-            <View style={styles.sectionDivider} />
-            <Text style={styles.sectionTitle}>Payment Schedule</Text>
-            <View style={styles.payTable}>
-              <View style={styles.payHeaderRow}>
-                <Text style={[{ fontSize: 7, fontFamily: "Helvetica-Bold", color: GOLD, textTransform: "uppercase" }, styles.payColPayment]}>Payment</Text>
-                <Text style={[{ fontSize: 7, fontFamily: "Helvetica-Bold", color: GOLD, textTransform: "uppercase" }, styles.payColTrigger]}>Trigger</Text>
-                <Text style={[{ fontSize: 7, fontFamily: "Helvetica-Bold", color: GOLD, textTransform: "uppercase", textAlign: "right" }, styles.payColPct]}>%</Text>
-              </View>
-              {paymentSchedule.map((row, idx) => (
-                <View key={idx} style={idx % 2 === 0 ? styles.payRow : styles.payRowAlt}>
-                  <Text style={[{ color: "#0f172a", fontFamily: "Helvetica-Bold" }, styles.payColPayment]}>{row.payment}</Text>
-                  <Text style={[{ color: "#475569" }, styles.payColTrigger]}>{row.trigger}</Text>
-                  <Text style={[{ color: GOLD, fontFamily: "Helvetica-Bold", textAlign: "right" }, styles.payColPct]}>{row.pct}%</Text>
-                </View>
-              ))}
-            </View>
+            {termsContent.split(/(?=\d+\.\s)/).map((para, i) => (
+              <Text key={i} style={[styles.termsText, { marginBottom: 4 }]}>{para.trim()}</Text>
+            ))}
           </View>
         ) : null}
 
