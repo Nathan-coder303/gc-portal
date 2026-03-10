@@ -1,4 +1,5 @@
 import { redirect } from "next/navigation";
+import { getDailySummaries } from "@/lib/daily-summary";
 
 export default async function HubPage({
   params,
@@ -38,29 +39,74 @@ export default async function HubPage({
   }
 
   if (tab === "memory") {
+    const summaries = await getDailySummaries(params.companyId);
+    const todayUTC = new Date().toISOString().split("T")[0];
+
     return (
       <div className="max-w-5xl mx-auto px-8 py-8 space-y-6">
         <h1 className="text-3xl font-bold tracking-tight" style={{ color: "#e6edf3" }}>Memory</h1>
-        <div className="rounded-2xl p-6" style={{ background: "#1e2736", border: "1px solid #30373f" }}>
+
+        {/* Info banner */}
+        <div className="rounded-2xl p-5" style={{ background: "#1e2736", border: "1px solid #30373f" }}>
           <div className="flex items-start gap-4">
             <span className="text-3xl">🧠</span>
             <div>
               <div className="font-semibold mb-1" style={{ color: "#e6edf3" }}>Daily Summaries</div>
               <p className="text-sm" style={{ color: "#8b949e" }}>
-                Daily memory summaries will be auto-generated at 9pm each day. This feature is
-                coming soon — your project context and key decisions will be captured automatically.
+                Auto-generated at 9 PM ET each day by Claude. Covers expenses, task progress,
+                journal entries, and new estimates across all projects.
               </p>
             </div>
           </div>
         </div>
-        <div>
-          <h2 className="text-xs font-semibold uppercase tracking-wider mb-3" style={{ color: "#8b949e" }}>Memory Files</h2>
-          <div className="flex items-center gap-3 rounded-xl px-4 py-3" style={{ background: "#1e2736", border: "1px solid #30373f" }}>
-            <span className="text-lg">📄</span>
-            <span className="text-sm font-mono" style={{ color: "#e6edf3" }}>MEMORY.md</span>
-            <span className="ml-auto text-xs" style={{ color: "#8b949e" }}>.claude/projects memory</span>
+
+        {/* Summary list */}
+        {summaries.length === 0 ? (
+          <div className="rounded-2xl p-8 text-center" style={{ background: "#1e2736", border: "1px solid #30373f" }}>
+            <p className="text-sm" style={{ color: "#8b949e" }}>
+              No summaries yet. The first one will appear tonight at 9 PM ET.
+            </p>
           </div>
-        </div>
+        ) : (
+          <div className="space-y-4">
+            {summaries.map((s) => {
+              const dateLabel = new Date(s.date).toLocaleDateString("en-US", {
+                weekday: "long",
+                year: "numeric",
+                month: "long",
+                day: "numeric",
+                timeZone: "UTC",
+              });
+              const isToday = s.date.toISOString().split("T")[0] === todayUTC;
+
+              return (
+                <div
+                  key={s.id}
+                  className="rounded-2xl p-5"
+                  style={{ background: "#1e2736", border: "1px solid #30373f" }}
+                >
+                  <div className="flex items-center gap-3 mb-3">
+                    <span>📅</span>
+                    <span className="text-sm font-semibold" style={{ color: "#e6edf3" }}>
+                      {dateLabel}
+                    </span>
+                    {isToday && (
+                      <span
+                        className="text-[10px] font-bold px-2 py-0.5 rounded uppercase tracking-wider"
+                        style={{ background: "#C9A84C22", color: "#C9A84C", border: "1px solid #C9A84C55" }}
+                      >
+                        Today
+                      </span>
+                    )}
+                  </div>
+                  <p className="text-sm leading-relaxed" style={{ color: "#8b949e" }}>
+                    {s.content}
+                  </p>
+                </div>
+              );
+            })}
+          </div>
+        )}
       </div>
     );
   }

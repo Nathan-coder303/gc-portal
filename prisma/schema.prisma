@@ -66,6 +66,7 @@ model Company {
   partners          Partner[]
   estimateTemplates EstimateTemplate[]
   clients           Client[]
+  dailySummaries    DailySummary[]
 }
 
 model Client {
@@ -453,4 +454,18 @@ model ProjectSettings {
   updatedAt DateTime @updatedAt
 
   @@unique([projectId, key])
+}
+
+// ─── AI Memory ───────────────────────────────────────────────────────────────
+
+model DailySummary {
+  id        String   @id @default(cuid())
+  companyId String
+  company   Company  @relation(fields: [companyId], references: [id])
+  date      DateTime @db.Date
+  content   String
+  createdAt DateTime @default(now())
+
+  @@unique([companyId, date])
+  @@index([companyId, date])
 }
