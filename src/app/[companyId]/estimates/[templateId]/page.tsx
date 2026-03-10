@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { can } from "@/lib/auth/permissions";
 import TemplateEditor from "@/components/estimates/TemplateEditor";
+import Link from "next/link";
 
 export default async function TemplateEditorPage({
   params,
@@ -78,6 +79,13 @@ export default async function TemplateEditorPage({
 
   return (
     <div className="max-w-7xl mx-auto px-4 py-6">
+      <Link
+        href={`/${params.companyId}/estimates`}
+        className="inline-flex items-center gap-1 text-sm mb-4 font-medium"
+        style={{ color: "#8b949e" }}
+      >
+        ← Estimates
+      </Link>
       <TemplateEditor
           template={{ id: template.id, name: template.name, description: template.description, companyId: params.companyId, estimateNumber: template.estimateNumber, estimateDate: template.estimateDate }}
           divisions={divisions}
