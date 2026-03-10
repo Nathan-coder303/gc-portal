@@ -47,24 +47,28 @@ export default async function ClientDetailPage({
   // Load sub bids for subs-bids and client-bid tabs
   let subBids: SubBidRow[] = [];
   if (activeTab === "subs-bids" || activeTab === "client-bid") {
-    // Ensure all 14 division records exist
     await initClientSubBids(params.clientId, params.companyId);
-
     const raw = await prisma.subBid.findMany({
       where: { clientId: params.clientId },
-      orderBy: { divisionCode: "asc" },
+      orderBy: { createdAt: "asc" },
     });
-    subBids = raw.map((b) => ({
-      id: b.id,
-      divisionCode: b.divisionCode,
-      divisionName: b.divisionName,
-      contractorName: b.contractorName,
-      amount: b.amount !== null ? Number(b.amount) : null,
-      notes: b.notes,
-      fileUrl: b.fileUrl,
-      fileName: b.fileName,
-      status: b.status,
-    }));
+    const map = new Map<string, SubBidRow>();
+    for (const b of raw) {
+      if (!map.has(b.divisionCode)) {
+        map.set(b.divisionCode, { divisionCode: b.divisionCode, divisionName: b.divisionName, offers: [] });
+      }
+      map.get(b.divisionCode)!.offers.push({
+        id: b.id,
+        contractorName: b.contractorName,
+        amount: b.amount !== null ? Number(b.amount) : null,
+        notes: b.notes,
+        fileUrl: b.fileUrl,
+        fileName: b.fileName,
+        status: b.status,
+        isPlaceholder: b.isPlaceholder,
+      });
+    }
+    subBids = Array.from(map.values()).sort((a, b) => a.divisionCode.localeCompare(b.divisionCode));
   }
 
   function calcEstimateTotal(divisions: typeof safeClient.templates[0]["divisions"]): number {

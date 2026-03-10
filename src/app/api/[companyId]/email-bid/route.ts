@@ -74,9 +74,8 @@ If you cannot determine something, use null.`;
     const fileUrl = attachments[0]?.url ?? null;
     const fileName = attachments[0]?.filename ?? null;
 
-    await prisma.subBid.upsert({
-      where: { clientId_divisionCode: { clientId: client.id, divisionCode: division.code } },
-      create: {
+    await prisma.subBid.create({
+      data: {
         clientId: client.id,
         companyId: params.companyId,
         divisionCode: division.code,
@@ -88,15 +87,7 @@ If you cannot determine something, use null.`;
         fileName,
         status: "RECEIVED",
         emailSource: from,
-      },
-      update: {
-        contractorName: parsed.contractorName,
-        amount: parsed.amount,
-        notes: parsed.notes,
-        fileUrl,
-        fileName,
-        status: "RECEIVED",
-        emailSource: from,
+        isPlaceholder: false,
       },
     });
 

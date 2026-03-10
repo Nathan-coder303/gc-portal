@@ -99,12 +99,13 @@ model SubBid {
   fileUrl        String?
   fileName       String?
   status         String   @default("MISSING")
+  isPlaceholder  Boolean  @default(false)
   emailSource    String?
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
 
-  @@unique([clientId, divisionCode])
   @@index([clientId])
+  @@index([clientId, divisionCode])
   @@index([companyId])
 }
 

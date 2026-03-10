@@ -2,16 +2,21 @@
 import { useState, useRef, useCallback } from "react";
 import { upsertSubBid } from "@/app/[companyId]/clients/actions";
 
-export type SubBidRow = {
+export type SubBidOffer = {
   id: string;
-  divisionCode: string;
-  divisionName: string;
   contractorName: string | null;
   amount: number | null;
   notes: string | null;
   fileUrl: string | null;
   fileName: string | null;
   status: string;
+  isPlaceholder: boolean;
+};
+
+export type SubBidRow = {
+  divisionCode: string;
+  divisionName: string;
+  offers: SubBidOffer[];
 };
 
 type Props = {
@@ -21,13 +26,6 @@ type Props = {
   canEdit: boolean;
 };
 
-function statusColor(status: string): string {
-  switch (status) {
-    case "RECEIVED": return "#C9A84C";
-    case "APPROVED": return "#22c55e";
-    default: return "#ef4444";
-  }
-}
 
 function fmt(n: number) {
   return n.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
@@ -45,63 +43,58 @@ type EditForm = {
   contractorName: string;
   amount: string;
   notes: string;
-  fileUrl: string;
-  fileName: string;
   status: string;
 };
 
 export default function SubsBidsTab({ clientId, companyId, subBids: initialSubBids, canEdit }: Props) {
   const [subBids, setSubBids] = useState<SubBidRow[]>(initialSubBids);
-  const [editingCode, setEditingCode] = useState<string | null>(null);
+  const [editingId, setEditingId] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
-  const [uploading, setUploading] = useState<string | null>(null);
+  const [uploading, setUploading] = useState<string | null>(null); // divisionCode
   const [dragOver, setDragOver] = useState<string | null>(null);
-  const [formData, setFormData] = useState<EditForm>({
-    contractorName: "", amount: "", notes: "", fileUrl: "", fileName: "", status: "RECEIVED",
-  });
+  const [formData, setFormData] = useState<EditForm>({ contractorName: "", amount: "", notes: "", status: "RECEIVED" });
   const fileInputRefs = useRef<Record<string, HTMLInputElement | null>>({});
 
-  const missingBids = subBids.filter((b) => b.status === "MISSING");
+  const missingDivisions = subBids.filter((b) => b.offers.every((o) => o.status === "MISSING" || (!o.amount && !o.contractorName)));
 
-  function openEdit(bid: SubBidRow) {
-    setEditingCode(bid.divisionCode);
+  function openEdit(offer: SubBidOffer) {
+    setEditingId(offer.id);
     setFormData({
-      contractorName: bid.contractorName ?? "",
-      amount: bid.amount !== null ? String(bid.amount) : "",
-      notes: bid.notes ?? "",
-      fileUrl: bid.fileUrl ?? "",
-      fileName: bid.fileName ?? "",
-      status: bid.status === "MISSING" ? "RECEIVED" : bid.status,
+      contractorName: offer.contractorName ?? "",
+      amount: offer.amount !== null ? String(offer.amount) : "",
+      notes: offer.notes ?? "",
+      status: offer.status === "MISSING" ? "RECEIVED" : offer.status,
     });
   }
 
-  async function handleSave(bid: SubBidRow) {
+  async function handleSave(bid: SubBidRow, offer: SubBidOffer) {
     setSaving(true);
     try {
       const amountVal = formData.amount ? parseFloat(formData.amount) : null;
       await upsertSubBid({
+        id: offer.id,
         clientId, companyId,
         divisionCode: bid.divisionCode,
         divisionName: bid.divisionName,
         contractorName: formData.contractorName || undefined,
         amount: isNaN(amountVal as number) ? null : amountVal,
         notes: formData.notes || undefined,
-        fileUrl: formData.fileUrl || undefined,
-        fileName: formData.fileName || undefined,
+        fileUrl: offer.fileUrl || undefined,
+        fileName: offer.fileName || undefined,
         status: formData.status,
       });
       setSubBids((prev) => prev.map((b) =>
         b.divisionCode === bid.divisionCode
-          ? { ...b, contractorName: formData.contractorName || null, amount: amountVal && !isNaN(amountVal) ? amountVal : null, notes: formData.notes || null, fileUrl: formData.fileUrl || null, fileName: formData.fileName || null, status: formData.status }
+          ? { ...b, offers: b.offers.map((o) => o.id === offer.id ? { ...o, contractorName: formData.contractorName || null, amount: amountVal && !isNaN(amountVal) ? amountVal : null, notes: formData.notes || null, status: formData.status } : o) }
           : b
       ));
-      setEditingCode(null);
+      setEditingId(null);
     } finally {
       setSaving(false);
     }
   }
 
-  const uploadFile = useCallback(async (file: File, bid: SubBidRow) => {
+  const uploadFile = useCallback(async (file: File, bid: SubBidRow, offerId: string) => {
     if (!file || file.type !== "application/pdf") return;
     setUploading(bid.divisionCode);
     try {
@@ -111,19 +104,17 @@ export default function SubsBidsTab({ clientId, companyId, subBids: initialSubBi
       if (!res.ok) throw new Error("Upload failed");
       const { url, fileName } = await res.json();
       await upsertSubBid({
+        id: offerId,
         clientId, companyId,
         divisionCode: bid.divisionCode,
         divisionName: bid.divisionName,
-        contractorName: bid.contractorName || undefined,
-        amount: bid.amount ?? undefined,
-        notes: bid.notes || undefined,
         fileUrl: url,
         fileName,
-        status: bid.status === "MISSING" ? "RECEIVED" : bid.status,
+        status: "RECEIVED",
       });
       setSubBids((prev) => prev.map((b) =>
         b.divisionCode === bid.divisionCode
-          ? { ...b, fileUrl: url, fileName, status: b.status === "MISSING" ? "RECEIVED" : b.status }
+          ? { ...b, offers: b.offers.map((o) => o.id === offerId ? { ...o, fileUrl: url, fileName, status: "RECEIVED" } : o) }
           : b
       ));
     } catch (e) {
@@ -135,19 +126,20 @@ export default function SubsBidsTab({ clientId, companyId, subBids: initialSubBi
 
   return (
     <div>
-      {missingBids.length > 0 && (
+      {missingDivisions.length > 0 && (
         <div className="rounded-lg px-4 py-3 mb-5 text-sm" style={{ background: "#C9A84C22", border: "1px solid #C9A84C55", color: "#C9A84C" }}>
-          <span className="font-semibold">&#9888; {missingBids.length} division{missingBids.length !== 1 ? "s" : ""} missing bids:</span>{" "}
-          {missingBids.map((b) => b.divisionName).join(", ")}
+          <span className="font-semibold">⚠ {missingDivisions.length} division{missingDivisions.length !== 1 ? "s" : ""} missing bids:</span>{" "}
+          {missingDivisions.map((b) => b.divisionName).join(", ")}
         </div>
       )}
 
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         {subBids.map((bid) => {
-          const isReceived = bid.status === "RECEIVED" || bid.status === "APPROVED";
-          const isEditing = editingCode === bid.divisionCode;
+          const realOffers = bid.offers.filter((o) => !o.isPlaceholder || o.contractorName || o.amount);
+          const hasOffers = realOffers.length > 0;
           const isDragging = dragOver === bid.divisionCode;
           const isUploading = uploading === bid.divisionCode;
+          const placeholder = bid.offers.find((o) => o.isPlaceholder);
 
           return (
             <div
@@ -155,7 +147,7 @@ export default function SubsBidsTab({ clientId, companyId, subBids: initialSubBi
               className="rounded-xl p-4 transition-all"
               style={{
                 background: isDragging ? "#1e2736" : "#0d1117",
-                border: isDragging ? "2px dashed #C9A84C" : isReceived ? "1px solid #C9A84C44" : "1px solid #30373f",
+                border: isDragging ? "2px dashed #C9A84C" : hasOffers ? "1px solid #C9A84C44" : "1px solid #30373f",
               }}
               onDragOver={(e) => { e.preventDefault(); setDragOver(bid.divisionCode); }}
               onDragLeave={() => setDragOver(null)}
@@ -163,102 +155,88 @@ export default function SubsBidsTab({ clientId, companyId, subBids: initialSubBi
                 e.preventDefault();
                 setDragOver(null);
                 const file = e.dataTransfer.files[0];
-                if (file) uploadFile(file, bid);
+                if (file && placeholder) uploadFile(file, bid, placeholder.id);
               }}
             >
               {/* Header */}
-              <div className="flex items-start justify-between gap-2 mb-2">
+              <div className="flex items-start justify-between gap-2 mb-3">
                 <div>
                   <div className="text-xs" style={{ color: "#8b949e" }}>Division {bid.divisionCode}</div>
-                  <div className="font-semibold text-sm mt-0.5" style={{ color: isReceived ? "#C9A84C" : "#e6edf3" }}>
+                  <div className="font-semibold text-sm mt-0.5" style={{ color: hasOffers ? "#C9A84C" : "#e6edf3" }}>
                     {bid.divisionName}
                   </div>
                 </div>
-                <span
-                  className="text-[10px] font-bold px-2 py-0.5 rounded-full shrink-0"
-                  style={{ background: statusColor(bid.status) + "22", color: statusColor(bid.status), border: `1px solid ${statusColor(bid.status)}55` }}
-                >
-                  {bid.status}
+                <span className="text-[10px] font-bold px-2 py-0.5 rounded-full shrink-0"
+                  style={{ background: (hasOffers ? "#C9A84C" : "#ef4444") + "22", color: hasOffers ? "#C9A84C" : "#ef4444", border: `1px solid ${hasOffers ? "#C9A84C" : "#ef4444"}55` }}>
+                  {hasOffers ? "RECEIVED" : "MISSING"}
                 </span>
               </div>
 
-              {/* Details */}
-              {!isEditing && (
-                <div className="space-y-1 mt-2">
-                  {bid.contractorName && <div className="text-sm" style={{ color: "#e6edf3" }}>{bid.contractorName}</div>}
-                  {bid.amount !== null && <div className="text-base font-bold" style={{ color: "#C9A84C" }}>${fmt(bid.amount)}</div>}
-                  {bid.notes && <div className="text-xs" style={{ color: "#8b949e" }}>{bid.notes}</div>}
-
-                  {/* PDF link */}
-                  {bid.fileUrl && (
-                    <a
-                      href={getPdfHref(bid.fileUrl, companyId)}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="text-xs underline"
-                      style={{ color: "#C9A84C" }}
-                    >
-                      📄 {bid.fileName ?? "View PDF"}
-                    </a>
-                  )}
-
-                  {/* Drop zone / upload */}
-                  {canEdit && (
-                    <div
-                      className="mt-3 rounded-lg px-3 py-2 text-center cursor-pointer text-xs transition-all"
-                      style={{ border: "1px dashed #30373f", color: "#8b949e" }}
-                      onClick={() => fileInputRefs.current[bid.divisionCode]?.click()}
-                    >
-                      {isUploading ? "Uploading…" : isDragging ? "Drop PDF here" : "Drop PDF or click to upload"}
-                      <input
-                        type="file"
-                        accept="application/pdf"
-                        className="hidden"
-                        ref={(el) => { fileInputRefs.current[bid.divisionCode] = el; }}
-                        onChange={(e) => { const f = e.target.files?.[0]; if (f) uploadFile(f, bid); }}
-                      />
-                    </div>
-                  )}
-                </div>
-              )}
-
-              {/* Edit form */}
-              {isEditing && (
-                <div className="mt-3 space-y-2">
-                  {(["contractorName", "amount", "notes"] as const).map((field) => (
-                    <input
-                      key={field}
-                      type={field === "amount" ? "number" : "text"}
-                      placeholder={field === "contractorName" ? "Contractor name" : field === "amount" ? "Bid amount" : "Notes"}
-                      value={formData[field]}
-                      onChange={(e) => setFormData((f) => ({ ...f, [field]: e.target.value }))}
-                      className="w-full rounded-lg px-3 py-1.5 text-sm"
-                      style={{ background: "#1e2736", border: "1px solid #30373f", color: "#e6edf3", outline: "none" }}
-                    />
-                  ))}
-                  <select
-                    value={formData.status}
-                    onChange={(e) => setFormData((f) => ({ ...f, status: e.target.value }))}
-                    className="w-full rounded-lg px-3 py-1.5 text-sm"
-                    style={{ background: "#1e2736", border: "1px solid #30373f", color: "#e6edf3", outline: "none" }}
-                  >
-                    <option value="MISSING">MISSING</option>
-                    <option value="RECEIVED">RECEIVED</option>
-                    <option value="APPROVED">APPROVED</option>
-                  </select>
-                  <div className="flex gap-2 mt-1">
-                    <button onClick={() => handleSave(bid)} disabled={saving} className="flex-1 rounded-lg px-3 py-1.5 text-xs font-semibold" style={{ background: "#C9A84C", color: "#0d1117" }}>
-                      {saving ? "Saving..." : "Save"}
-                    </button>
-                    <button onClick={() => setEditingCode(null)} className="rounded-lg px-3 py-1.5 text-xs" style={{ background: "#1e2736", color: "#8b949e", border: "1px solid #30373f" }}>
-                      Cancel
-                    </button>
+              {/* All offers */}
+              <div className="space-y-2">
+                {realOffers.map((offer) => (
+                  <div key={offer.id} className="rounded-lg p-2.5" style={{ background: "#161b22", border: "1px solid #30373f" }}>
+                    {editingId === offer.id ? (
+                      <div className="space-y-2">
+                        {(["contractorName", "amount", "notes"] as const).map((field) => (
+                          <input key={field} type={field === "amount" ? "number" : "text"}
+                            placeholder={field === "contractorName" ? "Contractor name" : field === "amount" ? "Bid amount" : "Notes"}
+                            value={formData[field]}
+                            onChange={(e) => setFormData((f) => ({ ...f, [field]: e.target.value }))}
+                            className="w-full rounded-lg px-3 py-1.5 text-sm"
+                            style={{ background: "#1e2736", border: "1px solid #30373f", color: "#e6edf3", outline: "none" }} />
+                        ))}
+                        <select value={formData.status} onChange={(e) => setFormData((f) => ({ ...f, status: e.target.value }))}
+                          className="w-full rounded-lg px-3 py-1.5 text-sm"
+                          style={{ background: "#1e2736", border: "1px solid #30373f", color: "#e6edf3", outline: "none" }}>
+                          <option value="MISSING">MISSING</option>
+                          <option value="RECEIVED">RECEIVED</option>
+                          <option value="APPROVED">APPROVED</option>
+                        </select>
+                        <div className="flex gap-2">
+                          <button onClick={() => handleSave(bid, offer)} disabled={saving}
+                            className="flex-1 rounded-lg px-3 py-1.5 text-xs font-semibold"
+                            style={{ background: "#C9A84C", color: "#0d1117" }}>
+                            {saving ? "Saving..." : "Save"}
+                          </button>
+                          <button onClick={() => setEditingId(null)} className="rounded-lg px-3 py-1.5 text-xs"
+                            style={{ background: "#1e2736", color: "#8b949e", border: "1px solid #30373f" }}>
+                            Cancel
+                          </button>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="space-y-0.5 min-w-0">
+                          {offer.contractorName && <div className="text-sm font-medium" style={{ color: "#e6edf3" }}>{offer.contractorName}</div>}
+                          {offer.amount !== null && <div className="text-sm font-bold" style={{ color: "#C9A84C" }}>${fmt(offer.amount)}</div>}
+                          {offer.notes && <div className="text-xs" style={{ color: "#8b949e" }}>{offer.notes}</div>}
+                          {offer.fileUrl && (
+                            <a href={getPdfHref(offer.fileUrl, companyId)} target="_blank" rel="noopener noreferrer"
+                              className="text-xs underline" style={{ color: "#C9A84C" }}>
+                              📄 {offer.fileName ?? "View PDF"}
+                            </a>
+                          )}
+                        </div>
+                        {canEdit && (
+                          <button onClick={() => openEdit(offer)} className="text-xs shrink-0" style={{ color: "#8b949e" }}>Edit</button>
+                        )}
+                      </div>
+                    )}
                   </div>
-                </div>
-              )}
+                ))}
+              </div>
 
-              {!isEditing && canEdit && (
-                <button onClick={() => openEdit(bid)} className="mt-2 text-xs" style={{ color: "#8b949e" }}>Edit</button>
+              {/* Drop zone */}
+              {canEdit && (
+                <div className="mt-3 rounded-lg px-3 py-2 text-center cursor-pointer text-xs transition-all"
+                  style={{ border: "1px dashed #30373f", color: "#8b949e" }}
+                  onClick={() => fileInputRefs.current[bid.divisionCode]?.click()}>
+                  {isUploading ? "Uploading…" : isDragging ? "Drop PDF here" : "Drop PDF or click to upload"}
+                  <input type="file" accept="application/pdf" className="hidden"
+                    ref={(el) => { fileInputRefs.current[bid.divisionCode] = el; }}
+                    onChange={(e) => { const f = e.target.files?.[0]; if (f && placeholder) uploadFile(f, bid, placeholder.id); }} />
+                </div>
               )}
             </div>
           );

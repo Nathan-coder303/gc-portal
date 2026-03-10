@@ -5,6 +5,26 @@ import { initClientSubBids } from "@/app/[companyId]/clients/actions";
 import ClientBidTab from "@/components/clients/ClientBidTab";
 import { SubBidRow } from "@/components/clients/SubsBidsTab";
 
+function groupBids(raw: { id: string; divisionCode: string; divisionName: string; contractorName: string | null; amount: unknown; notes: string | null; fileUrl: string | null; fileName: string | null; status: string; isPlaceholder: boolean }[]): SubBidRow[] {
+  const map = new Map<string, SubBidRow>();
+  for (const b of raw) {
+    if (!map.has(b.divisionCode)) {
+      map.set(b.divisionCode, { divisionCode: b.divisionCode, divisionName: b.divisionName, offers: [] });
+    }
+    map.get(b.divisionCode)!.offers.push({
+      id: b.id,
+      contractorName: b.contractorName,
+      amount: b.amount !== null ? Number(b.amount) : null,
+      notes: b.notes,
+      fileUrl: b.fileUrl,
+      fileName: b.fileName,
+      status: b.status,
+      isPlaceholder: b.isPlaceholder,
+    });
+  }
+  return Array.from(map.values()).sort((a, b) => a.divisionCode.localeCompare(b.divisionCode));
+}
+
 export default async function ProjectClientBidPage({
   params,
 }: {
@@ -18,7 +38,6 @@ export default async function ProjectClientBidPage({
   });
   if (!project) redirect(`/${params.companyId}/projects`);
 
-  // Find client linked to this project by matching address
   const client = await prisma.client.findFirst({
     where: {
       companyId: params.companyId,
@@ -41,24 +60,10 @@ export default async function ProjectClientBidPage({
 
   const raw = await prisma.subBid.findMany({
     where: { clientId: client.id },
-    orderBy: { divisionCode: "asc" },
+    orderBy: { createdAt: "asc" },
   });
 
-  const subBids: SubBidRow[] = raw.map((b) => ({
-    id: b.id,
-    divisionCode: b.divisionCode,
-    divisionName: b.divisionName,
-    contractorName: b.contractorName,
-    amount: b.amount !== null ? Number(b.amount) : null,
-    notes: b.notes,
-    fileUrl: b.fileUrl,
-    fileName: b.fileName,
-    status: b.status,
-  }));
+  const subBids = groupBids(raw);
 
-  return (
-    <div>
-      <ClientBidTab subBids={subBids} clientName={client.name} />
-    </div>
-  );
+  return <ClientBidTab subBids={subBids} clientName={client.name} />;
 }

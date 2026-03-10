@@ -123,5 +123,5 @@ export default async function HubPage({
   }
 
   // Default: go to projects
-  redirect(`/${params.companyId}/projects`);
+  redirect(`/${params.companyId}/today`);
 }

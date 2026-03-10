@@ -178,9 +178,8 @@ Extract and respond ONLY with valid JSON, no markdown:
         : null;
       const fileName = pdfParts[0]?.filename ?? null;
 
-      await prisma.subBid.upsert({
-        where: { clientId_divisionCode: { clientId: client.id, divisionCode: division.code } },
-        create: {
+      await prisma.subBid.create({
+        data: {
           clientId: client.id,
           companyId: client.companyId,
           divisionCode: division.code,
@@ -192,15 +191,7 @@ Extract and respond ONLY with valid JSON, no markdown:
           fileName,
           status: "RECEIVED",
           emailSource: from,
-        },
-        update: {
-          contractorName: parsed.contractorName ?? from,
-          amount: parsed.amount ?? null,
-          notes: parsed.notes ?? null,
-          fileUrl,
-          fileName,
-          status: "RECEIVED",
-          emailSource: from,
+          isPlaceholder: false,
         },
       });
 
