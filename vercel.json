@@ -6,7 +6,7 @@
     },
     {
       "path": "/api/cron/fetch-bids",
-      "schedule": "*/30 * * * *"
+      "schedule": "0 8 * * *"
     }
   ]
 }
