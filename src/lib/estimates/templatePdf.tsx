@@ -14,7 +14,7 @@ function calcTotal(qty: number | null, cost: number | null, markup: number | nul
 }
 
 function isItemFilled(item: Item): boolean {
-  return item.defaultQty !== null || item.defaultUnitCost !== null;
+  return calcTotal(item.defaultQty, item.defaultUnitCost, item.defaultMarkupPct) > 0;
 }
 
 // Format ISO date (YYYY-MM-DD) to "March 9, 2026", or pass through free text

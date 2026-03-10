@@ -260,6 +260,7 @@ export function EstimatePdfDocument({ companyName, projectName, estimate, divisi
         </View>
         {divisions.map((div) => {
           const divTotal = computeDivisionTotal(div.groups, div.items);
+          if (divTotal === 0) return null;
           const pct = grandTotal > 0 ? (divTotal / grandTotal) * 100 : 0;
           return (
             <View key={div.id} style={styles.divisionSummaryRow}>
@@ -284,9 +285,18 @@ export function EstimatePdfDocument({ companyName, projectName, estimate, divisi
         />
       </Page>
 
-      {/* Detail pages — one per division */}
+      {/* Detail pages — one per division (skip empty divisions) */}
       {divisions.map((div) => {
-        const divTotal = computeDivisionTotal(div.groups, div.items);
+        const filledItems = div.items.filter(i => computeItemTotal(i) > 0);
+        const filledGroups = div.groups
+          .map(g => ({ ...g, items: g.items.filter(i => computeItemTotal(i) > 0) }))
+          .filter(g => g.items.length > 0);
+        if (filledItems.length === 0 && filledGroups.length === 0) return null;
+
+        const divTotal = computeDivisionTotal(
+          filledGroups,
+          filledItems,
+        );
         return (
           <Page key={div.id} size="LETTER" style={styles.page} orientation="landscape">
             {/* Division header */}
@@ -299,7 +309,7 @@ export function EstimatePdfDocument({ companyName, projectName, estimate, divisi
             </View>
 
             {/* Groups */}
-            {div.groups.map((grp) => {
+            {filledGroups.map((grp) => {
               const grpTotal = computeGroupTotal(grp.items);
               return (
                 <View key={grp.id}>
@@ -316,10 +326,10 @@ export function EstimatePdfDocument({ companyName, projectName, estimate, divisi
             })}
 
             {/* Ungrouped items */}
-            {div.items.length > 0 && (
+            {filledItems.length > 0 && (
               <View>
                 <ItemTableHeader />
-                {div.items.map((item, idx) => (
+                {filledItems.map((item, idx) => (
                   <ItemRow key={item.id} item={item} index={idx} />
                 ))}
               </View>
