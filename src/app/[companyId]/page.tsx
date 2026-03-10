@@ -23,7 +23,15 @@ export default async function HubPage({
           />
         </div>
         <p className="text-xs" style={{ color: "#8b949e" }}>
-          Connected to mikebaruh@gmail.com — make sure your calendar is set to public for the embed to display.
+          Connected to mikebaruh@gmail.com — calendar must be set to <strong>public</strong> in Google Calendar settings for the embed to display.{" "}
+          <a
+            href="https://calendar.google.com"
+            target="_blank"
+            rel="noopener noreferrer"
+            style={{ color: "#C9A84C", textDecoration: "underline" }}
+          >
+            Open in Google Calendar →
+          </a>
         </p>
       </div>
     );
