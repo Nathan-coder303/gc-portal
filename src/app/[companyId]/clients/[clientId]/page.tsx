@@ -50,11 +50,11 @@ export default async function ClientDetailPage({ params }: { params: { companyId
   }
 
   return (
-    <div className="max-w-5xl mx-auto px-8 py-8">
+    <div className="max-w-5xl mx-auto px-4 md:px-8 py-6 md:py-8">
         {/* Client info */}
         <div className="rounded-xl p-5 mb-6" style={{ background: "#1e2736", border: "1px solid #30373f" }}>
           <h1 className="text-xl font-bold" style={{ color: "#e6edf3" }}>{safeClient.name}</h1>
-          <div className="flex gap-6 mt-2">
+          <div className="flex flex-wrap gap-3 mt-2">
             {safeClient.address && <span className="text-sm" style={{ color: "#8b949e" }}>{safeClient.address}</span>}
             {safeClient.email && <span className="text-sm" style={{ color: "#8b949e" }}>{safeClient.email}</span>}
             {safeClient.phone && <span className="text-sm" style={{ color: "#8b949e" }}>{safeClient.phone}</span>}

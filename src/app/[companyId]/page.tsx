@@ -12,7 +12,7 @@ export default async function HubPage({
 
   if (tab === "calendar") {
     return (
-      <div className="max-w-5xl mx-auto px-8 py-8 space-y-6">
+      <div className="max-w-5xl mx-auto px-4 md:px-8 py-6 md:py-8 space-y-6">
         <h1 className="text-3xl font-bold tracking-tight" style={{ color: "#e6edf3" }}>Calendar</h1>
         <div className="rounded-2xl overflow-hidden" style={{ border: "1px solid #30373f" }}>
           <iframe
@@ -43,7 +43,7 @@ export default async function HubPage({
     const todayUTC = new Date().toISOString().split("T")[0];
 
     return (
-      <div className="max-w-5xl mx-auto px-8 py-8 space-y-6">
+      <div className="max-w-5xl mx-auto px-4 md:px-8 py-6 md:py-8 space-y-6">
         <h1 className="text-3xl font-bold tracking-tight" style={{ color: "#e6edf3" }}>Memory</h1>
 
         {/* Info banner */}

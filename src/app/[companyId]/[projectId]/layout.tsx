@@ -37,7 +37,7 @@ export default async function ProjectLayout({
         </div>
         <TabNav companyId={params.companyId} projectId={params.projectId} isAdmin={isAdmin} />
       </div>
-      <main className="max-w-7xl mx-auto px-4 py-6">{children}</main>
+      <main className="max-w-7xl mx-auto px-3 md:px-4 py-4 md:py-6">{children}</main>
     </div>
   );
 }

@@ -107,7 +107,7 @@ export default function TemplateList({
           <p className="text-sm" style={{ color: "#8b949e" }}>No templates yet. Create one above.</p>
         </div>
       ) : (
-        <div className="grid grid-cols-2 gap-6">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 md:gap-6">
           {templates.map((tpl) => (
             <div key={tpl.id} className="relative group">
               <a
