@@ -215,7 +215,7 @@ export function EstimatePdfDocument({ companyName, projectName, estimate, divisi
 
   return (
     <Document title={`${estimate.name} — Estimate`} author={companyName}>
-      <Page size="LETTER" style={styles.page} orientation="landscape">
+      <Page size="LETTER" style={styles.page}>
         {/* Header */}
         <View style={styles.header}>
           <View style={styles.headerLeft}>
@@ -298,7 +298,7 @@ export function EstimatePdfDocument({ companyName, projectName, estimate, divisi
           filledItems,
         );
         return (
-          <Page key={div.id} size="LETTER" style={styles.page} orientation="landscape">
+          <Page key={div.id} size="LETTER" style={styles.page}>
             {/* Division header */}
             <View style={styles.divisionHeader}>
               <View style={styles.divisionLeft}>

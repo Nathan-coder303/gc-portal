@@ -6,6 +6,12 @@ import Link from "next/link";
 import { format } from "date-fns";
 import DeleteProjectButton from "./DeleteProjectButton";
 
+const statusStyle: Record<string, { background: string; color: string; border: string }> = {
+  ACTIVE:   { background: "#0d2a1a", color: "#4ade80", border: "1px solid #166534" },
+  ON_HOLD:  { background: "#2d2410", color: "#fbbf24", border: "1px solid #92400e" },
+  COMPLETE: { background: "#1e2736", color: "#8b949e", border: "1px solid #30373f" },
+};
+
 export default async function ProjectsPage({
   params,
 }: {
@@ -22,96 +28,86 @@ export default async function ProjectsPage({
     orderBy: { createdAt: "desc" },
   });
 
-  const statusStyle: Record<string, { background: string; color: string; border: string }> = {
-    ACTIVE:   { background: "#0d2a1a", color: "#4ade80", border: "1px solid #166534" },
-    ON_HOLD:  { background: "#2d2410", color: "#fbbf24", border: "1px solid #92400e" },
-    COMPLETE: { background: "#1e2736", color: "#8b949e", border: "1px solid #30373f" },
-  };
-
   return (
     <div className="max-w-5xl mx-auto px-8 py-8">
-        <div className="flex items-center justify-between mb-6">
-          <div>
-            <h1 className="text-xl font-bold" style={{ color: "#e6edf3" }}>Existing Projects</h1>
-            <p className="text-sm mt-0.5" style={{ color: "#8b949e" }}>
-              {projects.length} project{projects.length !== 1 ? "s" : ""}
-            </p>
-          </div>
-          {isAdmin && (
-            <Link
-              href={`/${params.companyId}/projects/new`}
-              className="px-4 py-2 text-sm rounded-lg font-medium transition-colors"
-              style={{ background: "#C9A84C", color: "#0d1117" }}
-            >
-              + New Project
-            </Link>
-          )}
-        </div>
+      <div className="mb-8">
+        <h1 className="text-xl font-bold" style={{ color: "#e6edf3" }}>Projects</h1>
+        <p className="text-sm mt-0.5" style={{ color: "#8b949e" }}>
+          {projects.length} project{projects.length !== 1 ? "s" : ""}
+        </p>
+      </div>
 
-        {projects.length === 0 ? (
-          <div className="rounded-xl p-12 text-center" style={{ background: "#1e2736", border: "1px solid #30373f" }}>
-            <p className="mb-4" style={{ color: "#8b949e" }}>No projects yet.</p>
-            {isAdmin && (
-              <Link
-                href={`/${params.companyId}/projects/new`}
-                className="px-4 py-2 text-sm rounded-lg font-medium"
-                style={{ background: "#C9A84C", color: "#0d1117" }}
+      <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
+        {/* Existing project cards */}
+        {projects.map((p) => (
+          <div key={p.id} className="relative group">
+            <Link
+              href={`/${params.companyId}/${p.id}/dashboard`}
+              className="block rounded-xl p-6 text-center transition-all hover:border-[#C9A84C88]"
+              style={{ background: "#0d1117", border: "1px solid #C9A84C44" }}
+            >
+              {/* Initials */}
+              <div
+                className="text-4xl font-bold leading-none mb-3"
+                style={{ color: "#C9A84C" }}
               >
-                Create your first project
-              </Link>
+                {p.name.slice(0, 2).toUpperCase()}
+              </div>
+
+              {/* Project name */}
+              <div className="font-semibold text-sm mb-3 leading-tight" style={{ color: "#e6edf3" }}>
+                {p.name}
+              </div>
+
+              {/* Status badge */}
+              <span
+                className="inline-block text-xs px-2 py-0.5 rounded font-medium mb-3"
+                style={statusStyle[p.status] ?? { background: "#1e2736", color: "#8b949e", border: "1px solid #30373f" }}
+              >
+                {p.status}
+              </span>
+
+              {/* Budget */}
+              <div className="text-xs" style={{ color: "#8b949e" }}>
+                ${Number(p.budget).toLocaleString()}
+              </div>
+              <div className="text-xs mt-0.5" style={{ color: "#8b949e" }}>
+                {format(p.startDate, "MMM d, yyyy")}
+              </div>
+            </Link>
+
+            {/* Delete button — top-right corner, shows on hover */}
+            {isAdmin && (
+              <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                <DeleteProjectButton
+                  projectId={p.id}
+                  projectName={p.name}
+                  companyId={params.companyId}
+                />
+              </div>
             )}
           </div>
-        ) : (
-          <div className="grid gap-3">
-            {projects.map((p) => (
-              <div
-                key={p.id}
-                className="rounded-xl p-5 flex items-center justify-between group transition-all"
-                style={{ background: "#1e2736", border: "1px solid #30373f" }}
-              >
-                <Link
-                  href={`/${params.companyId}/${p.id}/dashboard`}
-                  className="flex items-center gap-4 flex-1 min-w-0"
-                >
-                  <div
-                    className="flex-shrink-0 w-10 h-10 rounded-lg flex items-center justify-center font-mono text-sm font-bold"
-                    style={{ background: "#C9A84C1a", color: "#C9A84C" }}
-                  >
-                    {p.name.slice(0, 2).toUpperCase()}
-                  </div>
-                  <div className="min-w-0">
-                    <div className="font-semibold" style={{ color: "#e6edf3" }}>{p.name}</div>
-                    <div className="text-xs mt-0.5" style={{ color: "#8b949e" }}>
-                      Started {format(p.startDate, "MMM d, yyyy")} · Budget ${Number(p.budget).toLocaleString()}
-                    </div>
-                  </div>
-                </Link>
-                <div className="flex items-center gap-3 shrink-0">
-                  <span
-                    className="text-xs px-2 py-0.5 rounded font-medium"
-                    style={statusStyle[p.status] ?? { background: "#1e2736", color: "#8b949e", border: "1px solid #30373f" }}
-                  >
-                    {p.status}
-                  </span>
-                  {isAdmin && (
-                    <DeleteProjectButton
-                      projectId={p.id}
-                      projectName={p.name}
-                      companyId={params.companyId}
-                    />
-                  )}
-                  <Link
-                    href={`/${params.companyId}/${p.id}/dashboard`}
-                    className="text-lg transition-colors"
-                    style={{ color: "#8b949e" }}
-                  >
-                    →
-                  </Link>
-                </div>
-              </div>
-            ))}
-          </div>
+        ))}
+
+        {/* New Project card */}
+        {isAdmin && (
+          <Link
+            href={`/${params.companyId}/projects/new`}
+            className="block rounded-xl p-6 text-center transition-all hover:border-[#C9A84C88]"
+            style={{ background: "#0d1117", border: "1px dashed #C9A84C66" }}
+          >
+            <div
+              className="text-4xl font-bold leading-none mb-3"
+              style={{ color: "#C9A84C66" }}
+            >
+              +
+            </div>
+            <div className="text-sm font-medium" style={{ color: "#C9A84C99" }}>
+              New Project
+            </div>
+          </Link>
         )}
+      </div>
     </div>
   );
 }

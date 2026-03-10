@@ -122,7 +122,7 @@ function TemplatePdfDocument({ companyName, template, client, divisions }: Templ
 
   return (
     <Document title={`${template.name} — Estimate`} author={companyName}>
-      <Page size="LETTER" style={styles.page} orientation="landscape">
+      <Page size="LETTER" style={styles.page}>
         {/* Header: 3 columns */}
         <View style={styles.header}>
           {/* Left: Logo + company info all bold same size */}
