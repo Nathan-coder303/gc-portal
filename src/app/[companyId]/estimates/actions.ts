@@ -445,6 +445,34 @@ export async function createTemplateByName(name: string) {
   redirect(`/${session.user.companyId}/estimates/${templateId}`);
 }
 
+export async function updateTemplatePaymentSchedule(templateId: string, rows: { payment: string; trigger: string; pct: number }[]) {
+  const session = await auth();
+  if (!session) throw new Error("Unauthorized");
+  requirePermission(session, "estimateTemplate:edit");
+
+  await prisma.estimateTemplate.update({
+    where: { id: templateId },
+    data: { paymentSchedule: rows, updatedBy: session.user.id },
+  });
+
+  revalidatePath(`/${session.user.companyId}/estimates`);
+  return { success: true };
+}
+
+export async function updateTemplateShowTerms(templateId: string, showTerms: boolean) {
+  const session = await auth();
+  if (!session) throw new Error("Unauthorized");
+  requirePermission(session, "estimateTemplate:edit");
+
+  await prisma.estimateTemplate.update({
+    where: { id: templateId },
+    data: { showTerms, updatedBy: session.user.id },
+  });
+
+  revalidatePath(`/${session.user.companyId}/estimates`);
+  return { success: true };
+}
+
 export async function deleteClient(clientId: string) {
   const session = await auth();
   if (!session) throw new Error("Unauthorized");

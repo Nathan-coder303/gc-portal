@@ -14,6 +14,8 @@ import {
   setTemplateClient,
   upsertClient,
   saveAsClientEstimate,
+  updateTemplatePaymentSchedule,
+  updateTemplateShowTerms,
 } from "@/app/[companyId]/estimates/actions";
 
 type Item = {
@@ -30,7 +32,8 @@ type Item = {
 };
 type Group = { id: string; name: string; items: Item[] };
 type Division = { id: string; csiCode: string | null; name: string; groups: Group[]; items: Item[] };
-type Template = { id: string; name: string; description: string | null; companyId: string; estimateNumber: string | null; estimateDate: string | null };
+type PaymentRow = { payment: string; trigger: string; pct: number };
+type Template = { id: string; name: string; description: string | null; companyId: string; estimateNumber: string | null; estimateDate: string | null; paymentSchedule: PaymentRow[] | null; showTerms: boolean };
 
 const INPUT = "rounded px-2 py-1 text-xs" as const;
 const inputStyle = { background: "#0d1117", border: "1px solid #30373f", color: "#e6edf3" };
@@ -300,6 +303,132 @@ function TemplateDivisionSection({ division, canEdit }: { division: Division; ca
   );
 }
 
+const DEFAULT_PAYMENT_SCHEDULE: PaymentRow[] = [
+  { payment: "Deposit", trigger: "Contract signing – permits, engineering, scheduling", pct: 25 },
+  { payment: "Structure Start", trigger: "Foundation completed / framing start", pct: 25 },
+  { payment: "Dry-In", trigger: "Framing, roof, windows installed", pct: 20 },
+  { payment: "Rough-Ins", trigger: "Electrical, plumbing, HVAC rough inspections passed", pct: 20 },
+  { payment: "Completion", trigger: "Final inspection / punchlist", pct: 10 },
+];
+
+function PaymentScheduleCard({
+  templateId,
+  initialRows,
+  canEdit,
+}: {
+  templateId: string;
+  initialRows: PaymentRow[];
+  canEdit: boolean;
+}) {
+  const [rows, setRows] = useState<PaymentRow[]>(initialRows);
+  const [isPending, startTransition] = useTransition();
+  const [dirty, setDirty] = useState(false);
+
+  function updateRow(idx: number, field: keyof PaymentRow, value: string | number) {
+    const updated = rows.map((r, i) => i === idx ? { ...r, [field]: field === "pct" ? Number(value) : value } : r);
+    setRows(updated);
+    setDirty(true);
+  }
+
+  function addRow() {
+    setRows([...rows, { payment: "", trigger: "", pct: 0 }]);
+    setDirty(true);
+  }
+
+  function removeRow(idx: number) {
+    setRows(rows.filter((_, i) => i !== idx));
+    setDirty(true);
+  }
+
+  function save() {
+    startTransition(async () => {
+      await updateTemplatePaymentSchedule(templateId, rows);
+      setDirty(false);
+    });
+  }
+
+  const totalPct = rows.reduce((s, r) => s + (r.pct || 0), 0);
+
+  return (
+    <div className="rounded-xl p-4 flex flex-col" style={{ background: "#0d1117", border: "1px solid #C9A84C44", minWidth: 0 }}>
+      <div className="flex items-center justify-between mb-3">
+        <div className="text-xs font-semibold uppercase tracking-widest" style={{ color: "#8b949e" }}>Payment Schedule</div>
+        <div className="flex items-center gap-2">
+          <span className="text-xs font-semibold" style={{ color: totalPct === 100 ? "#22c55e" : "#ef4444" }}>{totalPct}%</span>
+          {canEdit && dirty && (
+            <button onClick={save} disabled={isPending} className="text-xs px-2 py-0.5 rounded font-medium" style={{ background: "#C9A84C", color: "#0d1117" }}>
+              {isPending ? "Saving…" : "Save"}
+            </button>
+          )}
+        </div>
+      </div>
+      <table className="w-full text-xs">
+        <thead>
+          <tr style={{ borderBottom: "1px solid #30373f" }}>
+            <th className="text-left pb-1 font-medium" style={{ color: "#8b949e" }}>Payment</th>
+            <th className="text-left pb-1 font-medium pl-2" style={{ color: "#8b949e" }}>Trigger</th>
+            <th className="text-right pb-1 font-medium pl-2 w-12" style={{ color: "#8b949e" }}>%</th>
+            {canEdit && <th className="w-6" />}
+          </tr>
+        </thead>
+        <tbody>
+          {rows.map((row, idx) => (
+            <tr key={idx} style={{ borderBottom: "1px solid #30373f22" }}>
+              <td className="py-1 pr-1">
+                {canEdit ? (
+                  <input
+                    value={row.payment}
+                    onChange={e => updateRow(idx, "payment", e.target.value)}
+                    className="w-full rounded px-1 py-0.5 text-xs"
+                    style={{ background: "#1e2736", border: "1px solid #30373f44", color: "#e6edf3" }}
+                  />
+                ) : (
+                  <span style={{ color: "#e6edf3" }}>{row.payment}</span>
+                )}
+              </td>
+              <td className="py-1 px-1">
+                {canEdit ? (
+                  <input
+                    value={row.trigger}
+                    onChange={e => updateRow(idx, "trigger", e.target.value)}
+                    className="w-full rounded px-1 py-0.5 text-xs"
+                    style={{ background: "#1e2736", border: "1px solid #30373f44", color: "#8b949e" }}
+                  />
+                ) : (
+                  <span style={{ color: "#8b949e" }}>{row.trigger}</span>
+                )}
+              </td>
+              <td className="py-1 pl-1 text-right">
+                {canEdit ? (
+                  <input
+                    type="number"
+                    min={0}
+                    max={100}
+                    value={row.pct}
+                    onChange={e => updateRow(idx, "pct", e.target.value)}
+                    className="rounded px-1 py-0.5 text-xs text-right"
+                    style={{ background: "#1e2736", border: "1px solid #30373f44", color: "#C9A84C", width: "44px" }}
+                  />
+                ) : (
+                  <span style={{ color: "#C9A84C" }}>{row.pct}%</span>
+                )}
+              </td>
+              {canEdit && (
+                <td className="py-1 pl-1">
+                  <button onClick={() => removeRow(idx)} className="text-xs" style={{ color: "#ef4444" }}>✕</button>
+                </td>
+              )}
+            </tr>
+          ))}
+        </tbody>
+      </table>
+      {canEdit && (
+        <button onClick={addRow} className="mt-2 text-xs self-start" style={{ color: "#C9A84C" }}>+ Add Row</button>
+      )}
+    </div>
+  );
+}
+
 type ClientData = { id: string; name: string; address: string | null; city: string | null; state: string | null; zip: string | null; email: string | null; phone: string | null };
 
 function ClientSelector({
@@ -462,6 +591,8 @@ export default function TemplateEditor({
   const [isPending, startTransition] = useTransition();
   const [editingHeader, setEditingHeader] = useState(false);
   const [name, setName] = useState(template.name);
+  const [showTerms, setShowTerms] = useState(template.showTerms);
+  const paymentRows = template.paymentSchedule ?? DEFAULT_PAYMENT_SCHEDULE;
   const [description] = useState(template.description ?? "");
   const [estimateNumber, setEstimateNumber] = useState(template.estimateNumber ?? "");
   const [estimateDate, setEstimateDate] = useState(
@@ -557,12 +688,12 @@ export default function TemplateEditor({
           </div>
         ) : (
           <div>
-            <div className="flex items-start justify-between gap-6">
-              <div>
+            <div className="flex items-start justify-between gap-6 flex-wrap">
+              <div className="flex-1 min-w-0">
                 <h1 className="text-2xl font-bold" style={{ color: "#e6edf3" }}>Scope of Work: {name}</h1>
-                <div className="flex gap-6 mt-2 items-center">
+                <div className="flex gap-6 mt-2 items-center flex-wrap">
                   <div className="flex items-center gap-2">
-                    <span className="text-xs font-medium shrink-0" style={{ color: "#8b949e" }}>Estimate #</span>
+                    <span className="text-xs font-bold shrink-0" style={{ color: "#e6edf3" }}>Estimate #</span>
                     <input
                       value={estimateNumber}
                       onChange={(e) => setEstimateNumber(e.target.value)}
@@ -584,12 +715,33 @@ export default function TemplateEditor({
                     />
                   </div>
                 </div>
+                {/* T&C toggle */}
+                <div className="mt-3">
+                  <button
+                    onClick={() => {
+                      const next = !showTerms;
+                      setShowTerms(next);
+                      startTransition(async () => { await updateTemplateShowTerms(template.id, next); });
+                    }}
+                    className="text-xs px-3 py-1.5 rounded-lg font-medium transition-colors"
+                    style={showTerms
+                      ? { background: "#C9A84C22", border: "1px solid #C9A84C55", color: "#C9A84C" }
+                      : { border: "1px solid #30373f", color: "#8b949e" }
+                    }
+                  >
+                    {showTerms ? "T&C: On" : "T&C: Off"}
+                  </button>
+                </div>
               </div>
-              <div className="flex items-center gap-4 shrink-0">
+              <div className="flex items-start gap-4 shrink-0 flex-wrap">
                 {/* Total card */}
-                <div className="rounded-xl px-8 py-5 text-center min-w-[180px]" style={{ background: "#0d1117", border: "1px solid #C9A84C44" }}>
+                <div className="rounded-xl px-8 py-5 text-center min-w-[160px]" style={{ background: "#0d1117", border: "1px solid #C9A84C44" }}>
                   <div className="text-xs font-semibold uppercase tracking-widest mb-2" style={{ color: "#8b949e" }}>Total</div>
                   <div className="text-5xl font-bold leading-none" style={{ color: "#C9A84C" }}>${fmt(total)}</div>
+                </div>
+                {/* Payment Schedule card */}
+                <div className="min-w-[280px] max-w-[380px]">
+                  <PaymentScheduleCard templateId={template.id} initialRows={paymentRows} canEdit={canEdit} />
                 </div>
                 {/* Actions */}
                 <div className="flex flex-col gap-2 items-start">
