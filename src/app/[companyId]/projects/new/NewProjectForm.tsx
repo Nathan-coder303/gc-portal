@@ -97,7 +97,7 @@ export default function NewProjectForm({ companyId }: { companyId: string }) {
             name="budget"
             required
             min="1"
-            step="1000"
+            step="any"
             placeholder="e.g. 500,000"
             className={inputClass}
           />
