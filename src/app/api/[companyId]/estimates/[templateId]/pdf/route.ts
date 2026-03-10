@@ -4,6 +4,14 @@ import { prisma } from "@/lib/prisma";
 import { can } from "@/lib/auth/permissions";
 import { renderTemplatePdf } from "@/lib/estimates/templatePdf";
 
+const DEFAULT_PAYMENT_SCHEDULE = [
+  { payment: "Deposit", trigger: "Contract signing – permits, engineering, scheduling", pct: 25 },
+  { payment: "Structure Start", trigger: "Foundation completed / framing start", pct: 25 },
+  { payment: "Dry-In", trigger: "Framing, roof, windows installed", pct: 20 },
+  { payment: "Rough-Ins", trigger: "Electrical, plumbing, HVAC rough inspections passed", pct: 20 },
+  { payment: "Completion", trigger: "Final inspection / punchlist", pct: 10 },
+];
+
 export const runtime = "nodejs";
 
 export async function GET(
@@ -74,7 +82,7 @@ export async function GET(
     divisions,
     showTerms: template.showTerms,
     termsContent: template.termsContent,
-    paymentSchedule: template.paymentSchedule as { payment: string; trigger: string; pct: number }[] | null,
+    paymentSchedule: (template.paymentSchedule as { payment: string; trigger: string; pct: number }[] | null) ?? DEFAULT_PAYMENT_SCHEDULE,
   });
 
   const filename = `${template.name.replace(/[^a-z0-9]/gi, "-").toLowerCase()}-template.pdf`;
