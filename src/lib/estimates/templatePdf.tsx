@@ -147,6 +147,7 @@ function TemplatePdfDocument({ companyName, template, client, divisions, showTer
         <View style={styles.header}>
           {/* Left: Logo + company info all bold same size */}
           <View>
+            {/* eslint-disable-next-line jsx-a11y/alt-text */}
             <Image style={styles.logo} src={path.join(process.cwd(), "public", "logo.png")} />
             <Text style={styles.companyInfo}>2950 N 28 Terr, Hollywood, FL 33020</Text>
             <Text style={styles.companyInfo}>Tel: 305-746-7307</Text>
@@ -233,6 +234,7 @@ function TemplatePdfDocument({ companyName, template, client, divisions, showTer
         {/* Page header repeat */}
         <View style={[styles.header, { marginBottom: 12 }]}>
           <View>
+            {/* eslint-disable-next-line jsx-a11y/alt-text */}
             <Image style={styles.logo} src={path.join(process.cwd(), "public", "logo.png")} />
             <Text style={styles.companyInfo}>2950 N 28 Terr, Hollywood, FL 33020</Text>
             <Text style={styles.companyInfo}>Tel: 305-746-7307</Text>

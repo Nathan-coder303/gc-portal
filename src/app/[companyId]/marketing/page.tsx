@@ -1,11 +1,7 @@
 import { auth } from "@/lib/auth";
 import { redirect } from "next/navigation";
 
-export default async function MarketingPage({
-  params,
-}: {
-  params: { companyId: string };
-}) {
+export default async function MarketingPage() {
   const session = await auth();
   if (!session) redirect("/login");
 
