@@ -115,8 +115,9 @@ export async function GET(req: NextRequest) {
 
       results.push({ company: company.name, status: "ok" });
     } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
       console.error(`DailySummary error for ${company.name}:`, err);
-      results.push({ company: company.name, status: "error" });
+      results.push({ company: company.name, status: "error", error: msg });
     }
   }
 
