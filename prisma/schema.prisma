@@ -314,6 +314,7 @@ model EstimateTemplate {
   estimateDate    String?
   paymentSchedule Json?
   showTerms       Boolean                    @default(false)
+  termsContent    String?
   divisions       EstimateTemplateDivision[]
   estimates   ProjectEstimate[]
 

@@ -459,6 +459,20 @@ export async function updateTemplatePaymentSchedule(templateId: string, rows: { 
   return { success: true };
 }
 
+export async function updateTemplateTermsContent(templateId: string, termsContent: string) {
+  const session = await auth();
+  if (!session) throw new Error("Unauthorized");
+  requirePermission(session, "estimateTemplate:edit");
+
+  await prisma.estimateTemplate.update({
+    where: { id: templateId },
+    data: { termsContent: termsContent || null, updatedBy: session.user.id },
+  });
+
+  revalidatePath(`/${session.user.companyId}/estimates`);
+  return { success: true };
+}
+
 export async function updateTemplateShowTerms(templateId: string, showTerms: boolean) {
   const session = await auth();
   if (!session) throw new Error("Unauthorized");

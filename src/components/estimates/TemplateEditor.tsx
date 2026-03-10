@@ -16,6 +16,7 @@ import {
   saveAsClientEstimate,
   updateTemplatePaymentSchedule,
   updateTemplateShowTerms,
+  updateTemplateTermsContent,
 } from "@/app/[companyId]/estimates/actions";
 
 type Item = {
@@ -33,7 +34,7 @@ type Item = {
 type Group = { id: string; name: string; items: Item[] };
 type Division = { id: string; csiCode: string | null; name: string; groups: Group[]; items: Item[] };
 type PaymentRow = { payment: string; trigger: string; pct: number };
-type Template = { id: string; name: string; description: string | null; companyId: string; estimateNumber: string | null; estimateDate: string | null; paymentSchedule: PaymentRow[] | null; showTerms: boolean };
+type Template = { id: string; name: string; description: string | null; companyId: string; estimateNumber: string | null; estimateDate: string | null; paymentSchedule: PaymentRow[] | null; showTerms: boolean; termsContent: string | null };
 
 const INPUT = "rounded px-2 py-1 text-xs" as const;
 const inputStyle = { background: "#0d1117", border: "1px solid #30373f", color: "#e6edf3" };
@@ -592,6 +593,8 @@ export default function TemplateEditor({
   const [editingHeader, setEditingHeader] = useState(false);
   const [name, setName] = useState(template.name);
   const [showTerms, setShowTerms] = useState(template.showTerms);
+  const [termsContent, setTermsContent] = useState(template.termsContent ?? "");
+  const [termsDirty, setTermsDirty] = useState(false);
   const paymentRows = template.paymentSchedule ?? DEFAULT_PAYMENT_SCHEDULE;
   const [description] = useState(template.description ?? "");
   const [estimateNumber, setEstimateNumber] = useState(template.estimateNumber ?? "");
@@ -716,7 +719,7 @@ export default function TemplateEditor({
                   </div>
                 </div>
                 {/* T&C toggle */}
-                <div className="mt-3">
+                <div className="mt-3 space-y-2">
                   <button
                     onClick={() => {
                       const next = !showTerms;
@@ -731,6 +734,27 @@ export default function TemplateEditor({
                   >
                     {showTerms ? "T&C: On" : "T&C: Off"}
                   </button>
+                  {showTerms && canEdit && (
+                    <div className="space-y-1">
+                      <textarea
+                        value={termsContent}
+                        onChange={e => { setTermsContent(e.target.value); setTermsDirty(true); }}
+                        onBlur={() => {
+                          if (termsDirty) {
+                            startTransition(async () => { await updateTemplateTermsContent(template.id, termsContent); setTermsDirty(false); });
+                          }
+                        }}
+                        rows={5}
+                        placeholder="Enter Terms & Conditions text..."
+                        className="w-full rounded-lg px-3 py-2 text-xs resize-y"
+                        style={{ background: "#0d1117", border: "1px solid #30373f", color: "#e6edf3" }}
+                      />
+                      <p className="text-xs" style={{ color: "#8b949e" }}>Auto-saves on blur. Shows in PDF when T&C is on.</p>
+                    </div>
+                  )}
+                  {showTerms && !canEdit && termsContent && (
+                    <p className="text-xs leading-relaxed max-w-sm" style={{ color: "#8b949e" }}>{termsContent}</p>
+                  )}
                 </div>
               </div>
               <div className="flex items-start gap-4 shrink-0 flex-wrap">
