@@ -15,8 +15,8 @@ import { STANDARD_DIVISIONS } from "../src/lib/divisions";
 const adapter = new PrismaPg({ connectionString: process.env.DATABASE_URL! });
 const prisma = new PrismaClient({ adapter });
 
-// Search since 02/28/2026, all bid-related emails with PDF attachments
-const GMAIL_QUERY = "has:attachment filename:pdf (bid OR estimate OR proposal OR quote OR subcontractor) after:2026/02/28";
+// Search all bid-related emails with PDF attachments (no date limit)
+const GMAIL_QUERY = "has:attachment filename:pdf (bid OR estimate OR proposal OR quote OR subcontractor)";
 
 function getOAuthClient() {
   const oauth2Client = new google.auth.OAuth2(
