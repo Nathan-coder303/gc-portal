@@ -32,16 +32,18 @@ function extractBody(payload: any): string {
     // Recursively search all parts — prefer text/plain
     const allParts: typeof payload.parts = [];
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    function collectParts(parts: any[]) {
+    const collectParts = (parts: any[]) => {
       for (const p of parts) {
         allParts.push(p);
         if (p.parts) collectParts(p.parts);
       }
-    }
+    };
     collectParts(payload.parts);
-    const plain = allParts.find(p => p.mimeType === "text/plain" && p.body?.data);
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const plain = allParts.find((p: any) => p.mimeType === "text/plain" && p.body?.data);
     if (plain) return decodeBase64(plain.body.data).toString("utf-8");
-    const html = allParts.find(p => p.mimeType === "text/html" && p.body?.data);
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const html = allParts.find((p: any) => p.mimeType === "text/html" && p.body?.data);
     if (html) return decodeBase64(html.body.data).toString("utf-8").replace(/<[^>]+>/g, " ");
   }
   return "";
