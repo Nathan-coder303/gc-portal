@@ -19,11 +19,16 @@ export default async function SettingsPage({
   const role = session?.user.role ?? "PARTNER";
   const isAdmin = can(role, "project:edit");
 
-  const [project, costCodes, users, accounts] = await Promise.all([
+  const [project, costCodes, users, accounts, allProjects] = await Promise.all([
     prisma.project.findUnique({ where: { id: params.projectId } }),
     prisma.costCode.findMany({ where: { projectId: params.projectId, archivedAt: null }, orderBy: { code: "asc" } }),
-    prisma.user.findMany({ where: { companyId: params.companyId, archivedAt: null }, orderBy: { name: "asc" } }),
+    prisma.user.findMany({
+      where: { companyId: params.companyId, archivedAt: null },
+      include: { projectAccess: { select: { projectId: true } } },
+      orderBy: { name: "asc" },
+    }),
     prisma.account.findMany({ where: { projectId: params.projectId, archivedAt: null }, orderBy: { name: "asc" } }),
+    prisma.project.findMany({ where: { companyId: params.companyId }, orderBy: { name: "asc" }, select: { id: true, name: true } }),
   ]);
 
   return (
@@ -126,8 +131,16 @@ export default async function SettingsPage({
         <div className="rounded-xl p-5" style={CARD}>
           {isAdmin ? (
             <UserManager
-              users={users.map((u) => ({ id: u.id, name: u.name, email: u.email, role: u.role }))}
+              users={users.map((u) => ({
+                id: u.id,
+                name: u.name,
+                email: u.email,
+                role: u.role,
+                lastName: u.lastName ?? "",
+                allowedProjectIds: u.projectAccess.map((a) => a.projectId),
+              }))}
               currentUserId={session?.user.id ?? ""}
+              allProjects={allProjects}
             />
           ) : (
             <>

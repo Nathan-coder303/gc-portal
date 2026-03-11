@@ -1,6 +1,6 @@
 "use client";
 import { useState, useRef, useCallback } from "react";
-import { upsertSubBid } from "@/app/[companyId]/clients/actions";
+import { upsertSubBid, deleteSubBid } from "@/app/[companyId]/clients/actions";
 
 export type SubBidOffer = {
   id: string;
@@ -24,6 +24,7 @@ type Props = {
   companyId: string;
   subBids: SubBidRow[];
   canEdit: boolean;
+  canDelete?: boolean;
 };
 
 
@@ -46,16 +47,32 @@ type EditForm = {
   status: string;
 };
 
-export default function SubsBidsTab({ clientId, companyId, subBids: initialSubBids, canEdit }: Props) {
+export default function SubsBidsTab({ clientId, companyId, subBids: initialSubBids, canEdit, canDelete }: Props) {
   const [subBids, setSubBids] = useState<SubBidRow[]>(initialSubBids);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
+  const [deleting, setDeleting] = useState<string | null>(null);
   const [uploading, setUploading] = useState<string | null>(null); // divisionCode
   const [dragOver, setDragOver] = useState<string | null>(null);
   const [formData, setFormData] = useState<EditForm>({ contractorName: "", amount: "", notes: "", status: "RECEIVED" });
   const fileInputRefs = useRef<Record<string, HTMLInputElement | null>>({});
 
   const missingDivisions = subBids.filter((b) => b.offers.every((o) => o.status === "MISSING" || (!o.amount && !o.contractorName)));
+
+  async function handleDelete(bid: SubBidRow, offer: SubBidOffer) {
+    if (!confirm(`Delete bid from "${offer.contractorName ?? "unknown"}"? This cannot be undone.`)) return;
+    setDeleting(offer.id);
+    try {
+      await deleteSubBid(offer.id, clientId, companyId);
+      setSubBids((prev) => prev.map((b) =>
+        b.divisionCode === bid.divisionCode
+          ? { ...b, offers: b.offers.filter((o) => o.id !== offer.id) }
+          : b
+      ));
+    } finally {
+      setDeleting(null);
+    }
+  }
 
   function openEdit(offer: SubBidOffer) {
     setEditingId(offer.id);
@@ -161,8 +178,8 @@ export default function SubsBidsTab({ clientId, companyId, subBids: initialSubBi
               {/* Header */}
               <div className="flex items-start justify-between gap-2 mb-3">
                 <div>
-                  <div className="text-xs" style={{ color: "#8b949e" }}>Division {bid.divisionCode}</div>
-                  <div className="font-semibold text-sm mt-0.5" style={{ color: hasOffers ? "#C9A84C" : "#e6edf3" }}>
+                  <div className="font-semibold text-xs" style={{ color: "#C9A84C" }}>Division {bid.divisionCode}</div>
+                  <div className="font-semibold text-sm mt-0.5" style={{ color: "#C9A84C" }}>
                     {bid.divisionName}
                   </div>
                 </div>
@@ -218,9 +235,17 @@ export default function SubsBidsTab({ clientId, companyId, subBids: initialSubBi
                             </a>
                           )}
                         </div>
-                        {canEdit && (
-                          <button onClick={() => openEdit(offer)} className="text-xs shrink-0" style={{ color: "#8b949e" }}>Edit</button>
-                        )}
+                        <div className="flex flex-col gap-1 shrink-0">
+                          {canEdit && (
+                            <button onClick={() => openEdit(offer)} className="text-xs" style={{ color: "#8b949e" }}>Edit</button>
+                          )}
+                          {canDelete && !offer.isPlaceholder && (
+                            <button onClick={() => handleDelete(bid, offer)} disabled={deleting === offer.id}
+                              className="text-xs" style={{ color: "#ef4444" }}>
+                              {deleting === offer.id ? "…" : "Delete"}
+                            </button>
+                          )}
+                        </div>
                       </div>
                     )}
                   </div>

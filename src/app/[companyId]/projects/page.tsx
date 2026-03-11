@@ -23,8 +23,20 @@ export default async function ProjectsPage({
 
   const isAdmin = can(session.user.role, "project:edit");
 
+  // PARTNER users with explicit project access are restricted to those projects
+  let projectFilter: { companyId: string; id?: { in: string[] } } = { companyId: params.companyId };
+  if (session.user.role === "PARTNER") {
+    const access = await prisma.userProjectAccess.findMany({
+      where: { userId: session.user.id },
+      select: { projectId: true },
+    });
+    if (access.length > 0) {
+      projectFilter = { companyId: params.companyId, id: { in: access.map((a) => a.projectId) } };
+    }
+  }
+
   const projects = await prisma.project.findMany({
-    where: { companyId: params.companyId },
+    where: projectFilter,
     orderBy: { createdAt: "desc" },
   });
 

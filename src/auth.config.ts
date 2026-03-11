@@ -24,6 +24,7 @@ export const authConfig: NextAuthConfig = {
         token.role = (user as { role?: string }).role;
         token.companyId = (user as { companyId?: string }).companyId;
         token.userId = user.id;
+        token.lastName = (user as { lastName?: string | null }).lastName ?? null;
       }
       return token;
     },
@@ -32,6 +33,7 @@ export const authConfig: NextAuthConfig = {
         session.user.role = token.role as Role;
         session.user.companyId = token.companyId as string;
         session.user.id = token.userId as string;
+        session.user.lastName = (token.lastName as string | null | undefined) ?? null;
       }
       return session;
     },

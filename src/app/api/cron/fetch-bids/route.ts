@@ -26,18 +26,23 @@ function decodeBase64(data: string): Buffer {
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 function extractBody(payload: any): string {
-  if (payload?.body?.data) return decodeBase64(payload.body.data).toString("utf-8");
-  if (payload?.parts) {
-    for (const part of payload.parts) {
-      if (part.mimeType === "text/plain" && part.body?.data) {
-        return decodeBase64(part.body.data).toString("utf-8");
+  if (!payload) return "";
+  if (payload.body?.data) return decodeBase64(payload.body.data).toString("utf-8");
+  if (payload.parts) {
+    // Recursively search all parts — prefer text/plain
+    const allParts: typeof payload.parts = [];
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    function collectParts(parts: any[]) {
+      for (const p of parts) {
+        allParts.push(p);
+        if (p.parts) collectParts(p.parts);
       }
     }
-    for (const part of payload.parts) {
-      if (part.mimeType === "text/html" && part.body?.data) {
-        return decodeBase64(part.body.data).toString("utf-8").replace(/<[^>]+>/g, " ");
-      }
-    }
+    collectParts(payload.parts);
+    const plain = allParts.find(p => p.mimeType === "text/plain" && p.body?.data);
+    if (plain) return decodeBase64(plain.body.data).toString("utf-8");
+    const html = allParts.find(p => p.mimeType === "text/html" && p.body?.data);
+    if (html) return decodeBase64(html.body.data).toString("utf-8").replace(/<[^>]+>/g, " ");
   }
   return "";
 }

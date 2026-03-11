@@ -18,8 +18,10 @@ export default async function LedgerPage({
 }) {
   const session = await auth();
   const isAdmin = can(session?.user.role ?? "PARTNER", "partner:edit");
+  const isPartner = session?.user.role === "PARTNER";
+  const userLastName = session?.user.lastName?.trim().toLowerCase() ?? null;
 
-  const [entries, accounts, partners] = await Promise.all([
+  const [entries, accounts, allPartners] = await Promise.all([
     prisma.journalEntry.findMany({
       where: { projectId: params.projectId },
       include: { lines: { include: { account: true, partner: true } } },
@@ -31,6 +33,11 @@ export default async function LedgerPage({
       orderBy: { name: "asc" },
     }),
   ]);
+
+  // PARTNER role with lastName: restrict visible partners to matching name
+  const partners = isPartner && userLastName
+    ? allPartners.filter((p) => p.name.toLowerCase().includes(userLastName))
+    : allPartners;
 
   const reversedIds = new Set(entries.filter((e) => e.reversesId).map((e) => e.reversesId!));
 

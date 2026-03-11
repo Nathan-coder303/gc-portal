@@ -3,6 +3,7 @@ import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { revalidatePath } from "next/cache";
 import { STANDARD_DIVISIONS } from "@/lib/divisions";
+import { can } from "@/lib/auth/permissions";
 
 // Ensure one placeholder row per division exists (idempotent)
 export async function initClientSubBids(clientId: string, companyId: string) {
@@ -96,4 +97,13 @@ export async function upsertSubBid(data: {
 
   revalidatePath(`/${data.companyId}/clients/${data.clientId}`);
   return record;
+}
+
+export async function deleteSubBid(id: string, clientId: string, companyId: string) {
+  const session = await auth();
+  if (!session) throw new Error("Unauthorized");
+  if (!can(session.user.role, "expense:archive")) throw new Error("Forbidden — ADMIN only");
+
+  await prisma.subBid.delete({ where: { id } });
+  revalidatePath(`/${companyId}/clients/${clientId}`);
 }

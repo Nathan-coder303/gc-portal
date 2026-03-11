@@ -34,16 +34,22 @@ function decodeBase64(data: string): Buffer {
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 function extractBody(payload: any): string {
-  if (payload?.body?.data) return decodeBase64(payload.body.data).toString("utf-8");
-  if (payload?.parts) {
-    for (const part of payload.parts) {
-      if (part.mimeType === "text/plain" && part.body?.data)
-        return decodeBase64(part.body.data).toString("utf-8");
+  if (!payload) return "";
+  if (payload.body?.data) return decodeBase64(payload.body.data).toString("utf-8");
+  if (payload.parts) {
+    const allParts: typeof payload.parts = [];
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    function collectParts(parts: any[]) {
+      for (const p of parts) {
+        allParts.push(p);
+        if (p.parts) collectParts(p.parts);
+      }
     }
-    for (const part of payload.parts) {
-      if (part.mimeType === "text/html" && part.body?.data)
-        return decodeBase64(part.body.data).toString("utf-8").replace(/<[^>]+>/g, " ");
-    }
+    collectParts(payload.parts);
+    const plain = allParts.find(p => p.mimeType === "text/plain" && p.body?.data);
+    if (plain) return decodeBase64(plain.body.data).toString("utf-8");
+    const html = allParts.find(p => p.mimeType === "text/html" && p.body?.data);
+    if (html) return decodeBase64(html.body.data).toString("utf-8").replace(/<[^>]+>/g, " ");
   }
   return "";
 }
@@ -110,35 +116,31 @@ async function main() {
         p => p.mimeType === "application/pdf" || p.filename?.endsWith(".pdf")
       );
 
-      const prompt = `You are parsing a construction subcontractor bid email to extract bid details.
+      const prompt = `Parse this construction bid email. Output ONLY a JSON object — no explanation, no markdown, no extra text.
 
 FROM: ${from}
 SUBJECT: ${subject}
-EMAIL BODY:
+BODY:
 ${bodyText.slice(0, 4000)}
 
-AVAILABLE CLIENTS (match by address, name, or project name in subject/body):
+CLIENTS (format: CLIENT:<id> | <name> | <address>):
 ${clientList}
 
-AVAILABLE PROJECTS (use these to help identify the job site):
+PROJECTS (use to identify job site, then find matching client):
 ${projectList}
 
-AVAILABLE DIVISIONS (pick the best match for this trade/scope):
+DIVISIONS (format: <code> - <name>):
 ${divisionList}
 
-Instructions:
-- Match the email to a CLIENT by comparing the job address, project name, or client name mentioned in the email
-- If you find a project match, look for a client with the same address
-- Return the clientId from the CLIENT list (starts with CLIENT:)
+Rules:
+- clientId: exact ID string from CLIENT list (e.g. "cm123abc") or null
+- divisionCode: 2-digit string from DIVISIONS (e.g. "03") or null
+- contractorName: company/person name from FROM field or email body
+- amount: numeric value only (no $ or commas) or null
+- notes: one sentence about scope or null
 
-Extract and respond ONLY with valid JSON, no markdown:
-{
-  "clientId": "<client ID from CLIENT list, or null if unclear>",
-  "divisionCode": "<2-digit code from list above, or null if unclear>",
-  "contractorName": "<company or person sending the bid>",
-  "amount": <number without $ or commas, or null if not found>,
-  "notes": "<brief 1-sentence summary of scope if mentioned>"
-}`;
+Output exactly this JSON and nothing else:
+{"clientId":null,"divisionCode":null,"contractorName":null,"amount":null,"notes":null}`;
 
       const aiMsg = await anthropic.messages.create({
         model: "claude-haiku-4-5-20251001",

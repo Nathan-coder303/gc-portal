@@ -12,8 +12,13 @@ function fmt(n: number) {
 export default function ClientBidTab({ subBids, clientName }: Props) {
   // For each division, find the lowest received bid
   const divisions = subBids.map((bid) => {
-    const received = bid.offers.filter((o) => o.amount !== null && o.status !== "MISSING");
-    const sorted = [...received].sort((a, b) => (a.amount ?? 0) - (b.amount ?? 0));
+    const received = bid.offers.filter((o) => !o.isPlaceholder && o.status !== "MISSING" && (o.amount !== null || o.contractorName));
+    const sorted = [...received].sort((a, b) => {
+      if (a.amount === null && b.amount === null) return 0;
+      if (a.amount === null) return 1;
+      if (b.amount === null) return -1;
+      return a.amount - b.amount;
+    });
     const best = sorted[0] ?? null;
     const others = sorted.slice(1);
     return { bid, best, others };

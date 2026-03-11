@@ -4,6 +4,7 @@ import { useState, Suspense } from "react";
 import { signIn } from "next-auth/react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
+import Image from "next/image";
 
 function LoginForm() {
   const router = useRouter();
@@ -40,8 +41,7 @@ function LoginForm() {
         {/* Logo + title */}
         <div className="flex flex-col items-center mb-8">
           <div className="rounded-xl overflow-hidden mb-4" style={{ border: "1.5px solid #C9A84C44", padding: "4px", background: "#1e2736" }}>
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src="/logo.png" alt="MIBH Logo" width={72} height={72} className="rounded-lg object-contain" />
+            <Image src="/logo.png" alt="MIBH Logo" width={72} height={72} className="rounded-lg object-contain" />
           </div>
           <h1 className="text-2xl font-bold" style={{ color: "#e6edf3" }}>GC Portal</h1>
           <p className="text-sm mt-1" style={{ color: "#8b949e" }}>Sign in to continue</p>

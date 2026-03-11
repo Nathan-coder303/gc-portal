@@ -65,6 +65,7 @@ export default async function ProjectSubsBidsPage({
 
   const subBids = groupBids(raw);
   const canEdit = can(session.user.role, "estimate:create");
+  const canDelete = session.user.role === "ADMIN";
 
   return (
     <div>
@@ -74,7 +75,7 @@ export default async function ProjectSubsBidsPage({
           <p className="text-sm mt-0.5" style={{ color: "#8b949e" }}>Client: {client.name}</p>
         </div>
       </div>
-      <SubsBidsTab clientId={client.id} companyId={params.companyId} subBids={subBids} canEdit={canEdit} />
+      <SubsBidsTab clientId={client.id} companyId={params.companyId} subBids={subBids} canEdit={canEdit} canDelete={canDelete} />
     </div>
   );
 }

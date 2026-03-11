@@ -168,6 +168,47 @@ export async function archiveUser(userId: string) {
   return { success: true };
 }
 
+// ─── User Project Access ──────────────────────────────────────────────────────
+
+export async function updateUserLastName(userId: string, lastName: string) {
+  const session = await auth();
+  if (!session) throw new Error("Unauthorized");
+  requirePermission(session, "user:edit");
+
+  const user = await prisma.user.findUnique({ where: { id: userId } });
+  if (!user || user.companyId !== session.user.companyId) throw new Error("Forbidden");
+
+  await prisma.user.update({
+    where: { id: userId },
+    data: { lastName: lastName.trim() || null, updatedBy: session.user.id },
+  });
+
+  revalidatePath(`/${session.user.companyId}`);
+  return { success: true };
+}
+
+export async function setUserProjectAccess(userId: string, projectIds: string[]) {
+  const session = await auth();
+  if (!session) throw new Error("Unauthorized");
+  requirePermission(session, "user:edit");
+
+  const user = await prisma.user.findUnique({ where: { id: userId } });
+  if (!user || user.companyId !== session.user.companyId) throw new Error("Forbidden");
+
+  // Delete existing access records
+  await prisma.userProjectAccess.deleteMany({ where: { userId } });
+
+  // Create new access records
+  if (projectIds.length > 0) {
+    await prisma.userProjectAccess.createMany({
+      data: projectIds.map((projectId) => ({ userId, projectId })),
+    });
+  }
+
+  revalidatePath(`/${session.user.companyId}`);
+  return { success: true };
+}
+
 // ─── Projection assumptions persistence ──────────────────────────────────────
 
 export async function saveProjectionSettings(

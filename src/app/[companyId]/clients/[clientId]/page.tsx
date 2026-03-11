@@ -43,6 +43,7 @@ export default async function ClientDetailPage({
 
   const safeClient = client!;
   const canEdit = can(session.user.role, "estimate:create");
+  const canDelete = session.user.role === "ADMIN";
 
   // Load sub bids for subs-bids and client-bid tabs
   let subBids: SubBidRow[] = [];
@@ -211,6 +212,7 @@ export default async function ClientDetailPage({
           companyId={params.companyId}
           subBids={subBids}
           canEdit={canEdit}
+          canDelete={canDelete}
         />
       )}
 
