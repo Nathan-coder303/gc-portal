@@ -18,7 +18,6 @@ import {
   updateTemplateShowTerms,
   updateTemplateTermsContent,
   upsertTermsTemplate,
-  deleteTermsTemplate,
 } from "@/app/[companyId]/estimates/actions";
 
 type Item = {
@@ -614,8 +613,6 @@ export default function TemplateEditor({
   const [saveAsNew, setSaveAsNew] = useState(false);
   const [newName, setNewName] = useState(`${template.name} (copy)`);
   const [saveError, setSaveError] = useState("");
-  const [savingToClient, setSavingToClient] = useState(false);
-  const [saveEstimateName, setSaveEstimateName] = useState("");
   const [saveClientError, setSaveClientError] = useState("");
 
   const total = grandTotal(divisions);
