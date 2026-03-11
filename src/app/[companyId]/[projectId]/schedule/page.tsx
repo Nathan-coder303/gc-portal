@@ -17,10 +17,17 @@ export default async function SchedulePage({
 }) {
   const session = await auth();
   const canEdit = can(session?.user.role ?? "PARTNER", "task:edit");
+  const isPartner = session?.user.role === "PARTNER";
+  const userName = session?.user.name?.trim() ?? null;
+
+  // PARTNER: filter tasks to only those assigned to them
+  const taskWhere = isPartner && userName
+    ? { projectId: params.projectId, archivedAt: null, assignee: { contains: userName, mode: "insensitive" as const } }
+    : { projectId: params.projectId, archivedAt: null };
 
   const [tasks, project, recentLogs] = await Promise.all([
     prisma.task.findMany({
-      where: { projectId: params.projectId, archivedAt: null },
+      where: taskWhere,
       orderBy: [{ phase: "asc" }, { startDate: "asc" }],
     }),
     prisma.project.findUnique({ where: { id: params.projectId } }),

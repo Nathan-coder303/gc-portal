@@ -19,6 +19,8 @@ export default async function LedgerPage({
   const session = await auth();
   const isAdmin = can(session?.user.role ?? "PARTNER", "partner:edit");
   const isPartner = session?.user.role === "PARTNER";
+  // Match partner by full name or last name (case-insensitive)
+  const userName = session?.user.name?.trim().toLowerCase() ?? null;
   const userLastName = session?.user.lastName?.trim().toLowerCase() ?? null;
 
   const [entries, accounts, allPartners] = await Promise.all([
@@ -34,9 +36,17 @@ export default async function LedgerPage({
     }),
   ]);
 
-  // PARTNER role with lastName: restrict visible partners to matching name
-  const partners = isPartner && userLastName
-    ? allPartners.filter((p) => p.name.toLowerCase().includes(userLastName))
+  // PARTNER role: restrict visible partners to those matching the user's name
+  const partners = isPartner
+    ? allPartners.filter((p) => {
+        const pName = p.name.toLowerCase();
+        if (userName && pName.includes(userName)) return true;
+        if (userLastName && pName.includes(userLastName)) return true;
+        // Also try matching first name (first word of session user name)
+        const firstName = userName?.split(" ")[0];
+        if (firstName && firstName.length > 2 && pName.includes(firstName)) return true;
+        return false;
+      })
     : allPartners;
 
   const reversedIds = new Set(entries.filter((e) => e.reversesId).map((e) => e.reversesId!));

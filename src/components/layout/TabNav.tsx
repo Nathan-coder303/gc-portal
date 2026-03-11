@@ -3,35 +3,41 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
-const TABS = [
-  { label: "Dashboard", segment: "dashboard" },
-  { label: "Subs Bids", segment: "subs-bids" },
+const ALL_TABS = [
+  { label: "Dashboard",   segment: "dashboard" },
+  { label: "Subs Bids",  segment: "subs-bids" },
   { label: "Client Bid", segment: "client-bid" },
-  { label: "Expenses", segment: "expenses" },
-  { label: "Schedule", segment: "schedule" },
-  { label: "Ledger", segment: "ledger" },
-  { label: "Projections", segment: "projections" },
-  { label: "Reports", segment: "reports" },
-  { label: "Settings", segment: "settings" },
+  { label: "Expenses",   segment: "expenses" },
+  { label: "Schedule",   segment: "schedule" },
+  { label: "Ledger",     segment: "ledger" },
+  { label: "Projections",segment: "projections" },
+  { label: "Reports",    segment: "reports" },
+  { label: "Settings",   segment: "settings" },
+  { label: "Audit",      segment: "audit", adminOnly: true },
 ];
 
-const ADMIN_TABS = [
-  ...TABS,
-  { label: "Audit", segment: "audit" },
+// PARTNER role: only ledger and schedule
+const PARTNER_TABS = [
+  { label: "Schedule", segment: "schedule" },
+  { label: "Ledger",   segment: "ledger" },
 ];
 
 export default function TabNav({
   companyId,
   projectId,
-  isAdmin = false,
+  role = "PM",
 }: {
   companyId: string;
   projectId: string;
-  isAdmin?: boolean;
+  role?: string;
 }) {
   const pathname = usePathname();
   const base = `/${companyId}/${projectId}`;
-  const tabs = isAdmin ? ADMIN_TABS : TABS;
+  const isAdmin = role === "ADMIN";
+  const isPartner = role === "PARTNER";
+  const tabs = isPartner
+    ? PARTNER_TABS
+    : ALL_TABS.filter((t) => !t.adminOnly || isAdmin);
 
   return (
     <nav className="max-w-7xl mx-auto px-2 flex gap-1 overflow-x-auto scrollbar-hide">

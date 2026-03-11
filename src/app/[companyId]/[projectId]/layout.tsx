@@ -13,7 +13,15 @@ export default async function ProjectLayout({
 }) {
   const session = await auth();
   if (!session) redirect("/login");
-  const isAdmin = session.user.role === "ADMIN";
+  const role = session.user.role;
+
+  // PARTNER: verify they have access to this specific project
+  if (role === "PARTNER") {
+    const access = await prisma.userProjectAccess.findFirst({
+      where: { userId: session.user.id, projectId: params.projectId },
+    });
+    if (!access) redirect(`/${params.companyId}/projects`);
+  }
 
   const project = await prisma.project.findFirst({
     where: { id: params.projectId, companyId: params.companyId },
@@ -35,7 +43,7 @@ export default async function ProjectLayout({
           <span className="mx-2" style={{ color: "#30373f" }}>/</span>
           <span className="text-sm font-semibold" style={{ color: "#e6edf3" }}>{project.name}</span>
         </div>
-        <TabNav companyId={params.companyId} projectId={params.projectId} isAdmin={isAdmin} />
+        <TabNav companyId={params.companyId} projectId={params.projectId} role={role} />
       </div>
       <main className="max-w-7xl mx-auto px-3 md:px-4 py-4 md:py-6">{children}</main>
     </div>
