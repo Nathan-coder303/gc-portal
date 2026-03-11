@@ -447,5 +447,56 @@ export async function archiveAccount(id: string, projectId: string) {
   return { success: true };
 }
 
+// ─── Partner Portal Access ────────────────────────────────────────────────────
+
+export async function createPartnerPortalAccess(data: {
+  partnerId: string;
+  projectId: string;
+  email: string;
+  password: string;
+}) {
+  const session = await auth();
+  if (!session) throw new Error("Unauthorized");
+  requirePermission(session, "user:create");
+
+  const bcrypt = (await import("bcryptjs")).default;
+
+  const partner = await prisma.partner.findUnique({ where: { id: data.partnerId } });
+  if (!partner) throw new Error("Partner not found");
+  if (partner.companyId !== session.user.companyId) throw new Error("Forbidden");
+
+  const email = data.email.trim().toLowerCase();
+  const existing = await prisma.user.findUnique({ where: { email } });
+  if (existing) throw new Error("A user with that email already exists");
+
+  if (data.password.length < 8) throw new Error("Password must be at least 8 characters");
+
+  const passwordHash = await bcrypt.hash(data.password, 12);
+
+  // Extract last name from partner name (last word)
+  const nameParts = partner.name.trim().split(" ");
+  const lastName = nameParts.length > 1 ? nameParts[nameParts.length - 1] : partner.name;
+
+  const user = await prisma.user.create({
+    data: {
+      companyId: session.user.companyId,
+      name: partner.name,
+      lastName,
+      email,
+      role: "PARTNER",
+      passwordHash,
+      updatedBy: session.user.id,
+    },
+  });
+
+  // Grant access to this specific project
+  await prisma.userProjectAccess.create({
+    data: { userId: user.id, projectId: data.projectId },
+  });
+
+  revalidatePath(`/${session.user.companyId}/${data.projectId}/ledger`);
+  return { success: true, userId: user.id };
+}
+
 // ─── Legacy alias (kept for backward compat with any existing calls) ─────────
 export { addDistribution as addExpenseDraw };

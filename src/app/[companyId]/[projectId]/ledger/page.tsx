@@ -13,8 +13,10 @@ const CARD = { background: "#1e2736", border: "1px solid #30373f" } as const;
 
 export default async function LedgerPage({
   params,
+  searchParams,
 }: {
   params: { companyId: string; projectId: string };
+  searchParams: { partner?: string };
 }) {
   const session = await auth();
   const isAdmin = can(session?.user.role ?? "PARTNER", "partner:edit");
@@ -48,6 +50,12 @@ export default async function LedgerPage({
         return false;
       })
     : allPartners;
+
+  // Admin partner filter via URL ?partner=id
+  const selectedPartnerId = isAdmin ? (searchParams.partner ?? null) : null;
+  const viewPartners = selectedPartnerId
+    ? partners.filter((p) => p.id === selectedPartnerId)
+    : partners;
 
   const reversedIds = new Set(entries.filter((e) => e.reversesId).map((e) => e.reversesId!));
 
@@ -91,18 +99,36 @@ export default async function LedgerPage({
 
   return (
     <div>
-      <div className="flex items-center justify-between mb-6">
+      <div className="flex items-center justify-between mb-6 flex-wrap gap-3">
         <div>
           <h1 className="text-xl font-bold" style={{ color: "#e6edf3" }}>Partner Ledger</h1>
           <p className="text-sm mt-0.5" style={{ color: "#8b949e" }}>{entries.length} journal entries</p>
         </div>
-        <a
-          href={`/api/${params.companyId}/${params.projectId}/export/ledger`}
-          className="px-3 py-1.5 text-sm rounded-lg font-medium"
-          style={{ background: "#C9A84C", color: "#0d1117" }}
-        >
-          Export CSV
-        </a>
+        <div className="flex items-center gap-3 flex-wrap">
+          {isAdmin && partners.length > 0 && (
+            <form method="GET">
+              <select
+                name="partner"
+                defaultValue={selectedPartnerId ?? ""}
+                onChange={(e) => { const form = e.target.form; if (form) form.submit(); }}
+                className="rounded-lg px-3 py-1.5 text-sm font-medium focus:outline-none"
+                style={{ background: "#1e2736", border: "1px solid #30373f", color: "#e6edf3" }}
+              >
+                <option value="">All Partners</option>
+                {partners.map((p) => (
+                  <option key={p.id} value={p.id}>{p.name}</option>
+                ))}
+              </select>
+            </form>
+          )}
+          <a
+            href={`/api/${params.companyId}/${params.projectId}/export/ledger`}
+            className="px-3 py-1.5 text-sm rounded-lg font-medium"
+            style={{ background: "#C9A84C", color: "#0d1117" }}
+          >
+            Export CSV
+          </a>
+        </div>
       </div>
 
       {/* Summary cards */}
@@ -119,7 +145,7 @@ export default async function LedgerPage({
             ${totalCapital.toLocaleString("en-US", { minimumFractionDigits: 2 })}
           </div>
         </div>
-        {partners.map((p) => {
+        {viewPartners.map((p) => {
           const bal = partnerBalances.get(p.id) ?? 0;
           return (
             <div key={p.id} className="rounded-xl p-4" style={CARD}>
@@ -172,7 +198,7 @@ export default async function LedgerPage({
         <h2 className="font-semibold mb-4" style={{ color: "#e6edf3" }}>New Journal Entry</h2>
         <LedgerForms
           projectId={params.projectId}
-          partners={partners.map((p) => ({ id: p.id, name: p.name }))}
+          partners={allPartners.map((p) => ({ id: p.id, name: p.name }))}
           accounts={accounts.map((a) => ({ id: a.id, name: a.name, type: a.type }))}
         />
       </div>
@@ -255,7 +281,7 @@ export default async function LedgerPage({
           </div>
           <div className="p-4">
             <PartnerCapitalStatement
-              partners={partners.map((p) => ({
+              partners={viewPartners.map((p) => ({
                 id: p.id,
                 name: p.name,
                 ownershipPct: p.ownershipPct != null ? Number(p.ownershipPct) : null,
@@ -269,13 +295,14 @@ export default async function LedgerPage({
       {isAdmin && (
         <div className="rounded-xl p-5" style={CARD}>
           <PartnerManager
-            partners={partners.map((p) => ({
+            partners={allPartners.map((p) => ({
               id: p.id,
               name: p.name,
               email: p.email,
               role: p.role,
               ownershipPct: p.ownershipPct != null ? Number(p.ownershipPct) : null,
             }))}
+            projectId={params.projectId}
           />
         </div>
       )}
