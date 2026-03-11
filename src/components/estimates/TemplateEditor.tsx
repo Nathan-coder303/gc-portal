@@ -17,6 +17,8 @@ import {
   updateTemplatePaymentSchedule,
   updateTemplateShowTerms,
   updateTemplateTermsContent,
+  upsertTermsTemplate,
+  deleteTermsTemplate,
 } from "@/app/[companyId]/estimates/actions";
 
 type Item = {
@@ -581,12 +583,14 @@ export default function TemplateEditor({
   canEdit,
   currentClient,
   allClients,
+  termsTemplates: initialTermsTemplates,
 }: {
   template: Template;
   divisions: Division[];
   canEdit: boolean;
   currentClient: { id: string; name: string; address: string | null; city: string | null; state: string | null; zip: string | null; email: string | null; phone: string | null } | null;
   allClients: { id: string; name: string; address: string | null; city: string | null; state: string | null; zip: string | null; email: string | null; phone: string | null }[];
+  termsTemplates: { id: string; name: string; content: string }[];
 }) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
@@ -595,6 +599,9 @@ export default function TemplateEditor({
   const [showTerms, setShowTerms] = useState(template.showTerms);
   const [termsContent, setTermsContent] = useState(template.termsContent ?? "");
   const [termsDirty, setTermsDirty] = useState(false);
+  const [termsTemplates, setTermsTemplates] = useState(initialTermsTemplates);
+  const [savingTermsAs, setSavingTermsAs] = useState(false);
+  const [newTermsName, setNewTermsName] = useState("");
   const paymentRows = template.paymentSchedule ?? DEFAULT_PAYMENT_SCHEDULE;
   const [description] = useState(template.description ?? "");
   const [estimateNumber, setEstimateNumber] = useState(template.estimateNumber ?? "");
@@ -735,7 +742,65 @@ export default function TemplateEditor({
                     {showTerms ? "T&C: On" : "T&C: Off"}
                   </button>
                   {showTerms && canEdit && (
-                    <div className="space-y-1">
+                    <div className="space-y-2">
+                      {/* Load from saved T&C preset */}
+                      <div className="flex gap-2 items-center">
+                        <select
+                          className="flex-1 rounded-lg px-3 py-1.5 text-xs"
+                          style={{ background: "#0d1117", border: "1px solid #30373f", color: "#8b949e" }}
+                          defaultValue=""
+                          onChange={e => {
+                            const tpl = termsTemplates.find(t => t.id === e.target.value);
+                            if (tpl) { setTermsContent(tpl.content); setTermsDirty(true); }
+                            e.target.value = "";
+                          }}
+                        >
+                          <option value="" disabled>— Load saved T&C —</option>
+                          {termsTemplates.map(t => (
+                            <option key={t.id} value={t.id}>{t.name}</option>
+                          ))}
+                        </select>
+                        <button
+                          type="button"
+                          onClick={() => { setSavingTermsAs(true); setNewTermsName(""); }}
+                          className="text-xs px-2 py-1.5 rounded-lg shrink-0"
+                          style={{ border: "1px solid #30373f", color: "#8b949e" }}
+                        >
+                          Save as preset
+                        </button>
+                      </div>
+                      {savingTermsAs && (
+                        <div className="flex gap-2 items-center">
+                          <input
+                            autoFocus
+                            value={newTermsName}
+                            onChange={e => setNewTermsName(e.target.value)}
+                            placeholder="Preset name (e.g. Standard Residential)"
+                            className="flex-1 rounded-lg px-3 py-1.5 text-xs"
+                            style={{ background: "#0d1117", border: "1px solid #30373f", color: "#e6edf3" }}
+                          />
+                          <button
+                            type="button"
+                            disabled={!newTermsName.trim() || isPending}
+                            onClick={() => {
+                              startTransition(async () => {
+                                await upsertTermsTemplate({ name: newTermsName, content: termsContent });
+                                const existing = termsTemplates.find(t => t.name === newTermsName.trim());
+                                if (!existing) {
+                                  setTermsTemplates(prev => [...prev, { id: Date.now().toString(), name: newTermsName.trim(), content: termsContent }]);
+                                }
+                                setSavingTermsAs(false);
+                                setNewTermsName("");
+                              });
+                            }}
+                            className="text-xs px-3 py-1.5 rounded-lg disabled:opacity-50"
+                            style={{ background: "#22c55e", color: "#fff" }}
+                          >
+                            Save
+                          </button>
+                          <button type="button" onClick={() => setSavingTermsAs(false)} className="text-xs px-2" style={{ color: "#8b949e" }}>Cancel</button>
+                        </div>
+                      )}
                       <textarea
                         value={termsContent}
                         onChange={e => { setTermsContent(e.target.value); setTermsDirty(true); }}
@@ -745,7 +810,7 @@ export default function TemplateEditor({
                           }
                         }}
                         rows={5}
-                        placeholder="Enter Terms & Conditions text..."
+                        placeholder="Enter Terms & Conditions text, or load a saved preset above..."
                         className="w-full rounded-lg px-3 py-2 text-xs resize-y"
                         style={{ background: "#0d1117", border: "1px solid #30373f", color: "#e6edf3" }}
                       />

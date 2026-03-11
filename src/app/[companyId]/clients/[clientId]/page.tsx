@@ -3,10 +3,11 @@ import { auth } from "@/lib/auth";
 import { redirect } from "next/navigation";
 import Link from "next/link";
 import { format } from "date-fns";
-import { initClientSubBids, deleteClientEstimate } from "../actions";
+import { initClientSubBids } from "../actions";
 import SubsBidsTab, { SubBidRow } from "@/components/clients/SubsBidsTab";
 import ClientBidTab from "@/components/clients/ClientBidTab";
 import { can } from "@/lib/auth/permissions";
+import DeleteEstimateButton from "@/components/clients/DeleteEstimateButton";
 
 export default async function ClientDetailPage({
   params,
@@ -198,19 +199,11 @@ export default async function ClientDetailPage({
                       </span>
                       <Link href={`/${params.companyId}/estimates/${est.id}`} className="text-lg" style={{ color: "#8b949e" }}>→</Link>
                       {canDelete && (
-                        <form action={async () => {
-                          "use server";
-                          await deleteClientEstimate(est.id, params.clientId, params.companyId);
-                        }}>
-                          <button
-                            type="submit"
-                            className="text-xs px-2 py-1 rounded"
-                            style={{ color: "#f87171", border: "1px solid #f8717144" }}
-                            onClick={(e) => { if (!confirm("Delete this estimate?")) e.preventDefault(); }}
-                          >
-                            Delete
-                          </button>
-                        </form>
+                        <DeleteEstimateButton
+                          estimateId={est.id}
+                          clientId={params.clientId}
+                          companyId={params.companyId}
+                        />
                       )}
                     </div>
                   </div>

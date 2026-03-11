@@ -487,6 +487,41 @@ export async function updateTemplateShowTerms(templateId: string, showTerms: boo
   return { success: true };
 }
 
+// ─── Terms Templates ──────────────────────────────────────────────────────────
+
+export async function listTermsTemplates() {
+  const session = await auth();
+  if (!session) throw new Error("Unauthorized");
+  return prisma.termsTemplate.findMany({
+    where: { companyId: session.user.companyId },
+    orderBy: { name: "asc" },
+    select: { id: true, name: true, content: true },
+  });
+}
+
+export async function upsertTermsTemplate(data: { id?: string; name: string; content: string }) {
+  const session = await auth();
+  if (!session) throw new Error("Unauthorized");
+  requirePermission(session, "estimateTemplate:edit");
+
+  if (data.id) {
+    await prisma.termsTemplate.update({ where: { id: data.id }, data: { name: data.name.trim(), content: data.content } });
+  } else {
+    await prisma.termsTemplate.create({ data: { companyId: session.user.companyId, name: data.name.trim(), content: data.content } });
+  }
+  revalidatePath(`/${session.user.companyId}/estimates`);
+  return { success: true };
+}
+
+export async function deleteTermsTemplate(id: string) {
+  const session = await auth();
+  if (!session) throw new Error("Unauthorized");
+  requirePermission(session, "estimateTemplate:edit");
+  await prisma.termsTemplate.delete({ where: { id } });
+  revalidatePath(`/${session.user.companyId}/estimates`);
+  return { success: true };
+}
+
 export async function deleteClient(clientId: string) {
   const session = await auth();
   if (!session) throw new Error("Unauthorized");

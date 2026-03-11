@@ -14,7 +14,7 @@ export default async function TemplateEditorPage({
   if (!session) redirect("/login");
   if (!can(session.user.role, "estimate:read")) redirect(`/${params.companyId}`);
 
-  const [template, clients] = await Promise.all([
+  const [template, clients, termsTemplates] = await Promise.all([
     prisma.estimateTemplate.findFirst({
       where: { id: params.templateId, companyId: params.companyId, archivedAt: null },
       include: {
@@ -39,6 +39,7 @@ export default async function TemplateEditorPage({
       },
     }),
     prisma.client.findMany({ where: { companyId: params.companyId }, orderBy: { name: "asc" } }),
+    prisma.termsTemplate.findMany({ where: { companyId: params.companyId }, orderBy: { name: "asc" }, select: { id: true, name: true, content: true } }),
   ]);
 
   if (!template) redirect(`/${params.companyId}/estimates`);
@@ -101,6 +102,7 @@ export default async function TemplateEditorPage({
             phone: template.client.phone,
           } : null}
           allClients={clients.map(c => ({ id: c.id, name: c.name, address: c.address, city: c.city, state: c.state, zip: c.zip, email: c.email, phone: c.phone }))}
+          termsTemplates={termsTemplates}
         />
     </div>
   );
