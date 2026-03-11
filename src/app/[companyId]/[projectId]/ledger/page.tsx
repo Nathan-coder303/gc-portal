@@ -6,6 +6,7 @@ import LedgerForms from "@/components/ledger/LedgerForms";
 import PartnerCapitalStatement from "@/components/ledger/PartnerCapitalStatement";
 import ReverseButton from "@/components/ledger/ReverseButton";
 import PartnerManager from "@/components/ledger/PartnerManager";
+import PartnerFilter from "@/components/ledger/PartnerFilter";
 import { auth } from "@/lib/auth";
 import { can } from "@/lib/auth/permissions";
 
@@ -105,21 +106,11 @@ export default async function LedgerPage({
           <p className="text-sm mt-0.5" style={{ color: "#8b949e" }}>{entries.length} journal entries</p>
         </div>
         <div className="flex items-center gap-3 flex-wrap">
-          {isAdmin && partners.length > 0 && (
-            <form method="GET">
-              <select
-                name="partner"
-                defaultValue={selectedPartnerId ?? ""}
-                onChange={(e) => { const form = e.target.form; if (form) form.submit(); }}
-                className="rounded-lg px-3 py-1.5 text-sm font-medium focus:outline-none"
-                style={{ background: "#1e2736", border: "1px solid #30373f", color: "#e6edf3" }}
-              >
-                <option value="">All Partners</option>
-                {partners.map((p) => (
-                  <option key={p.id} value={p.id}>{p.name}</option>
-                ))}
-              </select>
-            </form>
+          {isAdmin && (
+            <PartnerFilter
+              partners={allPartners.map((p) => ({ id: p.id, name: p.name }))}
+              selectedId={selectedPartnerId}
+            />
           )}
           <a
             href={`/api/${params.companyId}/${params.projectId}/export/ledger`}
