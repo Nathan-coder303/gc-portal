@@ -6,7 +6,7 @@ import LedgerForms from "@/components/ledger/LedgerForms";
 import PartnerCapitalStatement from "@/components/ledger/PartnerCapitalStatement";
 import ReverseButton from "@/components/ledger/ReverseButton";
 import PartnerManager from "@/components/ledger/PartnerManager";
-import PartnerFilter from "@/components/ledger/PartnerFilter";
+import PartnerAccountCards from "@/components/ledger/PartnerAccountCards";
 import { auth } from "@/lib/auth";
 import { can } from "@/lib/auth/permissions";
 
@@ -14,19 +14,16 @@ const CARD = { background: "#1e2736", border: "1px solid #30373f" } as const;
 
 export default async function LedgerPage({
   params,
-  searchParams,
 }: {
   params: { companyId: string; projectId: string };
-  searchParams: { partner?: string };
 }) {
   const session = await auth();
   const isAdmin = can(session?.user.role ?? "PARTNER", "partner:edit");
   const isPartner = session?.user.role === "PARTNER";
-  // Match partner by full name or last name (case-insensitive)
   const userName = session?.user.name?.trim().toLowerCase() ?? null;
   const userLastName = session?.user.lastName?.trim().toLowerCase() ?? null;
 
-  const [entries, accounts, allPartners] = await Promise.all([
+  const [entries, accounts, allPartners, project, accountEntries, savedPayees] = await Promise.all([
     prisma.journalEntry.findMany({
       where: { projectId: params.projectId },
       include: { lines: { include: { account: true, partner: true } } },
@@ -37,7 +34,19 @@ export default async function LedgerPage({
       where: { companyId: params.companyId, archivedAt: null },
       orderBy: { name: "asc" },
     }),
+    prisma.project.findUnique({ where: { id: params.projectId }, select: { llcBeginningBalance: true } }),
+    prisma.partnerAccountEntry.findMany({
+      where: { projectId: params.projectId },
+      orderBy: { date: "asc" },
+    }),
+    prisma.payee.findMany({
+      where: { companyId: params.companyId },
+      orderBy: { name: "asc" },
+      select: { name: true },
+    }),
   ]);
+
+  const payeeNames = savedPayees.map((p) => p.name);
 
   // PARTNER role: restrict visible partners to those matching the user's name
   const partners = isPartner
@@ -45,18 +54,13 @@ export default async function LedgerPage({
         const pName = p.name.toLowerCase();
         if (userName && pName.includes(userName)) return true;
         if (userLastName && pName.includes(userLastName)) return true;
-        // Also try matching first name (first word of session user name)
         const firstName = userName?.split(" ")[0];
         if (firstName && firstName.length > 2 && pName.includes(firstName)) return true;
         return false;
       })
     : allPartners;
 
-  // Admin partner filter via URL ?partner=id
-  const selectedPartnerId = isAdmin ? (searchParams.partner ?? null) : null;
-  const viewPartners = selectedPartnerId
-    ? partners.filter((p) => p.id === selectedPartnerId)
-    : partners;
+  const viewPartners = partners;
 
   const reversedIds = new Set(entries.filter((e) => e.reversesId).map((e) => e.reversesId!));
 
@@ -98,6 +102,34 @@ export default async function LedgerPage({
   );
   const totalCapital = Array.from(partnerBalances.values()).reduce((s, v) => s + v, 0);
 
+  // Partner account dashboard data
+  const llcBeginningBalance = Number(project?.llcBeginningBalance ?? 0);
+
+  const partnerEntriesMap: Record<string, { id: string; description: string; amount: number; entryType: "CREDIT" | "DEBIT"; date: string }[]> = {};
+  for (const p of viewPartners) {
+    partnerEntriesMap[p.id] = accountEntries
+      .filter((e) => e.accountType === "PARTNER" && e.partnerId === p.id)
+      .map((e) => ({ id: e.id, description: e.description, amount: Number(e.amount), entryType: e.entryType as "CREDIT" | "DEBIT", date: e.date.toISOString().split("T")[0] }));
+  }
+
+  const llcEntries = accountEntries
+    .filter((e) => e.accountType === "LLC")
+    .map((e) => ({ id: e.id, description: e.description, amount: Number(e.amount), entryType: e.entryType as "CREDIT" | "DEBIT", date: e.date.toISOString().split("T")[0] }));
+
+  // Capital journal lines grouped by partner — serialize dates to strings for client component
+  const capitalLinesByPartner: Record<string, { entryId: string; date: string; memo: string; debit: number; credit: number }[]> = {};
+  for (const p of viewPartners) {
+    capitalLinesByPartner[p.id] = capitalLines
+      .filter((l) => l.partnerId === p.id)
+      .map((l) => ({
+        entryId: l.entryId,
+        date: l.date.toISOString().split("T")[0],
+        memo: l.memo,
+        debit: l.debit,
+        credit: l.credit,
+      }));
+  }
+
   return (
     <div>
       <div className="flex items-center justify-between mb-6 flex-wrap gap-3">
@@ -106,12 +138,6 @@ export default async function LedgerPage({
           <p className="text-sm mt-0.5" style={{ color: "#8b949e" }}>{entries.length} journal entries</p>
         </div>
         <div className="flex items-center gap-3 flex-wrap">
-          {isAdmin && (
-            <PartnerFilter
-              partners={allPartners.map((p) => ({ id: p.id, name: p.name }))}
-              selectedId={selectedPartnerId}
-            />
-          )}
           <a
             href={`/api/${params.companyId}/${params.projectId}/export/ledger`}
             className="px-3 py-1.5 text-sm rounded-lg font-medium"
@@ -122,8 +148,30 @@ export default async function LedgerPage({
         </div>
       </div>
 
+      {/* Partner Account Dashboard */}
+      {viewPartners.length > 0 && (
+        <div className="mb-6">
+          <h2 className="font-semibold mb-3" style={{ color: "#e6edf3" }}>Account Overview</h2>
+          <PartnerAccountCards
+            projectId={params.projectId}
+            companyId={params.companyId}
+            partners={viewPartners.map((p) => ({
+              id: p.id,
+              name: p.name,
+              beginningBalance: Number(p.beginningBalance),
+            }))}
+            llcBeginningBalance={llcBeginningBalance}
+            partnerEntriesMap={partnerEntriesMap}
+            llcEntries={llcEntries}
+            capitalLinesByPartner={capitalLinesByPartner}
+            isAdmin={isAdmin}
+            payees={payeeNames}
+          />
+        </div>
+      )}
+
       {/* Summary cards */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-6">
+      <div className="grid grid-cols-2 gap-4 mb-6">
         <div className="rounded-xl p-4" style={CARD}>
           <div className="text-xs mb-1" style={{ color: "#8b949e" }}>Cash Position</div>
           <div className="text-xl font-bold font-mono" style={{ color: cashBalance >= 0 ? "#4ade80" : "#f87171" }}>
@@ -157,6 +205,7 @@ export default async function LedgerPage({
         <div className="px-4 py-3" style={{ borderBottom: "1px solid #30373f" }}>
           <h2 className="font-semibold" style={{ color: "#e6edf3" }}>Account Balances</h2>
         </div>
+        <div className="overflow-x-auto">
         <table className="w-full text-sm">
           <thead>
             <tr style={{ background: "#161b22", borderBottom: "1px solid #30373f" }}>
@@ -182,17 +231,21 @@ export default async function LedgerPage({
             })}
           </tbody>
         </table>
+        </div>
       </div>
 
       {/* New Journal Entry */}
-      <div className="rounded-xl p-5 mb-6" style={CARD}>
-        <h2 className="font-semibold mb-4" style={{ color: "#e6edf3" }}>New Journal Entry</h2>
-        <LedgerForms
-          projectId={params.projectId}
-          partners={allPartners.map((p) => ({ id: p.id, name: p.name }))}
-          accounts={accounts.map((a) => ({ id: a.id, name: a.name, type: a.type }))}
-        />
-      </div>
+      {!isPartner && (
+        <div className="rounded-xl p-5 mb-6" style={CARD}>
+          <h2 className="font-semibold mb-4" style={{ color: "#e6edf3" }}>New Journal Entry</h2>
+          <LedgerForms
+            projectId={params.projectId}
+            partners={allPartners.map((p) => ({ id: p.id, name: p.name }))}
+            accounts={accounts.map((a) => ({ id: a.id, name: a.name, type: a.type }))}
+            payees={payeeNames}
+          />
+        </div>
+      )}
 
       {/* Journal Entries Table */}
       <div className="rounded-xl overflow-hidden mb-6" style={CARD}>
@@ -200,6 +253,7 @@ export default async function LedgerPage({
           <h2 className="font-semibold" style={{ color: "#e6edf3" }}>Journal Entries</h2>
           <p className="text-xs mt-0.5" style={{ color: "#8b949e" }}>Entries are immutable — use Reverse to correct an error</p>
         </div>
+        <div className="overflow-x-auto">
         <table className="w-full text-sm">
           <thead>
             <tr style={{ background: "#161b22", borderBottom: "1px solid #30373f" }}>
@@ -249,7 +303,7 @@ export default async function LedgerPage({
                     {Number(line.credit) > 0 ? `$${Number(line.credit).toLocaleString("en-US", { minimumFractionDigits: 2 })}` : ""}
                   </td>
                   <td className="px-4 py-2 text-right">
-                    {lineIdx === 0 && (
+                    {lineIdx === 0 && !isPartner && (
                       <ReverseButton
                         entryId={entry.id}
                         isReversal={entry.isReversal}
@@ -262,6 +316,7 @@ export default async function LedgerPage({
             )}
           </tbody>
         </table>
+        </div>
       </div>
 
       {capitalLines.length > 0 && (

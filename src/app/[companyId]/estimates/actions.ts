@@ -523,6 +523,15 @@ export async function saveAsClientEstimate(sourceTemplateId: string, clientId: s
 
   if (!source) throw new Error("Template not found");
 
+  // If a CLIENT_ESTIMATE with the same name already exists for this client, return it
+  const existing = await prisma.estimateTemplate.findFirst({
+    where: { companyId: session.user.companyId, clientId, type: "CLIENT_ESTIMATE", name: estimateName.trim(), archivedAt: null },
+  });
+  if (existing) {
+    revalidatePath(`/${session.user.companyId}/clients/${clientId}`);
+    return { success: true, id: existing.id, clientId };
+  }
+
   const newEstimate = await prisma.$transaction(async (tx) => {
     const tpl = await tx.estimateTemplate.create({
       data: {

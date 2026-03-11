@@ -3,7 +3,7 @@ import { auth } from "@/lib/auth";
 import { redirect } from "next/navigation";
 import Link from "next/link";
 import { format } from "date-fns";
-import { initClientSubBids } from "../actions";
+import { initClientSubBids, deleteClientEstimate } from "../actions";
 import SubsBidsTab, { SubBidRow } from "@/components/clients/SubsBidsTab";
 import ClientBidTab from "@/components/clients/ClientBidTab";
 import { can } from "@/lib/auth/permissions";
@@ -173,13 +173,15 @@ export default async function ClientDetailPage({
               {safeClient.templates.map((est) => {
                 const total = calcEstimateTotal(est.divisions);
                 return (
-                  <Link
+                  <div
                     key={est.id}
-                    href={`/${params.companyId}/estimates/${est.id}`}
-                    className="rounded-xl p-4 flex items-center justify-between transition-all group block"
+                    className="rounded-xl p-4 flex items-center justify-between"
                     style={{ background: "#1e2736", border: "1px solid #30373f" }}
                   >
-                    <div>
+                    <Link
+                      href={`/${params.companyId}/estimates/${est.id}`}
+                      className="flex-1 min-w-0 group"
+                    >
                       <div
                         className="font-semibold transition-colors group-hover:text-[#C9A84C]"
                         style={{ color: "#e6edf3" }}
@@ -189,16 +191,29 @@ export default async function ClientDetailPage({
                       <div className="text-xs mt-0.5" style={{ color: "#8b949e" }}>
                         Created {format(est.createdAt, "MMM d, yyyy")}
                       </div>
-                    </div>
-                    <div className="flex items-center gap-4">
+                    </Link>
+                    <div className="flex items-center gap-4 shrink-0">
                       <span className="text-lg font-bold" style={{ color: "#C9A84C" }}>
                         ${fmt(total)}
                       </span>
-                      <span className="text-lg transition-colors" style={{ color: "#8b949e" }}>
-                        →
-                      </span>
+                      <Link href={`/${params.companyId}/estimates/${est.id}`} className="text-lg" style={{ color: "#8b949e" }}>→</Link>
+                      {canDelete && (
+                        <form action={async () => {
+                          "use server";
+                          await deleteClientEstimate(est.id, params.clientId, params.companyId);
+                        }}>
+                          <button
+                            type="submit"
+                            className="text-xs px-2 py-1 rounded"
+                            style={{ color: "#f87171", border: "1px solid #f8717144" }}
+                            onClick={(e) => { if (!confirm("Delete this estimate?")) e.preventDefault(); }}
+                          >
+                            Delete
+                          </button>
+                        </form>
+                      )}
                     </div>
-                  </Link>
+                  </div>
                 );
               })}
             </div>

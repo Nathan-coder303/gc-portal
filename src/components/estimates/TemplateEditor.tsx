@@ -34,7 +34,7 @@ type Item = {
 type Group = { id: string; name: string; items: Item[] };
 type Division = { id: string; csiCode: string | null; name: string; groups: Group[]; items: Item[] };
 type PaymentRow = { payment: string; trigger: string; pct: number };
-type Template = { id: string; name: string; description: string | null; companyId: string; estimateNumber: string | null; estimateDate: string | null; paymentSchedule: PaymentRow[] | null; showTerms: boolean; termsContent: string | null };
+type Template = { id: string; name: string; description: string | null; companyId: string; estimateNumber: string | null; estimateDate: string | null; paymentSchedule: PaymentRow[] | null; showTerms: boolean; termsContent: string | null; type: string };
 
 const INPUT = "rounded px-2 py-1 text-xs" as const;
 const inputStyle = { background: "#0d1117", border: "1px solid #30373f", color: "#e6edf3" };
@@ -635,11 +635,11 @@ export default function TemplateEditor({
   }
 
   function handleSaveToClient() {
-    if (!saveEstimateName.trim() || !currentClient) return;
+    if (!currentClient) return;
     setSaveClientError("");
     startTransition(async () => {
       try {
-        const result = await saveAsClientEstimate(template.id, currentClient.id, saveEstimateName);
+        const result = await saveAsClientEstimate(template.id, currentClient.id, name);
         if (result.success) {
           router.push(`/${template.companyId}/clients/${result.clientId}`);
         }
@@ -783,13 +783,14 @@ export default function TemplateEditor({
                       <button onClick={() => setSaveAsNew(!saveAsNew)} className="text-xs px-3 py-1.5 rounded-lg font-medium" style={{ border: "1px solid #30373f", color: "#e6edf3" }}>
                         Save as New Template
                       </button>
-                      {currentClient && (
+                      {currentClient && template.type === "TEMPLATE" && (
                         <button
-                          onClick={() => { setSavingToClient(!savingToClient); setSaveEstimateName(template.name); }}
-                          className="text-xs px-3 py-1.5 rounded-lg font-medium"
+                          onClick={handleSaveToClient}
+                          disabled={isPending}
+                          className="text-xs px-3 py-1.5 rounded-lg font-medium disabled:opacity-50"
                           style={{ background: "#22c55e", color: "#fff" }}
                         >
-                          Save to Client
+                          {isPending ? "Saving..." : "Save to Client"}
                         </button>
                       )}
                       <button onClick={() => setEditingHeader(true)} className="text-xs" style={{ color: "#C9A84C" }}>Edit</button>
@@ -828,25 +829,8 @@ export default function TemplateEditor({
           </div>
         )}
 
-        {savingToClient && currentClient && (
-          <div className="mt-4 pt-4 space-y-2" style={{ borderTop: "1px solid #30373f" }}>
-            <label className="block text-xs font-medium" style={{ color: "#8b949e" }}>Estimate Name</label>
-            <div className="flex gap-2 items-center">
-              <input
-                autoFocus
-                value={saveEstimateName}
-                onChange={(e) => setSaveEstimateName(e.target.value)}
-                className="flex-1 rounded-lg px-3 py-2 text-sm"
-                style={inputStyleSm}
-                placeholder="e.g. Kitchen Remodel 2026"
-              />
-              <button onClick={handleSaveToClient} disabled={isPending || !saveEstimateName.trim()} className="px-4 py-2 rounded-lg text-sm font-medium" style={{ background: "#22c55e", color: "#fff" }}>
-                {isPending ? "Saving..." : `Save for ${currentClient.name}`}
-              </button>
-              <button onClick={() => setSavingToClient(false)} className="text-sm px-2" style={{ color: "#8b949e" }}>Cancel</button>
-            </div>
-            {saveClientError && <p className="text-xs" style={{ color: "#ef4444" }}>{saveClientError}</p>}
-          </div>
+        {saveClientError && (
+          <p className="mt-2 text-xs" style={{ color: "#ef4444" }}>{saveClientError}</p>
         )}
       </div>
 

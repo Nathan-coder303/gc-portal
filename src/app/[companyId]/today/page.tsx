@@ -1,5 +1,6 @@
 import { auth } from "@/lib/auth";
 import { redirect } from "next/navigation";
+import Image from "next/image";
 
 export default async function TodayPage() {
   const session = await auth();
@@ -13,8 +14,14 @@ export default async function TodayPage() {
       <p className="text-sm mb-8" style={{ color: "#8b949e" }}>
         {new Date().toLocaleDateString("en-US", { weekday: "long", year: "numeric", month: "long", day: "numeric" })}
       </p>
-      <div className="rounded-xl p-10 text-center" style={{ background: "#161b22", border: "1px solid #30373f" }}>
-        <p className="text-sm" style={{ color: "#8b949e" }}>Coming soon — tell us what to put here.</p>
+      <div className="rounded-xl p-10 text-center flex flex-col items-center" style={{ background: "#161b22", border: "1px solid #30373f" }}>
+        <Image
+          src="/thank-you-hashem.png"
+          alt="Thank you Hashem"
+          width={300}
+          height={300}
+          className="w-48 h-48 sm:w-72 sm:h-72"
+        />
       </div>
     </div>
   );

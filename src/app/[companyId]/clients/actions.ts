@@ -99,6 +99,15 @@ export async function upsertSubBid(data: {
   return record;
 }
 
+export async function deleteClientEstimate(estimateId: string, clientId: string, companyId: string) {
+  const session = await auth();
+  if (!session) throw new Error("Unauthorized");
+  if (!can(session.user.role, "estimateTemplate:archive")) throw new Error("Forbidden — ADMIN only");
+
+  await prisma.estimateTemplate.delete({ where: { id: estimateId } });
+  revalidatePath(`/${companyId}/clients/${clientId}`);
+}
+
 export async function deleteSubBid(id: string, clientId: string, companyId: string) {
   const session = await auth();
   if (!session) throw new Error("Unauthorized");
