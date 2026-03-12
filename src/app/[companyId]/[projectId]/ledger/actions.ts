@@ -29,6 +29,7 @@ export async function addPartnerContribution(formData: FormData) {
   const partnerId = formData.get("partnerId") as string;
   const amount = parseFloat(formData.get("amount") as string);
   const notes = (formData.get("notes") as string) || undefined;
+  const method = (formData.get("method") as string) || undefined;
 
   if (!amount || amount <= 0) throw new Error("Amount must be positive");
 
@@ -39,11 +40,12 @@ export async function addPartnerContribution(formData: FormData) {
 
   const partner = await prisma.partner.findUnique({ where: { id: partnerId } });
 
+  const memoSuffix = [method, notes].filter(Boolean).join(" – ");
   const entry = await prisma.journalEntry.create({
     data: {
       projectId,
       date: new Date(date),
-      memo: `Partner contribution – ${partner?.name}${notes ? ` (${notes})` : ""}`,
+      memo: `Partner contribution – ${partner?.name}${memoSuffix ? ` (${memoSuffix})` : ""}`,
       createdBy: session!.user.id,
       lines: {
         create: [
@@ -77,7 +79,9 @@ export async function addPayExpense(formData: FormData) {
 
   const projectId = formData.get("projectId") as string;
   const date = formData.get("date") as string;
-  const memo = formData.get("memo") as string;
+  const payee = (formData.get("payee") as string) || undefined;
+  const description = (formData.get("description") as string) || undefined;
+  const paymentSource = (formData.get("paymentSource") as string) || undefined;
   const amount = parseFloat(formData.get("amount") as string);
   const reference = (formData.get("reference") as string) || undefined;
 
@@ -87,6 +91,9 @@ export async function addPayExpense(formData: FormData) {
   const cashAccount = accounts.find((a) => a.name === "Cash");
   const expenseAccount = accounts.find((a) => a.name === "Project Expenses");
   if (!cashAccount || !expenseAccount) throw new Error("Cash or Project Expenses account not found");
+
+  const memoParts = [payee, description, paymentSource ? `via ${paymentSource}` : undefined].filter(Boolean);
+  const memo = memoParts.length > 0 ? memoParts.join(" – ") : (description ?? "Expense payment");
 
   const payEntry = await prisma.journalEntry.create({
     data: {
@@ -302,6 +309,44 @@ export async function exportLedgerCsv(projectId: string) {
 
 // ─── Partner management ───────────────────────────────────────────────────────
 
+export async function createPartner(formData: FormData) {
+  const session = await auth();
+  if (!session) throw new Error("Unauthorized");
+  requirePermission(session, "partner:create");
+
+  const name = (formData.get("name") as string).trim();
+  const email = (formData.get("email") as string).trim() || null;
+  const role = (formData.get("role") as string).trim() || null;
+  const ownershipPctRaw = formData.get("ownershipPct") as string;
+  const ownershipPct = ownershipPctRaw ? parseFloat(ownershipPctRaw) : null;
+
+  if (!name) throw new Error("Name is required");
+
+  const partner = await prisma.partner.create({
+    data: {
+      companyId: session.user.companyId,
+      name,
+      email,
+      role,
+      ownershipPct: ownershipPct ?? null,
+      updatedBy: session.user.id,
+    },
+  });
+
+  await writeAuditLog({
+    companyId: session.user.companyId,
+    entityType: "PARTNER",
+    entityId: partner.id,
+    action: "CREATE",
+    changes: [{ field: "name", oldValue: null, newValue: name }],
+    userId: session.user.id,
+    userName: session.user.name ?? session.user.email ?? "",
+  });
+
+  revalidatePath(`/${session.user.companyId}`);
+  return { success: true };
+}
+
 export async function updatePartner(formData: FormData) {
   const session = await auth();
   if (!session) throw new Error("Unauthorized");
@@ -498,5 +543,97 @@ export async function createPartnerPortalAccess(data: {
   return { success: true, userId: user.id };
 }
 
+// ─── Payees ───────────────────────────────────────────────────────────────────
+
+export async function createPayee(name: string) {
+  const session = await auth();
+  if (!session) throw new Error("Unauthorized");
+  const trimmed = name.trim();
+  if (!trimmed) throw new Error("Name required");
+  return prisma.payee.upsert({
+    where: { companyId_name: { companyId: session.user.companyId, name: trimmed } },
+    update: {},
+    create: { companyId: session.user.companyId, name: trimmed },
+  });
+}
+
 // ─── Legacy alias (kept for backward compat with any existing calls) ─────────
 export { addDistribution as addExpenseDraw };
+
+// ─── Partner Account Dashboard ────────────────────────────────────────────────
+
+export async function updatePartnerBeginningBalance(partnerId: string, amount: number) {
+  const session = await auth();
+  if (!session) throw new Error("Unauthorized");
+  requirePermission(session, "partner:edit");
+  await prisma.partner.update({ where: { id: partnerId }, data: { beginningBalance: amount } });
+  revalidatePath(`/${session.user.companyId}`);
+  return { success: true };
+}
+
+export async function updateLlcBeginningBalance(projectId: string, amount: number) {
+  const session = await auth();
+  if (!session) throw new Error("Unauthorized");
+  requirePermission(session, "partner:edit");
+  await prisma.project.update({ where: { id: projectId }, data: { llcBeginningBalance: amount } });
+  revalidatePath(`/${session.user.companyId}/${projectId}/ledger`);
+  return { success: true };
+}
+
+export async function addPartnerAccountEntry(data: {
+  projectId: string;
+  companyId: string;
+  accountType: "PARTNER" | "LLC";
+  partnerId?: string;
+  description: string;
+  amount: number;
+  entryType: "CREDIT" | "DEBIT";
+  date: string;
+}) {
+  const session = await auth();
+  if (!session) throw new Error("Unauthorized");
+
+  if (data.amount <= 0) throw new Error("Amount must be positive");
+
+  await prisma.partnerAccountEntry.create({
+    data: {
+      projectId: data.projectId,
+      accountType: data.accountType,
+      partnerId: data.partnerId ?? null,
+      description: data.description,
+      amount: data.amount,
+      entryType: data.entryType,
+      date: new Date(data.date),
+      createdBy: session.user.id,
+    },
+  });
+
+  revalidatePath(`/${data.companyId}/${data.projectId}/ledger`);
+  return { success: true };
+}
+
+export async function deletePartnerAccountEntry(id: string, companyId: string, projectId: string) {
+  const session = await auth();
+  if (!session) throw new Error("Unauthorized");
+  requirePermission(session, "partner:edit");
+  await prisma.partnerAccountEntry.delete({ where: { id } });
+  revalidatePath(`/${companyId}/${projectId}/ledger`);
+  return { success: true };
+}
+
+export async function updatePartnerAccountEntry(
+  id: string,
+  data: { description: string; amount: number; date: string },
+  companyId: string,
+  projectId: string,
+) {
+  const session = await auth();
+  if (!session) throw new Error("Unauthorized");
+  requirePermission(session, "partner:edit");
+  await prisma.partnerAccountEntry.update({
+    where: { id },
+    data: { description: data.description, amount: data.amount, date: new Date(data.date) },
+  });
+  revalidatePath(`/${companyId}/${projectId}/ledger`);
+  return { success: true };
+}

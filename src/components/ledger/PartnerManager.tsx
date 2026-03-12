@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { updatePartner, archivePartner, createPartnerPortalAccess } from "@/app/[companyId]/[projectId]/ledger/actions";
+import { createPartner, updatePartner, archivePartner, createPartnerPortalAccess } from "@/app/[companyId]/[projectId]/ledger/actions";
 
 type Partner = {
   id: string;
@@ -11,13 +11,18 @@ type Partner = {
   ownershipPct: number | null;
 };
 
+const GOLD = "#C9A84C";
+const CARD = { background: "#0d1117", border: "1px solid #30373f" };
+
 export default function PartnerManager({
-  partners,
+  partners: initialPartners,
   projectId,
 }: {
   partners: Partner[];
   projectId: string;
 }) {
+  const [partners, setPartners] = useState(initialPartners);
+  const [adding, setAdding] = useState(false);
   const [editing, setEditing] = useState<Partner | null>(null);
   const [grantingId, setGrantingId] = useState<string | null>(null);
   const [accessEmail, setAccessEmail] = useState("");
@@ -27,6 +32,30 @@ export default function PartnerManager({
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
 
+  const inputStyle = {
+    background: "#1e2736",
+    border: "1px solid #30373f",
+    color: "#e6edf3",
+  };
+
+  async function handleCreate(e: React.FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    setLoading(true);
+    setError("");
+    const fd = new FormData(e.currentTarget);
+    try {
+      await createPartner(fd);
+      // Optimistically reload — server revalidates, user sees updated list on next navigation
+      setAdding(false);
+      (e.target as HTMLFormElement).reset();
+      setSuccess("Partner added. Refresh to see updated list.");
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : "Failed");
+    } finally {
+      setLoading(false);
+    }
+  }
+
   async function handleSave(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     setLoading(true);
@@ -34,6 +63,16 @@ export default function PartnerManager({
     const fd = new FormData(e.currentTarget);
     try {
       await updatePartner(fd);
+      const id = fd.get("id") as string;
+      setPartners((prev) => prev.map((p) =>
+        p.id === id ? {
+          ...p,
+          name: fd.get("name") as string,
+          email: (fd.get("email") as string) || null,
+          role: (fd.get("role") as string) || null,
+          ownershipPct: fd.get("ownershipPct") ? parseFloat(fd.get("ownershipPct") as string) : null,
+        } : p
+      ));
       setEditing(null);
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : "Failed");
@@ -47,6 +86,7 @@ export default function PartnerManager({
     setArchiving(id);
     try {
       await archivePartner(id);
+      setPartners((prev) => prev.filter((p) => p.id !== id));
     } finally {
       setArchiving(null);
     }
@@ -74,131 +114,176 @@ export default function PartnerManager({
     }
   }
 
-  const field = "w-full border border-slate-200 rounded px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500";
+  const formFields = (defaults?: Partner) => (
+    <div className="grid grid-cols-2 gap-3">
+      {defaults && <input type="hidden" name="id" value={defaults.id} />}
+      <div>
+        <label className="block text-xs mb-1" style={{ color: "#8b949e" }}>Name *</label>
+        <input type="text" name="name" required defaultValue={defaults?.name ?? ""}
+          placeholder="Full name"
+          className="w-full rounded-lg px-3 py-2 text-sm focus:outline-none"
+          style={inputStyle} />
+      </div>
+      <div>
+        <label className="block text-xs mb-1" style={{ color: "#8b949e" }}>Email</label>
+        <input type="email" name="email" defaultValue={defaults?.email ?? ""}
+          placeholder="partner@email.com"
+          className="w-full rounded-lg px-3 py-2 text-sm focus:outline-none"
+          style={inputStyle} />
+      </div>
+      <div>
+        <label className="block text-xs mb-1" style={{ color: "#8b949e" }}>Role / Title</label>
+        <input type="text" name="role" defaultValue={defaults?.role ?? ""}
+          placeholder="e.g. Managing Partner"
+          className="w-full rounded-lg px-3 py-2 text-sm focus:outline-none"
+          style={inputStyle} />
+      </div>
+      <div>
+        <label className="block text-xs mb-1" style={{ color: "#8b949e" }}>Ownership %</label>
+        <input type="number" name="ownershipPct" min="0" max="100" step="0.01"
+          defaultValue={defaults?.ownershipPct ?? ""}
+          placeholder="e.g. 40"
+          className="w-full rounded-lg px-3 py-2 text-sm focus:outline-none"
+          style={inputStyle} />
+      </div>
+    </div>
+  );
 
   return (
     <div>
-      <h2 className="font-semibold text-slate-800 mb-4">Partners</h2>
+      {/* Header */}
+      <div className="flex items-center justify-between mb-4">
+        <h2 className="font-semibold text-base" style={{ color: "#e6edf3" }}>Partners List</h2>
+        {!adding && !editing && (
+          <button
+            onClick={() => { setAdding(true); setError(""); setSuccess(""); }}
+            className="px-3 py-1.5 text-xs font-semibold rounded-lg"
+            style={{ background: GOLD, color: "#0d1117" }}
+          >
+            + Add Partner
+          </button>
+        )}
+      </div>
 
+      {error && (
+        <div className="mb-3 px-3 py-2 rounded-lg text-xs" style={{ background: "#2d1b1b", border: "1px solid #6b2a2a", color: "#f87171" }}>
+          {error}
+        </div>
+      )}
       {success && (
-        <div className="mb-4 px-3 py-2 rounded-lg text-sm" style={{ background: "#0d2a1a", border: "1px solid #166534", color: "#4ade80" }}>
+        <div className="mb-3 px-3 py-2 rounded-lg text-xs" style={{ background: "#0d2a1a", border: "1px solid #166534", color: "#4ade80" }}>
           {success}
         </div>
       )}
 
-      {editing && (
-        <form onSubmit={handleSave} className="mb-4 p-4 bg-blue-50 rounded-lg grid grid-cols-2 gap-3">
-          <input type="hidden" name="id" value={editing.id} />
-          <div>
-            <label className="block text-xs font-medium text-slate-600 mb-1">Name</label>
-            <input type="text" name="name" required defaultValue={editing.name} className={field} />
-          </div>
-          <div>
-            <label className="block text-xs font-medium text-slate-600 mb-1">Email</label>
-            <input type="email" name="email" defaultValue={editing.email ?? ""} className={field} />
-          </div>
-          <div>
-            <label className="block text-xs font-medium text-slate-600 mb-1">Role / Title</label>
-            <input type="text" name="role" defaultValue={editing.role ?? ""} placeholder="e.g. Managing Partner" className={field} />
-          </div>
-          <div>
-            <label className="block text-xs font-medium text-slate-600 mb-1">Ownership %</label>
-            <input type="number" name="ownershipPct" min="0" max="100" step="0.01"
-              defaultValue={editing.ownershipPct ?? ""} placeholder="e.g. 40" className={field} />
-          </div>
-          <div className="col-span-2 flex items-center gap-3">
+      {/* Add form */}
+      {adding && (
+        <form onSubmit={handleCreate} className="mb-5 rounded-xl p-4" style={{ background: "#1e2736", border: `1px solid ${GOLD}44` }}>
+          <p className="text-xs font-semibold mb-3" style={{ color: GOLD }}>New Partner</p>
+          {formFields()}
+          <div className="flex gap-2 mt-3">
             <button type="submit" disabled={loading}
-              className="px-4 py-2 bg-blue-600 text-white text-sm rounded-lg hover:bg-blue-700 disabled:opacity-50 font-medium">
-              {loading ? "Saving..." : "Save"}
+              className="px-4 py-2 text-sm font-semibold rounded-lg disabled:opacity-50"
+              style={{ background: GOLD, color: "#0d1117" }}>
+              {loading ? "Adding..." : "Add Partner"}
             </button>
-            <button type="button" onClick={() => { setEditing(null); setError(""); }}
-              className="px-4 py-2 bg-white border border-slate-200 text-slate-700 text-sm rounded-lg hover:bg-slate-50">
+            <button type="button" onClick={() => { setAdding(false); setError(""); }}
+              className="px-4 py-2 text-sm rounded-lg"
+              style={{ background: "#30373f", color: "#8b949e" }}>
               Cancel
             </button>
-            {error && <span className="text-sm text-red-600">{error}</span>}
           </div>
         </form>
       )}
 
-      <table className="w-full text-sm">
-        <thead className="border-b border-slate-200">
-          <tr>
-            <th className="text-left py-2 text-slate-500 font-medium">Name</th>
-            <th className="text-left py-2 text-slate-500 font-medium">Email</th>
-            <th className="text-left py-2 text-slate-500 font-medium">Role</th>
-            <th className="text-right py-2 text-slate-500 font-medium">Ownership</th>
-            <th className="py-2 w-40"></th>
-          </tr>
-        </thead>
-        <tbody>
+      {/* Partners list */}
+      {partners.length === 0 && !adding ? (
+        <p className="text-sm" style={{ color: "#8b949e" }}>No partners added yet.</p>
+      ) : (
+        <div className="space-y-3">
           {partners.map((p) => (
-            <>
-              <tr key={p.id} className="border-b border-slate-50 hover:bg-slate-50">
-                <td className="py-2.5 font-medium text-slate-800">{p.name}</td>
-                <td className="py-2.5 text-slate-500">{p.email ?? "—"}</td>
-                <td className="py-2.5 text-slate-500">{p.role ?? "—"}</td>
-                <td className="py-2.5 text-right font-mono text-slate-600">
-                  {p.ownershipPct != null ? `${p.ownershipPct}%` : "—"}
-                </td>
-                <td className="py-2.5">
-                  <div className="flex gap-2 justify-end flex-wrap">
-                    <button onClick={() => { setEditing(p); setError(""); setSuccess(""); }}
-                      className="text-xs text-blue-600 hover:underline">Edit</button>
-                    <button
-                      onClick={() => { setGrantingId(grantingId === p.id ? null : p.id); setError(""); setSuccess(""); setAccessEmail(p.email ?? ""); setAccessPassword(""); }}
-                      className="text-xs font-medium px-2 py-0.5 rounded"
-                      style={{ background: "#C9A84C22", color: "#C9A84C", border: "1px solid #C9A84C55" }}>
-                      🔑 Portal Access
+            <div key={p.id}>
+              {editing?.id === p.id ? (
+                <form onSubmit={handleSave} className="rounded-xl p-4" style={{ background: "#1e2736", border: `1px solid ${GOLD}44` }}>
+                  <p className="text-xs font-semibold mb-3" style={{ color: GOLD }}>Edit {p.name}</p>
+                  {formFields(editing)}
+                  <div className="flex gap-2 mt-3">
+                    <button type="submit" disabled={loading}
+                      className="px-4 py-2 text-sm font-semibold rounded-lg disabled:opacity-50"
+                      style={{ background: GOLD, color: "#0d1117" }}>
+                      {loading ? "Saving..." : "Save"}
                     </button>
-                    <button onClick={() => handleArchive(p.id, p.name)}
-                      disabled={archiving === p.id}
-                      className="text-xs text-red-500 hover:underline disabled:opacity-50">
-                      {archiving === p.id ? "..." : "Archive"}
+                    <button type="button" onClick={() => { setEditing(null); setError(""); }}
+                      className="px-4 py-2 text-sm rounded-lg"
+                      style={{ background: "#30373f", color: "#8b949e" }}>
+                      Cancel
                     </button>
                   </div>
-                </td>
-              </tr>
-              {grantingId === p.id && (
-                <tr key={`${p.id}-access`}>
-                  <td colSpan={5} className="py-3 px-2">
-                    <div className="rounded-lg p-4" style={{ background: "#1e2736", border: "1px solid #C9A84C44" }}>
-                      <p className="text-xs font-semibold mb-3" style={{ color: "#C9A84C" }}>
+                </form>
+              ) : (
+                <div className="rounded-xl p-4" style={CARD}>
+                  <div className="flex items-start justify-between gap-3">
+                    <div>
+                      <div className="font-semibold text-sm" style={{ color: "#e6edf3" }}>{p.name}</div>
+                      <div className="text-xs mt-0.5 space-x-3" style={{ color: "#8b949e" }}>
+                        {p.role && <span>{p.role}</span>}
+                        {p.ownershipPct != null && <span>{p.ownershipPct}% ownership</span>}
+                        {p.email && <span>{p.email}</span>}
+                      </div>
+                    </div>
+                    <div className="flex gap-2 shrink-0 flex-wrap justify-end">
+                      <button
+                        onClick={() => { setGrantingId(grantingId === p.id ? null : p.id); setError(""); setSuccess(""); setAccessEmail(p.email ?? ""); setAccessPassword(""); }}
+                        className="text-xs font-semibold px-2 py-1 rounded-lg"
+                        style={{ background: "#C9A84C22", color: GOLD, border: "1px solid #C9A84C44" }}>
+                        🔑 Portal Access
+                      </button>
+                      <button onClick={() => { setEditing(p); setError(""); setSuccess(""); }}
+                        className="text-xs px-2 py-1 rounded-lg"
+                        style={{ background: "#1e2736", color: "#8b949e", border: "1px solid #30373f" }}>
+                        Edit
+                      </button>
+                      <button onClick={() => handleArchive(p.id, p.name)}
+                        disabled={archiving === p.id}
+                        className="text-xs px-2 py-1 rounded-lg disabled:opacity-50"
+                        style={{ background: "#2d1b1b", color: "#f87171", border: "1px solid #6b2a2a" }}>
+                        {archiving === p.id ? "..." : "Remove"}
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Portal Access form */}
+                  {grantingId === p.id && (
+                    <div className="mt-3 pt-3 rounded-lg p-3" style={{ background: "#1e2736", border: `1px solid ${GOLD}44` }}>
+                      <p className="text-xs font-semibold mb-2" style={{ color: GOLD }}>
                         Create portal login for {p.name}
                       </p>
-                      <div className="grid grid-cols-2 gap-3">
+                      <div className="grid grid-cols-2 gap-2 mb-2">
                         <div>
                           <label className="block text-xs mb-1" style={{ color: "#8b949e" }}>Email</label>
-                          <input
-                            type="email"
-                            value={accessEmail}
+                          <input type="email" value={accessEmail}
                             onChange={(e) => setAccessEmail(e.target.value)}
                             placeholder="partner@email.com"
                             className="w-full rounded px-2 py-1.5 text-sm focus:outline-none"
-                            style={{ background: "#0d1117", border: "1px solid #30373f", color: "#e6edf3" }}
-                          />
+                            style={inputStyle} />
                         </div>
                         <div>
-                          <label className="block text-xs mb-1" style={{ color: "#8b949e" }}>Password (min 8 chars)</label>
-                          <input
-                            type="password"
-                            value={accessPassword}
+                          <label className="block text-xs mb-1" style={{ color: "#8b949e" }}>Password</label>
+                          <input type="password" value={accessPassword}
                             onChange={(e) => setAccessPassword(e.target.value)}
-                            placeholder="••••••••"
+                            placeholder="Min 8 characters"
                             className="w-full rounded px-2 py-1.5 text-sm focus:outline-none"
-                            style={{ background: "#0d1117", border: "1px solid #30373f", color: "#e6edf3" }}
-                          />
+                            style={inputStyle} />
                         </div>
                       </div>
-                      <p className="text-xs mt-2 mb-3" style={{ color: "#8b949e" }}>
-                        Partner will only see <strong style={{ color: "#e6edf3" }}>Ledger</strong> and <strong style={{ color: "#e6edf3" }}>Schedule</strong> for this project.
+                      <p className="text-xs mb-2" style={{ color: "#8b949e" }}>
+                        They will only see <strong style={{ color: "#e6edf3" }}>Ledger</strong> + <strong style={{ color: "#e6edf3" }}>Schedule</strong> for this project.
                       </p>
-                      {error && <p className="text-xs text-red-400 mb-2">{error}</p>}
                       <div className="flex gap-2">
-                        <button
-                          onClick={() => handleGrantAccess(p)}
-                          disabled={loading || !accessEmail || !accessPassword}
+                        <button onClick={() => handleGrantAccess(p)}
+                          disabled={loading || !accessEmail || accessPassword.length < 8}
                           className="px-3 py-1.5 text-xs font-semibold rounded-lg disabled:opacity-50"
-                          style={{ background: "#C9A84C", color: "#0d1117" }}>
+                          style={{ background: GOLD, color: "#0d1117" }}>
                           {loading ? "Creating..." : "Create Access"}
                         </button>
                         <button onClick={() => setGrantingId(null)}
@@ -208,13 +293,13 @@ export default function PartnerManager({
                         </button>
                       </div>
                     </div>
-                  </td>
-                </tr>
+                  )}
+                </div>
               )}
-            </>
+            </div>
           ))}
-        </tbody>
-      </table>
+        </div>
+      )}
     </div>
   );
 }
