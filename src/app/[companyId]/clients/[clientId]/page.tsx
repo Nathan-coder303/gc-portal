@@ -8,6 +8,7 @@ import SubsBidsTab, { SubBidRow } from "@/components/clients/SubsBidsTab";
 import ClientBidTab from "@/components/clients/ClientBidTab";
 import { can } from "@/lib/auth/permissions";
 import DeleteEstimateButton from "@/components/clients/DeleteEstimateButton";
+import EditEstimateModal from "@/components/clients/EditEstimateModal";
 
 export default async function ClientDetailPage({
   params,
@@ -198,6 +199,17 @@ export default async function ClientDetailPage({
                         ${fmt(total)}
                       </span>
                       <Link href={`/${params.companyId}/estimates/${est.id}`} className="text-lg" style={{ color: "#8b949e" }}>→</Link>
+                      {canEdit && (
+                        <EditEstimateModal
+                          estimateId={est.id}
+                          clientId={params.clientId}
+                          companyId={params.companyId}
+                          initialName={est.name}
+                          initialDescription={est.description ?? null}
+                          initialEstimateNumber={est.estimateNumber ?? null}
+                          initialEstimateDate={est.estimateDate ?? null}
+                        />
+                      )}
                       {canDelete && (
                         <DeleteEstimateButton
                           estimateId={est.id}

@@ -7,6 +7,7 @@ const ALL_TABS = [
   { label: "Dashboard",   segment: "dashboard" },
   { label: "Subs Bids",  segment: "subs-bids" },
   { label: "Client Bid", segment: "client-bid" },
+  { label: "Estimate",   segment: "estimates" },
   { label: "Expenses",   segment: "expenses" },
   { label: "Schedule",   segment: "schedule" },
   { label: "Ledger",     segment: "ledger" },

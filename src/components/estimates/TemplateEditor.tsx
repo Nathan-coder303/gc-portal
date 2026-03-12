@@ -2,6 +2,8 @@
 
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
+import { DndContext, DragOverlay, useDroppable, useDraggable, closestCenter } from "@dnd-kit/core";
+import type { DragStartEvent, DragEndEvent } from "@dnd-kit/core";
 import {
   upsertTemplateItem,
   archiveTemplateItem,
@@ -18,6 +20,7 @@ import {
   updateTemplateShowTerms,
   updateTemplateTermsContent,
   upsertTermsTemplate,
+  moveItemBetweenDivisions,
 } from "@/app/[companyId]/estimates/actions";
 
 type Item = {
@@ -67,6 +70,11 @@ function grandTotal(divisions: Division[]): number {
 function ItemRow({ item, divisionId, groupId, canEdit }: { item: Item; divisionId: string; groupId?: string | null; canEdit: boolean }) {
   const [editing, setEditing] = useState(false);
   const [isPending, startTransition] = useTransition();
+  const { attributes, listeners, setNodeRef, isDragging } = useDraggable({
+    id: item.id,
+    data: { sourceDivisionId: divisionId, itemName: item.name },
+    disabled: !canEdit,
+  });
   const [form, setForm] = useState({
     name: item.name,
     unit: item.unit ?? "",
@@ -100,7 +108,12 @@ function ItemRow({ item, divisionId, groupId, canEdit }: { item: Item; divisionI
 
   if (!editing) {
     return (
-      <tr className="group text-sm" style={{ borderTop: "1px solid #30373f" }}>
+      <tr ref={setNodeRef} className="group text-sm" style={{ borderTop: "1px solid #30373f", opacity: isDragging ? 0.35 : 1 }}>
+        {canEdit && (
+          <td className="px-1 py-2 text-center select-none" style={{ color: "#8b949e", width: "24px", cursor: "grab", fontSize: "14px" }} {...listeners} {...attributes}>
+            ⠿
+          </td>
+        )}
         <td className="px-3 py-2" style={{ color: "#e6edf3" }}>{item.name}</td>
         <td className="px-3 py-2 text-right" style={{ color: "#8b949e" }}>{item.defaultQty ?? "—"}</td>
         <td className="px-3 py-2 text-center" style={{ color: "#8b949e" }}>{item.unit ?? "—"}</td>
@@ -126,6 +139,7 @@ function ItemRow({ item, divisionId, groupId, canEdit }: { item: Item; divisionI
 
   return (
     <tr style={{ borderTop: "1px solid #30373f", background: "#1a2d1a" }}>
+      {canEdit && <td style={{ width: "24px" }} />}
       <td className="px-2 py-1"><input className={INPUT} style={inputStyleSm} value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} /></td>
       <td className="px-2 py-1"><input type="number" step="any" className={INPUT} style={{ ...inputStyle, width: "56px" }} value={form.defaultQty} onChange={(e) => setForm({ ...form, defaultQty: e.target.value })} /></td>
       <td className="px-2 py-1"><input className={INPUT} style={{ ...inputStyle, width: "56px" }} value={form.unit} onChange={(e) => setForm({ ...form, unit: e.target.value })} placeholder="unit" /></td>
@@ -171,7 +185,7 @@ function AddTemplateItemRow({ divisionId, groupId, canEdit }: { divisionId: stri
   if (!open) {
     return (
       <tr>
-        <td colSpan={8} className="px-3 py-1">
+        <td colSpan={canEdit ? 9 : 8} className="px-3 py-1">
           <button onClick={() => setOpen(true)} className="text-xs" style={{ color: "#C9A84C" }}>+ Add Item</button>
         </td>
       </tr>
@@ -180,6 +194,7 @@ function AddTemplateItemRow({ divisionId, groupId, canEdit }: { divisionId: stri
 
   return (
     <tr style={{ borderTop: "1px solid #30373f", background: "#0d2a1a" }}>
+      {canEdit && <td style={{ width: "24px" }} />}
       <td className="px-2 py-1"><input autoFocus className={INPUT} style={inputStyleSm} value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} placeholder="Item name" /></td>
       <td className="px-2 py-1"><input type="number" step="any" className={INPUT} style={{ ...inputStyle, width: "56px" }} value={form.defaultQty} onChange={(e) => setForm({ ...form, defaultQty: e.target.value })} /></td>
       <td className="px-2 py-1"><input className={INPUT} style={{ ...inputStyle, width: "56px" }} value={form.unit} onChange={(e) => setForm({ ...form, unit: e.target.value })} placeholder="unit" /></td>
@@ -203,6 +218,7 @@ function TemplateItemTable({ divisionId, groupId, items, canEdit }: { divisionId
       <table className="w-full text-sm">
         <thead>
           <tr style={{ background: "#161b22" }}>
+            {canEdit && <th style={{ width: "24px" }} />}
             <th className="px-3 py-1.5 text-left font-medium text-xs" style={{ color: "#8b949e" }}>Item</th>
             <th className="px-3 py-1.5 text-right font-medium text-xs w-16" style={{ color: "#8b949e" }}>Qty</th>
             <th className="px-3 py-1.5 text-center font-medium text-xs w-16" style={{ color: "#8b949e" }}>Unit</th>
@@ -250,6 +266,7 @@ function TemplateDivisionSection({ division, canEdit }: { division: Division; ca
   const [isPending, startTransition] = useTransition();
   const [addingGroup, setAddingGroup] = useState(false);
   const [groupName, setGroupName] = useState("");
+  const { setNodeRef: setDropRef, isOver } = useDroppable({ id: division.id });
 
   const total = divisionTotal(division);
 
@@ -263,7 +280,7 @@ function TemplateDivisionSection({ division, canEdit }: { division: Division; ca
   }
 
   return (
-    <div className="rounded-xl overflow-hidden" style={{ background: "#1e2736", border: "1px solid #30373f" }}>
+    <div ref={setDropRef} className="rounded-xl overflow-hidden" style={{ background: "#1e2736", border: isOver ? "2px solid #C9A84C" : "1px solid #30373f", transition: "border 0.1s" }}>
       <button onClick={() => setOpen(!open)} className="w-full flex items-center gap-3 px-4 py-3 text-left transition-colors" style={{ background: "#1e2736" }}>
         <span className="text-xs" style={{ color: "#8b949e" }}>{open ? "▼" : "▶"}</span>
         {division.csiCode && <span className="text-xs font-mono" style={{ color: "#8b949e" }}>{division.csiCode}</span>}
@@ -616,6 +633,24 @@ export default function TemplateEditor({
   const [saveClientError, setSaveClientError] = useState("");
 
   const total = grandTotal(divisions);
+  const [activeDragItem, setActiveDragItem] = useState<{ id: string; name: string } | null>(null);
+
+  function handleDragStart(event: DragStartEvent) {
+    const name = event.active.data.current?.itemName as string ?? "";
+    setActiveDragItem({ id: event.active.id as string, name });
+  }
+
+  function handleDragEnd(event: DragEndEvent) {
+    setActiveDragItem(null);
+    const { active, over } = event;
+    if (!over) return;
+    const sourceDivisionId = active.data.current?.sourceDivisionId as string;
+    const targetDivisionId = over.id as string;
+    if (!sourceDivisionId || sourceDivisionId === targetDivisionId) return;
+    startTransition(async () => {
+      await moveItemBetweenDivisions(active.id as string, targetDivisionId);
+    });
+  }
 
   function saveHeader() {
     startTransition(async () => {
@@ -669,6 +704,7 @@ export default function TemplateEditor({
   }
 
   return (
+    <DndContext collisionDetection={closestCenter} onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
     <div className="space-y-4">
       {/* Header card */}
       <div className="rounded-xl p-5" style={{ background: "#1e2736", border: "1px solid #30373f" }}>
@@ -933,5 +969,14 @@ export default function TemplateEditor({
         <span className="text-4xl font-bold" style={{ color: "#C9A84C" }}>${fmt(total)}</span>
       </div>
     </div>
+    <DragOverlay>
+      {activeDragItem && (
+        <div className="rounded px-3 py-1.5 text-sm font-medium shadow-xl pointer-events-none"
+          style={{ background: "#C9A84C", color: "#0d1117", opacity: 0.95 }}>
+          ⠿ {activeDragItem.name}
+        </div>
+      )}
+    </DragOverlay>
+    </DndContext>
   );
 }

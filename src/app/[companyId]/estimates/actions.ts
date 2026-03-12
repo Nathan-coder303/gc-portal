@@ -277,6 +277,28 @@ export async function archiveTemplateItem(itemId: string) {
   return { success: true };
 }
 
+export async function moveItemBetweenDivisions(itemId: string, newDivisionId: string) {
+  const session = await auth();
+  if (!session) throw new Error("Unauthorized");
+  requirePermission(session, "estimateTemplate:edit");
+
+  const maxOrder = await prisma.estimateTemplateItem.aggregate({
+    where: { divisionId: newDivisionId, groupId: null, archivedAt: null },
+    _max: { sortOrder: true },
+  });
+
+  await prisma.estimateTemplateItem.update({
+    where: { id: itemId },
+    data: {
+      divisionId: newDivisionId,
+      groupId: null,
+      sortOrder: (maxOrder._max.sortOrder ?? -1) + 1,
+    },
+  });
+  revalidatePath(`/${session.user.companyId}/estimates`);
+  return { success: true };
+}
+
 export async function reorderTemplateItems(parentId: string, parentType: "division" | "group", orderedIds: string[]) {
   const session = await auth();
   if (!session) throw new Error("Unauthorized");

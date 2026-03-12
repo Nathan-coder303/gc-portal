@@ -104,8 +104,45 @@ export async function deleteClientEstimate(estimateId: string, clientId: string,
   if (!session) throw new Error("Unauthorized");
   if (!can(session.user.role, "estimateTemplate:archive")) throw new Error("Forbidden — ADMIN only");
 
+  // Delete child records first (no cascade in schema)
+  const divisions = await prisma.estimateTemplateDivision.findMany({
+    where: { templateId: estimateId },
+    select: { id: true },
+  });
+  const divisionIds = divisions.map((d) => d.id);
+
+  await prisma.estimateTemplateItem.deleteMany({ where: { divisionId: { in: divisionIds } } });
+  await prisma.estimateTemplateGroup.deleteMany({ where: { divisionId: { in: divisionIds } } });
+  await prisma.estimateTemplateDivision.deleteMany({ where: { templateId: estimateId } });
+  // Nullify any project estimates that referenced this template
+  await prisma.projectEstimate.updateMany({ where: { templateId: estimateId }, data: { templateId: null } });
   await prisma.estimateTemplate.delete({ where: { id: estimateId } });
+
   revalidatePath(`/${companyId}/clients/${clientId}`);
+}
+
+export async function updateClientEstimate(
+  estimateId: string,
+  clientId: string,
+  companyId: string,
+  data: { name: string; description?: string | null; estimateNumber?: string | null; estimateDate?: string | null }
+) {
+  const session = await auth();
+  if (!session) throw new Error("Unauthorized");
+  if (!can(session.user.role, "estimateTemplate:edit")) throw new Error("Forbidden");
+
+  await prisma.estimateTemplate.update({
+    where: { id: estimateId },
+    data: {
+      name: data.name.trim(),
+      description: data.description?.trim() || null,
+      estimateNumber: data.estimateNumber?.trim() || null,
+      estimateDate: data.estimateDate?.trim() || null,
+      updatedBy: session.user.id,
+    },
+  });
+  revalidatePath(`/${companyId}/clients/${clientId}`);
+  revalidatePath(`/${companyId}/estimates`);
 }
 
 export async function deleteSubBid(id: string, clientId: string, companyId: string) {
