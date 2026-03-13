@@ -74,7 +74,8 @@ export default function SubsBidsTab({ clientId, companyId, subBids: initialSubBi
         setSyncResult(`Error: ${data.error ?? "Sync failed"}`);
         return;
       }
-      setSyncResult(`Done — ${data.added} new bid${data.added !== 1 ? "s" : ""} imported, ${data.skipped} skipped`);
+      const msg = `Done — ${data.added} new bid${data.added !== 1 ? "s" : ""} imported${data.remaining > 0 ? `, ${data.remaining} more emails pending (sync again)` : ""}`;
+      setSyncResult(msg);
       if (data.added > 0) router.refresh();
     } catch (e) {
       setSyncResult("Sync failed: " + String(e));

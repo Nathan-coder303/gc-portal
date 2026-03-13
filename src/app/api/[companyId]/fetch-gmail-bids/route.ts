@@ -100,18 +100,28 @@ export async function POST(req: NextRequest, { params }: { params: { companyId: 
     pageToken = listRes.data.nextPageToken ?? undefined;
   } while (pageToken && allMessages.length < 500);
 
+  // Bulk dedup: one query to get all already-imported Gmail message IDs
+  const existingSubBids = await prisma.subBid.findMany({
+    where: {
+      companyId: params.companyId,
+      fileUrl: { startsWith: "gmail:" },
+    },
+    select: { fileUrl: true },
+  });
+  const processedMsgIds = new Set(
+    existingSubBids.map(b => b.fileUrl!.split(":")[1]).filter(Boolean)
+  );
+
+  // Only process messages we haven't seen yet, cap at 20 per run to stay within timeout
+  const newMessages = allMessages.filter(m => m.id && !processedMsgIds.has(m.id));
+  const toProcess = newMessages.slice(0, 20);
+
   let added = 0;
-  let skipped = 0;
+  let skippedInLoop = 0;
   const errors: string[] = [];
 
-  for (const msg of allMessages) {
+  for (const msg of toProcess) {
     try {
-      // Dedup: skip messages already imported (fileUrl always starts with gmail:${msgId})
-      const existing = await prisma.subBid.findFirst({
-        where: { fileUrl: { startsWith: `gmail:${msg.id}` } },
-      });
-      if (existing) { skipped++; continue; }
-
       const full = await gmail.users.messages.get({ userId: "me", id: msg.id! });
       const payload = full.data.payload!;
 
@@ -161,18 +171,18 @@ Extract the following and respond ONLY with valid JSON, no markdown:
       try {
         parsed = JSON.parse(aiText);
       } catch {
-        skipped++;
+        skippedInLoop++;
         continue;
       }
 
       if (!parsed.clientId || !parsed.divisionCode) {
-        skipped++;
+        skippedInLoop++;
         continue;
       }
 
       const client = clients.find(c => c.id === parsed.clientId);
       const division = STANDARD_DIVISIONS.find(d => d.code === parsed.divisionCode);
-      if (!client || !division) { skipped++; continue; }
+      if (!client || !division) { skippedInLoop++; continue; }
 
       // Always store gmail msg ID in fileUrl for dedup on future runs
       const fileUrl = pdfParts.length > 0
@@ -210,5 +220,7 @@ Extract the following and respond ONLY with valid JSON, no markdown:
     }
   }
 
-  return NextResponse.json({ added, skipped, errors: errors.slice(0, 10) });
+  const remaining = newMessages.length - toProcess.length;
+  const skipped = (allMessages.length - newMessages.length) + skippedInLoop;
+  return NextResponse.json({ added, skipped, remaining, errors: errors.slice(0, 10) });
 }
