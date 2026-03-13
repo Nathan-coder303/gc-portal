@@ -631,6 +631,7 @@ export default function TemplateEditor({
   const [newName, setNewName] = useState(`${template.name} (copy)`);
   const [saveError, setSaveError] = useState("");
   const [saveClientError, setSaveClientError] = useState("");
+  const [savedToClient, setSavedToClient] = useState(false);
 
   const total = grandTotal(divisions);
   const [activeDragItem, setActiveDragItem] = useState<{ id: string; name: string } | null>(null);
@@ -674,7 +675,8 @@ export default function TemplateEditor({
   }
 
   function handleSaveToClient() {
-    if (!currentClient) return;
+    if (!currentClient || savedToClient) return;
+    setSavedToClient(true);
     setSaveClientError("");
     startTransition(async () => {
       try {
@@ -684,6 +686,7 @@ export default function TemplateEditor({
         }
       } catch (e) {
         setSaveClientError(e instanceof Error ? e.message : "Failed");
+        setSavedToClient(false);
       }
     });
   }
@@ -884,11 +887,11 @@ export default function TemplateEditor({
                       {currentClient && template.type === "TEMPLATE" && (
                         <button
                           onClick={handleSaveToClient}
-                          disabled={isPending}
+                          disabled={isPending || savedToClient}
                           className="text-xs px-3 py-1.5 rounded-lg font-medium disabled:opacity-50"
-                          style={{ background: "#22c55e", color: "#fff" }}
+                          style={{ background: savedToClient ? "#16a34a" : "#22c55e", color: "#fff" }}
                         >
-                          {isPending ? "Saving..." : "Save to Client"}
+                          {savedToClient ? "✓ Saved to Client" : isPending ? "Saving..." : "Save to Client"}
                         </button>
                       )}
                       <button onClick={() => setEditingHeader(true)} className="text-xs" style={{ color: "#C9A84C" }}>Edit</button>

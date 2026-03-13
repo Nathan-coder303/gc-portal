@@ -1,5 +1,6 @@
 "use client";
 import { useState, useRef, useCallback } from "react";
+import { useRouter } from "next/navigation";
 import { upsertSubBid, deleteSubBid } from "@/app/[companyId]/clients/actions";
 
 export type SubBidOffer = {
@@ -34,7 +35,10 @@ function fmt(n: number) {
 
 function getPdfHref(fileUrl: string, companyId: string): string {
   if (fileUrl.startsWith("gmail:")) {
-    const [, msgId, attachmentId] = fileUrl.split(":");
+    const parts = fileUrl.split(":");
+    const msgId = parts[1];
+    const attachmentId = parts[2];
+    if (!attachmentId) return ""; // gmail message with no PDF attachment
     return `/api/${companyId}/gmail-attachment?msgId=${msgId}&attachmentId=${attachmentId}`;
   }
   return fileUrl;
@@ -48,14 +52,36 @@ type EditForm = {
 };
 
 export default function SubsBidsTab({ clientId, companyId, subBids: initialSubBids, canEdit, canDelete }: Props) {
+  const router = useRouter();
   const [subBids, setSubBids] = useState<SubBidRow[]>(initialSubBids);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [deleting, setDeleting] = useState<string | null>(null);
   const [uploading, setUploading] = useState<string | null>(null); // divisionCode
   const [dragOver, setDragOver] = useState<string | null>(null);
+  const [syncing, setSyncing] = useState(false);
+  const [syncResult, setSyncResult] = useState<string | null>(null);
   const [formData, setFormData] = useState<EditForm>({ contractorName: "", amount: "", notes: "", status: "RECEIVED" });
   const fileInputRefs = useRef<Record<string, HTMLInputElement | null>>({});
+
+  async function handleSyncGmail() {
+    setSyncing(true);
+    setSyncResult(null);
+    try {
+      const res = await fetch(`/api/${companyId}/fetch-gmail-bids`, { method: "POST" });
+      const data = await res.json();
+      if (!res.ok) {
+        setSyncResult(`Error: ${data.error ?? "Sync failed"}`);
+        return;
+      }
+      setSyncResult(`Done — ${data.added} new bid${data.added !== 1 ? "s" : ""} imported, ${data.skipped} skipped`);
+      if (data.added > 0) router.refresh();
+    } catch (e) {
+      setSyncResult("Sync failed: " + String(e));
+    } finally {
+      setSyncing(false);
+    }
+  }
 
   const missingDivisions = subBids.filter((b) => b.offers.every((o) => o.status === "MISSING" || (!o.amount && !o.contractorName)));
 
@@ -143,6 +169,25 @@ export default function SubsBidsTab({ clientId, companyId, subBids: initialSubBi
 
   return (
     <div>
+      {/* Gmail sync button */}
+      {canEdit && (
+        <div className="flex items-center gap-3 mb-4">
+          <button
+            onClick={handleSyncGmail}
+            disabled={syncing}
+            className="flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-semibold transition-all"
+            style={{ background: syncing ? "#1e2736" : "#C9A84C", color: syncing ? "#8b949e" : "#0d1117", border: "1px solid #C9A84C", opacity: syncing ? 0.7 : 1 }}
+          >
+            {syncing ? "Syncing Gmail…" : "Sync Gmail Bids"}
+          </button>
+          {syncResult && (
+            <span className="text-xs" style={{ color: syncResult.startsWith("Error") ? "#ef4444" : "#8b949e" }}>
+              {syncResult}
+            </span>
+          )}
+        </div>
+      )}
+
       {missingDivisions.length > 0 && (
         <div className="rounded-lg px-4 py-3 mb-5 text-sm" style={{ background: "#C9A84C22", border: "1px solid #C9A84C55", color: "#C9A84C" }}>
           <span className="font-semibold">⚠ {missingDivisions.length} division{missingDivisions.length !== 1 ? "s" : ""} missing bids:</span>{" "}
@@ -228,12 +273,15 @@ export default function SubsBidsTab({ clientId, companyId, subBids: initialSubBi
                           {offer.contractorName && <div className="text-sm font-medium" style={{ color: "#e6edf3" }}>{offer.contractorName}</div>}
                           {offer.amount !== null && <div className="text-sm font-bold" style={{ color: "#C9A84C" }}>${fmt(offer.amount)}</div>}
                           {offer.notes && <div className="text-xs" style={{ color: "#8b949e" }}>{offer.notes}</div>}
-                          {offer.fileUrl && (
-                            <a href={getPdfHref(offer.fileUrl, companyId)} target="_blank" rel="noopener noreferrer"
-                              className="text-xs underline" style={{ color: "#C9A84C" }}>
-                              📄 {offer.fileName ?? "View PDF"}
-                            </a>
-                          )}
+                          {offer.fileUrl && (() => {
+                            const href = getPdfHref(offer.fileUrl, companyId);
+                            return href ? (
+                              <a href={href} target="_blank" rel="noopener noreferrer"
+                                className="text-xs underline" style={{ color: "#C9A84C" }}>
+                                📄 {offer.fileName ?? "View PDF"}
+                              </a>
+                            ) : null;
+                          })()}
                         </div>
                         <div className="flex flex-col gap-1 shrink-0">
                           {canEdit && (

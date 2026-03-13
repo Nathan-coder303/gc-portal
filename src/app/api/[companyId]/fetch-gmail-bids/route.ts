@@ -3,11 +3,11 @@ import { google } from "googleapis";
 import Anthropic from "@anthropic-ai/sdk";
 import { prisma } from "@/lib/prisma";
 import { STANDARD_DIVISIONS } from "@/lib/divisions";
+import { auth } from "@/lib/auth";
 
 export const runtime = "nodejs";
 export const maxDuration = 60;
 
-// Gmail search query — picks up emails likely to contain sub bids (no is:unread so we don't miss already-opened emails)
 const GMAIL_QUERY = "has:attachment filename:pdf (bid OR estimate OR proposal OR quote)";
 
 function getOAuthClient() {
@@ -24,29 +24,11 @@ function decodeBase64(data: string): Buffer {
   return Buffer.from(data.replace(/-/g, "+").replace(/_/g, "/"), "base64");
 }
 
-// Recursively find all PDF parts (handles nested multipart emails)
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-function extractPdfParts(payload: any): any[] {
-  if (!payload) return [];
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const results: any[] = [];
-  if (payload.mimeType === "application/pdf" || payload.filename?.endsWith(".pdf")) {
-    results.push(payload);
-  }
-  if (payload.parts) {
-    for (const part of payload.parts) {
-      results.push(...extractPdfParts(part));
-    }
-  }
-  return results;
-}
-
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 function extractBody(payload: any): string {
   if (!payload) return "";
   if (payload.body?.data) return decodeBase64(payload.body.data).toString("utf-8");
   if (payload.parts) {
-    // Recursively search all parts — prefer text/plain
     const allParts: typeof payload.parts = [];
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const collectParts = (parts: any[]) => {
@@ -66,27 +48,46 @@ function extractBody(payload: any): string {
   return "";
 }
 
-export async function GET(req: NextRequest) {
-  const authHeader = req.headers.get("authorization");
-  if (authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+// Recursively find all PDF parts (handles nested multipart emails)
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function extractPdfParts(payload: any): any[] {
+  if (!payload) return [];
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const results: any[] = [];
+  if (payload.mimeType === "application/pdf" || payload.filename?.endsWith(".pdf")) {
+    results.push(payload);
   }
+  if (payload.parts) {
+    for (const part of payload.parts) {
+      results.push(...extractPdfParts(part));
+    }
+  }
+  return results;
+}
+
+export async function POST(req: NextRequest, { params }: { params: { companyId: string } }) {
+  const session = await auth();
+  if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   if (!process.env.GOOGLE_CLIENT_ID || !process.env.GOOGLE_CLIENT_SECRET || !process.env.GOOGLE_REFRESH_TOKEN) {
     return NextResponse.json({ error: "Gmail credentials not configured" }, { status: 500 });
   }
 
-  const auth = getOAuthClient();
-  const gmail = google.gmail({ version: "v1", auth });
+  const authClient = getOAuthClient();
+  const gmail = google.gmail({ version: "v1", auth: authClient });
   const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 
-  // Fetch all clients and their addresses for matching
   const clients = await prisma.client.findMany({
+    where: { companyId: params.companyId },
     select: { id: true, companyId: true, name: true, address: true, city: true, state: true },
   });
 
-  // Search Gmail — paginate to get all matching messages
-  const messages: { id?: string | null }[] = [];
+  if (clients.length === 0) {
+    return NextResponse.json({ added: 0, skipped: 0, errors: [], message: "No clients found for this company" });
+  }
+
+  // Paginate through all matching Gmail messages (no is:unread filter so we catch everything)
+  const allMessages: { id?: string | null }[] = [];
   let pageToken: string | undefined;
   do {
     const listRes = await gmail.users.messages.list({
@@ -95,19 +96,21 @@ export async function GET(req: NextRequest) {
       maxResults: 100,
       pageToken,
     });
-    messages.push(...(listRes.data.messages ?? []));
+    allMessages.push(...(listRes.data.messages ?? []));
     pageToken = listRes.data.nextPageToken ?? undefined;
-  } while (pageToken && messages.length < 500);
+  } while (pageToken && allMessages.length < 500);
 
-  const results: { subject: string; status: string; client?: string; division?: string; amount?: number; error?: string }[] = [];
+  let added = 0;
+  let skipped = 0;
+  const errors: string[] = [];
 
-  for (const msg of messages) {
+  for (const msg of allMessages) {
     try {
-      // Dedup: skip messages already imported
+      // Dedup: skip messages already imported (fileUrl always starts with gmail:${msgId})
       const existing = await prisma.subBid.findFirst({
         where: { fileUrl: { startsWith: `gmail:${msg.id}` } },
       });
-      if (existing) continue;
+      if (existing) { skipped++; continue; }
 
       const full = await gmail.users.messages.get({ userId: "me", id: msg.id! });
       const payload = full.data.payload!;
@@ -117,13 +120,12 @@ export async function GET(req: NextRequest) {
       const from = headers.find(h => h.name === "From")?.value ?? "";
       const bodyText = extractBody(payload);
 
-      // Recursively find PDF attachments (handles nested multipart emails)
+      // Recursively find PDF attachments
       const pdfParts = extractPdfParts(payload);
 
       const clientList = clients.map(c =>
         `ID:${c.id} | ${c.name} | ${[c.address, c.city, c.state].filter(Boolean).join(", ")}`
       ).join("\n");
-
       const divisionList = STANDARD_DIVISIONS.map(d => `${d.code} - ${d.name}`).join("\n");
 
       const prompt = `You are parsing a construction subcontractor bid email to extract bid details.
@@ -159,26 +161,20 @@ Extract the following and respond ONLY with valid JSON, no markdown:
       try {
         parsed = JSON.parse(aiText);
       } catch {
-        results.push({ subject, status: "parse-error" });
+        skipped++;
         continue;
       }
 
       if (!parsed.clientId || !parsed.divisionCode) {
-        results.push({ subject, status: "skipped-no-match" });
-        // Mark as read so we don't reprocess
-        await gmail.users.messages.modify({ userId: "me", id: msg.id!, requestBody: { removeLabelIds: ["UNREAD"] } });
+        skipped++;
         continue;
       }
 
       const client = clients.find(c => c.id === parsed.clientId);
       const division = STANDARD_DIVISIONS.find(d => d.code === parsed.divisionCode);
+      if (!client || !division) { skipped++; continue; }
 
-      if (!client || !division) {
-        results.push({ subject, status: "skipped-invalid-ref" });
-        continue;
-      }
-
-      // Always store msg ID in fileUrl for dedup on future runs
+      // Always store gmail msg ID in fileUrl for dedup on future runs
       const fileUrl = pdfParts.length > 0
         ? `gmail:${msg.id}:${pdfParts[0].body?.attachmentId ?? ""}`
         : `gmail:${msg.id}`;
@@ -201,24 +197,18 @@ Extract the following and respond ONLY with valid JSON, no markdown:
         },
       });
 
-      // Mark email as read so we don't reprocess it
+      // Mark as read so Gmail stays clean
       await gmail.users.messages.modify({
         userId: "me",
         id: msg.id!,
         requestBody: { removeLabelIds: ["UNREAD"] },
       });
 
-      results.push({
-        subject,
-        status: "ok",
-        client: client.name,
-        division: division.name,
-        amount: parsed.amount ?? undefined,
-      });
+      added++;
     } catch (err) {
-      results.push({ subject: msg.id ?? "?", status: "error", error: String(err) });
+      errors.push(String(err));
     }
   }
 
-  return NextResponse.json({ processed: results.length, results });
+  return NextResponse.json({ added, skipped, errors: errors.slice(0, 10) });
 }
