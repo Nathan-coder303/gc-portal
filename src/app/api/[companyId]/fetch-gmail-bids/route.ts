@@ -73,18 +73,16 @@ export async function POST(req: NextRequest, { params }: { params: { companyId: 
     return NextResponse.json({ error: "Gmail credentials not configured" }, { status: 500 });
   }
 
+  const body = await req.json().catch(() => ({}));
+  const { clientId, clientName, clientAddress } = body as { clientId?: string; clientName?: string; clientAddress?: string };
+
+  if (!clientId) {
+    return NextResponse.json({ error: "clientId required" }, { status: 400 });
+  }
+
   const authClient = getOAuthClient();
   const gmail = google.gmail({ version: "v1", auth: authClient });
   const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
-
-  const clients = await prisma.client.findMany({
-    where: { companyId: params.companyId },
-    select: { id: true, companyId: true, name: true, address: true, city: true, state: true },
-  });
-
-  if (clients.length === 0) {
-    return NextResponse.json({ added: 0, skipped: 0, errors: [], message: "No clients found for this company" });
-  }
 
   // Paginate through all matching Gmail messages (no is:unread filter so we catch everything)
   const allMessages: { id?: string | null }[] = [];
@@ -133,31 +131,27 @@ export async function POST(req: NextRequest, { params }: { params: { companyId: 
       // Recursively find PDF attachments
       const pdfParts = extractPdfParts(payload);
 
-      const clientList = clients.map(c =>
-        `ID:${c.id} | ${c.name} | ${[c.address, c.city, c.state].filter(Boolean).join(", ")}`
-      ).join("\n");
       const divisionList = STANDARD_DIVISIONS.map(d => `${d.code} - ${d.name}`).join("\n");
 
-      const prompt = `You are parsing a construction subcontractor bid email to extract bid details.
+      const prompt = `You are parsing a construction subcontractor bid email. This email is being checked as a potential bid for the project: ${clientName ?? ""}${clientAddress ? ` at ${clientAddress}` : ""}.
 
 FROM: ${from}
 SUBJECT: ${subject}
 EMAIL BODY:
 ${bodyText.slice(0, 2000)}
 
-AVAILABLE CLIENTS (match by address/name in subject or body):
-${clientList}
+Does this email appear to be a subcontractor bid or proposal for the project above? Look for matches on address, project name, or job number in the subject/body.
 
-AVAILABLE DIVISIONS (pick the best match for this trade/scope):
+AVAILABLE DIVISIONS (pick the best match for the trade/scope in this bid):
 ${divisionList}
 
-Extract the following and respond ONLY with valid JSON, no markdown:
+Respond ONLY with valid JSON, no markdown:
 {
-  "clientId": "<client ID from the list above, or null if unclear>",
+  "isMatch": <true if this looks like a bid for this project, false otherwise>,
   "divisionCode": "<2-digit code from list above, or null if unclear>",
   "contractorName": "<company or person sending the bid>",
   "amount": <number without $ or commas, or null if not found>,
-  "notes": "<brief 1-sentence summary of scope if mentioned>"
+  "notes": "<brief 1-sentence summary of scope>"
 }`;
 
       const aiMsg = await anthropic.messages.create({
@@ -167,7 +161,7 @@ Extract the following and respond ONLY with valid JSON, no markdown:
       });
 
       const aiText = aiMsg.content[0].type === "text" ? aiMsg.content[0].text.trim() : "{}";
-      let parsed: { clientId?: string; divisionCode?: string; contractorName?: string; amount?: number | null; notes?: string };
+      let parsed: { isMatch?: boolean; divisionCode?: string; contractorName?: string; amount?: number | null; notes?: string };
       try {
         parsed = JSON.parse(aiText);
       } catch {
@@ -175,14 +169,13 @@ Extract the following and respond ONLY with valid JSON, no markdown:
         continue;
       }
 
-      if (!parsed.clientId || !parsed.divisionCode) {
+      if (!parsed.isMatch || !parsed.divisionCode) {
         skippedInLoop++;
         continue;
       }
 
-      const client = clients.find(c => c.id === parsed.clientId);
       const division = STANDARD_DIVISIONS.find(d => d.code === parsed.divisionCode);
-      if (!client || !division) { skippedInLoop++; continue; }
+      if (!division) { skippedInLoop++; continue; }
 
       // Always store gmail msg ID in fileUrl for dedup on future runs
       const fileUrl = pdfParts.length > 0
@@ -192,8 +185,8 @@ Extract the following and respond ONLY with valid JSON, no markdown:
 
       await prisma.subBid.create({
         data: {
-          clientId: client.id,
-          companyId: client.companyId,
+          clientId,
+          companyId: params.companyId,
           divisionCode: division.code,
           divisionName: division.name,
           contractorName: parsed.contractorName ?? from,

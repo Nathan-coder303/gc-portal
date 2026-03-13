@@ -75,7 +75,15 @@ export default async function ProjectSubsBidsPage({
           <p className="text-sm mt-0.5" style={{ color: "#8b949e" }}>Client: {client.name}</p>
         </div>
       </div>
-      <SubsBidsTab clientId={client.id} companyId={params.companyId} subBids={subBids} canEdit={canEdit} canDelete={canDelete} />
+      <SubsBidsTab
+        clientId={client.id}
+        companyId={params.companyId}
+        clientName={client.name}
+        clientAddress={[client.address, client.city, client.state].filter(Boolean).join(", ")}
+        subBids={subBids}
+        canEdit={canEdit}
+        canDelete={canDelete}
+      />
     </div>
   );
 }

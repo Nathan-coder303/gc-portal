@@ -23,6 +23,8 @@ export type SubBidRow = {
 type Props = {
   clientId: string;
   companyId: string;
+  clientName?: string;
+  clientAddress?: string;
   subBids: SubBidRow[];
   canEdit: boolean;
   canDelete?: boolean;
@@ -51,7 +53,7 @@ type EditForm = {
   status: string;
 };
 
-export default function SubsBidsTab({ clientId, companyId, subBids: initialSubBids, canEdit, canDelete }: Props) {
+export default function SubsBidsTab({ clientId, companyId, clientName, clientAddress, subBids: initialSubBids, canEdit, canDelete }: Props) {
   const router = useRouter();
   const [subBids, setSubBids] = useState<SubBidRow[]>(initialSubBids);
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -68,7 +70,11 @@ export default function SubsBidsTab({ clientId, companyId, subBids: initialSubBi
     setSyncing(true);
     setSyncResult(null);
     try {
-      const res = await fetch(`/api/${companyId}/fetch-gmail-bids`, { method: "POST" });
+      const res = await fetch(`/api/${companyId}/fetch-gmail-bids`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ clientId, clientName, clientAddress }),
+      });
       const data = await res.json();
       if (!res.ok) {
         setSyncResult(`Error: ${data.error ?? "Sync failed"}`);
