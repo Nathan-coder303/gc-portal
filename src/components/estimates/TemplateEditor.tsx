@@ -59,6 +59,22 @@ function groupTotal(items: Item[]): number {
   return items.reduce((s, i) => s + itemTotal(i), 0);
 }
 
+const UNITS = ["LS", "EA", "SF", "LF", "SY", "CY", "CF", "SQ", "MO", "HR", "DAY", "TN", "GAL"];
+
+function UnitSelect({ value, onChange }: { value: string; onChange: (v: string) => void }) {
+  return (
+    <select
+      value={UNITS.includes(value) ? value : ""}
+      onChange={(e) => onChange(e.target.value)}
+      style={{ ...inputStyle, width: "72px", cursor: "pointer" }}
+      className={INPUT}
+    >
+      <option value="" disabled>Unit</option>
+      {UNITS.map(u => <option key={u} value={u}>{u}</option>)}
+    </select>
+  );
+}
+
 function divisionTotal(div: Division): number {
   return div.groups.reduce((s, g) => s + groupTotal(g.items), 0) + groupTotal(div.items);
 }
@@ -142,7 +158,7 @@ function ItemRow({ item, divisionId, groupId, canEdit }: { item: Item; divisionI
       {canEdit && <td style={{ width: "24px" }} />}
       <td className="px-2 py-1"><input className={INPUT} style={inputStyleSm} value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} /></td>
       <td className="px-2 py-1"><input type="number" step="any" className={INPUT} style={{ ...inputStyle, width: "56px" }} value={form.defaultQty} onChange={(e) => setForm({ ...form, defaultQty: e.target.value })} /></td>
-      <td className="px-2 py-1"><input className={INPUT} style={{ ...inputStyle, width: "56px" }} value={form.unit} onChange={(e) => setForm({ ...form, unit: e.target.value })} placeholder="unit" /></td>
+      <td className="px-2 py-1"><UnitSelect value={form.unit} onChange={(v) => setForm({ ...form, unit: v })} /></td>
       <td className="px-2 py-1"><input type="number" step="any" className={INPUT} style={{ ...inputStyle, width: "80px" }} value={form.defaultUnitCost} onChange={(e) => setForm({ ...form, defaultUnitCost: e.target.value })} /></td>
       <td className="px-2 py-1"><input type="number" step="any" className={INPUT} style={{ ...inputStyle, width: "56px" }} value={form.defaultMarkupPct} onChange={(e) => setForm({ ...form, defaultMarkupPct: e.target.value })} /></td>
       <td className="px-2 py-1 text-xs font-semibold text-right" style={{ color: "#C9A84C" }}>{previewTotal > 0 ? `$${fmt(previewTotal)}` : "—"}</td>
@@ -197,7 +213,7 @@ function AddTemplateItemRow({ divisionId, groupId, canEdit }: { divisionId: stri
       {canEdit && <td style={{ width: "24px" }} />}
       <td className="px-2 py-1"><input autoFocus className={INPUT} style={inputStyleSm} value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} placeholder="Item name" /></td>
       <td className="px-2 py-1"><input type="number" step="any" className={INPUT} style={{ ...inputStyle, width: "56px" }} value={form.defaultQty} onChange={(e) => setForm({ ...form, defaultQty: e.target.value })} /></td>
-      <td className="px-2 py-1"><input className={INPUT} style={{ ...inputStyle, width: "56px" }} value={form.unit} onChange={(e) => setForm({ ...form, unit: e.target.value })} placeholder="unit" /></td>
+      <td className="px-2 py-1"><UnitSelect value={form.unit} onChange={(v) => setForm({ ...form, unit: v })} /></td>
       <td className="px-2 py-1"><input type="number" step="any" className={INPUT} style={{ ...inputStyle, width: "80px" }} value={form.defaultUnitCost} onChange={(e) => setForm({ ...form, defaultUnitCost: e.target.value })} /></td>
       <td className="px-2 py-1"><input type="number" step="any" className={INPUT} style={{ ...inputStyle, width: "56px" }} value={form.defaultMarkupPct} onChange={(e) => setForm({ ...form, defaultMarkupPct: e.target.value })} /></td>
       <td />
@@ -266,6 +282,9 @@ function TemplateDivisionSection({ division, canEdit }: { division: Division; ca
   const [isPending, startTransition] = useTransition();
   const [addingGroup, setAddingGroup] = useState(false);
   const [groupName, setGroupName] = useState("");
+  const [editingHeader, setEditingHeader] = useState(false);
+  const [editCsi, setEditCsi] = useState(division.csiCode ?? "");
+  const [editName, setEditName] = useState(division.name);
   const { setNodeRef: setDropRef, isOver } = useDroppable({ id: division.id });
 
   const total = divisionTotal(division);
@@ -279,14 +298,64 @@ function TemplateDivisionSection({ division, canEdit }: { division: Division; ca
     });
   }
 
+  function saveHeader() {
+    if (!editName.trim()) return;
+    startTransition(async () => {
+      await upsertTemplateDivision(division.id, { id: division.id, csiCode: editCsi.trim() || undefined, name: editName.trim() });
+      setEditingHeader(false);
+    });
+  }
+
   return (
     <div ref={setDropRef} className="rounded-xl overflow-hidden" style={{ background: "#1e2736", border: isOver ? "2px solid #C9A84C" : "1px solid #30373f", transition: "border 0.1s" }}>
-      <button onClick={() => setOpen(!open)} className="w-full flex items-center gap-3 px-4 py-3 text-left transition-colors" style={{ background: "#1e2736" }}>
-        <span className="text-xs" style={{ color: "#8b949e" }}>{open ? "▼" : "▶"}</span>
-        {division.csiCode && <span className="text-xs font-mono" style={{ color: "#8b949e" }}>{division.csiCode}</span>}
-        <span className="font-semibold" style={{ color: "#e6edf3" }}>{division.name}</span>
-        {total > 0 && <span className="ml-auto text-sm font-bold" style={{ color: "#C9A84C" }}>${fmt(total)}</span>}
-      </button>
+      <div className="w-full flex items-center gap-3 px-4 py-3" style={{ background: "#1e2736" }}>
+        <button onClick={() => setOpen(!open)} className="text-xs shrink-0" style={{ color: "#8b949e" }}>{open ? "▼" : "▶"}</button>
+
+        {editingHeader ? (
+          <div className="flex items-center gap-2 flex-1" onClick={(e) => e.stopPropagation()}>
+            <input
+              value={editCsi}
+              onChange={(e) => setEditCsi(e.target.value)}
+              placeholder="Code"
+              className={INPUT}
+              style={{ ...inputStyle, width: 52 }}
+            />
+            <input
+              autoFocus
+              value={editName}
+              onChange={(e) => setEditName(e.target.value)}
+              onKeyDown={(e) => { if (e.key === "Enter") saveHeader(); if (e.key === "Escape") setEditingHeader(false); }}
+              placeholder="Division name"
+              className={INPUT}
+              style={{ ...inputStyle, flex: 1 }}
+            />
+            <button onClick={saveHeader} disabled={isPending} className="text-xs px-2 py-1 rounded font-medium shrink-0" style={{ background: "#C9A84C", color: "#0d1117" }}>Save</button>
+            <button onClick={() => setEditingHeader(false)} className="text-xs shrink-0" style={{ color: "#8b949e" }}>Cancel</button>
+          </div>
+        ) : (
+          <button onClick={() => setOpen(!open)} className="flex items-center gap-2 flex-1 text-left">
+            {division.csiCode && <span className="font-semibold" style={{ color: "#e6edf3" }}>{division.csiCode}</span>}
+            <span className="font-semibold" style={{ color: "#e6edf3" }}>{division.name}</span>
+            {canEdit && (
+              <span
+                onClick={(e) => { e.stopPropagation(); setEditCsi(division.csiCode ?? ""); setEditName(division.name); setEditingHeader(true); }}
+                className="text-xs ml-1 opacity-0 group-hover:opacity-100 cursor-pointer"
+                style={{ color: "#8b949e" }}
+              >✎</span>
+            )}
+          </button>
+        )}
+
+        {canEdit && !editingHeader && (
+          <button
+            onClick={(e) => { e.stopPropagation(); setEditCsi(division.csiCode ?? ""); setEditName(division.name); setEditingHeader(true); }}
+            className="text-xs shrink-0 ml-auto"
+            style={{ color: "#8b949e" }}
+            title="Edit division"
+          >✎</button>
+        )}
+        {total > 0 && !editingHeader && <span className="text-sm font-bold shrink-0" style={{ color: "#C9A84C" }}>${fmt(total)}</span>}
+      </div>
 
       {open && (
         <div style={{ borderTop: "1px solid #30373f" }} className="pb-2">
