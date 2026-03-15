@@ -23,12 +23,32 @@ import {
 } from "@/lib/estimates/totals";
 import { lookupItemCsiCode } from "@/lib/divisions";
 
-type Item = ItemLike & { id: string; name: string; csiCode: string | null; unit: string | null; vendor: string | null; notes: string | null; sortOrder: number };
+type Item = ItemLike & { id: string; name: string; csiCode: string | null; detail: string | null; unit: string | null; vendor: string | null; notes: string | null; sortOrder: number };
 type Group = { id: string; name: string; items: Item[] };
 type Division = { id: string; csiCode: string | null; name: string; groups: Group[]; items: Item[] };
 type Estimate = { id: string; name: string; description: string | null; status: string; projectId: string };
 
 const STATUS_OPTIONS = ["DRAFT", "PENDING", "APPROVED", "REJECTED"];
+const DETAIL_OPTIONS = ["Included", "Excluded", "TBD", "By Owner", "Allowances"];
+
+function DetailSelect({ value, onChange }: { value: string; onChange: (v: string) => void }) {
+  const [custom, setCustom] = useState(!!value && !DETAIL_OPTIONS.includes(value));
+  if (custom) {
+    return (
+      <div className="flex gap-1 items-center">
+        <input autoFocus className="w-24 border border-slate-300 rounded px-2 py-1 text-xs" value={value} onChange={(e) => onChange(e.target.value)} placeholder="Detail…" />
+        <button onClick={() => { setCustom(false); onChange(""); }} className="text-xs text-slate-400">×</button>
+      </div>
+    );
+  }
+  return (
+    <select value={DETAIL_OPTIONS.includes(value) ? value : ""} onChange={(e) => { if (e.target.value === "__custom__") { setCustom(true); onChange(""); } else { onChange(e.target.value); } }} className="border border-slate-300 rounded px-2 py-1 text-xs w-28">
+      <option value="">—</option>
+      {DETAIL_OPTIONS.map(o => <option key={o} value={o}>{o}</option>)}
+      <option value="__custom__">Add detail…</option>
+    </select>
+  );
+}
 
 function ItemRowEdit({
   item,
@@ -48,6 +68,7 @@ function ItemRowEdit({
   const [form, setForm] = useState({
     name: item.name,
     csiCode: item.csiCode ?? "",
+    detail: item.detail ?? "",
     unit: item.unit ?? "",
     qty: item.qty,
     unitCost: item.unitCost,
@@ -65,6 +86,7 @@ function ItemRowEdit({
         groupId: groupId ?? null,
         name: form.name,
         csiCode: form.csiCode || null,
+        detail: form.detail || null,
         unit: form.unit || null,
         qty: Number(form.qty),
         unitCost: Number(form.unitCost),
@@ -83,6 +105,7 @@ function ItemRowEdit({
       <tr className="border-t border-slate-100 hover:bg-slate-50 group">
         <td className="px-3 py-2 text-xs font-mono text-slate-400" style={{ whiteSpace: "nowrap" }}>{item.csiCode ?? ""}</td>
         <td className="px-3 py-2 text-sm text-slate-800">{item.name}</td>
+        <td className="px-3 py-2 text-xs" style={{ color: item.detail === "Allowances" ? "#b45309" : item.detail === "Excluded" ? "#dc2626" : "#64748b" }}>{item.detail ?? "—"}</td>
         <td className="px-3 py-2 text-sm text-slate-700 text-right">{item.qty}</td>
         <td className="px-3 py-2 text-sm text-slate-500 text-center">{item.unit ?? "—"}</td>
         <td className="px-3 py-2 text-sm text-slate-700 text-right">${fmt(item.unitCost)}</td>
@@ -120,6 +143,7 @@ function ItemRowEdit({
       <td className="px-2 py-1">
         <input className="w-full border border-slate-300 rounded px-2 py-1 text-xs" value={form.name} onChange={(e) => { const n = e.target.value; const auto = lookupItemCsiCode(n); setForm({ ...form, name: n, csiCode: auto ?? form.csiCode }); }} />
       </td>
+      <td className="px-2 py-1"><DetailSelect value={form.detail} onChange={(v) => setForm({ ...form, detail: v })} /></td>
       <td className="px-2 py-1">
         <input type="number" step="any" className="w-16 border border-slate-300 rounded px-2 py-1 text-xs text-right" value={form.qty} onChange={(e) => setForm({ ...form, qty: Number(e.target.value) })} />
       </td>
@@ -148,7 +172,7 @@ function ItemRowEdit({
 function AddItemRow({ divisionId, groupId, canEdit }: { divisionId: string; groupId?: string | null; canEdit: boolean }) {
   const [open, setOpen] = useState(false);
   const [isPending, startTransition] = useTransition();
-  const [form, setForm] = useState({ name: "", csiCode: "", unit: "", qty: "1", unitCost: "0", markupPct: "0" });
+  const [form, setForm] = useState({ name: "", csiCode: "", detail: "", unit: "", qty: "1", unitCost: "0", markupPct: "0" });
 
   if (!canEdit) return null;
 
@@ -159,6 +183,7 @@ function AddItemRow({ divisionId, groupId, canEdit }: { divisionId: string; grou
         groupId: groupId ?? null,
         name: form.name,
         csiCode: form.csiCode || null,
+        detail: form.detail || null,
         unit: form.unit || null,
         qty: Number(form.qty),
         unitCost: Number(form.unitCost),
@@ -166,7 +191,7 @@ function AddItemRow({ divisionId, groupId, canEdit }: { divisionId: string; grou
         materialCost: 0,
         markupPct: Number(form.markupPct),
       });
-      setForm({ name: "", csiCode: "", unit: "", qty: "1", unitCost: "0", markupPct: "0" });
+      setForm({ name: "", csiCode: "", detail: "", unit: "", qty: "1", unitCost: "0", markupPct: "0" });
       setOpen(false);
     });
   }
@@ -174,7 +199,7 @@ function AddItemRow({ divisionId, groupId, canEdit }: { divisionId: string; grou
   if (!open) {
     return (
       <tr>
-        <td colSpan={8} className="px-3 py-1">
+        <td colSpan={9} className="px-3 py-1">
           <button onClick={() => setOpen(true)} className="text-xs text-blue-600 hover:text-blue-800">+ Add Item</button>
         </td>
       </tr>
@@ -189,6 +214,7 @@ function AddItemRow({ divisionId, groupId, canEdit }: { divisionId: string; grou
       <td className="px-2 py-1">
         <input autoFocus className="w-full border border-slate-300 rounded px-2 py-1 text-xs" value={form.name} onChange={(e) => { const n = e.target.value; const auto = lookupItemCsiCode(n); setForm({ ...form, name: n, csiCode: auto ?? form.csiCode }); }} placeholder="Item name" />
       </td>
+      <td className="px-2 py-1"><DetailSelect value={form.detail} onChange={(v) => setForm({ ...form, detail: v })} /></td>
       <td className="px-2 py-1">
         <input type="number" step="any" className="w-16 border border-slate-300 rounded px-2 py-1 text-xs text-right" value={form.qty} onChange={(e) => setForm({ ...form, qty: e.target.value })} />
       </td>
@@ -232,6 +258,7 @@ function ItemTable({
           <tr className="text-xs text-slate-500 bg-slate-50">
             <th className="px-3 py-1.5 text-left font-medium w-20">CSI</th>
             <th className="px-3 py-1.5 text-left font-medium">Item</th>
+            <th className="px-3 py-1.5 text-left font-medium w-28">Detail</th>
             <th className="px-3 py-1.5 text-right font-medium w-16">Qty</th>
             <th className="px-3 py-1.5 text-center font-medium w-16">Unit</th>
             <th className="px-3 py-1.5 text-right font-medium w-24">Cost</th>
@@ -551,6 +578,32 @@ export default function ProjectEstimateEditor({
           )}
         </div>
       )}
+
+      {/* Allowances card */}
+      {(() => {
+        const allowanceItems = divisions.flatMap(d => [
+          ...d.items.filter(i => i.detail === "Allowances"),
+          ...d.groups.flatMap(g => g.items.filter(i => i.detail === "Allowances")),
+        ]);
+        const allowanceTotal = allowanceItems.reduce((s, i) => s + computeItemTotal(i), 0);
+        if (allowanceItems.length === 0) return null;
+        return (
+          <div className="bg-amber-50 border border-amber-300 rounded-xl p-5">
+            <div className="flex items-center justify-between mb-3">
+              <span className="font-semibold text-sm uppercase tracking-wide text-amber-700">Allowances</span>
+              <span className="font-bold text-xl text-amber-700">${fmt(allowanceTotal)}</span>
+            </div>
+            <div className="space-y-1">
+              {allowanceItems.map(i => (
+                <div key={i.id} className="flex justify-between text-xs text-slate-600">
+                  <span>{i.csiCode ? <span className="font-mono mr-2">{i.csiCode}</span> : null}{i.name}</span>
+                  <span>{computeItemTotal(i) > 0 ? `$${fmt(computeItemTotal(i))}` : "—"}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        );
+      })()}
 
       {/* Summary footer */}
       <div className="bg-slate-900 text-white rounded-xl p-5 flex justify-between items-center">

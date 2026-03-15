@@ -2,7 +2,7 @@
 
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { createTemplate, createStandardTemplate, archiveTemplate } from "@/app/[companyId]/estimates/actions";
+import { createTemplate, createStandardTemplate, archiveTemplate, renameTemplate } from "@/app/[companyId]/estimates/actions";
 
 type Template = {
   id: string;
@@ -14,6 +14,78 @@ type Template = {
 };
 
 const inputStyle = { background: "#0d1117", border: "1px solid #30373f", color: "#e6edf3", width: "100%" };
+
+function TemplateCard({
+  tpl, companyId, canEdit, canArchive, isPending, startTransition,
+}: {
+  tpl: Template; companyId: string; canEdit: boolean; canArchive: boolean;
+  isPending: boolean; startTransition: (fn: () => Promise<void>) => void;
+}) {
+  const [editingName, setEditingName] = useState(false);
+  const [nameVal, setNameVal] = useState(tpl.name);
+
+  function saveName() {
+    if (!nameVal.trim() || nameVal.trim() === tpl.name) { setEditingName(false); return; }
+    startTransition(async () => {
+      await renameTemplate(tpl.id, nameVal.trim());
+      setEditingName(false);
+    });
+  }
+
+  return (
+    <div className="relative group">
+      <a
+        href={`/${companyId}/estimates/${tpl.id}`}
+        className="flex flex-col items-center justify-center rounded-2xl py-10 px-10 text-center transition-all hover:border-[#C9A84C88]"
+        style={{ background: "#0d1117", border: "1px solid #C9A84C44", minHeight: "220px" }}
+      >
+        {editingName ? (
+          <div className="w-full" onClick={(e) => e.preventDefault()}>
+            <input
+              autoFocus
+              value={nameVal}
+              onChange={(e) => setNameVal(e.target.value)}
+              onKeyDown={(e) => { if (e.key === "Enter") saveName(); if (e.key === "Escape") { setEditingName(false); setNameVal(tpl.name); } }}
+              onBlur={saveName}
+              className="rounded-lg px-3 py-2 text-xl font-bold text-center w-full"
+              style={{ background: "#1e2736", border: "1px solid #C9A84C", color: "#C9A84C" }}
+            />
+          </div>
+        ) : (
+          <div className="font-bold text-5xl mb-4 leading-tight" style={{ color: "#C9A84C" }}>
+            {tpl.name}
+          </div>
+        )}
+        <div className="flex gap-3 text-sm" style={{ color: "#8b949e" }}>
+          <span>{tpl.divisionCount} divisions</span>
+          <span>·</span>
+          <span>{tpl.itemCount} items</span>
+        </div>
+      </a>
+      <div className="absolute top-3 right-3 flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+        {canEdit && (
+          <button
+            onClick={(e) => { e.preventDefault(); setEditingName(true); setNameVal(tpl.name); }}
+            className="text-xs px-2 py-1 rounded"
+            style={{ background: "#1e2736", border: "1px solid #30373f", color: "#8b949e" }}
+          >
+            Rename
+          </button>
+        )}
+        {canArchive && (
+          <button
+            onClick={(e) => { e.preventDefault(); if (!confirm("Archive this template?")) return; startTransition(async () => { await archiveTemplate(tpl.id); }); }}
+            disabled={isPending}
+            className="text-xs"
+            style={{ color: "#ef4444" }}
+          >
+            Archive
+          </button>
+        )}
+      </div>
+    </div>
+  );
+}
 
 export default function TemplateList({
   companyId,
@@ -139,35 +211,7 @@ export default function TemplateList({
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 md:gap-6">
           {templates.map((tpl) => (
-            <div key={tpl.id} className="relative group">
-              <a
-                href={`/${companyId}/estimates/${tpl.id}`}
-                className="flex flex-col items-center justify-center rounded-2xl py-10 px-10 text-center transition-all hover:border-[#C9A84C88]"
-                style={{ background: "#0d1117", border: "1px solid #C9A84C44", minHeight: "220px" }}
-              >
-                <div className="font-bold text-5xl mb-4 leading-tight" style={{ color: "#C9A84C" }}>
-                  {tpl.name}
-                </div>
-                <div className="flex gap-3 text-sm" style={{ color: "#8b949e" }}>
-                  <span>{tpl.divisionCount} divisions</span>
-                  <span>·</span>
-                  <span>{tpl.itemCount} items</span>
-                </div>
-              </a>
-              {canArchive && (
-                <button
-                  onClick={() => {
-                    if (!confirm("Archive this template?")) return;
-                    startTransition(async () => { await archiveTemplate(tpl.id); });
-                  }}
-                  disabled={isPending}
-                  className="absolute top-3 right-3 text-xs opacity-0 group-hover:opacity-100 transition-opacity"
-                  style={{ color: "#ef4444" }}
-                >
-                  Archive
-                </button>
-              )}
-            </div>
+            <TemplateCard key={tpl.id} tpl={tpl} companyId={companyId} canEdit={canEdit} canArchive={canArchive} isPending={isPending} startTransition={startTransition} />
           ))}
         </div>
       )}

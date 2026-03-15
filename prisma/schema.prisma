@@ -443,6 +443,7 @@ model EstimateTemplateItem {
   group               EstimateTemplateGroup?   @relation(fields: [groupId], references: [id])
   name                String
   csiCode             String?
+  detail              String?
   unit                String?
   defaultQty          Decimal?                 @db.Decimal(14, 4)
   defaultUnitCost     Decimal?                 @db.Decimal(14, 2)
@@ -516,6 +517,7 @@ model ProjectEstimateItem {
   group        ProjectEstimateGroup?   @relation(fields: [groupId], references: [id])
   name         String
   csiCode      String?
+  detail       String?
   unit         String?
   qty          Decimal                 @default(1)  @db.Decimal(14, 4)
   unitCost     Decimal                 @default(0)  @db.Decimal(14, 2)

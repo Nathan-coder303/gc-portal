@@ -86,6 +86,15 @@ export async function createStandardTemplate(name: string, description?: string)
   return { success: true, id: template.id };
 }
 
+export async function renameTemplate(templateId: string, name: string) {
+  const session = await auth();
+  if (!session) throw new Error("Unauthorized");
+  requirePermission(session, "estimateTemplate:edit");
+  await prisma.estimateTemplate.update({ where: { id: templateId }, data: { name: name.trim(), updatedBy: session.user.id } });
+  revalidatePath(`/${session.user.companyId}/estimates`);
+  return { success: true };
+}
+
 export async function updateTemplate(
   templateId: string,
   name: string,
@@ -279,6 +288,7 @@ export async function upsertTemplateItem(
     groupId?: string | null;
     name: string;
     csiCode?: string | null;
+    detail?: string | null;
     unit?: string | null;
     defaultQty?: number | null;
     defaultUnitCost?: number | null;
@@ -296,6 +306,7 @@ export async function upsertTemplateItem(
   const payload = {
     name: data.name,
     csiCode: data.csiCode ?? null,
+    detail: data.detail ?? null,
     unit: data.unit ?? null,
     defaultQty: data.defaultQty ?? null,
     defaultUnitCost: data.defaultUnitCost ?? null,

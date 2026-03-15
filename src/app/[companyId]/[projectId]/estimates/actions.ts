@@ -297,6 +297,7 @@ export async function upsertEstimateItem(
     groupId?: string | null;
     name: string;
     csiCode?: string | null;
+    detail?: string | null;
     unit?: string | null;
     qty?: number;
     unitCost?: number;
@@ -315,6 +316,7 @@ export async function upsertEstimateItem(
   const payload = {
     name: data.name,
     csiCode: data.csiCode ?? null,
+    detail: data.detail ?? null,
     unit: data.unit ?? null,
     qty: data.qty ?? 1,
     unitCost: data.unitCost ?? 0,
