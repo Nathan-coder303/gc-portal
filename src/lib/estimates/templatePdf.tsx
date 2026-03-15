@@ -126,7 +126,7 @@ function ItemRow({ item, index }: { item: Item; index: number }) {
   return (
     <View style={style}>
       <Text style={[styles.cellText, styles.colName]}>{item.name}</Text>
-      <Text style={[{ fontSize: 7, color: detailColor, textAlign: "center" }, styles.colDetail]}>{item.detail ?? ""}</Text>
+      <Text style={[{ fontSize: 7, color: detailColor, textAlign: "center" }, styles.colDetail]}>{item.detail?.toUpperCase() ?? ""}</Text>
       {isExcluded ? (
         <>
           <Text style={[styles.cellMuted, styles.colQty]}>—</Text>
@@ -151,6 +151,13 @@ function TemplatePdfDocument({ companyName, template, client, divisions, showTer
       ...div.groups.flatMap(g => g.items.filter(isItemFilled)),
     ].reduce((s, i) => s + calcTotal(i.defaultQty, i.defaultUnitCost, i.defaultMarkupPct), 0);
     return sum + divSum;
+  }, 0);
+
+  const allowancesTotal = divisions.reduce((sum, div) => {
+    return sum + [
+      ...div.items.filter(i => i.detail === "Allowances"),
+      ...div.groups.flatMap(g => g.items.filter(i => i.detail === "Allowances")),
+    ].reduce((s, i) => s + calcTotal(i.defaultQty, i.defaultUnitCost, i.defaultMarkupPct), 0);
   }, 0);
 
   const dateDisplay = fmtDate(template.estimateDate);
@@ -235,8 +242,16 @@ function TemplatePdfDocument({ companyName, template, client, divisions, showTer
           );
         })}
 
+        {/* Allowances total */}
+        {allowancesTotal > 0 && (
+          <View style={[styles.grandTotalBar, { marginTop: 6, backgroundColor: "#2d2410" }]}>
+            <Text style={[styles.grandTotalLabel, { fontSize: 10 }]}>TOTAL ALLOWANCES</Text>
+            <Text style={[GRAND_TOTAL_VALUE_STYLE, { fontSize: 13 }]}>${fmt(allowancesTotal)}</Text>
+          </View>
+        )}
+
         {/* Grand total */}
-        <View style={styles.grandTotalBar}>
+        <View style={[styles.grandTotalBar, { marginTop: allowancesTotal > 0 ? 4 : 14 }]}>
           <Text style={styles.grandTotalLabel}>ESTIMATE TOTAL</Text>
           <Text style={GRAND_TOTAL_VALUE_STYLE}>${fmt(grandTotal)}</Text>
         </View>
@@ -278,8 +293,8 @@ function TemplatePdfDocument({ companyName, template, client, divisions, showTer
           ))}
         </View>
 
-        {/* T&C — only when toggled on */}
-        {showTerms && termsContent ? (
+        {/* T&C — print whenever content is set */}
+        {termsContent ? (
           <View>
             <View style={styles.sectionDivider} />
             <Text style={styles.sectionTitle}>Terms &amp; Conditions</Text>

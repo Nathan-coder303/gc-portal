@@ -201,7 +201,7 @@ function ItemRow({ item, index }: { item: Item; index: number }) {
   return (
     <View style={style}>
       <Text style={[styles.cellText, styles.colName]}>{item.name}</Text>
-      <Text style={[{ fontSize: 7, color: detailColor, textAlign: "center" }, styles.colDetail]}>{item.detail ?? ""}</Text>
+      <Text style={[{ fontSize: 7, color: detailColor, textAlign: "center" }, styles.colDetail]}>{item.detail?.toUpperCase() ?? ""}</Text>
       {isExcluded ? (
         <>
           <Text style={[styles.cellTextMuted, styles.colQty]}>—</Text>
@@ -230,6 +230,12 @@ export function EstimatePdfDocument({ companyName, projectName, estimate, divisi
     (s, d) => s + d.items.length + d.groups.reduce((gs, g) => gs + g.items.length, 0),
     0
   );
+  const allowancesTotal = divisions.reduce((sum, div) => {
+    return sum + [
+      ...div.items.filter(i => i.detail === "Allowances"),
+      ...div.groups.flatMap(g => g.items.filter(i => i.detail === "Allowances")),
+    ].reduce((s, i) => s + computeItemTotal(i), 0);
+  }, 0);
 
   return (
     <Document title={`${estimate.name} — Estimate`} author={companyName}>
@@ -292,7 +298,14 @@ export function EstimatePdfDocument({ companyName, projectName, estimate, divisi
           );
         })}
 
-        <View style={styles.grandTotal}>
+        {allowancesTotal > 0 && (
+          <View style={[styles.grandTotal, { marginTop: 6, backgroundColor: "#2d2410" }]}>
+            <Text style={[styles.grandTotalLabel, { fontSize: 10 }]}>TOTAL ALLOWANCES</Text>
+            <Text style={[styles.grandTotalValue, { fontSize: 13, color: "#C9A84C" }]}>${fmt(allowancesTotal)}</Text>
+          </View>
+        )}
+
+        <View style={[styles.grandTotal, { marginTop: allowancesTotal > 0 ? 4 : 14 }]}>
           <Text style={styles.grandTotalLabel}>ESTIMATE TOTAL</Text>
           <Text style={styles.grandTotalValue}>${fmt(grandTotal)}</Text>
         </View>
