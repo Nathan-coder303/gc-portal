@@ -75,7 +75,7 @@ const styles = StyleSheet.create({
     borderRadius: 3,
   },
   divisionLeft: { flexDirection: "row", alignItems: "center", gap: 6 },
-  divisionCsi: { fontSize: 8, color: "#94a3b8", fontFamily: "Helvetica" },
+  divisionCsi: { fontSize: 10, fontFamily: "Helvetica-Bold", color: "#ffffff" },
   divisionName: { fontSize: 10, fontFamily: "Helvetica-Bold", color: "#ffffff" },
   divisionTotal: { fontSize: 10, fontFamily: "Helvetica-Bold", color: "#93c5fd" },
 

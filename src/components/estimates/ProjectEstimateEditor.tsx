@@ -313,7 +313,7 @@ function DivisionSection({
         <div className="flex items-center gap-2">
           <span className="text-slate-400 text-xs">{open ? "▼" : "▶"}</span>
           {division.csiCode && (
-            <span className="text-xs font-mono text-slate-400">{division.csiCode}</span>
+            <span className="font-semibold text-slate-900">{division.csiCode}</span>
           )}
           <span className="font-semibold text-slate-900">{division.name}</span>
         </div>

@@ -46,7 +46,7 @@ const styles = StyleSheet.create({
   // Division header row — text/total both white
   divisionHeader: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", backgroundColor: DARK, paddingHorizontal: 8, paddingVertical: 5, marginTop: 12, borderRadius: 3 },
   divisionLeft: { flexDirection: "row", alignItems: "center", gap: 6 },
-  divisionCsi: { fontSize: 8, color: "#ffffff" },
+  divisionCsi: { fontSize: 10, fontFamily: "Helvetica-Bold", color: "#ffffff" },
   divisionName: { fontSize: 10, fontFamily: "Helvetica-Bold", color: "#ffffff" },
   divisionTotal: { fontSize: 10, fontFamily: "Helvetica-Bold", color: "#ffffff" },
 
