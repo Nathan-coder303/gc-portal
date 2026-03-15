@@ -331,3 +331,14 @@ export const ITEM_CSI_LOOKUP: Record<string, string> = {
 export function lookupItemCsiCode(name: string): string | undefined {
   return ITEM_CSI_LOOKUP[name.toLowerCase().trim()];
 }
+
+/**
+ * Formats a raw CSI code input as XX XX XX.
+ * Strips non-digits, caps at 6 digits, inserts spaces after every 2.
+ */
+export function formatCsiCode(raw: string): string {
+  const d = raw.replace(/\D/g, "").slice(0, 6);
+  if (d.length <= 2) return d;
+  if (d.length <= 4) return `${d.slice(0, 2)} ${d.slice(2)}`;
+  return `${d.slice(0, 2)} ${d.slice(2, 4)} ${d.slice(4)}`;
+}

@@ -348,6 +348,21 @@ export async function upsertEstimateItem(
     },
   });
 
+  // Re-sort all items in this division/group by CSI code ascending (no code → end)
+  const siblings = await prisma.projectEstimateItem.findMany({
+    where: { divisionId, groupId: data.groupId ?? null, archivedAt: null },
+    select: { id: true, csiCode: true },
+  });
+  siblings.sort((a, b) => {
+    if (a.csiCode && b.csiCode) return a.csiCode.localeCompare(b.csiCode);
+    if (a.csiCode) return -1;
+    if (b.csiCode) return 1;
+    return 0;
+  });
+  await prisma.$transaction(
+    siblings.map((s, idx) => prisma.projectEstimateItem.update({ where: { id: s.id }, data: { sortOrder: idx } }))
+  );
+
   revalidatePath(`/${session.user.companyId}`);
   return { success: true, id: item.id };
 }

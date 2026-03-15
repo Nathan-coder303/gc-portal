@@ -21,7 +21,7 @@ import {
   fmt,
   type ItemLike,
 } from "@/lib/estimates/totals";
-import { lookupItemCsiCode } from "@/lib/divisions";
+import { lookupItemCsiCode, formatCsiCode } from "@/lib/divisions";
 
 type Item = ItemLike & { id: string; name: string; csiCode: string | null; detail: string | null; unit: string | null; vendor: string | null; notes: string | null; sortOrder: number };
 type Group = { id: string; name: string; items: Item[] };
@@ -138,7 +138,7 @@ function ItemRowEdit({
   return (
     <tr className="border-t border-blue-100 bg-blue-50">
       <td className="px-2 py-1">
-        <input className="w-20 border border-slate-300 rounded px-2 py-1 text-xs font-mono" value={form.csiCode} onChange={(e) => setForm({ ...form, csiCode: e.target.value })} placeholder="CSI" />
+        <input className="w-20 border border-slate-300 rounded px-2 py-1 text-xs font-mono" value={form.csiCode} onChange={(e) => setForm({ ...form, csiCode: formatCsiCode(e.target.value) })} placeholder="CSI" />
       </td>
       <td className="px-2 py-1">
         <input className="w-full border border-slate-300 rounded px-2 py-1 text-xs" value={form.name} onChange={(e) => { const n = e.target.value; const auto = lookupItemCsiCode(n); setForm({ ...form, name: n, csiCode: auto ?? form.csiCode }); }} />
@@ -209,7 +209,7 @@ function AddItemRow({ divisionId, groupId, canEdit }: { divisionId: string; grou
   return (
     <tr className="bg-green-50 border-t border-green-100">
       <td className="px-2 py-1">
-        <input className="w-20 border border-slate-300 rounded px-2 py-1 text-xs font-mono" value={form.csiCode} onChange={(e) => setForm({ ...form, csiCode: e.target.value })} placeholder="CSI" />
+        <input className="w-20 border border-slate-300 rounded px-2 py-1 text-xs font-mono" value={form.csiCode} onChange={(e) => setForm({ ...form, csiCode: formatCsiCode(e.target.value) })} placeholder="CSI" />
       </td>
       <td className="px-2 py-1">
         <input autoFocus className="w-full border border-slate-300 rounded px-2 py-1 text-xs" value={form.name} onChange={(e) => { const n = e.target.value; const auto = lookupItemCsiCode(n); setForm({ ...form, name: n, csiCode: auto ?? form.csiCode }); }} placeholder="Item name" />
@@ -562,7 +562,7 @@ export default function ProjectEstimateEditor({
             <div className="flex gap-2 items-end flex-wrap">
               <div>
                 <label className="block text-xs font-medium text-slate-600 mb-1">CSI Code (optional)</label>
-                <input value={divCsi} onChange={(e) => setDivCsi(e.target.value)} placeholder="e.g. 03" className="border border-slate-300 rounded px-2 py-1.5 text-sm w-24" />
+                <input value={divCsi} onChange={(e) => setDivCsi(formatCsiCode(e.target.value))} placeholder="e.g. 03" className="border border-slate-300 rounded px-2 py-1.5 text-sm w-24" />
               </div>
               <div className="flex-1">
                 <label className="block text-xs font-medium text-slate-600 mb-1">Division Name</label>

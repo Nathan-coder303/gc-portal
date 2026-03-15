@@ -2,7 +2,7 @@
 
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { lookupCsiCode, lookupItemCsiCode } from "@/lib/divisions";
+import { lookupCsiCode, lookupItemCsiCode, formatCsiCode } from "@/lib/divisions";
 import { DndContext, DragOverlay, useDroppable, useDraggable, closestCenter } from "@dnd-kit/core";
 import type { DragStartEvent, DragEndEvent } from "@dnd-kit/core";
 import {
@@ -199,7 +199,7 @@ function ItemRow({ item, divisionId, groupId, canEdit }: { item: Item; divisionI
   return (
     <tr style={{ borderTop: "1px solid #30373f", background: "#1a2d1a" }}>
       {canEdit && <td style={{ width: "24px" }} />}
-      <td className="px-2 py-1"><input className={INPUT} style={{ ...inputStyleSm, width: "80px", fontFamily: "monospace" }} value={form.csiCode} onChange={(e) => setForm({ ...form, csiCode: e.target.value })} placeholder="CSI" /></td>
+      <td className="px-2 py-1"><input className={INPUT} style={{ ...inputStyleSm, width: "80px", fontFamily: "monospace" }} value={form.csiCode} onChange={(e) => setForm({ ...form, csiCode: formatCsiCode(e.target.value) })} placeholder="CSI" /></td>
       <td className="px-2 py-1"><input className={INPUT} style={inputStyleSm} value={form.name} onChange={(e) => { const n = e.target.value; const auto = lookupItemCsiCode(n); setForm({ ...form, name: n, csiCode: auto ?? form.csiCode }); }} /></td>
       <td className="px-2 py-1"><DetailSelect value={form.detail} onChange={(v) => setForm({ ...form, detail: v })} /></td>
       <td className="px-2 py-1"><input type="number" step="any" className={INPUT} style={{ ...inputStyle, width: "56px" }} value={form.defaultQty} onChange={(e) => setForm({ ...form, defaultQty: e.target.value })} /></td>
@@ -258,7 +258,7 @@ function AddTemplateItemRow({ divisionId, groupId, canEdit }: { divisionId: stri
   return (
     <tr style={{ borderTop: "1px solid #30373f", background: "#0d2a1a" }}>
       {canEdit && <td style={{ width: "24px" }} />}
-      <td className="px-2 py-1"><input className={INPUT} style={{ ...inputStyleSm, width: "80px", fontFamily: "monospace" }} value={form.csiCode} onChange={(e) => setForm({ ...form, csiCode: e.target.value })} placeholder="CSI" /></td>
+      <td className="px-2 py-1"><input className={INPUT} style={{ ...inputStyleSm, width: "80px", fontFamily: "monospace" }} value={form.csiCode} onChange={(e) => setForm({ ...form, csiCode: formatCsiCode(e.target.value) })} placeholder="CSI" /></td>
       <td className="px-2 py-1"><input autoFocus className={INPUT} style={inputStyleSm} value={form.name} onChange={(e) => { const n = e.target.value; const auto = lookupItemCsiCode(n); setForm({ ...form, name: n, csiCode: auto ?? form.csiCode }); }} placeholder="Item name" /></td>
       <td className="px-2 py-1"><DetailSelect value={form.detail} onChange={(v) => setForm({ ...form, detail: v })} /></td>
       <td className="px-2 py-1"><input type="number" step="any" className={INPUT} style={{ ...inputStyle, width: "56px" }} value={form.defaultQty} onChange={(e) => setForm({ ...form, defaultQty: e.target.value })} /></td>
@@ -375,7 +375,7 @@ function TemplateDivisionSection({ division, otherDivisions, canEdit }: { divisi
           <div className="flex items-center gap-2 flex-1" onClick={(e) => e.stopPropagation()}>
             <input
               value={editCsi}
-              onChange={(e) => setEditCsi(e.target.value)}
+              onChange={(e) => setEditCsi(formatCsiCode(e.target.value))}
               placeholder="Code"
               className={INPUT}
               style={{ ...inputStyle, width: 52 }}
@@ -1146,7 +1146,7 @@ export default function TemplateEditor({
             <div className="flex gap-2 items-end flex-wrap">
               <div>
                 <label className="block text-xs font-medium mb-1" style={{ color: "#8b949e" }}>CSI Code (optional)</label>
-                <input value={divCsi} onChange={(e) => setDivCsi(e.target.value)} placeholder="e.g. 03" className="rounded px-2 py-1.5 text-sm w-24" style={inputStyle} />
+                <input value={divCsi} onChange={(e) => setDivCsi(formatCsiCode(e.target.value))} placeholder="e.g. 03" className="rounded px-2 py-1.5 text-sm w-24" style={inputStyle} />
               </div>
               <div className="flex-1">
                 <label className="block text-xs font-medium mb-1" style={{ color: "#8b949e" }}>Division Name</label>
