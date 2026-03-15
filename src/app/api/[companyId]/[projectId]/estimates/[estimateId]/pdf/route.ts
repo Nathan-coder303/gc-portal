@@ -51,6 +51,7 @@ export async function GET(
       items: g.items.map((i) => ({
         id: i.id,
         name: i.name,
+        detail: i.detail,
         unit: i.unit,
         qty: Number(i.qty),
         unitCost: Number(i.unitCost),
@@ -63,6 +64,7 @@ export async function GET(
     items: d.items.map((i) => ({
       id: i.id,
       name: i.name,
+      detail: i.detail,
       unit: i.unit,
       qty: Number(i.qty),
       unitCost: Number(i.unitCost),

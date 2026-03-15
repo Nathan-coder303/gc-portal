@@ -89,7 +89,7 @@ const styles = StyleSheet.create({
 // Defined outside StyleSheet.create to avoid any style inheritance/override issues
 const GRAND_TOTAL_VALUE_STYLE = { fontSize: 16 as const, fontFamily: "Helvetica-Bold" as const, color: "#C9A84C" as const };
 
-type Item = { id: string; name: string; unit: string | null; defaultQty: number | null; defaultUnitCost: number | null; defaultMarkupPct: number | null; visibleInPdf: boolean };
+type Item = { id: string; name: string; detail: string | null; unit: string | null; defaultQty: number | null; defaultUnitCost: number | null; defaultMarkupPct: number | null; visibleInPdf: boolean };
 type Group = { id: string; name: string; items: Item[] };
 type Division = { id: string; csiCode: string | null; name: string; groups: Group[]; items: Item[] };
 
@@ -117,14 +117,25 @@ function ItemTableHeader() {
 }
 
 function ItemRow({ item, index }: { item: Item; index: number }) {
+  const isExcluded = item.detail === "Excluded";
   const total = calcTotal(item.defaultQty, item.defaultUnitCost, item.defaultMarkupPct);
   const style = index % 2 === 0 ? styles.tableRow : styles.tableRowAlt;
   return (
     <View style={style}>
       <Text style={[styles.cellText, styles.colName]}>{item.name}</Text>
-      <Text style={[styles.cellMuted, styles.colQty]}>{item.defaultQty ?? "—"}</Text>
-      <Text style={[styles.cellMuted, styles.colUnit]}>{item.unit ?? ""}</Text>
-      <Text style={[styles.cellBold, styles.colTotal]}>{total > 0 ? `$${fmt(total)}` : "—"}</Text>
+      {isExcluded ? (
+        <>
+          <Text style={[styles.cellMuted, styles.colQty]}>—</Text>
+          <Text style={[styles.cellMuted, styles.colUnit]}>{item.unit ?? ""}</Text>
+          <Text style={[{ fontSize: 7, color: "#dc2626", fontFamily: "Helvetica-Bold" }, styles.colTotal]}>EXCLUDED</Text>
+        </>
+      ) : (
+        <>
+          <Text style={[styles.cellMuted, styles.colQty]}>{item.defaultQty ?? "—"}</Text>
+          <Text style={[styles.cellMuted, styles.colUnit]}>{item.unit ?? ""}</Text>
+          <Text style={[styles.cellBold, styles.colTotal]}>{total > 0 ? `$${fmt(total)}` : "—"}</Text>
+        </>
+      )}
     </View>
   );
 }
@@ -177,8 +188,8 @@ function TemplatePdfDocument({ companyName, template, client, divisions, showTer
 
         {/* Divisions */}
         {divisions.map((div) => {
-          const divFilledItems = div.items.filter(isItemFilled);
-          const divGroupsWithItems = div.groups.map(g => ({ ...g, items: g.items.filter(isItemFilled) })).filter(g => g.items.length > 0);
+          const divFilledItems = div.items.filter(i => isItemFilled(i) || i.detail === "Excluded");
+          const divGroupsWithItems = div.groups.map(g => ({ ...g, items: g.items.filter(i => isItemFilled(i) || i.detail === "Excluded") })).filter(g => g.items.length > 0);
           if (divFilledItems.length === 0 && divGroupsWithItems.length === 0) return null;
 
           const divTotal = [

@@ -159,6 +159,7 @@ const styles = StyleSheet.create({
 type Item = {
   id: string;
   name: string;
+  detail: string | null;
   unit: string | null;
   qty: number;
   unitCost: number;
@@ -191,16 +192,29 @@ function ItemTableHeader() {
 }
 
 function ItemRow({ item, index }: { item: Item; index: number }) {
+  const isExcluded = item.detail === "Excluded";
   const total = computeItemTotal(item);
   const style = index % 2 === 0 ? styles.tableRow : styles.tableRowAlt;
   return (
     <View style={style}>
       <Text style={[styles.cellText, styles.colName]}>{item.name}</Text>
-      <Text style={[styles.cellText, styles.colQty]}>{item.qty}</Text>
-      <Text style={[styles.cellTextMuted, styles.colUnit]}>{item.unit ?? ""}</Text>
-      <Text style={[styles.cellText, styles.colCost]}>{item.unitCost > 0 ? `$${fmt(item.unitCost)}` : "—"}</Text>
-      <Text style={[styles.cellTextMuted, styles.colMarkup]}>{item.markupPct > 0 ? `${item.markupPct}%` : "—"}</Text>
-      <Text style={[styles.cellTextBold, styles.colTotal]}>${fmt(total)}</Text>
+      {isExcluded ? (
+        <>
+          <Text style={[styles.cellTextMuted, styles.colQty]}>—</Text>
+          <Text style={[styles.cellTextMuted, styles.colUnit]}>{item.unit ?? ""}</Text>
+          <Text style={[styles.cellTextMuted, styles.colCost]}>—</Text>
+          <Text style={[styles.cellTextMuted, styles.colMarkup]}>—</Text>
+          <Text style={[{ fontSize: 7, color: "#dc2626", fontFamily: "Helvetica-Bold" }, styles.colTotal]}>EXCLUDED</Text>
+        </>
+      ) : (
+        <>
+          <Text style={[styles.cellText, styles.colQty]}>{item.qty}</Text>
+          <Text style={[styles.cellTextMuted, styles.colUnit]}>{item.unit ?? ""}</Text>
+          <Text style={[styles.cellText, styles.colCost]}>{item.unitCost > 0 ? `$${fmt(item.unitCost)}` : "—"}</Text>
+          <Text style={[styles.cellTextMuted, styles.colMarkup]}>{item.markupPct > 0 ? `${item.markupPct}%` : "—"}</Text>
+          <Text style={[styles.cellTextBold, styles.colTotal]}>${fmt(total)}</Text>
+        </>
+      )}
     </View>
   );
 }
@@ -259,8 +273,9 @@ export function EstimatePdfDocument({ companyName, projectName, estimate, divisi
           <Text style={[styles.headerText, { width: 60, textAlign: "right" }]}>% of Total</Text>
         </View>
         {divisions.map((div) => {
+          const hasExcluded = [...div.items, ...div.groups.flatMap(g => g.items)].some(i => i.detail === "Excluded");
           const divTotal = computeDivisionTotal(div.groups, div.items);
-          if (divTotal === 0) return null;
+          if (divTotal === 0 && !hasExcluded) return null;
           const pct = grandTotal > 0 ? (divTotal / grandTotal) * 100 : 0;
           return (
             <View key={div.id} style={styles.divisionSummaryRow}>
@@ -287,9 +302,9 @@ export function EstimatePdfDocument({ companyName, projectName, estimate, divisi
 
       {/* Detail pages — one per division (skip empty divisions) */}
       {divisions.map((div) => {
-        const filledItems = div.items.filter(i => computeItemTotal(i) > 0);
+        const filledItems = div.items.filter(i => computeItemTotal(i) > 0 || i.detail === "Excluded");
         const filledGroups = div.groups
-          .map(g => ({ ...g, items: g.items.filter(i => computeItemTotal(i) > 0) }))
+          .map(g => ({ ...g, items: g.items.filter(i => computeItemTotal(i) > 0 || i.detail === "Excluded") }))
           .filter(g => g.items.length > 0);
         if (filledItems.length === 0 && filledGroups.length === 0) return null;
 
