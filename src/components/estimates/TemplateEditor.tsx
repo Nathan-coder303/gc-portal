@@ -2,6 +2,7 @@
 
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
+import { lookupCsiCode } from "@/lib/divisions";
 import { DndContext, DragOverlay, useDroppable, useDraggable, closestCenter } from "@dnd-kit/core";
 import type { DragStartEvent, DragEndEvent } from "@dnd-kit/core";
 import {
@@ -731,6 +732,8 @@ export default function TemplateEditor({
     template.estimateDate ?? new Date().toISOString().split("T")[0]
   );
   const [addingDiv, setAddingDiv] = useState(false);
+  const [backfilling, setBackfilling] = useState(false);
+  const [backfillResult, setBackfillResult] = useState<string | null>(null);
   const [divName, setDivName] = useState("");
   const [divCsi, setDivCsi] = useState("");
   const [saveAsNew, setSaveAsNew] = useState(false);
@@ -1059,7 +1062,20 @@ export default function TemplateEditor({
               </div>
               <div className="flex-1">
                 <label className="block text-xs font-medium mb-1" style={{ color: "#8b949e" }}>Division Name</label>
-                <input autoFocus value={divName} onChange={(e) => setDivName(e.target.value)} placeholder="e.g. Concrete" className="w-full rounded px-2 py-1.5 text-sm" style={inputStyleSm} />
+                <input
+                  autoFocus
+                  value={divName}
+                  onChange={(e) => {
+                    setDivName(e.target.value);
+                    if (!divCsi) {
+                      const suggested = lookupCsiCode(e.target.value);
+                      if (suggested) setDivCsi(suggested);
+                    }
+                  }}
+                  placeholder="e.g. Concrete"
+                  className="w-full rounded px-2 py-1.5 text-sm"
+                  style={inputStyleSm}
+                />
               </div>
               <button onClick={saveDiv} disabled={isPending} className="px-3 py-1.5 rounded text-sm font-medium" style={{ background: "#C9A84C", color: "#0d1117" }}>Add</button>
               <button onClick={() => setAddingDiv(false)} className="text-sm px-2" style={{ color: "#8b949e" }}>Cancel</button>
@@ -1069,6 +1085,34 @@ export default function TemplateEditor({
               + Add Division
             </button>
           )}
+        </div>
+      )}
+
+      {/* Backfill CSI codes */}
+      {canEdit && (
+        <div className="flex items-center gap-3">
+          <button
+            disabled={backfilling}
+            onClick={async () => {
+              setBackfilling(true);
+              setBackfillResult(null);
+              try {
+                const res = await fetch(`/api/${template.companyId}/backfill-csi-codes`, { method: "POST" });
+                const data = await res.json();
+                setBackfillResult(`Done — ${data.updated} division${data.updated !== 1 ? "s" : ""} updated`);
+                if (data.updated > 0) router.refresh();
+              } catch {
+                setBackfillResult("Failed");
+              } finally {
+                setBackfilling(false);
+              }
+            }}
+            className="text-xs px-3 py-1.5 rounded"
+            style={{ background: "#1e2736", border: "1px solid #30373f", color: backfilling ? "#8b949e" : "#e6edf3" }}
+          >
+            {backfilling ? "Applying CSI codes…" : "Auto-fill CSI Codes"}
+          </button>
+          {backfillResult && <span className="text-xs" style={{ color: "#8b949e" }}>{backfillResult}</span>}
         </div>
       )}
 
