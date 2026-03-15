@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { can } from "@/lib/auth/permissions";
 import ProjectEstimateEditor from "@/components/estimates/ProjectEstimateEditor";
+import { lookupCsiCode } from "@/lib/divisions";
 
 export default async function EstimateEditorPage({
   params,
@@ -37,6 +38,18 @@ export default async function EstimateEditorPage({
   });
 
   if (!estimate) redirect(`/${params.companyId}/${params.projectId}/estimates`);
+
+  // Auto-apply CSI codes to any division missing one
+  const missingCsi = estimate.divisions.filter(d => !d.csiCode && lookupCsiCode(d.name));
+  if (missingCsi.length > 0) {
+    await Promise.all(missingCsi.map(d =>
+      prisma.projectEstimateDivision.update({
+        where: { id: d.id },
+        data: { csiCode: lookupCsiCode(d.name) },
+      })
+    ));
+    missingCsi.forEach(d => { d.csiCode = lookupCsiCode(d.name) ?? null; });
+  }
 
   const divisions = estimate.divisions.map((d) => ({
     id: d.id,
