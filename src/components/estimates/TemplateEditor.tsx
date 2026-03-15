@@ -9,6 +9,7 @@ import {
   archiveTemplateItem,
   upsertTemplateDivision,
   archiveTemplateDivision,
+  mergeTemplateDivisionInto,
   upsertTemplateGroup,
   archiveTemplateGroup,
   updateTemplate,
@@ -277,7 +278,7 @@ function TemplateGroupSection({ group, divisionId, canEdit }: { group: Group; di
   );
 }
 
-function TemplateDivisionSection({ division, canEdit }: { division: Division; canEdit: boolean }) {
+function TemplateDivisionSection({ division, otherDivisions, canEdit }: { division: Division; otherDivisions: Division[]; canEdit: boolean }) {
   const [open, setOpen] = useState(true);
   const [isPending, startTransition] = useTransition();
   const [addingGroup, setAddingGroup] = useState(false);
@@ -285,6 +286,7 @@ function TemplateDivisionSection({ division, canEdit }: { division: Division; ca
   const [editingHeader, setEditingHeader] = useState(false);
   const [editCsi, setEditCsi] = useState(division.csiCode ?? "");
   const [editName, setEditName] = useState(division.name);
+  const [movingTo, setMovingTo] = useState(false);
   const { setNodeRef: setDropRef, isOver } = useDroppable({ id: division.id });
 
   const total = divisionTotal(division);
@@ -375,6 +377,41 @@ function TemplateDivisionSection({ division, canEdit }: { division: Division; ca
                 </div>
               ) : (
                 <button onClick={() => setAddingGroup(true)} className="text-xs" style={{ color: "#8b949e" }}>+ Add Group</button>
+              )}
+            </div>
+          )}
+          {canEdit && otherDivisions.length > 0 && (
+            <div className="px-3 pt-1">
+              {movingTo ? (
+                <div className="flex items-center gap-2">
+                  <span className="text-xs" style={{ color: "#8b949e" }}>Move to:</span>
+                  <select
+                    autoFocus
+                    defaultValue=""
+                    onChange={(e) => {
+                      if (!e.target.value) return;
+                      if (!confirm(`Move all items from "${division.name}" into "${otherDivisions.find(d => d.id === e.target.value)?.name}"?`)) return;
+                      startTransition(async () => {
+                        await mergeTemplateDivisionInto(division.id, e.target.value);
+                        setMovingTo(false);
+                      });
+                    }}
+                    style={{ ...inputStyle, fontSize: 12 }}
+                    className={INPUT}
+                  >
+                    <option value="" disabled>Select division…</option>
+                    {otherDivisions.map(d => (
+                      <option key={d.id} value={d.id}>
+                        {d.csiCode ? `${d.csiCode} — ` : ""}{d.name}
+                      </option>
+                    ))}
+                  </select>
+                  <button onClick={() => setMovingTo(false)} className="text-xs" style={{ color: "#8b949e" }}>Cancel</button>
+                </div>
+              ) : (
+                <button onClick={() => setMovingTo(true)} className="text-xs" style={{ color: "#8b949e" }}>
+                  Move to Division…
+                </button>
               )}
             </div>
           )}
@@ -1007,7 +1044,7 @@ export default function TemplateEditor({
       {/* Divisions */}
       <div className="space-y-3">
         {divisions.map((div) => (
-          <TemplateDivisionSection key={div.id} division={div} canEdit={canEdit} />
+          <TemplateDivisionSection key={div.id} division={div} otherDivisions={divisions.filter(d => d.id !== div.id)} canEdit={canEdit} />
         ))}
       </div>
 

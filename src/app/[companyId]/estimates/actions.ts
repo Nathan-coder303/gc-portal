@@ -132,6 +132,30 @@ export async function archiveTemplateDivision(divisionId: string) {
   return { success: true };
 }
 
+export async function mergeTemplateDivisionInto(sourceDivisionId: string, targetDivisionId: string) {
+  const session = await auth();
+  if (!session) throw new Error("Unauthorized");
+  requirePermission(session, "estimateTemplate:edit");
+
+  // Move all groups to the target division
+  await prisma.estimateTemplateGroup.updateMany({
+    where: { divisionId: sourceDivisionId, archivedAt: null },
+    data: { divisionId: targetDivisionId },
+  });
+  // Move all ungrouped items to the target division
+  await prisma.estimateTemplateItem.updateMany({
+    where: { divisionId: sourceDivisionId, groupId: null, archivedAt: null },
+    data: { divisionId: targetDivisionId },
+  });
+  // Archive the now-empty source division
+  await prisma.estimateTemplateDivision.update({
+    where: { id: sourceDivisionId },
+    data: { archivedAt: new Date(), archivedBy: session.user.id },
+  });
+  revalidatePath(`/${session.user.companyId}/estimates`);
+  return { success: true };
+}
+
 export async function reorderTemplateDivisions(templateId: string, orderedIds: string[]) {
   const session = await auth();
   if (!session) throw new Error("Unauthorized");
