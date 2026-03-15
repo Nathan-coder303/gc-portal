@@ -1,20 +1,18 @@
 /**
  * POST /api/[companyId]/fetch-leads
  * Fetches emails from info@emailings.mibhconstruction-services.com,
- * parses contact info with Claude, and stores them as Lead records.
+ * parses contact info from the structured subject line (no Claude needed),
+ * and stores them as Lead records.
  *
- * Body (optional):
- *   { backfill: true }  → scans ALL historical emails (no date limit)
- *   (default)           → only emails not yet imported
+ * Body: { backfill: true } → import all history, default → new only
  */
 import { NextRequest, NextResponse } from "next/server";
 import { google } from "googleapis";
-import Anthropic from "@anthropic-ai/sdk";
 import { prisma } from "@/lib/prisma";
 import { auth } from "@/lib/auth";
 
 export const runtime = "nodejs";
-export const maxDuration = 300;
+export const maxDuration = 60;
 
 const LEAD_SENDER = "info@emailings.mibhconstruction-services.com";
 const GMAIL_QUERY = `from:${LEAD_SENDER}`;
@@ -29,14 +27,14 @@ function getOAuthClient() {
   return oauth2Client;
 }
 
-function decodeBase64(data: string): Buffer {
-  return Buffer.from(data.replace(/-/g, "+").replace(/_/g, "/"), "base64");
+function decodeBase64(data: string): string {
+  return Buffer.from(data.replace(/-/g, "+").replace(/_/g, "/"), "base64").toString("utf-8");
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 function extractBody(payload: any): string {
   if (!payload) return "";
-  if (payload.body?.data) return decodeBase64(payload.body.data).toString("utf-8");
+  if (payload.body?.data) return decodeBase64(payload.body.data);
   if (payload.parts) {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const allParts: any[] = [];
@@ -45,12 +43,73 @@ function extractBody(payload: any): string {
     collect(payload.parts);
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const plain = allParts.find((p: any) => p.mimeType === "text/plain" && p.body?.data);
-    if (plain) return decodeBase64(plain.body.data).toString("utf-8");
+    if (plain) return decodeBase64(plain.body.data);
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const html = allParts.find((p: any) => p.mimeType === "text/html" && p.body?.data);
-    if (html) return decodeBase64(html.body.data).toString("utf-8").replace(/<[^>]+>/g, " ");
+    if (html) return decodeBase64(html.body.data).replace(/<[^>]+>/g, " ");
   }
   return "";
+}
+
+function field(text: string, key: string): string | null {
+  // Match "Key: value" up to the next known key or end of string
+  const pattern = new RegExp(`${key}:\\s*([^\\n]+?)(?=\\s+(?:Name|Email|Phone|Service|Address|City|State|Message):|$)`, "i");
+  const m = text.match(pattern);
+  const val = m?.[1]?.trim().replace(/\s+/g, " ") ?? null;
+  return val && val.length > 0 && val !== "N/A" ? val : null;
+}
+
+interface ParsedLead {
+  name: string | null;
+  email: string | null;
+  phone: string | null;
+  address: string | null;
+  city: string | null;
+  state: string | null;
+  projectType: string | null;
+  message: string | null;
+}
+
+function parseLead(subject: string, body: string): ParsedLead {
+  // The emails use a structured format: "Name: X Email: Y Phone: Z Service: W"
+  // Try subject first (it's already pre-truncated by Gmail but full in the API)
+  // then fall back to body which has the same fields
+  const source = `${subject}\n${body}`;
+
+  const name = field(source, "Name");
+  const email = field(source, "Email");
+  const phone = field(source, "Phone");
+  const address = field(source, "Address");
+  const city = field(source, "City");
+  const state = field(source, "State");
+  const service = field(source, "Service");
+  const msg = field(source, "Message");
+
+  // Callback alert format: "give [Name] a call at [Phone]"
+  if (!name && !phone) {
+    const callbackMatch = source.match(/give\s+(.+?)\s+a\s+call\s+at\s+([\d\s().+\-]+)/i);
+    if (callbackMatch) {
+      return {
+        name: callbackMatch[1].trim(),
+        email: null,
+        phone: callbackMatch[2].trim(),
+        address, city, state,
+        projectType: service,
+        message: subject.replace(/^NSA New Callback Alert\s*[-–]\s*/i, "").trim() || null,
+      };
+    }
+  }
+
+  return {
+    name,
+    email,
+    phone,
+    address,
+    city,
+    state,
+    projectType: service,
+    message: msg ?? (subject.length > 20 ? subject.slice(0, 200) : null),
+  };
 }
 
 export async function POST(
@@ -69,9 +128,8 @@ export async function POST(
 
   const authClient = getOAuthClient();
   const gmail = google.gmail({ version: "v1", auth: authClient });
-  const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 
-  // Paginate through ALL matching messages
+  // List all matching messages
   const allMessages: { id?: string | null }[] = [];
   let pageToken: string | undefined;
   do {
@@ -85,73 +143,32 @@ export async function POST(
     pageToken = listRes.data.nextPageToken ?? undefined;
   } while (pageToken);
 
-  // Bulk dedup — get all already-imported gmail IDs
+  // Bulk dedup
   const existing = await prisma.lead.findMany({
     where: { companyId: params.companyId, gmailMsgId: { not: null } },
     select: { gmailMsgId: true },
   });
   const importedIds = new Set(existing.map(l => l.gmailMsgId!));
-
   const newMessages = allMessages.filter(m => m.id && !importedIds.has(m.id));
-  // For backfill: process everything; for normal: cap at 50 to stay under timeout
-  const toProcess = backfill ? newMessages : newMessages.slice(0, 50);
+  const toProcess = backfill ? newMessages : newMessages.slice(0, 100);
 
   let added = 0;
   const errors: string[] = [];
 
   for (const msg of toProcess) {
     try {
-      const full = await gmail.users.messages.get({ userId: "me", id: msg.id! });
+      // Fetch full message (needed to get full subject — metadata truncates it)
+      const full = await gmail.users.messages.get({ userId: "me", id: msg.id!, format: "full" });
       const payload = full.data.payload!;
       const headers = payload.headers ?? [];
+
       const subject = headers.find(h => h.name === "Subject")?.value ?? "";
       const from = headers.find(h => h.name === "From")?.value ?? "";
       const dateHeader = headers.find(h => h.name === "Date")?.value;
       const receivedAt = dateHeader ? new Date(dateHeader) : new Date();
       const bodyText = extractBody(payload);
 
-      const prompt = `You are parsing a lead inquiry email received by a construction company (MIBH Construction).
-
-FROM: ${from}
-SUBJECT: ${subject}
-EMAIL BODY:
-${bodyText.slice(0, 3000)}
-
-Extract the contact information from this lead/inquiry email. Respond ONLY with valid JSON, no markdown:
-{
-  "name": "<full name of the person inquiring, or null>",
-  "email": "<their reply-to email address, or null>",
-  "phone": "<their phone number, or null>",
-  "address": "<property/project address if mentioned, or null>",
-  "city": "<city, or null>",
-  "state": "<state abbreviation, or null>",
-  "projectType": "<type of work requested e.g. Kitchen Remodel, Bathroom Addition, Roofing, etc., or null>",
-  "message": "<brief summary of what they are requesting, max 200 chars>"
-}`;
-
-      const aiMsg = await anthropic.messages.create({
-        model: "claude-haiku-4-5-20251001",
-        max_tokens: 400,
-        messages: [{ role: "user", content: prompt }],
-      });
-
-      const aiText = aiMsg.content[0].type === "text" ? aiMsg.content[0].text.trim() : "{}";
-      let parsed: {
-        name?: string | null;
-        email?: string | null;
-        phone?: string | null;
-        address?: string | null;
-        city?: string | null;
-        state?: string | null;
-        projectType?: string | null;
-        message?: string | null;
-      };
-      try {
-        parsed = JSON.parse(aiText);
-      } catch {
-        errors.push(`parse-error on ${msg.id}`);
-        continue;
-      }
+      const parsed = parseLead(subject, bodyText);
 
       await prisma.lead.create({
         data: {
@@ -162,14 +179,14 @@ Extract the contact information from this lead/inquiry email. Respond ONLY with 
           receivedAt,
           source: "email",
           status: "NEW",
-          name: parsed.name ?? null,
-          email: parsed.email ?? null,
-          phone: parsed.phone ?? null,
-          address: parsed.address ?? null,
-          city: parsed.city ?? null,
-          state: parsed.state ?? null,
-          projectType: parsed.projectType ?? null,
-          message: parsed.message ?? null,
+          name: parsed.name,
+          email: parsed.email,
+          phone: parsed.phone,
+          address: parsed.address,
+          city: parsed.city,
+          state: parsed.state,
+          projectType: parsed.projectType,
+          message: parsed.message,
         },
       });
 
