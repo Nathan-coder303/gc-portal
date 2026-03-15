@@ -1,6 +1,7 @@
 /**
- * GET /api/cron/fetch-leads — runs daily at 8am.
- * Picks up new emails from info@emailings.mibhconstruction-services.com.
+ * GET /api/cron/fetch-leads — runs every 5 minutes (requires Vercel Pro).
+ * Picks up new emails from info@emailings.mibhconstruction-services.com,
+ * merges duplicates by name.
  */
 import { NextRequest, NextResponse } from "next/server";
 import { google } from "googleapis";
@@ -47,7 +48,7 @@ function extractBody(payload: any): string {
 }
 
 function field(text: string, key: string): string | null {
-  const pattern = new RegExp(`${key}:\\s*([^\\n]+?)(?=\\s+(?:Name|Email|Phone|Service|Address|City|State|Message):|$)`, "i");
+  const pattern = new RegExp(`${key}:\\s*([^\\n]+?)(?=\\s+(?:Name|Email|Phone|Service|Address|City|State|Zip|Message):|$)`, "i");
   const m = text.match(pattern);
   const val = m?.[1]?.trim().replace(/\s+/g, " ") ?? null;
   return val && val.length > 0 && val !== "N/A" ? val : null;
@@ -83,23 +84,30 @@ export async function GET(req: NextRequest) {
   const authClient = getOAuthClient();
   const gmail = google.gmail({ version: "v1", auth: authClient });
 
-  const since = Math.floor(Date.now() / 1000) - 86400;
+  // Look back 10 minutes to catch any missed emails
+  const since = Math.floor(Date.now() / 1000) - 600;
   const listRes = await gmail.users.messages.list({
     userId: "me",
     q: `from:${LEAD_SENDER} after:${since}`,
     maxResults: 100,
   });
   const messages = listRes.data.messages ?? [];
-  const msgIds = messages.map(m => m.id!).filter(Boolean);
 
-  const existing = await prisma.lead.findMany({
-    where: { gmailMsgId: { in: msgIds } },
-    select: { gmailMsgId: true },
+  // Bulk dedup — check both gmailMsgId and linkedMsgIds
+  const existingLeads = await prisma.lead.findMany({
+    where: { companyId: COMPANY_ID },
+    select: { id: true, gmailMsgId: true, linkedMsgIds: true, name: true, email: true, phone: true, address: true, city: true, state: true, projectType: true, message: true },
   });
-  const importedIds = new Set(existing.map(l => l.gmailMsgId!));
+  const importedIds = new Set<string>([
+    ...existingLeads.map(l => l.gmailMsgId).filter(Boolean) as string[],
+    ...existingLeads.flatMap(l => (l.linkedMsgIds ?? "").split(" ").filter(Boolean)),
+  ]);
+  const byName = new Map(existingLeads.filter(l => l.name).map(l => [l.name!.toLowerCase().trim(), l]));
+
   const newMessages = messages.filter(m => m.id && !importedIds.has(m.id));
 
   let added = 0;
+  let merged = 0;
   const errors: string[] = [];
 
   for (const msg of newMessages) {
@@ -114,20 +122,45 @@ export async function GET(req: NextRequest) {
       const bodyText = extractBody(payload);
       const parsed = parseLead(subject, bodyText);
 
-      await prisma.lead.create({
-        data: {
-          companyId: COMPANY_ID,
-          gmailMsgId: msg.id!,
-          emailFrom: from, emailSubject: subject, receivedAt,
-          source: "email", status: "NEW",
-          name: parsed.name, email: parsed.email, phone: parsed.phone,
-          address: parsed.address, city: parsed.city, state: parsed.state,
-          projectType: parsed.projectType, message: parsed.message,
-        },
-      });
-      added++;
+      const nameKey = parsed.name?.toLowerCase().trim();
+      const existingByName = nameKey ? byName.get(nameKey) : undefined;
+
+      if (existingByName) {
+        const linked = [existingByName.linkedMsgIds, msg.id!].filter(Boolean).join(" ");
+        await prisma.lead.update({
+          where: { id: existingByName.id },
+          data: {
+            linkedMsgIds: linked,
+            email: existingByName.email ?? parsed.email,
+            phone: existingByName.phone ?? parsed.phone,
+            address: existingByName.address ?? parsed.address,
+            city: existingByName.city ?? parsed.city,
+            state: existingByName.state ?? parsed.state,
+            projectType: existingByName.projectType ?? parsed.projectType,
+            message: existingByName.message ?? parsed.message,
+          },
+        });
+        importedIds.add(msg.id!);
+        existingByName.linkedMsgIds = linked;
+        merged++;
+      } else {
+        await prisma.lead.create({
+          data: {
+            companyId: COMPANY_ID,
+            gmailMsgId: msg.id!, emailFrom: from, emailSubject: subject, receivedAt,
+            source: "email", status: "NEW",
+            name: parsed.name, email: parsed.email, phone: parsed.phone,
+            address: parsed.address, city: parsed.city, state: parsed.state,
+            projectType: parsed.projectType, message: parsed.message,
+          },
+        });
+        if (nameKey && parsed.name) {
+          byName.set(nameKey, { id: "", gmailMsgId: msg.id!, linkedMsgIds: null, name: parsed.name, email: parsed.email, phone: parsed.phone, address: parsed.address, city: parsed.city, state: parsed.state, projectType: parsed.projectType, message: parsed.message });
+        }
+        added++;
+      }
     } catch (err) { errors.push(String(err)); }
   }
 
-  return NextResponse.json({ checked: messages.length, added, errors: errors.slice(0, 5) });
+  return NextResponse.json({ checked: messages.length, added, merged, errors: errors.slice(0, 5) });
 }

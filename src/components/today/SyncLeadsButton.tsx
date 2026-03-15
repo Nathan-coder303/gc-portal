@@ -7,7 +7,7 @@ const LAST_SYNC_KEY = "leadsLastSynced";
 
 export default function SyncLeadsButton({ companyId }: { companyId: string }) {
   const router = useRouter();
-  const [status, setStatus] = useState<"idle" | "syncing" | "backfilling" | "done" | "error">("idle");
+  const [status, setStatus] = useState<"idle" | "syncing" | "backfilling" | "deduping" | "done" | "error">("idle");
   const [result, setResult] = useState<string>("");
   const [lastSynced, setLastSynced] = useState<string>("");
 
@@ -48,7 +48,27 @@ export default function SyncLeadsButton({ companyId }: { companyId: string }) {
     }
   }
 
-  const isBusy = status === "syncing" || status === "backfilling";
+  async function dedup() {
+    setStatus("deduping");
+    setResult("");
+    try {
+      const res = await fetch(`/api/${companyId}/dedup-leads`, { method: "POST" });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error ?? "Failed");
+      const parts: string[] = [];
+      if (data.merged > 0) parts.push(`${data.merged} groups merged`);
+      if (data.deleted > 0) parts.push(`${data.deleted} duplicates removed`);
+      if (parts.length === 0) parts.push("no duplicates found");
+      setResult(parts.join(" · "));
+      setStatus("done");
+      router.refresh();
+    } catch (e) {
+      setResult(String(e));
+      setStatus("error");
+    }
+  }
+
+  const isBusy = status === "syncing" || status === "backfilling" || status === "deduping";
 
   return (
     <div className="flex flex-col items-end gap-1">
@@ -74,6 +94,15 @@ export default function SyncLeadsButton({ companyId }: { companyId: string }) {
           style={{ background: "#161b22", border: "1px solid #30373f", color: "#8b949e" }}
         >
           {status === "backfilling" ? "Importing…" : "Backfill All"}
+        </button>
+        <button
+          onClick={dedup}
+          disabled={isBusy}
+          title="Merge duplicate leads with same name"
+          className="text-xs px-3 py-1.5 rounded-lg font-medium transition-opacity disabled:opacity-50"
+          style={{ background: "#161b22", border: "1px solid #30373f", color: "#8b949e" }}
+        >
+          {status === "deduping" ? "Merging…" : "Merge Dupes"}
         </button>
       </div>
       {lastSynced && (
