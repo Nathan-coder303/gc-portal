@@ -3,7 +3,7 @@ import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { can } from "@/lib/auth/permissions";
 import ProjectEstimateEditor from "@/components/estimates/ProjectEstimateEditor";
-import { lookupCsiCode } from "@/lib/divisions";
+import { getCorrectCsiCode } from "@/lib/divisions";
 
 export default async function EstimateEditorPage({
   params,
@@ -39,16 +39,15 @@ export default async function EstimateEditorPage({
 
   if (!estimate) redirect(`/${params.companyId}/${params.projectId}/estimates`);
 
-  // Auto-apply CSI codes to any division missing one
-  const missingCsi = estimate.divisions.filter(d => !d.csiCode && lookupCsiCode(d.name));
-  if (missingCsi.length > 0) {
-    await Promise.all(missingCsi.map(d =>
-      prisma.projectEstimateDivision.update({
-        where: { id: d.id },
-        data: { csiCode: lookupCsiCode(d.name) },
-      })
+  // Auto-apply / upgrade CSI codes for divisions missing or using old short codes
+  const needsCsiUpdate = estimate.divisions
+    .map(d => ({ d, code: getCorrectCsiCode(d.name, d.csiCode) }))
+    .filter(({ code }) => code !== undefined);
+  if (needsCsiUpdate.length > 0) {
+    await Promise.all(needsCsiUpdate.map(({ d, code }) =>
+      prisma.projectEstimateDivision.update({ where: { id: d.id }, data: { csiCode: code } })
     ));
-    missingCsi.forEach(d => { d.csiCode = lookupCsiCode(d.name) ?? null; });
+    needsCsiUpdate.forEach(({ d, code }) => { d.csiCode = code ?? null; });
   }
 
   const divisions = estimate.divisions.map((d) => ({

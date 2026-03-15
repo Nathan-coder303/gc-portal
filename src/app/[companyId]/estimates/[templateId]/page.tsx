@@ -4,7 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { can } from "@/lib/auth/permissions";
 import TemplateEditor from "@/components/estimates/TemplateEditor";
 import Link from "next/link";
-import { lookupCsiCode } from "@/lib/divisions";
+import { getCorrectCsiCode } from "@/lib/divisions";
 
 export default async function TemplateEditorPage({
   params,
@@ -45,17 +45,15 @@ export default async function TemplateEditorPage({
 
   if (!template) redirect(`/${params.companyId}/estimates`);
 
-  // Auto-apply CSI codes to any division missing one
-  const missingCsi = template.divisions.filter(d => !d.csiCode && lookupCsiCode(d.name));
-  if (missingCsi.length > 0) {
-    await Promise.all(missingCsi.map(d =>
-      prisma.estimateTemplateDivision.update({
-        where: { id: d.id },
-        data: { csiCode: lookupCsiCode(d.name) },
-      })
+  // Auto-apply / upgrade CSI codes for divisions missing or using old short codes
+  const needsCsiUpdate = template.divisions
+    .map(d => ({ d, code: getCorrectCsiCode(d.name, d.csiCode) }))
+    .filter(({ code }) => code !== undefined);
+  if (needsCsiUpdate.length > 0) {
+    await Promise.all(needsCsiUpdate.map(({ d, code }) =>
+      prisma.estimateTemplateDivision.update({ where: { id: d.id }, data: { csiCode: code } })
     ));
-    // Apply to the in-memory objects so the page renders with codes
-    missingCsi.forEach(d => { d.csiCode = lookupCsiCode(d.name) ?? null; });
+    needsCsiUpdate.forEach(({ d, code }) => { d.csiCode = code ?? null; });
   }
 
   const divisions = template.divisions.map((d) => ({

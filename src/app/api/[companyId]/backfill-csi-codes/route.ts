@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { auth } from "@/lib/auth";
-import { lookupCsiCode } from "@/lib/divisions";
+import { getCorrectCsiCode } from "@/lib/divisions";
 
 export const runtime = "nodejs";
 
@@ -25,24 +25,16 @@ export async function POST(req: NextRequest, { params }: { params: { companyId: 
   let skipped = 0;
 
   for (const div of templateDivisions) {
-    if (div.csiCode) { skipped++; continue; } // already has a code
-    const code = lookupCsiCode(div.name);
+    const code = getCorrectCsiCode(div.name, div.csiCode);
     if (!code) { skipped++; continue; }
-    await prisma.estimateTemplateDivision.update({
-      where: { id: div.id },
-      data: { csiCode: code },
-    });
+    await prisma.estimateTemplateDivision.update({ where: { id: div.id }, data: { csiCode: code } });
     updated++;
   }
 
   for (const div of estimateDivisions) {
-    if (div.csiCode) { skipped++; continue; }
-    const code = lookupCsiCode(div.name);
+    const code = getCorrectCsiCode(div.name, div.csiCode);
     if (!code) { skipped++; continue; }
-    await prisma.projectEstimateDivision.update({
-      where: { id: div.id },
-      data: { csiCode: code },
-    });
+    await prisma.projectEstimateDivision.update({ where: { id: div.id }, data: { csiCode: code } });
     updated++;
   }
 
