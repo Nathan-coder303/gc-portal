@@ -2,6 +2,7 @@
 
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
+import { TrashIcon, PencilIcon } from "@/components/ui/icons";
 import { lookupCsiCode, lookupItemCsiCode, formatCsiCode } from "@/lib/divisions";
 import { DndContext, DragOverlay, useDroppable, useDraggable, closestCenter } from "@dnd-kit/core";
 import type { DragStartEvent, DragEndEvent } from "@dnd-kit/core";
@@ -184,8 +185,18 @@ function ItemRow({ item, divisionId, groupId, canEdit }: { item: Item; divisionI
           <div className="flex gap-1 justify-end opacity-0 group-hover:opacity-100 transition-opacity">
             {canEdit && (
               <>
-                <button onClick={() => setEditing(true)} className="text-xs px-2" style={{ color: "#C9A84C" }}>Edit</button>
-                <button onClick={() => { if (confirm("Remove item?")) startTransition(async () => { await archiveTemplateItem(item.id); }); }} disabled={isPending} className="text-xs px-2" style={{ color: "#ef4444" }}>Remove</button>
+                <button onClick={() => setEditing(true)}
+                  className="w-6 h-6 rounded flex items-center justify-center"
+                  style={{ background: "#C9A84C22", color: "#C9A84C", border: "1px solid #C9A84C44" }}
+                  title="Edit">
+                  <PencilIcon size={12} />
+                </button>
+                <button onClick={() => { if (confirm("Remove item?")) startTransition(async () => { await archiveTemplateItem(item.id); }); }} disabled={isPending}
+                  className="w-6 h-6 rounded flex items-center justify-center disabled:opacity-50"
+                  style={{ background: "#f8514922", color: "#f85149", border: "1px solid #f8514933" }}
+                  title="Remove">
+                  <TrashIcon size={12} />
+                </button>
               </>
             )}
           </div>
@@ -317,8 +328,11 @@ function TemplateGroupSection({ group, divisionId, canEdit }: { group: Group; di
         <div className="flex items-center gap-3">
           {total > 0 && <span className="text-xs font-semibold" style={{ color: "#C9A84C" }}>${fmt(total)}</span>}
           {canEdit && (
-            <button onClick={() => { if (confirm("Remove group?")) startTransition(async () => { await archiveTemplateGroup(group.id); }); }} disabled={isPending} className="text-xs" style={{ color: "#ef4444" }}>
-              Remove
+            <button onClick={() => { if (confirm("Remove group?")) startTransition(async () => { await archiveTemplateGroup(group.id); }); }} disabled={isPending}
+              className="w-6 h-6 rounded flex items-center justify-center disabled:opacity-50"
+              style={{ background: "#f8514922", color: "#f85149", border: "1px solid #f8514933" }}
+              title="Remove group">
+              <TrashIcon size={12} />
             </button>
           )}
         </div>
@@ -475,8 +489,11 @@ function TemplateDivisionSection({ division, otherDivisions, canEdit }: { divisi
           )}
           {canEdit && (
             <div className="px-3 pt-1">
-              <button onClick={() => { if (confirm("Remove division?")) startTransition(async () => { await archiveTemplateDivision(division.id); }); }} disabled={isPending} className="text-xs" style={{ color: "#ef4444" }}>
-                Remove Division
+              <button onClick={() => { if (confirm("Remove division?")) startTransition(async () => { await archiveTemplateDivision(division.id); }); }} disabled={isPending}
+                className="w-6 h-6 rounded flex items-center justify-center disabled:opacity-50"
+                style={{ background: "#f8514922", color: "#f85149", border: "1px solid #f8514933" }}
+                title="Remove division">
+                <TrashIcon size={12} />
               </button>
             </div>
           )}
@@ -689,8 +706,11 @@ function ClientSelector({
               {displayClient ? "Change" : "Assign Client"}
             </button>
             {displayClient && (
-              <button onClick={handleClear} disabled={isPending} className="text-xs px-2 py-1" style={{ color: "#ef4444" }}>
-                Remove
+              <button onClick={handleClear} disabled={isPending}
+                className="w-6 h-6 rounded flex items-center justify-center disabled:opacity-50"
+                style={{ background: "#f8514922", color: "#f85149", border: "1px solid #f8514933" }}
+                title="Remove client">
+                <TrashIcon size={12} />
               </button>
             )}
           </div>

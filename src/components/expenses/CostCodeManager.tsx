@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { upsertCostCode, deleteCostCode } from "@/app/[companyId]/[projectId]/expenses/actions";
+import { TrashIcon, PencilIcon } from "@/components/ui/icons";
 
 type CostCode = { id: string; code: string; name: string; budgetAmount: number };
 
@@ -98,9 +99,17 @@ export default function CostCodeManager({
                 <td className="py-2.5">
                   <div className="flex gap-2 justify-end">
                     <button onClick={() => { setAdding(false); setEditing(cc); }}
-                      className="text-xs text-blue-600 hover:underline">Edit</button>
+                      className="w-7 h-7 rounded flex items-center justify-center"
+                      style={{ background: "#C9A84C22", color: "#C9A84C", border: "1px solid #C9A84C44" }}
+                      title="Edit">
+                      <PencilIcon size={13} />
+                    </button>
                     <button onClick={() => handleDelete(cc.id)}
-                      className="text-xs text-red-500 hover:underline">Delete</button>
+                      className="w-7 h-7 rounded flex items-center justify-center"
+                      style={{ background: "#f8514922", color: "#f85149", border: "1px solid #f8514933" }}
+                      title="Delete">
+                      <TrashIcon size={13} />
+                    </button>
                   </div>
                 </td>
               </tr>

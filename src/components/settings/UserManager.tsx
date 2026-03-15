@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { createUser, updateUserRole, archiveUser, updateUserLastName, setUserProjectAccess } from "@/app/[companyId]/[projectId]/settings/actions";
+import { TrashIcon } from "@/components/ui/icons";
 
 type User = {
   id: string;
@@ -200,9 +201,11 @@ export default function UserManager({
                     <button
                       onClick={() => handleArchive(u.id)}
                       disabled={loadingId === u.id}
-                      className="text-xs text-red-500 hover:underline disabled:opacity-50"
+                      className="w-7 h-7 rounded flex items-center justify-center disabled:opacity-50"
+                      style={{ background: "#f8514922", color: "#f85149", border: "1px solid #f8514933" }}
+                      title="Archive"
                     >
-                      Archive
+                      <TrashIcon size={13} />
                     </button>
                   )}
                 </td>

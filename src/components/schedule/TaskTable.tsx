@@ -6,6 +6,7 @@ import { updateTaskStatus } from "@/app/[companyId]/[projectId]/schedule/actions
 import { TaskStatus } from "@prisma/client";
 import type { GanttTask } from "@/lib/schedule/gantt";
 import TaskEditModal from "./TaskEditModal";
+import { PencilIcon } from "@/components/ui/icons";
 
 const statusColors: Record<string, string> = {
   NOT_STARTED: "bg-slate-100 text-slate-600",
@@ -169,9 +170,11 @@ export default function TaskTable({ tasks, canEdit = false }: { tasks: GanttTask
                                 notes: null,
                                 percentComplete: t.percentComplete,
                               })}
-                              className="text-xs text-blue-600 hover:underline"
+                              className="w-7 h-7 rounded flex items-center justify-center"
+                              style={{ background: "#C9A84C22", color: "#C9A84C", border: "1px solid #C9A84C44" }}
+                              title="Edit"
                             >
-                              Edit
+                              <PencilIcon size={13} />
                             </button>
                           </td>
                         )}

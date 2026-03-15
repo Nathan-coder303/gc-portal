@@ -4,6 +4,7 @@ import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { upsertClient, deleteClient } from "@/app/[companyId]/estimates/actions";
+import { TrashIcon, PencilIcon } from "@/components/ui/icons";
 
 type Client = { id: string; name: string; address: string | null; city: string | null; state: string | null; zip: string | null; email: string | null; phone: string | null; estimateCount: number };
 
@@ -103,7 +104,9 @@ function ClientRow({ client, companyId, isAdmin }: { client: Client; companyId: 
         </Link>
         {isAdmin && (
           <>
-            <button onClick={() => setEditing(true)} className="text-xs opacity-0 group-hover:opacity-100 transition-opacity" style={{ color: "#8b949e" }}>Edit</button>
+            <button onClick={() => setEditing(true)} className="w-7 h-7 rounded flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity" style={{ background: "#C9A84C22", color: "#C9A84C", border: "1px solid #C9A84C44" }} title="Edit">
+              <PencilIcon size={13} />
+            </button>
             {showDelete ? (
               <div className="flex gap-1 items-center">
                 <span className="text-xs" style={{ color: "#8b949e" }}>Sure?</span>
@@ -111,7 +114,9 @@ function ClientRow({ client, companyId, isAdmin }: { client: Client; companyId: 
                 <button onClick={() => setShowDelete(false)} className="text-xs" style={{ color: "#8b949e" }}>No</button>
               </div>
             ) : (
-              <button onClick={() => setShowDelete(true)} className="text-xs opacity-0 group-hover:opacity-100 transition-opacity" style={{ color: "#ef4444" }}>Delete</button>
+              <button onClick={() => setShowDelete(true)} className="w-7 h-7 rounded flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity" style={{ background: "#f8514922", color: "#f85149", border: "1px solid #f8514933" }} title="Delete">
+                <TrashIcon size={13} />
+              </button>
             )}
           </>
         )}

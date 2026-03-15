@@ -4,6 +4,7 @@ import { useState } from "react";
 import { format } from "date-fns";
 import { deleteExpense, bulkArchiveExpenses, bulkReclassifyExpenses } from "@/app/[companyId]/[projectId]/expenses/actions";
 import ExpenseEditModal from "./ExpenseEditModal";
+import { TrashIcon, PencilIcon } from "@/components/ui/icons";
 
 type CostCode = { id: string; code: string; name: string };
 
@@ -256,18 +257,22 @@ export default function ExpenseLogTable({
                         {canEdit && (
                           <button
                             onClick={() => setEditingExpense(e)}
-                            className="text-xs text-blue-600 hover:underline"
+                            className="w-7 h-7 rounded flex items-center justify-center"
+                            style={{ background: "#C9A84C22", color: "#C9A84C", border: "1px solid #C9A84C44" }}
+                            title="Edit"
                           >
-                            Edit
+                            <PencilIcon size={13} />
                           </button>
                         )}
                         {canArchive && (
                           <button
                             onClick={() => handleArchive(e.id)}
                             disabled={archiving === e.id}
-                            className="text-xs text-red-500 hover:underline disabled:opacity-50"
+                            className="w-7 h-7 rounded flex items-center justify-center disabled:opacity-50"
+                            style={{ background: "#f8514922", color: "#f85149", border: "1px solid #f8514933" }}
+                            title="Archive"
                           >
-                            {archiving === e.id ? "..." : "Archive"}
+                            <TrashIcon size={13} />
                           </button>
                         )}
                       </div>

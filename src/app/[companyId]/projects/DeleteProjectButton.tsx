@@ -3,6 +3,7 @@
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { deleteProject } from "./actions";
+import { TrashIcon } from "@/components/ui/icons";
 
 export default function DeleteProjectButton({
   projectId,
@@ -31,10 +32,11 @@ export default function DeleteProjectButton({
           e.stopPropagation();
           setShowConfirm(true);
         }}
-        className="text-xs px-2 py-1 rounded transition-colors"
-        style={{ color: "#ef4444" }}
+        className="w-7 h-7 rounded flex items-center justify-center transition-colors"
+        style={{ background: "#f8514922", color: "#f85149", border: "1px solid #f8514933" }}
+        title="Delete project"
       >
-        Delete
+        <TrashIcon size={13} />
       </button>
 
       {showConfirm && (

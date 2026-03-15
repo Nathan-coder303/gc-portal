@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { createPartner, updatePartner, archivePartner, createPartnerPortalAccess } from "@/app/[companyId]/[projectId]/ledger/actions";
+import { TrashIcon, PencilIcon } from "@/components/ui/icons";
 
 type Partner = {
   id: string;
@@ -239,15 +240,17 @@ export default function PartnerManager({
                         🔑 Portal Access
                       </button>
                       <button onClick={() => { setEditing(p); setError(""); setSuccess(""); }}
-                        className="text-xs px-2 py-1 rounded-lg"
-                        style={{ background: "#1e2736", color: "#8b949e", border: "1px solid #30373f" }}>
-                        Edit
+                        className="w-7 h-7 rounded-lg flex items-center justify-center"
+                        style={{ background: "#C9A84C22", color: "#C9A84C", border: "1px solid #C9A84C44" }}
+                        title="Edit">
+                        <PencilIcon size={13} />
                       </button>
                       <button onClick={() => handleArchive(p.id, p.name)}
                         disabled={archiving === p.id}
-                        className="text-xs px-2 py-1 rounded-lg disabled:opacity-50"
-                        style={{ background: "#2d1b1b", color: "#f87171", border: "1px solid #6b2a2a" }}>
-                        {archiving === p.id ? "..." : "Remove"}
+                        className="w-7 h-7 rounded-lg flex items-center justify-center disabled:opacity-50"
+                        style={{ background: "#f8514922", color: "#f85149", border: "1px solid #f8514933" }}
+                        title="Remove">
+                        <TrashIcon size={13} />
                       </button>
                     </div>
                   </div>

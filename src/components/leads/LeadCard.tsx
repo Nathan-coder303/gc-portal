@@ -4,6 +4,7 @@ import { useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { deleteLead } from "@/app/[companyId]/leads/actions";
 import LeadTime from "@/components/today/LeadTime";
+import { TrashIcon } from "@/components/ui/icons";
 
 type Lead = {
   id: string;
@@ -47,11 +48,11 @@ export default function LeadCard({ lead, companyId }: { lead: Lead; companyId: s
       <button
         onClick={handleDelete}
         disabled={isPending}
-        className="absolute top-3 right-3 opacity-0 group-hover:opacity-100 transition-opacity w-6 h-6 rounded flex items-center justify-center text-xs"
+        className="absolute top-3 right-3 opacity-0 group-hover:opacity-100 transition-opacity w-6 h-6 rounded flex items-center justify-center"
         style={{ background: "#f8514922", color: "#f85149", border: "1px solid #f8514933" }}
         title="Delete lead"
       >
-        ×
+        <TrashIcon size={12} />
       </button>
 
       {/* Status badge */}

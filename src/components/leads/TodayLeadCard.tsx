@@ -4,6 +4,7 @@ import { useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { deleteLead } from "@/app/[companyId]/leads/actions";
 import LeadTime from "@/components/today/LeadTime";
+import { TrashIcon } from "@/components/ui/icons";
 
 type Lead = {
   id: string;
@@ -26,6 +27,7 @@ export default function TodayLeadCard({
 }) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
+  // Navigation handled by parent <Link> wrapper
 
   function handleDelete(e: React.MouseEvent) {
     e.stopPropagation();
@@ -38,19 +40,18 @@ export default function TodayLeadCard({
 
   return (
     <li
-      onClick={() => router.push(`/${companyId}/leads`)}
-      className="flex flex-col gap-0.5 pb-3 relative group cursor-pointer rounded-lg px-1 -mx-1 transition-colors hover:bg-white/5"
+      className="flex flex-col gap-0.5 pb-3 relative group rounded-lg px-1 -mx-1"
       style={{ borderBottom: "1px solid #21262d", opacity: isPending ? 0.4 : 1 }}
     >
       {/* Delete */}
       <button
         onClick={handleDelete}
         disabled={isPending}
-        className="absolute top-0 right-0 opacity-0 group-hover:opacity-100 transition-opacity w-5 h-5 rounded flex items-center justify-center text-xs"
-        style={{ background: "#f8514922", color: "#f85149" }}
+        className="absolute top-0 right-0 opacity-0 group-hover:opacity-100 transition-opacity w-5 h-5 rounded flex items-center justify-center"
+        style={{ background: "#f8514922", color: "#f85149", border: "1px solid #f8514933" }}
         title="Delete"
       >
-        ×
+        <TrashIcon size={11} />
       </button>
 
       <span className="text-sm font-semibold pr-5" style={{ color: "#e6edf3" }}>

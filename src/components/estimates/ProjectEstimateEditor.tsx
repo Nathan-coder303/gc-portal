@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
+import { TrashIcon } from "@/components/ui/icons";
 import { DndContext, DragOverlay, useDroppable, useDraggable, closestCenter } from "@dnd-kit/core";
 import type { DragStartEvent, DragEndEvent } from "@dnd-kit/core";
 import {
@@ -122,9 +123,11 @@ function ItemRowEdit({
               <button
                 onClick={() => startTransition(async () => { await archiveEstimateItem(item.id); })}
                 disabled={isPending}
-                className="text-xs text-red-500 hover:text-red-700 px-2"
+                className="w-6 h-6 rounded flex items-center justify-center disabled:opacity-50"
+                style={{ background: "#f8514922", color: "#f85149", border: "1px solid #f8514933" }}
+                title="Remove"
               >
-                Remove
+                <TrashIcon size={12} />
               </button>
             )}
           </div>
@@ -309,9 +312,11 @@ function GroupSection({
             <button
               onClick={() => { if (confirm("Remove group?")) startTransition(async () => { await archiveEstimateGroup(group.id); }); }}
               disabled={isPending}
-              className="text-xs text-red-400 hover:text-red-600"
+              className="w-6 h-6 rounded flex items-center justify-center disabled:opacity-50"
+              style={{ background: "#f8514922", color: "#f85149", border: "1px solid #f8514933" }}
+              title="Remove group"
             >
-              Remove
+              <TrashIcon size={12} />
             </button>
           )}
         </div>
@@ -407,9 +412,11 @@ function DivisionSection({
               <button
                 onClick={() => { if (confirm("Remove division?")) startTransition(async () => { await archiveEstimateDivision(division.id); }); }}
                 disabled={isPending}
-                className="text-xs text-red-400 hover:text-red-600"
+                className="w-6 h-6 rounded flex items-center justify-center disabled:opacity-50"
+                style={{ background: "#f8514922", color: "#f85149", border: "1px solid #f8514933" }}
+                title="Remove division"
               >
-                Remove Division
+                <TrashIcon size={12} />
               </button>
             </div>
           )}

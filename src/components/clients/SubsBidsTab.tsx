@@ -2,6 +2,7 @@
 import { useState, useRef, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { upsertSubBid, deleteSubBid } from "@/app/[companyId]/clients/actions";
+import { TrashIcon, PencilIcon } from "@/components/ui/icons";
 
 export type SubBidOffer = {
   id: string;
@@ -292,12 +293,19 @@ export default function SubsBidsTab({ clientId, companyId, clientName, clientAdd
                         </div>
                         <div className="flex flex-col gap-1 shrink-0">
                           {canEdit && (
-                            <button onClick={() => openEdit(offer)} className="text-xs" style={{ color: "#8b949e" }}>Edit</button>
+                            <button onClick={() => openEdit(offer)}
+                              className="w-6 h-6 rounded flex items-center justify-center"
+                              style={{ background: "#C9A84C22", color: "#C9A84C", border: "1px solid #C9A84C44" }}
+                              title="Edit">
+                              <PencilIcon size={12} />
+                            </button>
                           )}
                           {canDelete && !offer.isPlaceholder && (
                             <button onClick={() => handleDelete(bid, offer)} disabled={deleting === offer.id}
-                              className="text-xs" style={{ color: "#ef4444" }}>
-                              {deleting === offer.id ? "…" : "Delete"}
+                              className="w-6 h-6 rounded flex items-center justify-center disabled:opacity-50"
+                              style={{ background: "#f8514922", color: "#f85149", border: "1px solid #f8514933" }}
+                              title="Delete">
+                              <TrashIcon size={12} />
                             </button>
                           )}
                         </div>

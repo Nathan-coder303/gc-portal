@@ -4,6 +4,7 @@ import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { createEstimateFromTemplate, createBlankEstimate, archiveEstimate } from "@/app/[companyId]/[projectId]/estimates/actions";
 import { fmt } from "@/lib/estimates/totals";
+import { TrashIcon } from "@/components/ui/icons";
 
 type Template = { id: string; name: string };
 type Estimate = {
@@ -190,9 +191,11 @@ export default function ProjectEstimateList({
                 <button
                   onClick={() => handleArchive(est.id)}
                   disabled={isPending}
-                  className="text-xs text-red-500 hover:text-red-700 ml-2"
+                  className="w-7 h-7 rounded flex items-center justify-center ml-2 disabled:opacity-50"
+                  style={{ background: "#f8514922", color: "#f85149", border: "1px solid #f8514933" }}
+                  title="Archive"
                 >
-                  Archive
+                  <TrashIcon size={13} />
                 </button>
               )}
             </div>

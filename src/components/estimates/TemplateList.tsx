@@ -3,6 +3,7 @@
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { createTemplate, createStandardTemplate, archiveTemplate, renameTemplate } from "@/app/[companyId]/estimates/actions";
+import { TrashIcon, PencilIcon } from "@/components/ui/icons";
 
 type Template = {
   id: string;
@@ -66,20 +67,22 @@ function TemplateCard({
         {canEdit && (
           <button
             onClick={(e) => { e.preventDefault(); setEditingName(true); setNameVal(tpl.name); }}
-            className="text-xs px-2 py-1 rounded"
-            style={{ background: "#1e2736", border: "1px solid #30373f", color: "#8b949e" }}
+            className="w-7 h-7 rounded flex items-center justify-center"
+            style={{ background: "#C9A84C22", color: "#C9A84C", border: "1px solid #C9A84C44" }}
+            title="Rename"
           >
-            Rename
+            <PencilIcon size={13} />
           </button>
         )}
         {canArchive && (
           <button
             onClick={(e) => { e.preventDefault(); if (!confirm("Archive this template?")) return; startTransition(async () => { await archiveTemplate(tpl.id); }); }}
             disabled={isPending}
-            className="text-xs"
-            style={{ color: "#ef4444" }}
+            className="w-7 h-7 rounded flex items-center justify-center"
+            style={{ background: "#f8514922", color: "#f85149", border: "1px solid #f8514933" }}
+            title="Archive"
           >
-            Archive
+            <TrashIcon size={13} />
           </button>
         )}
       </div>

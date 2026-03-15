@@ -78,14 +78,15 @@ export default async function TodayPage({
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
         {/* Card 1 — New Leads of the Day */}
-        <div
-          className="rounded-xl p-5 flex flex-col gap-3"
+        <Link
+          href={`/${params.companyId}/leads`}
+          className="rounded-xl p-5 flex flex-col gap-3 transition-colors hover:border-[#C9A84C55] block"
           style={{ background: "#161b22", border: "1px solid #30373f" }}
         >
           <div className="flex items-center justify-between">
-            <Link href={`/${params.companyId}/leads`} className="text-xs font-semibold uppercase tracking-wider hover:underline" style={{ color: "#8b949e" }}>
-              New Leads of the Day →
-            </Link>
+            <span className="text-xs font-semibold uppercase tracking-wider" style={{ color: "#8b949e" }}>
+              New Leads of the Day
+            </span>
             <div className="flex items-center gap-2">
               <span className="text-xs" style={{ color: "#8b949e" }}>{allLeadsCount} total</span>
               <span
@@ -105,7 +106,7 @@ export default async function TodayPage({
               ))}
             </ul>
           )}
-        </div>
+        </Link>
 
         {/* Card 2 — Estimates to be Sent Today */}
         <div
