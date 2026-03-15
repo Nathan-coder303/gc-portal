@@ -7,6 +7,10 @@
     {
       "path": "/api/cron/fetch-bids",
       "schedule": "0 8 * * *"
+    },
+    {
+      "path": "/api/cron/fetch-leads",
+      "schedule": "*/10 * * * *"
     }
   ]
 }

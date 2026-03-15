@@ -69,6 +69,30 @@ model Company {
   dailySummaries    DailySummary[]
   payees            Payee[]
   termsTemplates    TermsTemplate[]
+  leads             Lead[]
+}
+
+model Lead {
+  id           String   @id @default(cuid())
+  companyId    String
+  company      Company  @relation(fields: [companyId], references: [id])
+  name         String?
+  email        String?
+  phone        String?
+  address      String?
+  city         String?
+  state        String?
+  projectType  String?
+  message      String?
+  source       String   @default("email")
+  gmailMsgId   String?  @unique
+  emailFrom    String?
+  emailSubject String?
+  receivedAt   DateTime @default(now())
+  status       String   @default("NEW")
+
+  @@index([companyId])
+  @@index([receivedAt])
 }
 
 model TermsTemplate {
