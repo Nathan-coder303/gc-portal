@@ -90,7 +90,7 @@ export default async function TodayPage({
               <span className="text-xs" style={{ color: "#8b949e" }}>{allLeadsCount} total</span>
               <span
                 className="text-xs font-bold px-2 py-0.5 rounded"
-                style={{ background: "#238636", color: "#fff" }}
+                style={{ background: "#C9A84C", color: "#0d1117" }}
               >
                 {todayLeads.length} today
               </span>
