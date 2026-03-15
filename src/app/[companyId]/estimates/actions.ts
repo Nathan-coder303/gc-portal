@@ -609,11 +609,13 @@ export async function upsertTermsTemplate(data: { id?: string; name: string; con
 
   if (data.id) {
     await prisma.termsTemplate.update({ where: { id: data.id }, data: { name: data.name.trim(), content: data.content } });
+    revalidatePath(`/${session.user.companyId}/estimates`);
+    return { success: true, id: data.id };
   } else {
-    await prisma.termsTemplate.create({ data: { companyId: session.user.companyId, name: data.name.trim(), content: data.content } });
+    const created = await prisma.termsTemplate.create({ data: { companyId: session.user.companyId, name: data.name.trim(), content: data.content } });
+    revalidatePath(`/${session.user.companyId}/estimates`);
+    return { success: true, id: created.id };
   }
-  revalidatePath(`/${session.user.companyId}/estimates`);
-  return { success: true };
 }
 
 export async function deleteTermsTemplate(id: string) {

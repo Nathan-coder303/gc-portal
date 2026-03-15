@@ -780,6 +780,10 @@ export default function TemplateEditor({
   const [termsContent, setTermsContent] = useState(template.termsContent ?? "");
   const [termsDirty, setTermsDirty] = useState(false);
   const [termsTemplates, setTermsTemplates] = useState(initialTermsTemplates);
+  const [selectedTermsTplId, setSelectedTermsTplId] = useState<string>(() => {
+    // Pre-select whichever saved T&C matches the current content
+    return initialTermsTemplates.find(t => t.content === (template.termsContent ?? ""))?.id ?? "";
+  });
   const [savingTermsAs, setSavingTermsAs] = useState(false);
   const [newTermsName, setNewTermsName] = useState("");
   const paymentRows = template.paymentSchedule ?? DEFAULT_PAYMENT_SCHEDULE;
@@ -967,19 +971,20 @@ export default function TemplateEditor({
                   </button>
                   {showTerms && canEdit && (
                     <div className="space-y-2">
-                      {/* Load from saved T&C preset */}
+                      {/* T&C selector */}
                       <div className="flex gap-2 items-center">
                         <select
                           className="flex-1 rounded-lg px-3 py-1.5 text-xs"
-                          style={{ background: "#0d1117", border: "1px solid #30373f", color: "#8b949e" }}
-                          defaultValue=""
+                          style={{ background: "#0d1117", border: "1px solid #30373f", color: selectedTermsTplId ? "#e6edf3" : "#8b949e" }}
+                          value={selectedTermsTplId}
                           onChange={e => {
-                            const tpl = termsTemplates.find(t => t.id === e.target.value);
+                            const id = e.target.value;
+                            setSelectedTermsTplId(id);
+                            const tpl = termsTemplates.find(t => t.id === id);
                             if (tpl) { setTermsContent(tpl.content); setTermsDirty(true); }
-                            e.target.value = "";
                           }}
                         >
-                          <option value="" disabled>— Load saved T&C —</option>
+                          <option value="">— Select T&C template —</option>
                           {termsTemplates.map(t => (
                             <option key={t.id} value={t.id}>{t.name}</option>
                           ))}
@@ -1008,10 +1013,14 @@ export default function TemplateEditor({
                             disabled={!newTermsName.trim() || isPending}
                             onClick={() => {
                               startTransition(async () => {
-                                await upsertTermsTemplate({ name: newTermsName, content: termsContent });
+                                const result = await upsertTermsTemplate({ name: newTermsName, content: termsContent });
                                 const existing = termsTemplates.find(t => t.name === newTermsName.trim());
+                                const newId = result?.id ?? Date.now().toString();
                                 if (!existing) {
-                                  setTermsTemplates(prev => [...prev, { id: Date.now().toString(), name: newTermsName.trim(), content: termsContent }]);
+                                  setTermsTemplates(prev => [...prev, { id: newId, name: newTermsName.trim(), content: termsContent }]);
+                                  setSelectedTermsTplId(newId);
+                                } else {
+                                  setSelectedTermsTplId(existing.id);
                                 }
                                 setSavingTermsAs(false);
                                 setNewTermsName("");
