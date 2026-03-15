@@ -234,6 +234,7 @@ export async function upsertTemplateItem(
     id?: string;
     groupId?: string | null;
     name: string;
+    csiCode?: string | null;
     unit?: string | null;
     defaultQty?: number | null;
     defaultUnitCost?: number | null;
@@ -250,6 +251,7 @@ export async function upsertTemplateItem(
 
   const payload = {
     name: data.name,
+    csiCode: data.csiCode ?? null,
     unit: data.unit ?? null,
     defaultQty: data.defaultQty ?? null,
     defaultUnitCost: data.defaultUnitCost ?? null,

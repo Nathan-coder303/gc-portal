@@ -4,7 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { can } from "@/lib/auth/permissions";
 import TemplateEditor from "@/components/estimates/TemplateEditor";
 import Link from "next/link";
-import { getCorrectCsiCode } from "@/lib/divisions";
+import { getCorrectCsiCode, lookupItemCsiCode } from "@/lib/divisions";
 
 export default async function TemplateEditorPage({
   params,
@@ -56,6 +56,16 @@ export default async function TemplateEditorPage({
     needsCsiUpdate.forEach(({ d, code }) => { d.csiCode = code ?? null; });
   }
 
+  // Auto-populate item CSI codes for items that have none
+  const allItems = template.divisions.flatMap(d => [...d.items, ...d.groups.flatMap(g => g.items)]);
+  const itemsNeedingCsi = allItems.filter(i => !i.csiCode).map(i => ({ i, code: lookupItemCsiCode(i.name) })).filter(({ code }) => code !== undefined);
+  if (itemsNeedingCsi.length > 0) {
+    await Promise.all(itemsNeedingCsi.map(({ i, code }) =>
+      prisma.estimateTemplateItem.update({ where: { id: i.id }, data: { csiCode: code } })
+    ));
+    itemsNeedingCsi.forEach(({ i, code }) => { i.csiCode = code ?? null; });
+  }
+
   const divisions = template.divisions.map((d) => ({
     id: d.id,
     csiCode: d.csiCode,
@@ -66,6 +76,7 @@ export default async function TemplateEditorPage({
       items: g.items.map((i) => ({
         id: i.id,
         name: i.name,
+        csiCode: i.csiCode,
         unit: i.unit,
         defaultQty: i.defaultQty ? Number(i.defaultQty) : null,
         defaultUnitCost: i.defaultUnitCost ? Number(i.defaultUnitCost) : null,
@@ -79,6 +90,7 @@ export default async function TemplateEditorPage({
     items: d.items.map((i) => ({
       id: i.id,
       name: i.name,
+      csiCode: i.csiCode,
       unit: i.unit,
       defaultQty: i.defaultQty ? Number(i.defaultQty) : null,
       defaultUnitCost: i.defaultUnitCost ? Number(i.defaultUnitCost) : null,

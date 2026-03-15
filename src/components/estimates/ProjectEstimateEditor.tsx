@@ -18,8 +18,9 @@ import {
   fmt,
   type ItemLike,
 } from "@/lib/estimates/totals";
+import { lookupItemCsiCode } from "@/lib/divisions";
 
-type Item = ItemLike & { id: string; name: string; unit: string | null; vendor: string | null; notes: string | null; sortOrder: number };
+type Item = ItemLike & { id: string; name: string; csiCode: string | null; unit: string | null; vendor: string | null; notes: string | null; sortOrder: number };
 type Group = { id: string; name: string; items: Item[] };
 type Division = { id: string; csiCode: string | null; name: string; groups: Group[]; items: Item[] };
 type Estimate = { id: string; name: string; description: string | null; status: string; projectId: string };
@@ -43,6 +44,7 @@ function ItemRowEdit({
   const [isPending, startTransition] = useTransition();
   const [form, setForm] = useState({
     name: item.name,
+    csiCode: item.csiCode ?? "",
     unit: item.unit ?? "",
     qty: item.qty,
     unitCost: item.unitCost,
@@ -59,6 +61,7 @@ function ItemRowEdit({
         id: item.id,
         groupId: groupId ?? null,
         name: form.name,
+        csiCode: form.csiCode || null,
         unit: form.unit || null,
         qty: Number(form.qty),
         unitCost: Number(form.unitCost),
@@ -75,6 +78,7 @@ function ItemRowEdit({
   if (!editing) {
     return (
       <tr className="border-t border-slate-100 hover:bg-slate-50 group">
+        <td className="px-3 py-2 text-xs font-mono text-slate-400" style={{ whiteSpace: "nowrap" }}>{item.csiCode ?? ""}</td>
         <td className="px-3 py-2 text-sm text-slate-800">{item.name}</td>
         <td className="px-3 py-2 text-sm text-slate-700 text-right">{item.qty}</td>
         <td className="px-3 py-2 text-sm text-slate-500 text-center">{item.unit ?? "—"}</td>
@@ -108,7 +112,10 @@ function ItemRowEdit({
   return (
     <tr className="border-t border-blue-100 bg-blue-50">
       <td className="px-2 py-1">
-        <input className="w-full border border-slate-300 rounded px-2 py-1 text-xs" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} />
+        <input className="w-20 border border-slate-300 rounded px-2 py-1 text-xs font-mono" value={form.csiCode} onChange={(e) => setForm({ ...form, csiCode: e.target.value })} placeholder="CSI" />
+      </td>
+      <td className="px-2 py-1">
+        <input className="w-full border border-slate-300 rounded px-2 py-1 text-xs" value={form.name} onChange={(e) => { const n = e.target.value; const auto = lookupItemCsiCode(n); setForm({ ...form, name: n, csiCode: auto ?? form.csiCode }); }} />
       </td>
       <td className="px-2 py-1">
         <input type="number" step="any" className="w-16 border border-slate-300 rounded px-2 py-1 text-xs text-right" value={form.qty} onChange={(e) => setForm({ ...form, qty: Number(e.target.value) })} />
@@ -138,7 +145,7 @@ function ItemRowEdit({
 function AddItemRow({ divisionId, groupId, canEdit }: { divisionId: string; groupId?: string | null; canEdit: boolean }) {
   const [open, setOpen] = useState(false);
   const [isPending, startTransition] = useTransition();
-  const [form, setForm] = useState({ name: "", unit: "", qty: "1", unitCost: "0", markupPct: "0" });
+  const [form, setForm] = useState({ name: "", csiCode: "", unit: "", qty: "1", unitCost: "0", markupPct: "0" });
 
   if (!canEdit) return null;
 
@@ -148,6 +155,7 @@ function AddItemRow({ divisionId, groupId, canEdit }: { divisionId: string; grou
       await upsertEstimateItem(divisionId, {
         groupId: groupId ?? null,
         name: form.name,
+        csiCode: form.csiCode || null,
         unit: form.unit || null,
         qty: Number(form.qty),
         unitCost: Number(form.unitCost),
@@ -155,7 +163,7 @@ function AddItemRow({ divisionId, groupId, canEdit }: { divisionId: string; grou
         materialCost: 0,
         markupPct: Number(form.markupPct),
       });
-      setForm({ name: "", unit: "", qty: "1", unitCost: "0", markupPct: "0" });
+      setForm({ name: "", csiCode: "", unit: "", qty: "1", unitCost: "0", markupPct: "0" });
       setOpen(false);
     });
   }
@@ -163,7 +171,7 @@ function AddItemRow({ divisionId, groupId, canEdit }: { divisionId: string; grou
   if (!open) {
     return (
       <tr>
-        <td colSpan={7} className="px-3 py-1">
+        <td colSpan={8} className="px-3 py-1">
           <button onClick={() => setOpen(true)} className="text-xs text-blue-600 hover:text-blue-800">+ Add Item</button>
         </td>
       </tr>
@@ -173,7 +181,10 @@ function AddItemRow({ divisionId, groupId, canEdit }: { divisionId: string; grou
   return (
     <tr className="bg-green-50 border-t border-green-100">
       <td className="px-2 py-1">
-        <input autoFocus className="w-full border border-slate-300 rounded px-2 py-1 text-xs" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} placeholder="Item name" />
+        <input className="w-20 border border-slate-300 rounded px-2 py-1 text-xs font-mono" value={form.csiCode} onChange={(e) => setForm({ ...form, csiCode: e.target.value })} placeholder="CSI" />
+      </td>
+      <td className="px-2 py-1">
+        <input autoFocus className="w-full border border-slate-300 rounded px-2 py-1 text-xs" value={form.name} onChange={(e) => { const n = e.target.value; const auto = lookupItemCsiCode(n); setForm({ ...form, name: n, csiCode: auto ?? form.csiCode }); }} placeholder="Item name" />
       </td>
       <td className="px-2 py-1">
         <input type="number" step="any" className="w-16 border border-slate-300 rounded px-2 py-1 text-xs text-right" value={form.qty} onChange={(e) => setForm({ ...form, qty: e.target.value })} />
@@ -216,6 +227,7 @@ function ItemTable({
       <table className="w-full text-sm">
         <thead>
           <tr className="text-xs text-slate-500 bg-slate-50">
+            <th className="px-3 py-1.5 text-left font-medium w-20">CSI</th>
             <th className="px-3 py-1.5 text-left font-medium">Item</th>
             <th className="px-3 py-1.5 text-right font-medium w-16">Qty</th>
             <th className="px-3 py-1.5 text-center font-medium w-16">Unit</th>

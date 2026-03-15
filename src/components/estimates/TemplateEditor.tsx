@@ -2,7 +2,7 @@
 
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { lookupCsiCode } from "@/lib/divisions";
+import { lookupCsiCode, lookupItemCsiCode } from "@/lib/divisions";
 import { DndContext, DragOverlay, useDroppable, useDraggable, closestCenter } from "@dnd-kit/core";
 import type { DragStartEvent, DragEndEvent } from "@dnd-kit/core";
 import {
@@ -28,6 +28,7 @@ import {
 type Item = {
   id: string;
   name: string;
+  csiCode: string | null;
   unit: string | null;
   defaultQty: number | null;
   defaultUnitCost: number | null;
@@ -95,6 +96,7 @@ function ItemRow({ item, divisionId, groupId, canEdit }: { item: Item; divisionI
   });
   const [form, setForm] = useState({
     name: item.name,
+    csiCode: item.csiCode ?? "",
     unit: item.unit ?? "",
     defaultQty: item.defaultQty?.toString() ?? "",
     defaultUnitCost: item.defaultUnitCost?.toString() ?? "",
@@ -109,6 +111,7 @@ function ItemRow({ item, divisionId, groupId, canEdit }: { item: Item; divisionI
         id: item.id,
         groupId: groupId ?? null,
         name: form.name,
+        csiCode: form.csiCode || null,
         unit: form.unit || null,
         defaultQty: form.defaultQty ? Number(form.defaultQty) : null,
         defaultUnitCost: form.defaultUnitCost ? Number(form.defaultUnitCost) : null,
@@ -132,6 +135,7 @@ function ItemRow({ item, divisionId, groupId, canEdit }: { item: Item; divisionI
             ⠿
           </td>
         )}
+        <td className="px-3 py-2 text-xs font-mono" style={{ color: "#8b949e", whiteSpace: "nowrap" }}>{item.csiCode ?? ""}</td>
         <td className="px-3 py-2" style={{ color: "#e6edf3" }}>{item.name}</td>
         <td className="px-3 py-2 text-right" style={{ color: "#8b949e" }}>{item.defaultQty ?? "—"}</td>
         <td className="px-3 py-2 text-center" style={{ color: "#8b949e" }}>{item.unit ?? "—"}</td>
@@ -158,7 +162,8 @@ function ItemRow({ item, divisionId, groupId, canEdit }: { item: Item; divisionI
   return (
     <tr style={{ borderTop: "1px solid #30373f", background: "#1a2d1a" }}>
       {canEdit && <td style={{ width: "24px" }} />}
-      <td className="px-2 py-1"><input className={INPUT} style={inputStyleSm} value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} /></td>
+      <td className="px-2 py-1"><input className={INPUT} style={{ ...inputStyleSm, width: "80px", fontFamily: "monospace" }} value={form.csiCode} onChange={(e) => setForm({ ...form, csiCode: e.target.value })} placeholder="CSI" /></td>
+      <td className="px-2 py-1"><input className={INPUT} style={inputStyleSm} value={form.name} onChange={(e) => { const n = e.target.value; const auto = lookupItemCsiCode(n); setForm({ ...form, name: n, csiCode: auto ?? form.csiCode }); }} /></td>
       <td className="px-2 py-1"><input type="number" step="any" className={INPUT} style={{ ...inputStyle, width: "56px" }} value={form.defaultQty} onChange={(e) => setForm({ ...form, defaultQty: e.target.value })} /></td>
       <td className="px-2 py-1"><UnitSelect value={form.unit} onChange={(v) => setForm({ ...form, unit: v })} /></td>
       <td className="px-2 py-1"><input type="number" step="any" className={INPUT} style={{ ...inputStyle, width: "80px" }} value={form.defaultUnitCost} onChange={(e) => setForm({ ...form, defaultUnitCost: e.target.value })} /></td>
@@ -178,7 +183,7 @@ function ItemRow({ item, divisionId, groupId, canEdit }: { item: Item; divisionI
 function AddTemplateItemRow({ divisionId, groupId, canEdit }: { divisionId: string; groupId?: string | null; canEdit: boolean }) {
   const [open, setOpen] = useState(false);
   const [isPending, startTransition] = useTransition();
-  const [form, setForm] = useState({ name: "", unit: "", defaultQty: "", defaultUnitCost: "", defaultMarkupPct: "", notes: "", visibleInPdf: true });
+  const [form, setForm] = useState({ name: "", csiCode: "", unit: "", defaultQty: "", defaultUnitCost: "", defaultMarkupPct: "", notes: "", visibleInPdf: true });
 
   if (!canEdit) return null;
 
@@ -188,6 +193,7 @@ function AddTemplateItemRow({ divisionId, groupId, canEdit }: { divisionId: stri
       await upsertTemplateItem(divisionId, {
         groupId: groupId ?? null,
         name: form.name,
+        csiCode: form.csiCode || null,
         unit: form.unit || null,
         defaultQty: form.defaultQty ? Number(form.defaultQty) : null,
         defaultUnitCost: form.defaultUnitCost ? Number(form.defaultUnitCost) : null,
@@ -195,7 +201,7 @@ function AddTemplateItemRow({ divisionId, groupId, canEdit }: { divisionId: stri
         notes: form.notes || null,
         visibleInPdf: form.visibleInPdf,
       });
-      setForm({ name: "", unit: "", defaultQty: "", defaultUnitCost: "", defaultMarkupPct: "", notes: "", visibleInPdf: true });
+      setForm({ name: "", csiCode: "", unit: "", defaultQty: "", defaultUnitCost: "", defaultMarkupPct: "", notes: "", visibleInPdf: true });
       setOpen(false);
     });
   }
@@ -203,7 +209,7 @@ function AddTemplateItemRow({ divisionId, groupId, canEdit }: { divisionId: stri
   if (!open) {
     return (
       <tr>
-        <td colSpan={canEdit ? 9 : 8} className="px-3 py-1">
+        <td colSpan={canEdit ? 10 : 9} className="px-3 py-1">
           <button onClick={() => setOpen(true)} className="text-xs" style={{ color: "#C9A84C" }}>+ Add Item</button>
         </td>
       </tr>
@@ -213,7 +219,8 @@ function AddTemplateItemRow({ divisionId, groupId, canEdit }: { divisionId: stri
   return (
     <tr style={{ borderTop: "1px solid #30373f", background: "#0d2a1a" }}>
       {canEdit && <td style={{ width: "24px" }} />}
-      <td className="px-2 py-1"><input autoFocus className={INPUT} style={inputStyleSm} value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} placeholder="Item name" /></td>
+      <td className="px-2 py-1"><input className={INPUT} style={{ ...inputStyleSm, width: "80px", fontFamily: "monospace" }} value={form.csiCode} onChange={(e) => setForm({ ...form, csiCode: e.target.value })} placeholder="CSI" /></td>
+      <td className="px-2 py-1"><input autoFocus className={INPUT} style={inputStyleSm} value={form.name} onChange={(e) => { const n = e.target.value; const auto = lookupItemCsiCode(n); setForm({ ...form, name: n, csiCode: auto ?? form.csiCode }); }} placeholder="Item name" /></td>
       <td className="px-2 py-1"><input type="number" step="any" className={INPUT} style={{ ...inputStyle, width: "56px" }} value={form.defaultQty} onChange={(e) => setForm({ ...form, defaultQty: e.target.value })} /></td>
       <td className="px-2 py-1"><UnitSelect value={form.unit} onChange={(v) => setForm({ ...form, unit: v })} /></td>
       <td className="px-2 py-1"><input type="number" step="any" className={INPUT} style={{ ...inputStyle, width: "80px" }} value={form.defaultUnitCost} onChange={(e) => setForm({ ...form, defaultUnitCost: e.target.value })} /></td>
@@ -237,6 +244,7 @@ function TemplateItemTable({ divisionId, groupId, items, canEdit }: { divisionId
         <thead>
           <tr style={{ background: "#161b22" }}>
             {canEdit && <th style={{ width: "24px" }} />}
+            <th className="px-3 py-1.5 text-left font-medium text-xs w-20" style={{ color: "#8b949e" }}>CSI</th>
             <th className="px-3 py-1.5 text-left font-medium text-xs" style={{ color: "#8b949e" }}>Item</th>
             <th className="px-3 py-1.5 text-right font-medium text-xs w-16" style={{ color: "#8b949e" }}>Qty</th>
             <th className="px-3 py-1.5 text-center font-medium text-xs w-16" style={{ color: "#8b949e" }}>Unit</th>
