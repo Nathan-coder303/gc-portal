@@ -6,6 +6,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { requirePermission } from "@/lib/auth/permissions";
 import { writeAuditLog } from "@/lib/audit/log";
+import { STANDARD_TEMPLATE_DIVISIONS } from "@/lib/standardTemplateData";
 
 // ─── Template CRUD ────────────────────────────────────────────────────────────
 
@@ -37,6 +38,49 @@ export async function createTemplate(formData: FormData) {
     userId: session.user.id,
     userName: session.user.name ?? session.user.email ?? "",
   });
+
+  revalidatePath(`/${session.user.companyId}/estimates`);
+  return { success: true, id: template.id };
+}
+
+export async function createStandardTemplate(name: string, description?: string) {
+  const session = await auth();
+  if (!session) throw new Error("Unauthorized");
+  requirePermission(session, "estimateTemplate:create");
+
+  const template = await prisma.estimateTemplate.create({
+    data: {
+      companyId: session.user.companyId,
+      name: name.trim(),
+      description: description?.trim() || null,
+      createdBy: session.user.id,
+      updatedBy: session.user.id,
+    },
+  });
+
+  for (let divIdx = 0; divIdx < STANDARD_TEMPLATE_DIVISIONS.length; divIdx++) {
+    const div = STANDARD_TEMPLATE_DIVISIONS[divIdx];
+    const division = await prisma.estimateTemplateDivision.create({
+      data: {
+        templateId: template.id,
+        csiCode: div.csiCode,
+        name: div.name,
+        sortOrder: divIdx,
+      },
+    });
+
+    if (div.items.length > 0) {
+      await prisma.estimateTemplateItem.createMany({
+        data: div.items.map((item, itemIdx) => ({
+          divisionId: division.id,
+          csiCode: item.csiCode,
+          name: item.name,
+          sortOrder: itemIdx,
+          visibleInPdf: true,
+        })),
+      });
+    }
+  }
 
   revalidatePath(`/${session.user.companyId}/estimates`);
   return { success: true, id: template.id };

@@ -1,7 +1,8 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { createTemplate, archiveTemplate } from "@/app/[companyId]/estimates/actions";
+import { useRouter } from "next/navigation";
+import { createTemplate, createStandardTemplate, archiveTemplate } from "@/app/[companyId]/estimates/actions";
 
 type Template = {
   id: string;
@@ -25,8 +26,10 @@ export default function TemplateList({
   canEdit: boolean;
   canArchive: boolean;
 }) {
+  const router = useRouter();
   const [isPending, startTransition] = useTransition();
   const [showCreate, setShowCreate] = useState(false);
+  const [createMode, setCreateMode] = useState<"blank" | "standard">("blank");
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
   const [error, setError] = useState("");
@@ -34,15 +37,20 @@ export default function TemplateList({
   function handleCreate() {
     if (!name.trim()) { setError("Name is required"); return; }
     setError("");
-    const fd = new FormData();
-    fd.set("name", name);
-    fd.set("description", description);
     startTransition(async () => {
       try {
-        await createTemplate(fd);
-        setName("");
-        setDescription("");
-        setShowCreate(false);
+        if (createMode === "standard") {
+          const result = await createStandardTemplate(name, description);
+          router.push(`/${companyId}/estimates/${result.id}`);
+        } else {
+          const fd = new FormData();
+          fd.set("name", name);
+          fd.set("description", description);
+          await createTemplate(fd);
+          setName("");
+          setDescription("");
+          setShowCreate(false);
+        }
       } catch (e) {
         setError(e instanceof Error ? e.message : "Failed to create template");
       }
@@ -69,6 +77,28 @@ export default function TemplateList({
       {showCreate && (
         <div className="rounded-xl p-5 space-y-3" style={{ background: "#1e2736", border: "1px solid #30373f" }}>
           <h3 className="font-medium" style={{ color: "#e6edf3" }}>New Template</h3>
+
+          {/* Mode toggle */}
+          <div className="flex gap-2">
+            <button
+              onClick={() => setCreateMode("blank")}
+              className="px-3 py-1.5 rounded-lg text-xs font-medium"
+              style={{ background: createMode === "blank" ? "#C9A84C" : "transparent", color: createMode === "blank" ? "#0d1117" : "#8b949e", border: "1px solid #30373f" }}
+            >
+              Blank
+            </button>
+            <button
+              onClick={() => setCreateMode("standard")}
+              className="px-3 py-1.5 rounded-lg text-xs font-medium"
+              style={{ background: createMode === "standard" ? "#C9A84C" : "transparent", color: createMode === "standard" ? "#0d1117" : "#8b949e", border: "1px solid #30373f" }}
+            >
+              Standard (CSI Addition)
+            </button>
+          </div>
+          {createMode === "standard" && (
+            <p className="text-xs" style={{ color: "#8b949e" }}>Pre-populates 16 CSI divisions with 83 standard line items — delete what you don&apos;t need.</p>
+          )}
+
           <div>
             <label className="block text-sm font-medium mb-1" style={{ color: "#8b949e" }}>Name</label>
             <input
@@ -93,7 +123,7 @@ export default function TemplateList({
           {error && <p className="text-sm" style={{ color: "#ef4444" }}>{error}</p>}
           <div className="flex gap-2">
             <button onClick={handleCreate} disabled={isPending} className="px-4 py-2 rounded-lg text-sm font-medium" style={{ background: "#C9A84C", color: "#0d1117", opacity: isPending ? 0.5 : 1 }}>
-              {isPending ? "Creating..." : "Create Template"}
+              {isPending ? "Creating..." : createMode === "standard" ? "Create Standard Template" : "Create Template"}
             </button>
             <button onClick={() => setShowCreate(false)} className="px-4 py-2 rounded-lg text-sm font-medium" style={{ border: "1px solid #30373f", color: "#8b949e" }}>
               Cancel
