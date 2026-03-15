@@ -20,7 +20,6 @@ type Lead = {
 
 export default function TodayLeadCard({
   lead,
-  companyId,
 }: {
   lead: Lead;
   companyId: string;

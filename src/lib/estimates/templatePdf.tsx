@@ -144,7 +144,7 @@ function ItemRow({ item, index }: { item: Item; index: number }) {
   );
 }
 
-function TemplatePdfDocument({ companyName, template, client, divisions, showTerms, termsContent, paymentSchedule }: TemplatePdfProps) {
+function TemplatePdfDocument({ companyName, template, client, divisions, termsContent, paymentSchedule }: Omit<TemplatePdfProps, "showTerms">) {
   const grandTotal = divisions.reduce((sum, div) => {
     const divSum = [
       ...div.items.filter(isItemFilled),
