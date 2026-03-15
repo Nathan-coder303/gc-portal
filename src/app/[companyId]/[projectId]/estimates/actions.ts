@@ -171,6 +171,20 @@ export async function updateEstimate(
   return { success: true };
 }
 
+export async function updateEstimateGcFee(estimateId: string, gcFeePercent: number | null) {
+  const session = await auth();
+  if (!session) throw new Error("Unauthorized");
+  requirePermission(session, "estimate:edit");
+
+  await prisma.projectEstimate.update({
+    where: { id: estimateId },
+    data: { gcFeePercent: gcFeePercent ?? null, updatedBy: session.user.id },
+  });
+
+  revalidatePath(`/${session.user.companyId}`);
+  return { success: true };
+}
+
 export async function archiveEstimate(estimateId: string, projectId: string) {
   const session = await auth();
   if (!session) throw new Error("Unauthorized");

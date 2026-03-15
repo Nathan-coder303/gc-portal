@@ -104,6 +104,7 @@ type TemplatePdfProps = {
   showTerms?: boolean;
   termsContent?: string | null;
   paymentSchedule?: PaymentRow[] | null;
+  gcFeePercent?: number | null;
 };
 
 function ItemTableHeader() {
@@ -144,7 +145,7 @@ function ItemRow({ item, index }: { item: Item; index: number }) {
   );
 }
 
-function TemplatePdfDocument({ companyName, template, client, divisions, termsContent, paymentSchedule }: Omit<TemplatePdfProps, "showTerms">) {
+function TemplatePdfDocument({ companyName, template, client, divisions, termsContent, paymentSchedule, gcFeePercent }: Omit<TemplatePdfProps, "showTerms">) {
   const grandTotal = divisions.reduce((sum, div) => {
     const divSum = [
       ...div.items.filter(isItemFilled),
@@ -159,6 +160,10 @@ function TemplatePdfDocument({ companyName, template, client, divisions, termsCo
       ...div.groups.flatMap(g => g.items.filter(i => i.detail === "Allowances")),
     ].reduce((s, i) => s + calcTotal(i.defaultQty, i.defaultUnitCost, i.defaultMarkupPct), 0);
   }, 0);
+
+  const gcFee = gcFeePercent && gcFeePercent > 0 ? gcFeePercent : 0;
+  const gcFeeAmount = gcFee > 0 ? grandTotal * gcFee / 100 : 0;
+  const grandTotalWithGc = grandTotal + gcFeeAmount;
 
   const dateDisplay = fmtDate(template.estimateDate);
 
@@ -250,10 +255,29 @@ function TemplatePdfDocument({ companyName, template, client, divisions, termsCo
           </View>
         )}
 
+        {/* GC Overhead & Profit row */}
+        {gcFeeAmount > 0 && (
+          <>
+            {/* Subtotal row */}
+            <View style={{ flexDirection: "row", justifyContent: "space-between", paddingHorizontal: 8, paddingVertical: 4, marginTop: 8, borderTopWidth: 1, borderTopColor: "#e2e8f0" }}>
+              <Text style={[styles.headerText, { fontSize: 8, color: "#475569" }]}>SUBTOTAL</Text>
+              <Text style={[styles.cellBold, { fontSize: 9 }]}>${fmt(grandTotal)}</Text>
+            </View>
+            {/* GC line item row */}
+            <View style={[styles.tableRow, { marginTop: 0 }]}>
+              <Text style={[styles.cellText, styles.colName]}>01 10 00 – GC Overhead &amp; Profit</Text>
+              <Text style={[{ fontSize: 7, color: "#475569", textAlign: "center" }, styles.colDetail]}>%</Text>
+              <Text style={[styles.cellText, styles.colQty]}>{fmt(gcFee)}</Text>
+              <Text style={[styles.cellMuted, styles.colUnit]}>%</Text>
+              <Text style={[styles.cellBold, styles.colTotal]}>${fmt(gcFeeAmount)}</Text>
+            </View>
+          </>
+        )}
+
         {/* Grand total */}
-        <View style={[styles.grandTotalBar, { marginTop: allowancesTotal > 0 ? 4 : 14 }]}>
+        <View style={[styles.grandTotalBar, { marginTop: gcFeeAmount > 0 ? 4 : (allowancesTotal > 0 ? 4 : 14) }]}>
           <Text style={styles.grandTotalLabel}>ESTIMATE TOTAL</Text>
-          <Text style={GRAND_TOTAL_VALUE_STYLE}>${fmt(grandTotal)}</Text>
+          <Text style={GRAND_TOTAL_VALUE_STYLE}>${fmt(grandTotalWithGc)}</Text>
         </View>
 
         <Text style={styles.pageNumber} render={({ pageNumber, totalPages }) => `Page ${pageNumber} of ${totalPages}`} fixed />

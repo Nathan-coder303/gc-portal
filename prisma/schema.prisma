@@ -426,6 +426,7 @@ model EstimateTemplate {
   paymentSchedule Json?
   showTerms       Boolean                    @default(false)
   termsContent    String?
+  gcFeePercent    Decimal?                   @db.Decimal(5, 2)
   divisions       EstimateTemplateDivision[]
   estimates   ProjectEstimate[]
 
@@ -487,14 +488,15 @@ model EstimateTemplateItem {
 
 /// Project-specific estimate, cloned from a template or created from scratch.
 model ProjectEstimate {
-  id          String                    @id @default(cuid())
-  projectId   String
-  project     Project                   @relation(fields: [projectId], references: [id])
-  templateId  String?
-  template    EstimateTemplate?         @relation(fields: [templateId], references: [id])
-  name        String
-  description String?
-  status      String                    @default("DRAFT")
+  id           String                    @id @default(cuid())
+  projectId    String
+  project      Project                   @relation(fields: [projectId], references: [id])
+  templateId   String?
+  template     EstimateTemplate?         @relation(fields: [templateId], references: [id])
+  name         String
+  description  String?
+  status       String                    @default("DRAFT")
+  gcFeePercent Decimal?                  @db.Decimal(5, 2)
   createdBy   String
   createdAt   DateTime                  @default(now())
   updatedAt   DateTime                  @updatedAt

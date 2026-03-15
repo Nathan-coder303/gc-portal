@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useState, useTransition, useRef, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { TrashIcon, PencilIcon } from "@/components/ui/icons";
 import { lookupCsiCode, lookupItemCsiCode, formatCsiCode } from "@/lib/divisions";
@@ -22,6 +22,7 @@ import {
   updateTemplatePaymentSchedule,
   updateTemplateShowTerms,
   updateTemplateTermsContent,
+  updateTemplateGcFee,
   upsertTermsTemplate,
   moveItemBetweenDivisions,
   reorderTemplateDivisions,
@@ -44,7 +45,7 @@ type Item = {
 type Group = { id: string; name: string; items: Item[] };
 type Division = { id: string; csiCode: string | null; name: string; groups: Group[]; items: Item[] };
 type PaymentRow = { payment: string; trigger: string; pct: number };
-type Template = { id: string; name: string; description: string | null; companyId: string; estimateNumber: string | null; estimateDate: string | null; paymentSchedule: PaymentRow[] | null; showTerms: boolean; termsContent: string | null; type: string };
+type Template = { id: string; name: string; description: string | null; companyId: string; estimateNumber: string | null; estimateDate: string | null; paymentSchedule: PaymentRow[] | null; showTerms: boolean; termsContent: string | null; type: string; gcFeePercent: number | null };
 
 const INPUT = "rounded px-2 py-1 text-xs" as const;
 const inputStyle = { background: "#0d1117", border: "1px solid #30373f", color: "#e6edf3" };
@@ -806,6 +807,13 @@ export default function TemplateEditor({
   });
   const [savingTermsAs, setSavingTermsAs] = useState(false);
   const [newTermsName, setNewTermsName] = useState("");
+  const termsDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const saveTermsContent = useCallback((content: string) => {
+    if (termsDebounceRef.current) clearTimeout(termsDebounceRef.current);
+    termsDebounceRef.current = setTimeout(() => {
+      startTransition(async () => { await updateTemplateTermsContent(template.id, content); });
+    }, 800);
+  }, [template.id]);
   const paymentRows = template.paymentSchedule ?? DEFAULT_PAYMENT_SCHEDULE;
   const [description] = useState(template.description ?? "");
   const [estimateNumber, setEstimateNumber] = useState(template.estimateNumber ?? "");
@@ -823,7 +831,10 @@ export default function TemplateEditor({
   const [saveClientError, setSaveClientError] = useState("");
   const [savedToClient, setSavedToClient] = useState(false);
 
-  const total = grandTotal(divisions);
+  const subtotal = grandTotal(divisions);
+  const [gcFeePercent, setGcFeePercent] = useState<number | "">(template.gcFeePercent ?? "");
+  const gcFeeAmount = typeof gcFeePercent === "number" && gcFeePercent > 0 ? subtotal * gcFeePercent / 100 : 0;
+  const total = subtotal + gcFeeAmount;
   const [activeDragItem, setActiveDragItem] = useState<{ id: string; name: string; type: "item" | "division" } | null>(null);
 
   function handleDragStart(event: DragStartEvent) {
@@ -1001,7 +1012,12 @@ export default function TemplateEditor({
                             const id = e.target.value;
                             setSelectedTermsTplId(id);
                             const tpl = termsTemplates.find(t => t.id === id);
-                            if (tpl) { setTermsContent(tpl.content); setTermsDirty(true); }
+                            if (tpl) {
+                              setTermsContent(tpl.content);
+                              setTermsDirty(false);
+                              // Immediately save when a preset is selected
+                              startTransition(async () => { await updateTemplateTermsContent(template.id, tpl.content); });
+                            }
                           }}
                         >
                           <option value="">— Select T&C template —</option>
@@ -1056,18 +1072,15 @@ export default function TemplateEditor({
                       )}
                       <textarea
                         value={termsContent}
-                        onChange={e => { setTermsContent(e.target.value); setTermsDirty(true); }}
-                        onBlur={() => {
-                          if (termsDirty) {
-                            startTransition(async () => { await updateTemplateTermsContent(template.id, termsContent); setTermsDirty(false); });
-                          }
-                        }}
+                        onChange={e => { setTermsContent(e.target.value); setTermsDirty(true); saveTermsContent(e.target.value); }}
                         rows={5}
                         placeholder="Enter Terms & Conditions text, or load a saved preset above..."
                         className="w-full rounded-lg px-3 py-2 text-xs resize-y"
                         style={{ background: "#0d1117", border: "1px solid #30373f", color: "#e6edf3" }}
                       />
-                      <p className="text-xs" style={{ color: "#8b949e" }}>Auto-saves on blur. Shows in PDF when T&C is on.</p>
+                      <p className="text-xs" style={{ color: "#8b949e" }}>
+                        {termsDirty ? "Saving…" : "Auto-saved. Prints in PDF automatically."}
+                      </p>
                     </div>
                   )}
                   {showTerms && !canEdit && termsContent && (
@@ -1077,9 +1090,42 @@ export default function TemplateEditor({
               </div>
               <div className="flex items-start gap-4 shrink-0 flex-wrap">
                 {/* Total card */}
-                <div className="rounded-xl px-8 py-5 text-center min-w-[160px]" style={{ background: "#0d1117", border: "1px solid #C9A84C44" }}>
-                  <div className="text-xs font-semibold uppercase tracking-widest mb-2" style={{ color: "#8b949e" }}>Total</div>
-                  <div className="text-5xl font-bold leading-none" style={{ color: "#C9A84C" }}>${fmt(total)}</div>
+                <div className="rounded-xl px-6 py-5 flex flex-col gap-2 min-w-[200px]" style={{ background: "#0d1117", border: "1px solid #C9A84C44" }}>
+                  {gcFeeAmount > 0 && (
+                    <div className="flex justify-between items-center text-xs" style={{ color: "#8b949e" }}>
+                      <span>Subtotal</span>
+                      <span>${fmt(subtotal)}</span>
+                    </div>
+                  )}
+                  {/* GC Fee row */}
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="text-xs shrink-0" style={{ color: "#8b949e" }}>GC O&P %</span>
+                    <input
+                      type="number"
+                      min="0"
+                      max="100"
+                      step="0.5"
+                      value={gcFeePercent}
+                      onChange={e => setGcFeePercent(e.target.value === "" ? "" : Number(e.target.value))}
+                      onBlur={() => {
+                        const val = gcFeePercent === "" ? null : Number(gcFeePercent);
+                        startTransition(async () => { await updateTemplateGcFee(template.id, val); });
+                      }}
+                      placeholder="0"
+                      className="rounded px-2 py-1 text-xs text-right w-16"
+                      style={{ background: "#161b22", border: "1px solid #30373f", color: "#C9A84C" }}
+                    />
+                  </div>
+                  {gcFeeAmount > 0 && (
+                    <div className="flex justify-between items-center text-xs" style={{ color: "#8b949e" }}>
+                      <span>GC O&P</span>
+                      <span style={{ color: "#C9A84C" }}>${fmt(gcFeeAmount)}</span>
+                    </div>
+                  )}
+                  <div className="border-t pt-2" style={{ borderColor: "#30373f" }}>
+                    <div className="text-xs font-semibold uppercase tracking-widest mb-1 text-center" style={{ color: "#8b949e" }}>Total</div>
+                    <div className="text-4xl font-bold leading-none text-center" style={{ color: "#C9A84C" }}>${fmt(total)}</div>
+                  </div>
                 </div>
                 {/* Payment Schedule card */}
                 <div className="min-w-[280px] max-w-[380px]">

@@ -605,6 +605,20 @@ export async function updateTemplateShowTerms(templateId: string, showTerms: boo
   return { success: true };
 }
 
+export async function updateTemplateGcFee(templateId: string, gcFeePercent: number | null) {
+  const session = await auth();
+  if (!session) throw new Error("Unauthorized");
+  requirePermission(session, "estimateTemplate:edit");
+
+  await prisma.estimateTemplate.update({
+    where: { id: templateId },
+    data: { gcFeePercent: gcFeePercent ?? null, updatedBy: session.user.id },
+  });
+
+  revalidatePath(`/${session.user.companyId}/estimates`);
+  return { success: true };
+}
+
 // ─── Terms Templates ──────────────────────────────────────────────────────────
 
 export async function listTermsTemplates() {

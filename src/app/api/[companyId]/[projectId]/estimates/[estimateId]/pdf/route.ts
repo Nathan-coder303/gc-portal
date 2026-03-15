@@ -85,6 +85,7 @@ export async function GET(
       createdAt: estimate.createdAt,
     },
     divisions,
+    gcFeePercent: estimate.gcFeePercent ? Number(estimate.gcFeePercent) : null,
   });
 
   const filename = `${estimate.name.replace(/[^a-z0-9]/gi, "-").toLowerCase()}-estimate.pdf`;

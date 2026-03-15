@@ -85,6 +85,7 @@ export async function GET(
     showTerms: template.showTerms,
     termsContent: template.termsContent,
     paymentSchedule: (template.paymentSchedule as { payment: string; trigger: string; pct: number }[] | null) ?? DEFAULT_PAYMENT_SCHEDULE,
+    gcFeePercent: template.gcFeePercent ? Number(template.gcFeePercent) : null,
   });
 
   const filename = `${template.name.replace(/[^a-z0-9]/gi, "-").toLowerCase()}-template.pdf`;

@@ -177,6 +177,7 @@ type EstimatePdfProps = {
   projectName: string;
   estimate: { name: string; description: string | null; status: string; createdAt: Date };
   divisions: Division[];
+  gcFeePercent?: number | null;
 };
 
 function ItemTableHeader() {
@@ -223,7 +224,7 @@ function ItemRow({ item, index }: { item: Item; index: number }) {
   );
 }
 
-export function EstimatePdfDocument({ companyName, projectName, estimate, divisions }: EstimatePdfProps) {
+export function EstimatePdfDocument({ companyName, projectName, estimate, divisions, gcFeePercent }: EstimatePdfProps) {
   const grandTotal = computeEstimateTotal(divisions);
   const divisionCount = divisions.length;
   const itemCount = divisions.reduce(
@@ -236,6 +237,10 @@ export function EstimatePdfDocument({ companyName, projectName, estimate, divisi
       ...div.groups.flatMap(g => g.items.filter(i => i.detail === "Allowances")),
     ].reduce((s, i) => s + computeItemTotal(i), 0);
   }, 0);
+
+  const gcFee = gcFeePercent && gcFeePercent > 0 ? gcFeePercent : 0;
+  const gcFeeAmount = gcFee > 0 ? grandTotal * gcFee / 100 : 0;
+  const grandTotalWithGc = grandTotal + gcFeeAmount;
 
   return (
     <Document title={`${estimate.name} — Estimate`} author={companyName}>
@@ -305,9 +310,28 @@ export function EstimatePdfDocument({ companyName, projectName, estimate, divisi
           </View>
         )}
 
-        <View style={[styles.grandTotal, { marginTop: allowancesTotal > 0 ? 4 : 14 }]}>
+        {/* GC Overhead & Profit row */}
+        {gcFeeAmount > 0 && (
+          <>
+            <View style={{ flexDirection: "row", justifyContent: "space-between", paddingHorizontal: 8, paddingVertical: 4, marginTop: 8, borderTopWidth: 1, borderTopColor: "#e2e8f0" }}>
+              <Text style={[styles.headerText, { fontSize: 8, color: "#475569" }]}>SUBTOTAL</Text>
+              <Text style={[styles.cellTextBold, { fontSize: 9 }]}>${fmt(grandTotal)}</Text>
+            </View>
+            <View style={styles.tableRow}>
+              <Text style={[styles.cellText, styles.colName]}>01 10 00 – GC Overhead &amp; Profit</Text>
+              <Text style={[{ fontSize: 7, color: "#475569", textAlign: "center" }, styles.colDetail]}>%</Text>
+              <Text style={[styles.cellText, styles.colQty]}>{fmt(gcFee)}</Text>
+              <Text style={[styles.cellTextMuted, styles.colUnit]}>%</Text>
+              <Text style={[styles.cellTextMuted, styles.colCost]}>${fmt(grandTotal)}</Text>
+              <Text style={[styles.cellTextMuted, styles.colMarkup]}>—</Text>
+              <Text style={[styles.cellTextBold, styles.colTotal]}>${fmt(gcFeeAmount)}</Text>
+            </View>
+          </>
+        )}
+
+        <View style={[styles.grandTotal, { marginTop: gcFeeAmount > 0 ? 4 : (allowancesTotal > 0 ? 4 : 14) }]}>
           <Text style={styles.grandTotalLabel}>ESTIMATE TOTAL</Text>
-          <Text style={styles.grandTotalValue}>${fmt(grandTotal)}</Text>
+          <Text style={styles.grandTotalValue}>${fmt(grandTotalWithGc)}</Text>
         </View>
 
         <Text

@@ -118,6 +118,7 @@ export default async function EstimateEditorPage({
           description: estimate.description,
           status: estimate.status,
           projectId: params.projectId,
+          gcFeePercent: estimate.gcFeePercent ? Number(estimate.gcFeePercent) : null,
         }}
         divisions={divisions}
         canEdit={can(session.user.role, "estimate:edit")}

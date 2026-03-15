@@ -12,6 +12,7 @@ import {
   upsertEstimateGroup,
   archiveEstimateGroup,
   updateEstimate,
+  updateEstimateGcFee,
   reorderEstimateDivisions,
 } from "@/app/[companyId]/[projectId]/estimates/actions";
 import {
@@ -27,7 +28,7 @@ import { lookupItemCsiCode, formatCsiCode } from "@/lib/divisions";
 type Item = ItemLike & { id: string; name: string; csiCode: string | null; detail: string | null; unit: string | null; vendor: string | null; notes: string | null; sortOrder: number };
 type Group = { id: string; name: string; items: Item[] };
 type Division = { id: string; csiCode: string | null; name: string; groups: Group[]; items: Item[] };
-type Estimate = { id: string; name: string; description: string | null; status: string; projectId: string };
+type Estimate = { id: string; name: string; description: string | null; status: string; projectId: string; gcFeePercent: number | null };
 
 const STATUS_OPTIONS = ["DRAFT", "PENDING", "APPROVED", "REJECTED"];
 const DETAIL_OPTIONS = ["Included", "Excluded", "TBD", "By Owner", "Allowances"];
@@ -450,7 +451,10 @@ export default function ProjectEstimateEditor({
   const [divName, setDivName] = useState("");
   const [divCsi, setDivCsi] = useState("");
 
-  const grandTotal = computeEstimateTotal(divisions);
+  const subtotal = computeEstimateTotal(divisions);
+  const [gcFeePercent, setGcFeePercent] = useState<number | "">(estimate.gcFeePercent ?? "");
+  const gcFeeAmount = typeof gcFeePercent === "number" && gcFeePercent > 0 ? subtotal * gcFeePercent / 100 : 0;
+  const grandTotal = subtotal + gcFeeAmount;
   const [activeDivName, setActiveDivName] = useState<string | null>(null);
 
   function handleDragStart(event: DragStartEvent) {
@@ -532,9 +536,40 @@ export default function ProjectEstimateEditor({
             </div>
             <div className="flex items-center gap-4 shrink-0">
               {/* Prominent TOTAL card */}
-              <div className="bg-slate-900 text-white rounded-xl px-8 py-5 text-center min-w-[180px]">
-                <div className="text-xs font-semibold text-slate-400 uppercase tracking-widest mb-2">Total</div>
-                <div className="text-5xl font-bold leading-none">${fmt(grandTotal)}</div>
+              <div className="bg-slate-900 text-white rounded-xl px-6 py-5 flex flex-col gap-2 min-w-[200px]">
+                {gcFeeAmount > 0 && (
+                  <div className="flex justify-between items-center text-xs text-slate-400">
+                    <span>Subtotal</span>
+                    <span>${fmt(subtotal)}</span>
+                  </div>
+                )}
+                <div className="flex items-center justify-between gap-2">
+                  <span className="text-xs text-slate-400 shrink-0">GC O&P %</span>
+                  <input
+                    type="number"
+                    min="0"
+                    max="100"
+                    step="0.5"
+                    value={gcFeePercent}
+                    onChange={e => setGcFeePercent(e.target.value === "" ? "" : Number(e.target.value))}
+                    onBlur={() => {
+                      const val = gcFeePercent === "" ? null : Number(gcFeePercent);
+                      startTransition(async () => { await updateEstimateGcFee(estimate.id, val); });
+                    }}
+                    placeholder="0"
+                    className="rounded px-2 py-1 text-xs text-right w-16 bg-slate-800 border border-slate-600 text-yellow-400"
+                  />
+                </div>
+                {gcFeeAmount > 0 && (
+                  <div className="flex justify-between items-center text-xs text-slate-400">
+                    <span>GC O&P</span>
+                    <span className="text-yellow-400">${fmt(gcFeeAmount)}</span>
+                  </div>
+                )}
+                <div className="border-t border-slate-700 pt-2 text-center">
+                  <div className="text-xs font-semibold text-slate-400 uppercase tracking-widest mb-1">Total</div>
+                  <div className="text-5xl font-bold leading-none">${fmt(grandTotal)}</div>
+                </div>
               </div>
               {/* Actions */}
               <div className="flex flex-col gap-2 items-start">
