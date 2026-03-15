@@ -85,11 +85,12 @@ model Lead {
   projectType  String?
   message      String?
   source       String   @default("email")
-  gmailMsgId   String?  @unique
-  emailFrom    String?
-  emailSubject String?
-  receivedAt   DateTime @default(now())
-  status       String   @default("NEW")
+  gmailMsgId    String?  @unique
+  linkedMsgIds  String?  // space-separated additional Gmail msg IDs for dedup
+  emailFrom     String?
+  emailSubject  String?
+  receivedAt    DateTime @default(now())
+  status        String   @default("NEW")
 
   @@index([companyId])
   @@index([receivedAt])

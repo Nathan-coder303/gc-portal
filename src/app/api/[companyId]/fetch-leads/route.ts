@@ -143,16 +143,23 @@ export async function POST(
     pageToken = listRes.data.nextPageToken ?? undefined;
   } while (pageToken);
 
-  // Bulk dedup
-  const existing = await prisma.lead.findMany({
-    where: { companyId: params.companyId, gmailMsgId: { not: null } },
-    select: { gmailMsgId: true },
+  // Bulk dedup — collect all processed msg IDs (primary + linked)
+  const existingLeads = await prisma.lead.findMany({
+    where: { companyId: params.companyId },
+    select: { id: true, gmailMsgId: true, linkedMsgIds: true, name: true, email: true, phone: true, address: true, city: true, state: true, projectType: true, message: true },
   });
-  const importedIds = new Set(existing.map(l => l.gmailMsgId!));
+  const importedIds = new Set<string>([
+    ...existingLeads.map(l => l.gmailMsgId).filter(Boolean) as string[],
+    ...existingLeads.flatMap(l => (l.linkedMsgIds ?? "").split(" ").filter(Boolean)),
+  ]);
+  // Name-to-lead map for merge detection
+  const byName = new Map(existingLeads.filter(l => l.name).map(l => [l.name!.toLowerCase().trim(), l]));
+
   const newMessages = allMessages.filter(m => m.id && !importedIds.has(m.id));
   const toProcess = backfill ? newMessages : newMessages.slice(0, 100);
 
   let added = 0;
+  let merged = 0;
   const errors: string[] = [];
 
   for (const msg of toProcess) {
@@ -170,27 +177,56 @@ export async function POST(
 
       const parsed = parseLead(subject, bodyText);
 
-      await prisma.lead.create({
-        data: {
-          companyId: params.companyId,
-          gmailMsgId: msg.id!,
-          emailFrom: from,
-          emailSubject: subject,
-          receivedAt,
-          source: "email",
-          status: "NEW",
-          name: parsed.name,
-          email: parsed.email,
-          phone: parsed.phone,
-          address: parsed.address,
-          city: parsed.city,
-          state: parsed.state,
-          projectType: parsed.projectType,
-          message: parsed.message,
-        },
-      });
+      // Check for name-based duplicate
+      const nameKey = parsed.name?.toLowerCase().trim();
+      const existingByName = nameKey ? byName.get(nameKey) : undefined;
 
-      added++;
+      if (existingByName) {
+        // Merge: fill in any missing fields, append msgId to linkedMsgIds
+        const linked = [existingByName.linkedMsgIds, msg.id!].filter(Boolean).join(" ");
+        await prisma.lead.update({
+          where: { id: existingByName.id },
+          data: {
+            linkedMsgIds: linked,
+            email: existingByName.email ?? parsed.email,
+            phone: existingByName.phone ?? parsed.phone,
+            address: existingByName.address ?? parsed.address,
+            city: existingByName.city ?? parsed.city,
+            state: existingByName.state ?? parsed.state,
+            projectType: existingByName.projectType ?? parsed.projectType,
+            message: existingByName.message ?? parsed.message,
+          },
+        });
+        // Update local map so subsequent messages for same name are also deduplicated
+        importedIds.add(msg.id!);
+        existingByName.linkedMsgIds = linked;
+        merged++;
+      } else {
+        await prisma.lead.create({
+          data: {
+            companyId: params.companyId,
+            gmailMsgId: msg.id!,
+            emailFrom: from,
+            emailSubject: subject,
+            receivedAt,
+            source: "email",
+            status: "NEW",
+            name: parsed.name,
+            email: parsed.email,
+            phone: parsed.phone,
+            address: parsed.address,
+            city: parsed.city,
+            state: parsed.state,
+            projectType: parsed.projectType,
+            message: parsed.message,
+          },
+        });
+        // Add to local map for subsequent dedup in same run
+        if (nameKey && parsed.name) {
+          byName.set(nameKey, { id: "", gmailMsgId: msg.id!, linkedMsgIds: null, name: parsed.name, email: parsed.email, phone: parsed.phone, address: parsed.address, city: parsed.city, state: parsed.state, projectType: parsed.projectType, message: parsed.message });
+        }
+        added++;
+      }
     } catch (err) {
       errors.push(String(err));
     }
@@ -201,6 +237,7 @@ export async function POST(
     alreadyImported: importedIds.size,
     processed: toProcess.length,
     added,
+    merged,
     remaining: backfill ? 0 : Math.max(0, newMessages.length - toProcess.length),
     errors: errors.slice(0, 10),
   });

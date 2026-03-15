@@ -3,7 +3,7 @@ import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import Link from "next/link";
 import SyncLeadsButton from "@/components/today/SyncLeadsButton";
-import LeadTime from "@/components/today/LeadTime";
+import TodayLeadCard from "@/components/leads/TodayLeadCard";
 
 export default async function TodayPage({
   params,
@@ -101,34 +101,7 @@ export default async function TodayPage({
           ) : (
             <ul className="space-y-3">
               {todayLeads.map((lead) => (
-                <li key={lead.id} className="flex flex-col gap-0.5 pb-3" style={{ borderBottom: "1px solid #21262d" }}>
-                  <span className="text-sm font-semibold" style={{ color: "#e6edf3" }}>
-                    {lead.name ?? "Unknown"}
-                  </span>
-                  {lead.projectType && (
-                    <span
-                      className="text-xs px-1.5 py-0.5 rounded self-start"
-                      style={{ background: "#C9A84C22", color: "#C9A84C", border: "1px solid #C9A84C44" }}
-                    >
-                      {lead.projectType}
-                    </span>
-                  )}
-                  {lead.email && <span className="text-xs" style={{ color: "#58a6ff" }}>{lead.email}</span>}
-                  {lead.phone && <span className="text-xs" style={{ color: "#8b949e" }}>{lead.phone}</span>}
-                  {(lead.city || lead.state) && (
-                    <span className="text-xs" style={{ color: "#8b949e" }}>
-                      {[lead.city, lead.state].filter(Boolean).join(", ")}
-                    </span>
-                  )}
-                  {lead.message && (
-                    <span className="text-xs leading-relaxed" style={{ color: "#8b949e" }}>
-                      {lead.message.slice(0, 120)}{lead.message.length > 120 ? "…" : ""}
-                    </span>
-                  )}
-                  <span className="text-xs" style={{ color: "#484f58" }}>
-                    <LeadTime iso={lead.receivedAt.toISOString()} />
-                  </span>
-                </li>
+                <TodayLeadCard key={lead.id} lead={lead} companyId={params.companyId} />
               ))}
             </ul>
           )}
