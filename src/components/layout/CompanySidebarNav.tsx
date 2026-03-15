@@ -8,6 +8,7 @@ const NAV = [
   { label: "Projects",  icon: "📋", href: (c: string) => `/${c}/projects` },
   { label: "Estimates", icon: "📊", href: (c: string) => `/${c}/estimates` },
   { label: "Clients",   icon: "👤", href: (c: string) => `/${c}/clients` },
+  { label: "Leads",     icon: "🎯", href: (c: string) => `/${c}/leads` },
   { label: "Marketing", icon: "📣", href: (c: string) => `/${c}/marketing` },
   { label: "Calendar",  icon: "📅", href: (c: string) => `/${c}?tab=calendar` },
   { label: "Memory",    icon: "🧠", href: (c: string) => `/${c}?tab=memory` },
@@ -27,6 +28,7 @@ function isActive(label: string, pathname: string, companyId: string, tab: strin
   }
   if (label === "Estimates") return pathname.startsWith(`/${companyId}/estimates`);
   if (label === "Clients") return pathname.startsWith(`/${companyId}/clients`);
+  if (label === "Leads") return pathname.startsWith(`/${companyId}/leads`);
   if (label === "Marketing") return pathname.startsWith(`/${companyId}/marketing`);
   if (label === "Calendar") return pathname === `/${companyId}` && tab === "calendar";
   if (label === "Memory") return pathname === `/${companyId}` && tab === "memory";

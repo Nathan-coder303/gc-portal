@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import Link from "next/link";
 import SyncLeadsButton from "@/components/today/SyncLeadsButton";
+import LeadTime from "@/components/today/LeadTime";
 
 export default async function TodayPage({
   params,
@@ -82,9 +83,9 @@ export default async function TodayPage({
           style={{ background: "#161b22", border: "1px solid #30373f" }}
         >
           <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold uppercase tracking-wider" style={{ color: "#8b949e" }}>
-              New Leads of the Day
-            </span>
+            <Link href={`/${params.companyId}/leads`} className="text-xs font-semibold uppercase tracking-wider hover:underline" style={{ color: "#8b949e" }}>
+              New Leads of the Day →
+            </Link>
             <div className="flex items-center gap-2">
               <span className="text-xs" style={{ color: "#8b949e" }}>{allLeadsCount} total</span>
               <span
@@ -125,7 +126,7 @@ export default async function TodayPage({
                     </span>
                   )}
                   <span className="text-xs" style={{ color: "#484f58" }}>
-                    {new Date(lead.receivedAt).toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit" })}
+                    <LeadTime iso={lead.receivedAt.toISOString()} />
                   </span>
                 </li>
               ))}
