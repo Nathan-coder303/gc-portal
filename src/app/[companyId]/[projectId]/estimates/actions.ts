@@ -235,6 +235,20 @@ export async function archiveEstimateDivision(divisionId: string) {
   return { success: true };
 }
 
+export async function reorderEstimateDivisions(estimateId: string, orderedIds: string[]) {
+  const session = await auth();
+  if (!session) throw new Error("Unauthorized");
+  requirePermission(session, "estimate:edit");
+
+  await prisma.$transaction(
+    orderedIds.map((id, idx) =>
+      prisma.projectEstimateDivision.update({ where: { id }, data: { sortOrder: idx } })
+    )
+  );
+  revalidatePath(`/${session.user.companyId}`);
+  return { success: true };
+}
+
 // ─── Group CRUD ───────────────────────────────────────────────────────────────
 
 export async function upsertEstimateGroup(divisionId: string, data: { id?: string; name: string }) {

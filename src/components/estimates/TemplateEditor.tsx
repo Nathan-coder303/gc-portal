@@ -23,6 +23,7 @@ import {
   updateTemplateTermsContent,
   upsertTermsTemplate,
   moveItemBetweenDivisions,
+  reorderTemplateDivisions,
 } from "@/app/[companyId]/estimates/actions";
 
 type Item = {
@@ -297,6 +298,11 @@ function TemplateDivisionSection({ division, otherDivisions, canEdit }: { divisi
   const [editName, setEditName] = useState(division.name);
   const [movingTo, setMovingTo] = useState(false);
   const { setNodeRef: setDropRef, isOver } = useDroppable({ id: division.id });
+  const { attributes: dragAttrs, listeners: dragListeners, setNodeRef: setDragRef, isDragging } = useDraggable({
+    id: "div-" + division.id,
+    data: { type: "division", divisionId: division.id },
+    disabled: !canEdit,
+  });
 
   const total = divisionTotal(division);
 
@@ -318,8 +324,11 @@ function TemplateDivisionSection({ division, otherDivisions, canEdit }: { divisi
   }
 
   return (
-    <div ref={setDropRef} className="rounded-xl overflow-hidden" style={{ background: "#1e2736", border: isOver ? "2px solid #C9A84C" : "1px solid #30373f", transition: "border 0.1s" }}>
+    <div ref={(node) => { setDropRef(node); setDragRef(node); }} className="rounded-xl overflow-hidden" style={{ background: "#1e2736", border: isOver ? "2px solid #C9A84C" : "1px solid #30373f", transition: "border 0.1s", opacity: isDragging ? 0.4 : 1 }}>
       <div className="w-full flex items-center gap-3 px-4 py-3" style={{ background: "#1e2736" }}>
+        {canEdit && (
+          <span className="text-xs select-none shrink-0 cursor-grab" style={{ color: "#8b949e", fontSize: "14px" }} {...dragListeners} {...dragAttrs}>⠿</span>
+        )}
         <button onClick={() => setOpen(!open)} className="text-xs shrink-0" style={{ color: "#8b949e" }}>{open ? "▼" : "▶"}</button>
 
         {editingHeader ? (
@@ -751,23 +760,45 @@ export default function TemplateEditor({
   const [savedToClient, setSavedToClient] = useState(false);
 
   const total = grandTotal(divisions);
-  const [activeDragItem, setActiveDragItem] = useState<{ id: string; name: string } | null>(null);
+  const [activeDragItem, setActiveDragItem] = useState<{ id: string; name: string; type: "item" | "division" } | null>(null);
 
   function handleDragStart(event: DragStartEvent) {
-    const name = event.active.data.current?.itemName as string ?? "";
-    setActiveDragItem({ id: event.active.id as string, name });
+    if (event.active.data.current?.type === "division") {
+      const divId = event.active.data.current.divisionId as string;
+      const div = divisions.find(d => d.id === divId);
+      setActiveDragItem({ id: divId, name: div?.name ?? "", type: "division" });
+    } else {
+      const name = event.active.data.current?.itemName as string ?? "";
+      setActiveDragItem({ id: event.active.id as string, name, type: "item" });
+    }
   }
 
   function handleDragEnd(event: DragEndEvent) {
     setActiveDragItem(null);
     const { active, over } = event;
     if (!over) return;
-    const sourceDivisionId = active.data.current?.sourceDivisionId as string;
-    const targetDivisionId = over.id as string;
-    if (!sourceDivisionId || sourceDivisionId === targetDivisionId) return;
-    startTransition(async () => {
-      await moveItemBetweenDivisions(active.id as string, targetDivisionId);
-    });
+
+    if (active.data.current?.type === "division") {
+      const activeDivId = active.data.current.divisionId as string;
+      const overDivId = over.id as string;
+      if (activeDivId === overDivId) return;
+      const oldIdx = divisions.findIndex(d => d.id === activeDivId);
+      const newIdx = divisions.findIndex(d => d.id === overDivId);
+      if (oldIdx < 0 || newIdx < 0) return;
+      const newOrder = divisions.map(d => d.id);
+      newOrder.splice(oldIdx, 1);
+      newOrder.splice(newIdx, 0, activeDivId);
+      startTransition(async () => {
+        await reorderTemplateDivisions(template.id, newOrder);
+      });
+    } else {
+      const sourceDivisionId = active.data.current?.sourceDivisionId as string;
+      const targetDivisionId = over.id as string;
+      if (!sourceDivisionId || sourceDivisionId === targetDivisionId) return;
+      startTransition(async () => {
+        await moveItemBetweenDivisions(active.id as string, targetDivisionId);
+      });
+    }
   }
 
   function saveHeader() {
@@ -1133,7 +1164,7 @@ export default function TemplateEditor({
     <DragOverlay>
       {activeDragItem && (
         <div className="rounded px-3 py-1.5 text-sm font-medium shadow-xl pointer-events-none"
-          style={{ background: "#C9A84C", color: "#0d1117", opacity: 0.95 }}>
+          style={{ background: activeDragItem.type === "division" ? "#1e2736" : "#C9A84C", color: activeDragItem.type === "division" ? "#e6edf3" : "#0d1117", border: activeDragItem.type === "division" ? "1px solid #C9A84C" : "none", opacity: 0.95 }}>
           ⠿ {activeDragItem.name}
         </div>
       )}

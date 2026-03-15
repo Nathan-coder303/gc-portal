@@ -1,6 +1,8 @@
 "use client";
 
 import { useState, useTransition } from "react";
+import { DndContext, DragOverlay, useDroppable, useDraggable, closestCenter } from "@dnd-kit/core";
+import type { DragStartEvent, DragEndEvent } from "@dnd-kit/core";
 import {
   upsertEstimateItem,
   archiveEstimateItem,
@@ -9,6 +11,7 @@ import {
   upsertEstimateGroup,
   archiveEstimateGroup,
   updateEstimate,
+  reorderEstimateDivisions,
 } from "@/app/[companyId]/[projectId]/estimates/actions";
 import {
   computeItemTotal,
@@ -306,6 +309,12 @@ function DivisionSection({
   const [groupName, setGroupName] = useState("");
 
   const total = computeDivisionTotal(division.groups, division.items);
+  const { setNodeRef: setDropRef, isOver } = useDroppable({ id: division.id });
+  const { attributes: dragAttrs, listeners: dragListeners, setNodeRef: setDragRef, isDragging } = useDraggable({
+    id: "div-" + division.id,
+    data: { type: "division", divisionId: division.id },
+    disabled: !canEdit,
+  });
 
   function saveGroup() {
     if (!groupName.trim()) return;
@@ -317,20 +326,22 @@ function DivisionSection({
   }
 
   return (
-    <div className="bg-white border border-slate-200 rounded-xl overflow-hidden">
-      <button
-        onClick={() => setOpen(!open)}
-        className="w-full flex items-center justify-between px-4 py-3 hover:bg-slate-50 transition-colors"
-      >
+    <div ref={(node) => { setDropRef(node); setDragRef(node); }} className="bg-white rounded-xl overflow-hidden" style={{ border: isOver ? "2px solid #3b82f6" : "1px solid #e2e8f0", opacity: isDragging ? 0.4 : 1, transition: "border 0.1s" }}>
+      <div className="w-full flex items-center justify-between px-4 py-3 hover:bg-slate-50 transition-colors">
         <div className="flex items-center gap-2">
-          <span className="text-slate-400 text-xs">{open ? "▼" : "▶"}</span>
-          {division.csiCode && (
-            <span className="font-semibold text-slate-900">{division.csiCode}</span>
+          {canEdit && (
+            <span className="text-slate-400 select-none cursor-grab text-sm" {...dragListeners} {...dragAttrs}>⠿</span>
           )}
-          <span className="font-semibold text-slate-900">{division.name}</span>
+          <button onClick={() => setOpen(!open)} className="flex items-center gap-2">
+            <span className="text-slate-400 text-xs">{open ? "▼" : "▶"}</span>
+            {division.csiCode && (
+              <span className="font-semibold text-slate-900">{division.csiCode}</span>
+            )}
+            <span className="font-semibold text-slate-900">{division.name}</span>
+          </button>
         </div>
         <span className="text-sm font-bold text-slate-900">${fmt(total)}</span>
-      </button>
+      </div>
 
       {open && (
         <div className="border-t border-slate-100 pb-2">
@@ -406,6 +417,32 @@ export default function ProjectEstimateEditor({
   const [divCsi, setDivCsi] = useState("");
 
   const grandTotal = computeEstimateTotal(divisions);
+  const [activeDivName, setActiveDivName] = useState<string | null>(null);
+
+  function handleDragStart(event: DragStartEvent) {
+    if (event.active.data.current?.type === "division") {
+      const divId = event.active.data.current.divisionId as string;
+      setActiveDivName(divisions.find(d => d.id === divId)?.name ?? "");
+    }
+  }
+
+  function handleDragEnd(event: DragEndEvent) {
+    setActiveDivName(null);
+    const { active, over } = event;
+    if (!over || active.data.current?.type !== "division") return;
+    const activeDivId = active.data.current.divisionId as string;
+    const overDivId = over.id as string;
+    if (activeDivId === overDivId) return;
+    const oldIdx = divisions.findIndex(d => d.id === activeDivId);
+    const newIdx = divisions.findIndex(d => d.id === overDivId);
+    if (oldIdx < 0 || newIdx < 0) return;
+    const newOrder = divisions.map(d => d.id);
+    newOrder.splice(oldIdx, 1);
+    newOrder.splice(newIdx, 0, activeDivId);
+    startTransition(async () => {
+      await reorderEstimateDivisions(estimate.id, newOrder);
+    });
+  }
 
   function saveHeader() {
     startTransition(async () => {
@@ -425,6 +462,7 @@ export default function ProjectEstimateEditor({
   }
 
   return (
+    <DndContext collisionDetection={closestCenter} onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
     <div className="space-y-4">
       {/* Header */}
       <div className="bg-white border border-slate-200 rounded-xl p-5">
@@ -520,5 +558,13 @@ export default function ProjectEstimateEditor({
         <span className="text-4xl font-bold">${fmt(grandTotal)}</span>
       </div>
     </div>
+    <DragOverlay>
+      {activeDivName && (
+        <div className="rounded-xl px-4 py-3 text-sm font-semibold shadow-xl pointer-events-none bg-white border border-blue-400 text-slate-900" style={{ opacity: 0.95 }}>
+          ⠿ {activeDivName}
+        </div>
+      )}
+    </DragOverlay>
+    </DndContext>
   );
 }
