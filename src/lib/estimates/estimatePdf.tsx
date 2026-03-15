@@ -117,11 +117,12 @@ const styles = StyleSheet.create({
     backgroundColor: "#fafafa",
   },
   colName: { flex: 3 },
-  colQty: { width: 40, textAlign: "right" },
-  colUnit: { width: 36, textAlign: "center" },
-  colCost: { width: 60, textAlign: "right" },
-  colMarkup: { width: 40, textAlign: "right" },
-  colTotal: { width: 70, textAlign: "right" },
+  colDetail: { width: 60, textAlign: "center" },
+  colQty: { width: 36, textAlign: "right" },
+  colUnit: { width: 32, textAlign: "center" },
+  colCost: { width: 56, textAlign: "right" },
+  colMarkup: { width: 36, textAlign: "right" },
+  colTotal: { width: 66, textAlign: "right" },
   headerText: { fontSize: 7, color: "#94a3b8", fontFamily: "Helvetica-Bold", textTransform: "uppercase" },
   cellText: { fontSize: 8, color: "#334155" },
   cellTextBold: { fontSize: 8, color: "#0f172a", fontFamily: "Helvetica-Bold" },
@@ -182,6 +183,7 @@ function ItemTableHeader() {
   return (
     <View style={styles.tableHeader}>
       <Text style={[styles.headerText, styles.colName]}>Item</Text>
+      <Text style={[styles.headerText, styles.colDetail]}>Detail</Text>
       <Text style={[styles.headerText, styles.colQty]}>Qty</Text>
       <Text style={[styles.headerText, styles.colUnit]}>Unit</Text>
       <Text style={[styles.headerText, styles.colCost]}>Cost</Text>
@@ -195,16 +197,18 @@ function ItemRow({ item, index }: { item: Item; index: number }) {
   const isExcluded = item.detail === "Excluded";
   const total = computeItemTotal(item);
   const style = index % 2 === 0 ? styles.tableRow : styles.tableRowAlt;
+  const detailColor = isExcluded ? "#dc2626" : item.detail === "Allowances" ? "#d97706" : "#334155";
   return (
     <View style={style}>
       <Text style={[styles.cellText, styles.colName]}>{item.name}</Text>
+      <Text style={[{ fontSize: 7, color: detailColor, textAlign: "center" }, styles.colDetail]}>{item.detail ?? ""}</Text>
       {isExcluded ? (
         <>
           <Text style={[styles.cellTextMuted, styles.colQty]}>—</Text>
           <Text style={[styles.cellTextMuted, styles.colUnit]}>{item.unit ?? ""}</Text>
           <Text style={[styles.cellTextMuted, styles.colCost]}>—</Text>
           <Text style={[styles.cellTextMuted, styles.colMarkup]}>—</Text>
-          <Text style={[{ fontSize: 7, color: "#dc2626", fontFamily: "Helvetica-Bold" }, styles.colTotal]}>EXCLUDED</Text>
+          <Text style={[styles.cellTextMuted, styles.colTotal]}>$0.00</Text>
         </>
       ) : (
         <>

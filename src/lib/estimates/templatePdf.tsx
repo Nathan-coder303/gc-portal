@@ -57,6 +57,7 @@ const styles = StyleSheet.create({
   tableRow: { flexDirection: "row", paddingHorizontal: 8, paddingVertical: 3, borderBottomWidth: 1, borderBottomColor: "#f1f5f9" },
   tableRowAlt: { flexDirection: "row", paddingHorizontal: 8, paddingVertical: 3, borderBottomWidth: 1, borderBottomColor: "#f1f5f9", backgroundColor: "#fafafa" },
   colName: { flex: 3 },
+  colDetail: { width: 60, textAlign: "center" },
   colQty: { width: 40, textAlign: "right" },
   colUnit: { width: 40, textAlign: "center" },
   colTotal: { width: 80, textAlign: "right" },
@@ -109,6 +110,7 @@ function ItemTableHeader() {
   return (
     <View style={styles.tableHeader}>
       <Text style={[styles.headerText, styles.colName]}>Item</Text>
+      <Text style={[styles.headerText, styles.colDetail]}>Detail</Text>
       <Text style={[styles.headerText, styles.colQty]}>Qty</Text>
       <Text style={[styles.headerText, styles.colUnit]}>Unit</Text>
       <Text style={[styles.headerText, styles.colTotal]}>Total</Text>
@@ -120,14 +122,16 @@ function ItemRow({ item, index }: { item: Item; index: number }) {
   const isExcluded = item.detail === "Excluded";
   const total = calcTotal(item.defaultQty, item.defaultUnitCost, item.defaultMarkupPct);
   const style = index % 2 === 0 ? styles.tableRow : styles.tableRowAlt;
+  const detailColor = isExcluded ? "#dc2626" : item.detail === "Allowances" ? "#d97706" : "#334155";
   return (
     <View style={style}>
       <Text style={[styles.cellText, styles.colName]}>{item.name}</Text>
+      <Text style={[{ fontSize: 7, color: detailColor, textAlign: "center" }, styles.colDetail]}>{item.detail ?? ""}</Text>
       {isExcluded ? (
         <>
           <Text style={[styles.cellMuted, styles.colQty]}>—</Text>
           <Text style={[styles.cellMuted, styles.colUnit]}>{item.unit ?? ""}</Text>
-          <Text style={[{ fontSize: 7, color: "#dc2626", fontFamily: "Helvetica-Bold" }, styles.colTotal]}>EXCLUDED</Text>
+          <Text style={[styles.cellMuted, styles.colTotal]}>$0.00</Text>
         </>
       ) : (
         <>
