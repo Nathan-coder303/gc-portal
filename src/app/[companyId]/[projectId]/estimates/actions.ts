@@ -185,6 +185,73 @@ export async function updateEstimateGcFee(estimateId: string, gcFeePercent: numb
   return { success: true };
 }
 
+const DURATION_KEYWORDS = ["project management", "laborer", "portable potty", "tool rental", "tools"];
+
+function isDurationItem(name: string, unit: string | null): boolean {
+  const n = name.toLowerCase();
+  const u = (unit ?? "").toUpperCase().trim();
+  return u === "MO" || DURATION_KEYWORDS.some(k => n.includes(k));
+}
+
+export async function updateEstimateSqFt(estimateId: string, sqFt: number | null) {
+  const session = await auth();
+  if (!session) throw new Error("Unauthorized");
+  requirePermission(session, "estimate:edit");
+
+  await prisma.projectEstimate.update({
+    where: { id: estimateId },
+    data: { sqFt: sqFt ?? null, updatedBy: session.user.id },
+  });
+
+  if (sqFt && sqFt > 0) {
+    const sfItems = await prisma.projectEstimateItem.findMany({
+      where: {
+        archivedAt: null,
+        unit: { equals: "SF", mode: "insensitive" },
+        division: { estimateId },
+      },
+      select: { id: true },
+    });
+    if (sfItems.length > 0) {
+      await prisma.projectEstimateItem.updateMany({
+        where: { id: { in: sfItems.map(i => i.id) } },
+        data: { qty: sqFt },
+      });
+    }
+  }
+
+  revalidatePath(`/${session.user.companyId}`);
+  return { success: true };
+}
+
+export async function updateEstimateDurationMonths(estimateId: string, months: number | null) {
+  const session = await auth();
+  if (!session) throw new Error("Unauthorized");
+  requirePermission(session, "estimate:edit");
+
+  await prisma.projectEstimate.update({
+    where: { id: estimateId },
+    data: { durationMonths: months ?? null, updatedBy: session.user.id },
+  });
+
+  if (months && months > 0) {
+    const allItems = await prisma.projectEstimateItem.findMany({
+      where: { archivedAt: null, division: { estimateId } },
+      select: { id: true, name: true, unit: true },
+    });
+    const matchIds = allItems.filter(i => isDurationItem(i.name, i.unit)).map(i => i.id);
+    if (matchIds.length > 0) {
+      await prisma.projectEstimateItem.updateMany({
+        where: { id: { in: matchIds } },
+        data: { qty: months },
+      });
+    }
+  }
+
+  revalidatePath(`/${session.user.companyId}`);
+  return { success: true };
+}
+
 export async function archiveEstimate(estimateId: string, projectId: string) {
   const session = await auth();
   if (!session) throw new Error("Unauthorized");

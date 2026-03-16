@@ -428,6 +428,8 @@ model EstimateTemplate {
   showTerms       Boolean                    @default(false)
   termsContent    String?
   gcFeePercent    Decimal?                   @db.Decimal(5, 2)
+  sqFt            Decimal?                   @db.Decimal(10, 2)
+  durationMonths  Decimal?                   @db.Decimal(5, 2)
   divisions       EstimateTemplateDivision[]
   estimates   ProjectEstimate[]
 
@@ -497,7 +499,9 @@ model ProjectEstimate {
   name         String
   description  String?
   status       String                    @default("DRAFT")
-  gcFeePercent Decimal?                  @db.Decimal(5, 2)
+  gcFeePercent   Decimal?                  @db.Decimal(5, 2)
+  sqFt           Decimal?                  @db.Decimal(10, 2)
+  durationMonths Decimal?                  @db.Decimal(5, 2)
   createdBy   String
   createdAt   DateTime                  @default(now())
   updatedAt   DateTime                  @updatedAt

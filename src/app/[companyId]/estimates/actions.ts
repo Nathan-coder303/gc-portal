@@ -619,6 +619,75 @@ export async function updateTemplateGcFee(templateId: string, gcFeePercent: numb
   return { success: true };
 }
 
+// Keywords that identify duration-driven items (MO unit or these name patterns)
+const DURATION_KEYWORDS = ["project management", "laborer", "portable potty", "tool rental", "tools"];
+
+function isDurationItem(name: string, unit: string | null): boolean {
+  const n = name.toLowerCase();
+  const u = (unit ?? "").toUpperCase().trim();
+  return u === "MO" || DURATION_KEYWORDS.some(k => n.includes(k));
+}
+
+export async function updateTemplateSqFt(templateId: string, sqFt: number | null) {
+  const session = await auth();
+  if (!session) throw new Error("Unauthorized");
+  requirePermission(session, "estimateTemplate:edit");
+
+  await prisma.estimateTemplate.update({
+    where: { id: templateId },
+    data: { sqFt: sqFt ?? null, updatedBy: session.user.id },
+  });
+
+  if (sqFt && sqFt > 0) {
+    // Find all SF items under this template
+    const sfItems = await prisma.estimateTemplateItem.findMany({
+      where: {
+        archivedAt: null,
+        unit: { equals: "SF", mode: "insensitive" },
+        division: { templateId },
+      },
+      select: { id: true },
+    });
+    if (sfItems.length > 0) {
+      await prisma.estimateTemplateItem.updateMany({
+        where: { id: { in: sfItems.map(i => i.id) } },
+        data: { defaultQty: sqFt },
+      });
+    }
+  }
+
+  revalidatePath(`/${session.user.companyId}/estimates`);
+  return { success: true };
+}
+
+export async function updateTemplateDurationMonths(templateId: string, months: number | null) {
+  const session = await auth();
+  if (!session) throw new Error("Unauthorized");
+  requirePermission(session, "estimateTemplate:edit");
+
+  await prisma.estimateTemplate.update({
+    where: { id: templateId },
+    data: { durationMonths: months ?? null, updatedBy: session.user.id },
+  });
+
+  if (months && months > 0) {
+    const allItems = await prisma.estimateTemplateItem.findMany({
+      where: { archivedAt: null, division: { templateId } },
+      select: { id: true, name: true, unit: true },
+    });
+    const matchIds = allItems.filter(i => isDurationItem(i.name, i.unit)).map(i => i.id);
+    if (matchIds.length > 0) {
+      await prisma.estimateTemplateItem.updateMany({
+        where: { id: { in: matchIds } },
+        data: { defaultQty: months },
+      });
+    }
+  }
+
+  revalidatePath(`/${session.user.companyId}/estimates`);
+  return { success: true };
+}
+
 // ─── Terms Templates ──────────────────────────────────────────────────────────
 
 export async function listTermsTemplates() {

@@ -23,6 +23,8 @@ import {
   updateTemplateShowTerms,
   updateTemplateTermsContent,
   updateTemplateGcFee,
+  updateTemplateSqFt,
+  updateTemplateDurationMonths,
   upsertTermsTemplate,
   moveItemBetweenDivisions,
   reorderTemplateDivisions,
@@ -45,7 +47,7 @@ type Item = {
 type Group = { id: string; name: string; items: Item[] };
 type Division = { id: string; csiCode: string | null; name: string; groups: Group[]; items: Item[] };
 type PaymentRow = { payment: string; trigger: string; pct: number };
-type Template = { id: string; name: string; description: string | null; companyId: string; estimateNumber: string | null; estimateDate: string | null; paymentSchedule: PaymentRow[] | null; showTerms: boolean; termsContent: string | null; type: string; gcFeePercent: number | null };
+type Template = { id: string; name: string; description: string | null; companyId: string; estimateNumber: string | null; estimateDate: string | null; paymentSchedule: PaymentRow[] | null; showTerms: boolean; termsContent: string | null; type: string; gcFeePercent: number | null; sqFt: number | null; durationMonths: number | null };
 
 const INPUT = "rounded px-2 py-1 text-xs" as const;
 const inputStyle = { background: "#0d1117", border: "1px solid #30373f", color: "#e6edf3" };
@@ -835,6 +837,8 @@ export default function TemplateEditor({
   const [gcFeePercent, setGcFeePercent] = useState<number | "">(template.gcFeePercent ?? "");
   const gcFeeAmount = typeof gcFeePercent === "number" && gcFeePercent > 0 ? subtotal * gcFeePercent / 100 : 0;
   const total = subtotal + gcFeeAmount;
+  const [sqFt, setSqFt] = useState<number | "">(template.sqFt ?? "");
+  const [durationMonths, setDurationMonths] = useState<number | "">(template.durationMonths ?? "");
   const [activeDragItem, setActiveDragItem] = useState<{ id: string; name: string; type: "item" | "division" } | null>(null);
 
   function handleDragStart(event: DragStartEvent) {
@@ -1089,42 +1093,87 @@ export default function TemplateEditor({
                 </div>
               </div>
               <div className="flex items-start gap-4 shrink-0 flex-wrap">
-                {/* Total card */}
-                <div className="rounded-xl px-6 py-5 flex flex-col gap-2 min-w-[200px]" style={{ background: "#0d1117", border: "1px solid #C9A84C44" }}>
-                  {gcFeeAmount > 0 && (
-                    <div className="flex justify-between items-center text-xs" style={{ color: "#8b949e" }}>
-                      <span>Subtotal</span>
-                      <span>${fmt(subtotal)}</span>
+                {/* Total + dimension cards stacked */}
+                <div className="flex flex-col gap-2">
+                  {/* Total card */}
+                  <div className="rounded-xl px-6 py-5 flex flex-col gap-2 min-w-[200px]" style={{ background: "#0d1117", border: "1px solid #C9A84C44" }}>
+                    {gcFeeAmount > 0 && (
+                      <div className="flex justify-between items-center text-xs" style={{ color: "#8b949e" }}>
+                        <span>Subtotal</span>
+                        <span>${fmt(subtotal)}</span>
+                      </div>
+                    )}
+                    {/* GC Fee row */}
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="text-xs shrink-0" style={{ color: "#8b949e" }}>GC O&P %</span>
+                      <input
+                        type="number"
+                        min="0"
+                        max="100"
+                        step="0.5"
+                        value={gcFeePercent}
+                        onChange={e => setGcFeePercent(e.target.value === "" ? "" : Number(e.target.value))}
+                        onBlur={() => {
+                          const val = gcFeePercent === "" ? null : Number(gcFeePercent);
+                          startTransition(async () => { await updateTemplateGcFee(template.id, val); });
+                        }}
+                        placeholder="0"
+                        className="rounded px-2 py-1 text-xs text-right w-16"
+                        style={{ background: "#161b22", border: "1px solid #30373f", color: "#C9A84C" }}
+                      />
                     </div>
-                  )}
-                  {/* GC Fee row */}
-                  <div className="flex items-center justify-between gap-2">
-                    <span className="text-xs shrink-0" style={{ color: "#8b949e" }}>GC O&P %</span>
+                    {gcFeeAmount > 0 && (
+                      <div className="flex justify-between items-center text-xs" style={{ color: "#8b949e" }}>
+                        <span>GC O&P</span>
+                        <span style={{ color: "#C9A84C" }}>${fmt(gcFeeAmount)}</span>
+                      </div>
+                    )}
+                    <div className="border-t pt-2" style={{ borderColor: "#30373f" }}>
+                      <div className="text-xs font-semibold uppercase tracking-widest mb-1 text-center" style={{ color: "#8b949e" }}>Total</div>
+                      <div className="text-4xl font-bold leading-none text-center" style={{ color: "#C9A84C" }}>${fmt(total)}</div>
+                    </div>
+                  </div>
+                  {/* Sq Ft card */}
+                  <div className="rounded-xl px-4 py-3 flex items-center justify-between gap-3" style={{ background: "#0d1117", border: "1px solid #30373f" }}>
+                    <div>
+                      <div className="text-xs font-medium" style={{ color: "#e6edf3" }}>Sq Ft</div>
+                      <div className="text-[10px] mt-0.5" style={{ color: "#484f58" }}>Updates SF unit items</div>
+                    </div>
                     <input
                       type="number"
                       min="0"
-                      max="100"
-                      step="0.5"
-                      value={gcFeePercent}
-                      onChange={e => setGcFeePercent(e.target.value === "" ? "" : Number(e.target.value))}
+                      step="1"
+                      value={sqFt}
+                      onChange={e => setSqFt(e.target.value === "" ? "" : Number(e.target.value))}
                       onBlur={() => {
-                        const val = gcFeePercent === "" ? null : Number(gcFeePercent);
-                        startTransition(async () => { await updateTemplateGcFee(template.id, val); });
+                        const val = sqFt === "" ? null : Number(sqFt);
+                        startTransition(async () => { await updateTemplateSqFt(template.id, val); });
                       }}
                       placeholder="0"
-                      className="rounded px-2 py-1 text-xs text-right w-16"
+                      className="rounded px-2 py-1 text-xs text-right w-20"
                       style={{ background: "#161b22", border: "1px solid #30373f", color: "#C9A84C" }}
                     />
                   </div>
-                  {gcFeeAmount > 0 && (
-                    <div className="flex justify-between items-center text-xs" style={{ color: "#8b949e" }}>
-                      <span>GC O&P</span>
-                      <span style={{ color: "#C9A84C" }}>${fmt(gcFeeAmount)}</span>
+                  {/* Duration card */}
+                  <div className="rounded-xl px-4 py-3 flex items-center justify-between gap-3" style={{ background: "#0d1117", border: "1px solid #30373f" }}>
+                    <div>
+                      <div className="text-xs font-medium" style={{ color: "#e6edf3" }}>Duration (months)</div>
+                      <div className="text-[10px] mt-0.5" style={{ color: "#484f58" }}>Updates mgmt, labor, potty, tools</div>
                     </div>
-                  )}
-                  <div className="border-t pt-2" style={{ borderColor: "#30373f" }}>
-                    <div className="text-xs font-semibold uppercase tracking-widest mb-1 text-center" style={{ color: "#8b949e" }}>Total</div>
-                    <div className="text-4xl font-bold leading-none text-center" style={{ color: "#C9A84C" }}>${fmt(total)}</div>
+                    <input
+                      type="number"
+                      min="0"
+                      step="0.5"
+                      value={durationMonths}
+                      onChange={e => setDurationMonths(e.target.value === "" ? "" : Number(e.target.value))}
+                      onBlur={() => {
+                        const val = durationMonths === "" ? null : Number(durationMonths);
+                        startTransition(async () => { await updateTemplateDurationMonths(template.id, val); });
+                      }}
+                      placeholder="0"
+                      className="rounded px-2 py-1 text-xs text-right w-20"
+                      style={{ background: "#161b22", border: "1px solid #30373f", color: "#C9A84C" }}
+                    />
                   </div>
                 </div>
                 {/* Payment Schedule card */}
