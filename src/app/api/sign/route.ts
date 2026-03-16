@@ -1,6 +1,17 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import crypto from "crypto";
+import { google } from "googleapis";
+
+function getOAuthClient() {
+  const oauth2Client = new google.auth.OAuth2(
+    process.env.GOOGLE_CLIENT_ID,
+    process.env.GOOGLE_CLIENT_SECRET,
+    "urn:ietf:wg:oauth:2.0:oob"
+  );
+  oauth2Client.setCredentials({ refresh_token: process.env.GOOGLE_REFRESH_TOKEN });
+  return oauth2Client;
+}
 
 export const runtime = "nodejs";
 
@@ -40,16 +51,70 @@ export async function PATCH(req: NextRequest) {
 
   const template = await prisma.estimateTemplate.findUnique({
     where: { signatureToken: token },
-    select: { id: true, signedAt: true },
+    select: {
+      id: true,
+      companyId: true,
+      name: true,
+      estimateNumber: true,
+      signedAt: true,
+      client: { select: { name: true, address: true } },
+    },
   });
 
   if (!template) return NextResponse.json({ error: "Invalid token" }, { status: 404 });
   if (template.signedAt) return NextResponse.json({ error: "Already signed" }, { status: 409 });
 
+  const signedAt = new Date();
   await prisma.estimateTemplate.update({
     where: { id: template.id },
-    data: { signatureData, signedByName, signedAt: new Date() },
+    data: { signatureData, signedByName, signedAt },
   });
+
+  // Send notification email to Mike
+  try {
+    const oauth2Client = getOAuthClient();
+    const gmail = google.gmail({ version: "v1", auth: oauth2Client });
+    const profile = await gmail.users.getProfile({ userId: "me" });
+    const fromEmail = profile.data.emailAddress ?? "me";
+
+    const signedTime = signedAt.toLocaleString("en-US", {
+      year: "numeric", month: "long", day: "numeric",
+      hour: "numeric", minute: "2-digit", timeZoneName: "short",
+    });
+    const estimateLabel = template.estimateNumber
+      ? `Estimate #${template.estimateNumber} — ${template.name}`
+      : template.name;
+    const clientLabel = template.client?.name ?? "Unknown client";
+    const portalUrl = `https://portal.mibhconstruction.com/${template.companyId}/clients`;
+
+    const notifSubject = `Estimate Signed: ${estimateLabel} by ${clientLabel}`;
+    const notifBody = [
+      `Your estimate has been signed!`,
+      ``,
+      `Estimate: ${estimateLabel}`,
+      `Client: ${clientLabel}`,
+      `Signed by: ${signedByName}`,
+      `Signed at: ${signedTime}`,
+      ``,
+      `View in portal: ${portalUrl}`,
+    ].join("\n");
+
+    const encodedSubject = `=?UTF-8?B?${Buffer.from(notifSubject).toString("base64")}?=`;
+    const mimeLines = [
+      `From: ${fromEmail}`,
+      `To: ${fromEmail}`,
+      `Subject: ${encodedSubject}`,
+      `MIME-Version: 1.0`,
+      `Content-Type: text/plain; charset=UTF-8`,
+      ``,
+      notifBody,
+    ];
+    const raw = Buffer.from(mimeLines.join("\r\n")).toString("base64url");
+    await gmail.users.messages.send({ userId: "me", requestBody: { raw } });
+  } catch (err) {
+    // Non-fatal — signature was saved, just log the notification failure
+    console.error("Sign notification email failed:", err);
+  }
 
   return NextResponse.json({ success: true });
 }

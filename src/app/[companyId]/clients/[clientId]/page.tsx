@@ -214,6 +214,9 @@ export default async function ClientDetailPage({
                         templateName={est.name}
                         clientName={safeClient.name}
                         clientEmail={safeClient.email}
+                        estimateNumber={est.estimateNumber ?? null}
+                        description={est.description ?? null}
+                        clientAddress={safeClient.address ?? null}
                       />
                       <Link href={`/${params.companyId}/estimates/${est.id}`} className="text-lg" style={{ color: "#8b949e" }}>→</Link>
                       {canEdit && (

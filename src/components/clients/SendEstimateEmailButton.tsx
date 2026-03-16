@@ -19,14 +19,25 @@ type Props = {
   templateName: string;
   clientName: string;
   clientEmail: string | null;
+  estimateNumber?: string | null;
+  description?: string | null;
+  clientAddress?: string | null;
 };
 
-export default function SendEstimateEmailButton({ templateId, companyId, templateName, clientName, clientEmail }: Props) {
+export default function SendEstimateEmailButton({ templateId, companyId, templateName, clientName, clientEmail, estimateNumber, description, clientAddress }: Props) {
   const defaultBody = `Dear ${clientName},\n\nPlease find attached your estimate for the project.\n\nDo not hesitate to contact us with any questions.\n\n${MIKE_SIGNATURE}`;
+
+  const scope = description || templateName;
+  const subjectParts = ["Estimate"];
+  if (estimateNumber) subjectParts.push(`#${estimateNumber}`);
+  subjectParts.push("from MIBH CONSTRUCTION");
+  if (scope) subjectParts.push(`for ${scope}`);
+  if (clientAddress) subjectParts.push(`at ${clientAddress}`);
+  const defaultSubject = subjectParts.join(" ");
 
   const [open, setOpen] = useState(false);
   const [to, setTo] = useState(clientEmail ?? "");
-  const [subject, setSubject] = useState(`Estimate – ${clientName}`);
+  const [subject, setSubject] = useState(defaultSubject);
   const [body, setBody] = useState(defaultBody);
   const [sending, setSending] = useState(false);
   const [result, setResult] = useState<{ ok: boolean; msg: string } | null>(null);

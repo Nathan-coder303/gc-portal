@@ -145,11 +145,13 @@ export default function SignPage() {
 
   if (submitted || info.alreadySigned) {
     const signedName = submitted ? name : info.signedByName;
-    const signedDate = submitted
-      ? new Date().toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" })
-      : info.signedAt
-        ? new Date(info.signedAt).toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" })
-        : null;
+    const signedDateObj = submitted ? new Date() : (info.signedAt ? new Date(info.signedAt) : null);
+    const signedDate = signedDateObj
+      ? signedDateObj.toLocaleString("en-US", {
+          year: "numeric", month: "long", day: "numeric",
+          hour: "numeric", minute: "2-digit", timeZoneName: "short",
+        })
+      : null;
 
     return (
       <div className="min-h-screen flex items-center justify-center p-6" style={{ background: "#f8fafc" }}>

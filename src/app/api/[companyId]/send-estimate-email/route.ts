@@ -27,10 +27,7 @@ function getOAuthClient() {
 }
 
 // GET — returns the authenticated Gmail address and default signature for the modal
-export async function GET(
-  _req: NextRequest,
-  _ctx: { params: { companyId: string } }
-) {
+export async function GET() {
   const session = await auth();
   if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
@@ -198,10 +195,15 @@ export async function POST(
   const filename = `${template.name.replace(/[^a-z0-9]/gi, "-").toLowerCase()}-estimate.pdf`;
   const pdfBase64 = buffer.toString("base64");
 
+  // RFC 2047 encode subject to handle non-ASCII characters (em dash, accents, etc.)
+  const encodedSubject = /^[\x00-\x7F]*$/.test(subject)
+    ? subject
+    : `=?UTF-8?B?${Buffer.from(subject).toString("base64")}?=`;
+
   const mimeLines = [
     `From: ${fromEmail}`,
     `To: ${to}`,
-    `Subject: ${subject}`,
+    `Subject: ${encodedSubject}`,
     `MIME-Version: 1.0`,
     `Content-Type: multipart/mixed; boundary="${boundary}"`,
     ``,
