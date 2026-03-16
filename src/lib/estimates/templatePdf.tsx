@@ -148,8 +148,8 @@ function ItemRow({ item, index }: { item: Item; index: number }) {
 function TemplatePdfDocument({ companyName, template, client, divisions, termsContent, paymentSchedule, gcFeePercent }: Omit<TemplatePdfProps, "showTerms">) {
   const grandTotal = divisions.reduce((sum, div) => {
     const divSum = [
-      ...div.items.filter(isItemFilled),
-      ...div.groups.flatMap(g => g.items.filter(isItemFilled)),
+      ...div.items.filter(i => isItemFilled(i) || !!i.detail),
+      ...div.groups.flatMap(g => g.items.filter(i => isItemFilled(i) || !!i.detail)),
     ].reduce((s, i) => s + calcTotal(i.defaultQty, i.defaultUnitCost, i.defaultMarkupPct), 0);
     return sum + divSum;
   }, 0);
@@ -204,8 +204,8 @@ function TemplatePdfDocument({ companyName, template, client, divisions, termsCo
 
         {/* Divisions */}
         {divisions.map((div) => {
-          const divFilledItems = div.items.filter(i => isItemFilled(i) || i.detail === "Excluded");
-          const divGroupsWithItems = div.groups.map(g => ({ ...g, items: g.items.filter(i => isItemFilled(i) || i.detail === "Excluded") })).filter(g => g.items.length > 0);
+          const divFilledItems = div.items.filter(i => isItemFilled(i) || !!i.detail);
+          const divGroupsWithItems = div.groups.map(g => ({ ...g, items: g.items.filter(i => isItemFilled(i) || !!i.detail) })).filter(g => g.items.length > 0);
           if (divFilledItems.length === 0 && divGroupsWithItems.length === 0) return null;
 
           const divTotal = [
