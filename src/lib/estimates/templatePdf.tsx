@@ -17,6 +17,33 @@ function isItemFilled(item: Item): boolean {
   return calcTotal(item.defaultQty, item.defaultUnitCost, item.defaultMarkupPct) > 0;
 }
 
+// ─── Summary groupings (super-divisions) ──────────────────────────────────────
+const SUMMARY_GROUPS: { label: string; prefixes: string[] }[] = [
+  { label: "SHELL", prefixes: ["03", "04"] },
+];
+
+function getGroupLabel(csiCode: string | null): string | null {
+  if (!csiCode) return null;
+  const prefix = csiCode.replace(/\s/g, "").substring(0, 2);
+  return SUMMARY_GROUPS.find(g => g.prefixes.includes(prefix))?.label ?? null;
+}
+
+type GroupedDivisions = { groupLabel: string | null; divs: Division[] };
+
+function groupDivisions(divisions: Division[]): GroupedDivisions[] {
+  const result: GroupedDivisions[] = [];
+  for (const div of divisions) {
+    const label = getGroupLabel(div.csiCode);
+    const last = result[result.length - 1];
+    if (last && last.groupLabel === label && label !== null) {
+      last.divs.push(div);
+    } else {
+      result.push({ groupLabel: label, divs: [div] });
+    }
+  }
+  return result;
+}
+
 // Format ISO date (YYYY-MM-DD) to "March 9, 2026", or pass through free text
 function fmtDate(dateStr: string | null): string {
   if (!dateStr) return "";
@@ -69,6 +96,9 @@ const styles = StyleSheet.create({
   grandTotalBar: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", backgroundColor: DARK, padding: 10, marginTop: 14, borderRadius: 3 },
   grandTotalLabel: { fontSize: 12, fontFamily: "Helvetica-Bold", color: "#C9A84C" },
 
+  groupSuperHeader: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", backgroundColor: GOLD, paddingHorizontal: 10, paddingVertical: 6, marginTop: 14, borderRadius: 3 },
+  groupSuperLabel: { fontSize: 11, fontFamily: "Helvetica-Bold", color: "#0f172a", letterSpacing: 1 },
+  groupSuperTotal: { fontSize: 11, fontFamily: "Helvetica-Bold", color: "#0f172a" },
   sectionDivider: { borderBottomWidth: 2, borderBottomColor: GOLD, marginTop: 20, marginBottom: 0 },
   sectionTitle: { fontSize: 12, fontFamily: "Helvetica-Bold", color: DARK, marginBottom: 8, paddingTop: 12 },
 
@@ -148,8 +178,8 @@ function ItemRow({ item, index }: { item: Item; index: number }) {
 function TemplatePdfDocument({ companyName, template, client, divisions, termsContent, paymentSchedule, gcFeePercent }: Omit<TemplatePdfProps, "showTerms">) {
   const grandTotal = divisions.reduce((sum, div) => {
     const divSum = [
-      ...div.items.filter(i => isItemFilled(i) || !!i.detail),
-      ...div.groups.flatMap(g => g.items.filter(i => isItemFilled(i) || !!i.detail)),
+      ...div.items.filter(isItemFilled),
+      ...div.groups.flatMap(g => g.items.filter(isItemFilled)),
     ].reduce((s, i) => s + calcTotal(i.defaultQty, i.defaultUnitCost, i.defaultMarkupPct), 0);
     return sum + divSum;
   }, 0);
@@ -202,47 +232,67 @@ function TemplatePdfDocument({ companyName, template, client, divisions, termsCo
           </View>
         </View>
 
-        {/* Divisions */}
-        {divisions.map((div) => {
-          const divFilledItems = div.items.filter(i => isItemFilled(i) || !!i.detail);
-          const divGroupsWithItems = div.groups.map(g => ({ ...g, items: g.items.filter(i => isItemFilled(i) || !!i.detail) })).filter(g => g.items.length > 0);
-          if (divFilledItems.length === 0 && divGroupsWithItems.length === 0) return null;
+        {/* Divisions — grouped into super-sections (e.g. SHELL) */}
+        {groupDivisions(divisions).map(({ groupLabel, divs }, gi) => {
+          // Pre-filter each division's items
+          const filteredDivs = divs.map(div => ({
+            div,
+            filledItems: div.items.filter(i => isItemFilled(i) || !!i.detail),
+            filledGroups: div.groups.map(g => ({ ...g, items: g.items.filter(i => isItemFilled(i) || !!i.detail) })).filter(g => g.items.length > 0),
+          })).filter(({ filledItems, filledGroups }) => filledItems.length > 0 || filledGroups.length > 0);
 
-          const divTotal = [
-            ...divFilledItems,
-            ...divGroupsWithItems.flatMap(g => g.items),
-          ].reduce((s, i) => s + calcTotal(i.defaultQty, i.defaultUnitCost, i.defaultMarkupPct), 0);
+          if (filteredDivs.length === 0) return null;
+
+          const groupTotal = filteredDivs.reduce((s, { filledItems, filledGroups }) =>
+            s + [...filledItems, ...filledGroups.flatMap(g => g.items)].reduce((ss, i) => ss + calcTotal(i.defaultQty, i.defaultUnitCost, i.defaultMarkupPct), 0), 0);
 
           return (
-            <View key={div.id}>
-              <View style={styles.divisionHeader}>
-                <View style={styles.divisionLeft}>
-                  {div.csiCode ? <Text style={styles.divisionCsi}>{div.csiCode}</Text> : null}
-                  <Text style={styles.divisionName}>{div.name}</Text>
+            <View key={gi}>
+              {/* Super-group header (e.g. SHELL) */}
+              {groupLabel && (
+                <View style={styles.groupSuperHeader}>
+                  <Text style={styles.groupSuperLabel}>{groupLabel}</Text>
+                  <Text style={styles.groupSuperTotal}>${fmt(groupTotal)}</Text>
                 </View>
-                <Text style={styles.divisionTotal}>${fmt(divTotal)}</Text>
-              </View>
+              )}
 
-              {divGroupsWithItems.map((grp) => {
-                const grpTotal = grp.items.reduce((s, i) => s + calcTotal(i.defaultQty, i.defaultUnitCost, i.defaultMarkupPct), 0);
+              {filteredDivs.map(({ div, filledItems, filledGroups }) => {
+                const divTotal = [...filledItems, ...filledGroups.flatMap(g => g.items)]
+                  .reduce((s, i) => s + calcTotal(i.defaultQty, i.defaultUnitCost, i.defaultMarkupPct), 0);
+
                 return (
-                  <View key={grp.id}>
-                    <View style={styles.groupHeader}>
-                      <Text style={styles.groupName}>{grp.name}</Text>
-                      <Text style={styles.groupTotal}>{grpTotal > 0 ? `$${fmt(grpTotal)}` : ""}</Text>
+                  <View key={div.id}>
+                    <View style={[styles.divisionHeader, groupLabel ? { marginTop: 6 } : {}]}>
+                      <View style={styles.divisionLeft}>
+                        {div.csiCode ? <Text style={styles.divisionCsi}>{div.csiCode}</Text> : null}
+                        <Text style={styles.divisionName}>{div.name}</Text>
+                      </View>
+                      <Text style={styles.divisionTotal}>${fmt(divTotal)}</Text>
                     </View>
-                    <ItemTableHeader />
-                    {grp.items.map((item, idx) => <ItemRow key={item.id} item={item} index={idx} />)}
+
+                    {filledGroups.map((grp) => {
+                      const grpTotal = grp.items.reduce((s, i) => s + calcTotal(i.defaultQty, i.defaultUnitCost, i.defaultMarkupPct), 0);
+                      return (
+                        <View key={grp.id}>
+                          <View style={styles.groupHeader}>
+                            <Text style={styles.groupName}>{grp.name}</Text>
+                            <Text style={styles.groupTotal}>{grpTotal > 0 ? `$${fmt(grpTotal)}` : ""}</Text>
+                          </View>
+                          <ItemTableHeader />
+                          {grp.items.map((item, idx) => <ItemRow key={item.id} item={item} index={idx} />)}
+                        </View>
+                      );
+                    })}
+
+                    {filledItems.length > 0 && (
+                      <View>
+                        <ItemTableHeader />
+                        {filledItems.map((item, idx) => <ItemRow key={item.id} item={item} index={idx} />)}
+                      </View>
+                    )}
                   </View>
                 );
               })}
-
-              {divFilledItems.length > 0 && (
-                <View>
-                  <ItemTableHeader />
-                  {divFilledItems.map((item, idx) => <ItemRow key={item.id} item={item} index={idx} />)}
-                </View>
-              )}
             </View>
           );
         })}

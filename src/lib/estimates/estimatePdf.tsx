@@ -9,6 +9,34 @@ import {
 import React from "react";
 import { computeItemTotal, computeGroupTotal, computeDivisionTotal, computeEstimateTotal, fmt } from "./totals";
 
+// ─── Summary groupings (super-divisions) ──────────────────────────────────────
+const SUMMARY_GROUPS: { label: string; prefixes: string[] }[] = [
+  { label: "SHELL", prefixes: ["03", "04"] },
+];
+
+function getGroupLabel(csiCode: string | null): string | null {
+  if (!csiCode) return null;
+  const prefix = csiCode.replace(/\s/g, "").substring(0, 2);
+  return SUMMARY_GROUPS.find(g => g.prefixes.includes(prefix))?.label ?? null;
+}
+
+type Division = { id: string; csiCode: string | null; name: string; groups: Group[]; items: Item[] };
+type GroupedDivisions = { groupLabel: string | null; divs: Division[] };
+
+function groupDivisions(divisions: Division[]): GroupedDivisions[] {
+  const result: GroupedDivisions[] = [];
+  for (const div of divisions) {
+    const label = getGroupLabel(div.csiCode);
+    const last = result[result.length - 1];
+    if (last && last.groupLabel === label && label !== null) {
+      last.divs.push(div);
+    } else {
+      result.push({ groupLabel: label, divs: [div] });
+    }
+  }
+  return result;
+}
+
 // Use built-in Helvetica — no font registration needed
 
 const styles = StyleSheet.create({
@@ -155,6 +183,27 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: "#e2e8f0",
   },
+  groupSuperHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    backgroundColor: "#C9A84C",
+    paddingHorizontal: 8,
+    paddingVertical: 5,
+    marginTop: 10,
+    borderRadius: 3,
+  },
+  groupSuperLabel: { fontSize: 10, fontFamily: "Helvetica-Bold", color: "#0f172a", letterSpacing: 1 },
+  groupSuperTotal: { fontSize: 10, fontFamily: "Helvetica-Bold", color: "#0f172a" },
+  groupSuperSummaryRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    backgroundColor: "#fef9ec",
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderBottomWidth: 1,
+    borderBottomColor: "#fde68a",
+  },
 });
 
 type Item = {
@@ -170,7 +219,6 @@ type Item = {
   manualTotal: number | null;
 };
 type Group = { id: string; name: string; items: Item[] };
-type Division = { id: string; csiCode: string | null; name: string; groups: Group[]; items: Item[] };
 
 type EstimatePdfProps = {
   companyName: string;
@@ -281,24 +329,44 @@ export function EstimatePdfDocument({ companyName, projectName, estimate, divisi
           </View>
         </View>
 
-        {/* Division breakdown summary */}
+        {/* Division breakdown summary — grouped under super-sections */}
         <View style={styles.tableHeader}>
           <Text style={[styles.headerText, { flex: 1 }]}>Division</Text>
           <Text style={[styles.headerText, { width: 80, textAlign: "right" }]}>Subtotal</Text>
           <Text style={[styles.headerText, { width: 60, textAlign: "right" }]}>% of Total</Text>
         </View>
-        {divisions.map((div) => {
-          const hasExcluded = [...div.items, ...div.groups.flatMap(g => g.items)].some(i => i.detail === "Excluded");
-          const divTotal = computeDivisionTotal(div.groups, div.items);
-          if (divTotal === 0 && !hasExcluded) return null;
-          const pct = grandTotal > 0 ? (divTotal / grandTotal) * 100 : 0;
+        {groupDivisions(divisions).map(({ groupLabel, divs }, gi) => {
+          const groupTotal = divs.reduce((s, d) => s + computeDivisionTotal(d.groups, d.items), 0);
+          const hasContent = divs.some(d => {
+            const hasExcluded = [...d.items, ...d.groups.flatMap(g => g.items)].some(i => i.detail === "Excluded");
+            return computeDivisionTotal(d.groups, d.items) > 0 || hasExcluded;
+          });
+          if (!hasContent) return null;
+          const groupPct = grandTotal > 0 ? (groupTotal / grandTotal) * 100 : 0;
           return (
-            <View key={div.id} style={styles.divisionSummaryRow}>
-              <Text style={[styles.cellText, { flex: 1 }]}>
-                {div.csiCode ? `${div.csiCode} — ` : ""}{div.name}
-              </Text>
-              <Text style={[styles.cellTextBold, { width: 80, textAlign: "right" }]}>${fmt(divTotal)}</Text>
-              <Text style={[styles.cellTextMuted, { width: 60, textAlign: "right" }]}>{fmt(pct)}%</Text>
+            <View key={gi}>
+              {groupLabel && (
+                <View style={styles.groupSuperSummaryRow}>
+                  <Text style={[styles.cellTextBold, { flex: 1, color: "#92400e" }]}>{groupLabel}</Text>
+                  <Text style={[styles.cellTextBold, { width: 80, textAlign: "right", color: "#92400e" }]}>${fmt(groupTotal)}</Text>
+                  <Text style={[styles.cellTextMuted, { width: 60, textAlign: "right" }]}>{fmt(groupPct)}%</Text>
+                </View>
+              )}
+              {divs.map((div) => {
+                const hasExcluded = [...div.items, ...div.groups.flatMap(g => g.items)].some(i => i.detail === "Excluded");
+                const divTotal = computeDivisionTotal(div.groups, div.items);
+                if (divTotal === 0 && !hasExcluded) return null;
+                const pct = grandTotal > 0 ? (divTotal / grandTotal) * 100 : 0;
+                return (
+                  <View key={div.id} style={[styles.divisionSummaryRow, groupLabel ? { paddingLeft: 16 } : {}]}>
+                    <Text style={[styles.cellText, { flex: 1 }]}>
+                      {div.csiCode ? `${div.csiCode} — ` : ""}{div.name}
+                    </Text>
+                    <Text style={[styles.cellTextBold, { width: 80, textAlign: "right" }]}>${fmt(divTotal)}</Text>
+                    <Text style={[styles.cellTextMuted, { width: 60, textAlign: "right" }]}>{fmt(pct)}%</Text>
+                  </View>
+                );
+              })}
             </View>
           );
         })}
@@ -341,69 +409,81 @@ export function EstimatePdfDocument({ companyName, projectName, estimate, divisi
         />
       </Page>
 
-      {/* Detail pages — one per division (skip empty divisions) */}
-      {divisions.map((div) => {
-        const filledItems = div.items.filter(i => computeItemTotal(i) > 0 || i.detail === "Excluded");
-        const filledGroups = div.groups
-          .map(g => ({ ...g, items: g.items.filter(i => computeItemTotal(i) > 0 || i.detail === "Excluded") }))
-          .filter(g => g.items.length > 0);
-        if (filledItems.length === 0 && filledGroups.length === 0) return null;
+      {/* Detail pages — one per group (merged divisions share a page) */}
+      {groupDivisions(divisions).map(({ groupLabel, divs }, gi) => {
+        const filteredDivs = divs.map(div => ({
+          div,
+          filledItems: div.items.filter(i => computeItemTotal(i) > 0 || !!i.detail),
+          filledGroups: div.groups
+            .map(g => ({ ...g, items: g.items.filter(i => computeItemTotal(i) > 0 || !!i.detail) }))
+            .filter(g => g.items.length > 0),
+        })).filter(({ filledItems, filledGroups }) => filledItems.length > 0 || filledGroups.length > 0);
 
-        const divTotal = computeDivisionTotal(
-          filledGroups,
-          filledItems,
-        );
+        if (filteredDivs.length === 0) return null;
+
+        const pageTotal = filteredDivs.reduce((s, { filledItems, filledGroups }) =>
+          s + computeDivisionTotal(filledGroups, filledItems), 0);
+
+        const pageTitle = groupLabel
+          ? groupLabel
+          : `${filteredDivs[0].div.csiCode ? filteredDivs[0].div.csiCode + " — " : ""}${filteredDivs[0].div.name}`;
+
         return (
-          <Page key={div.id} size="LETTER" style={styles.page}>
-            {/* Division header */}
-            <View style={styles.divisionHeader}>
+          <Page key={gi} size="LETTER" style={styles.page}>
+            {/* Page super-header */}
+            <View style={groupLabel ? styles.groupSuperHeader : styles.divisionHeader}>
               <View style={styles.divisionLeft}>
-                {div.csiCode && <Text style={styles.divisionCsi}>{div.csiCode}</Text>}
-                <Text style={styles.divisionName}>{div.name}</Text>
+                <Text style={groupLabel ? styles.groupSuperLabel : styles.divisionName}>{pageTitle}</Text>
               </View>
-              <Text style={styles.divisionTotal}>${fmt(divTotal)}</Text>
+              <Text style={groupLabel ? styles.groupSuperTotal : styles.divisionTotal}>${fmt(pageTotal)}</Text>
             </View>
 
-            {/* Groups */}
-            {filledGroups.map((grp) => {
-              const grpTotal = computeGroupTotal(grp.items);
+            {filteredDivs.map(({ div, filledItems, filledGroups }, di) => {
+              const divTotal = computeDivisionTotal(filledGroups, filledItems);
               return (
-                <View key={grp.id}>
-                  <View style={styles.groupHeader}>
-                    <Text style={styles.groupName}>{grp.name}</Text>
-                    <Text style={styles.groupTotal}>${fmt(grpTotal)}</Text>
-                  </View>
-                  <ItemTableHeader />
-                  {grp.items.map((item, idx) => (
-                    <ItemRow key={item.id} item={item} index={idx} />
-                  ))}
+                <View key={div.id}>
+                  {/* Sub-division header (only when grouped under a super-section) */}
+                  {groupLabel && (
+                    <View style={[styles.divisionHeader, { marginTop: di === 0 ? 8 : 6 }]}>
+                      <View style={styles.divisionLeft}>
+                        {div.csiCode && <Text style={styles.divisionCsi}>{div.csiCode}</Text>}
+                        <Text style={styles.divisionName}>{div.name}</Text>
+                      </View>
+                      <Text style={styles.divisionTotal}>${fmt(divTotal)}</Text>
+                    </View>
+                  )}
+
+                  {filledGroups.map((grp) => {
+                    const grpTotal = computeGroupTotal(grp.items);
+                    return (
+                      <View key={grp.id}>
+                        <View style={styles.groupHeader}>
+                          <Text style={styles.groupName}>{grp.name}</Text>
+                          <Text style={styles.groupTotal}>${fmt(grpTotal)}</Text>
+                        </View>
+                        <ItemTableHeader />
+                        {grp.items.map((item, idx) => <ItemRow key={item.id} item={item} index={idx} />)}
+                      </View>
+                    );
+                  })}
+
+                  {filledItems.length > 0 && (
+                    <View>
+                      <ItemTableHeader />
+                      {filledItems.map((item, idx) => <ItemRow key={item.id} item={item} index={idx} />)}
+                    </View>
+                  )}
                 </View>
               );
             })}
 
-            {/* Ungrouped items */}
-            {filledItems.length > 0 && (
-              <View>
-                <ItemTableHeader />
-                {filledItems.map((item, idx) => (
-                  <ItemRow key={item.id} item={item} index={idx} />
-                ))}
-              </View>
-            )}
-
-            {/* Division subtotal */}
+            {/* Page subtotal */}
             <View style={[styles.grandTotal, { marginTop: 8 }]}>
-              <Text style={[styles.grandTotalLabel, { fontSize: 10 }]}>
-                {div.csiCode ? `${div.csiCode} — ` : ""}{div.name} Subtotal
-              </Text>
-              <Text style={[styles.grandTotalValue, { fontSize: 12 }]}>${fmt(divTotal)}</Text>
+              <Text style={[styles.grandTotalLabel, { fontSize: 10 }]}>{pageTitle} Subtotal</Text>
+              <Text style={[styles.grandTotalValue, { fontSize: 12 }]}>${fmt(pageTotal)}</Text>
             </View>
 
-            <Text
-              style={styles.pageNumber}
-              render={({ pageNumber, totalPages }) => `Page ${pageNumber} of ${totalPages}`}
-              fixed
-            />
+            <Text style={styles.pageNumber} render={({ pageNumber, totalPages }) => `Page ${pageNumber} of ${totalPages}`} fixed />
           </Page>
         );
       })}
