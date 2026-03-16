@@ -162,5 +162,10 @@ export async function GET(req: NextRequest) {
     } catch (err) { errors.push(String(err)); }
   }
 
+  await prisma.company.update({
+    where: { id: COMPANY_ID },
+    data: { leadsLastSyncedAt: new Date() },
+  });
+
   return NextResponse.json({ checked: messages.length, added, merged, errors: errors.slice(0, 5) });
 }

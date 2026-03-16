@@ -70,6 +70,7 @@ model Company {
   payees            Payee[]
   termsTemplates    TermsTemplate[]
   leads             Lead[]
+  leadsLastSyncedAt DateTime?
 }
 
 model Lead {

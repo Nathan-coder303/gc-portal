@@ -232,6 +232,11 @@ export async function POST(
     }
   }
 
+  await prisma.company.update({
+    where: { id: params.companyId },
+    data: { leadsLastSyncedAt: new Date() },
+  });
+
   return NextResponse.json({
     found: allMessages.length,
     alreadyImported: importedIds.size,

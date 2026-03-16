@@ -3,18 +3,28 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 
-const LAST_SYNC_KEY = "leadsLastSynced";
-
 export default function SyncLeadsButton({ companyId }: { companyId: string }) {
   const router = useRouter();
   const [status, setStatus] = useState<"idle" | "syncing" | "backfilling" | "deduping" | "done" | "error">("idle");
   const [result, setResult] = useState<string>("");
   const [lastSynced, setLastSynced] = useState<string>("");
 
+  async function fetchLastSynced() {
+    try {
+      const res = await fetch(`/api/${companyId}/leads-sync-status`);
+      const data = await res.json();
+      if (data.leadsLastSyncedAt) {
+        setLastSynced(new Date(data.leadsLastSyncedAt).toLocaleString("en-US", {
+          month: "short", day: "numeric", hour: "numeric", minute: "2-digit",
+        }));
+      }
+    } catch { /* ignore */ }
+  }
+
   useEffect(() => {
-    const stored = localStorage.getItem(LAST_SYNC_KEY);
-    if (stored) setLastSynced(stored);
-  }, []);
+    fetchLastSynced();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [companyId]);
 
   async function sync(backfill = false) {
     setStatus(backfill ? "backfilling" : "syncing");
@@ -36,11 +46,7 @@ export default function SyncLeadsButton({ companyId }: { companyId: string }) {
       if (data.remaining > 0) parts.push(`${data.remaining} more — sync again`);
       setResult(parts.join(" · "));
       setStatus("done");
-      const now = new Date().toLocaleString("en-US", {
-        month: "short", day: "numeric", hour: "numeric", minute: "2-digit",
-      });
-      localStorage.setItem(LAST_SYNC_KEY, now);
-      setLastSynced(now);
+      await fetchLastSynced();
       router.refresh();
     } catch (e) {
       setResult(String(e));
