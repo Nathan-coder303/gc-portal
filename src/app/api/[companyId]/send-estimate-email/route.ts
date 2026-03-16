@@ -3,6 +3,7 @@ import { google } from "googleapis";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { renderTemplatePdf } from "@/lib/estimates/templatePdf";
+import crypto from "crypto";
 
 export const runtime = "nodejs";
 export const maxDuration = 30;
@@ -136,6 +137,18 @@ export async function POST(
       > | null) ?? null,
   });
 
+  // Generate (or reuse) a signature token for this estimate
+  let signToken = template.signatureToken;
+  if (!signToken) {
+    signToken = crypto.randomBytes(32).toString("hex");
+    await prisma.estimateTemplate.update({
+      where: { id: templateId },
+      data: { signatureToken: signToken },
+    });
+  }
+  const signUrl = `https://portal.mibhconstruction.com/sign/${signToken}`;
+  const fullEmailBody = `${emailBody}\n\n---\nSign your estimate here: ${signUrl}`;
+
   const oauth2Client = getOAuthClient();
   const gmail = google.gmail({ version: "v1", auth: oauth2Client });
 
@@ -153,7 +166,7 @@ export async function POST(
     `--${boundary}`,
     `Content-Type: text/plain; charset=UTF-8`,
     ``,
-    emailBody,
+    fullEmailBody,
     ``,
     `--${boundary}`,
     `Content-Type: application/pdf; name="${filename}"`,

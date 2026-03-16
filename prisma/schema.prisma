@@ -431,6 +431,10 @@ model EstimateTemplate {
   sqFt            Decimal?                   @db.Decimal(10, 2)
   durationMonths  Decimal?                   @db.Decimal(5, 2)
   summaryGroups   Json?
+  signatureToken  String?   @unique
+  signatureData   String?
+  signedAt        DateTime?
+  signedByName    String?
   divisions       EstimateTemplateDivision[]
   estimates   ProjectEstimate[]
 

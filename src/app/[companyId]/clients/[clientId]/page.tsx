@@ -196,6 +196,15 @@ export default async function ClientDetailPage({
                       </div>
                     </Link>
                     <div className="flex items-center gap-3 shrink-0">
+                      {est.signedAt && (
+                        <span
+                          className="text-xs px-2 py-0.5 rounded-full font-semibold"
+                          style={{ background: "#0d2318", color: "#22c55e", border: "1px solid #22c55e" }}
+                          title={`Signed by ${est.signedByName ?? "client"} on ${format(est.signedAt, "MMM d, yyyy")}`}
+                        >
+                          ✓ Signed
+                        </span>
+                      )}
                       <span className="text-lg font-bold" style={{ color: "#C9A84C" }}>
                         ${fmt(total)}
                       </span>

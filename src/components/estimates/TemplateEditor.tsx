@@ -1230,54 +1230,57 @@ export default function TemplateEditor({
                 <div className="min-w-[280px] max-w-[380px]">
                   <PaymentScheduleCard templateId={template.id} initialRows={paymentRows} canEdit={canEdit} />
                 </div>
-                {/* 3 Action Cards */}
-                <div className="flex flex-col gap-2" style={{ minWidth: "200px" }}>
-                  {/* Card 1 — Create Client Estimate */}
-                  <button
-                    disabled={!canEdit || !currentClient || isPending || savedToClient || template.type !== "TEMPLATE"}
-                    onClick={canEdit && currentClient && !savedToClient ? handleSaveToClient : undefined}
-                    className="text-left rounded-xl p-3 transition-all disabled:opacity-40"
-                    style={{ background: savedToClient ? "#0a2e1a" : "#0d2318", border: `2px solid ${savedToClient ? "#16a34a" : currentClient ? "#22c55e" : "#1e3a2b"}`, cursor: canEdit && currentClient && !savedToClient ? "pointer" : "default" }}
-                  >
-                    <div className="text-xs font-bold" style={{ color: savedToClient ? "#16a34a" : "#22c55e" }}>
-                      {savedToClient ? "✓ Estimate Created" : isPending ? "Creating…" : "Create Client Estimate"}
-                    </div>
-                    <div className="text-[10px] mt-0.5" style={{ color: "#8b949e" }}>
-                      {savedToClient ? `Saved for ${currentClient?.name}` : currentClient ? `For ${currentClient.name}` : "Assign a client below first"}
-                    </div>
+                {canEdit && (
+                  <button onClick={() => setEditingHeader(true)} className="text-xs px-3 py-1.5 rounded-lg" style={{ border: "1px solid #30373f", color: "#8b949e" }}>
+                    Edit header
                   </button>
-
-                  {/* Card 2 — Save as New Template */}
-                  <button
-                    disabled={!canEdit}
-                    onClick={canEdit ? () => setSaveAsNew(v => !v) : undefined}
-                    className="text-left rounded-xl p-3 transition-all disabled:opacity-40"
-                    style={{ background: saveAsNew ? "#161f2e" : "#0d1117", border: `2px solid ${saveAsNew ? "#60a5fa" : "#30373f"}`, cursor: canEdit ? "pointer" : "default" }}
-                  >
-                    <div className="text-xs font-bold" style={{ color: "#60a5fa" }}>Save as New Template</div>
-                    <div className="text-[10px] mt-0.5" style={{ color: "#8b949e" }}>Fork with a different name</div>
-                  </button>
-
-                  {/* Card 3 — Export PDF */}
-                  <a
-                    href={`/api/${template.companyId}/estimates/${template.id}/pdf`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="block rounded-xl p-3 transition-all"
-                    style={{ background: "#1a1508", border: "2px solid #C9A84C" }}
-                  >
-                    <div className="text-xs font-bold" style={{ color: "#C9A84C" }}>Export PDF</div>
-                    <div className="text-[10px] mt-0.5" style={{ color: "#8b949e" }}>Download estimate</div>
-                  </a>
-
-                  {canEdit && (
-                    <button onClick={() => setEditingHeader(true)} className="text-[10px] text-center" style={{ color: "#484f58" }}>
-                      Edit header details
-                    </button>
-                  )}
-                </div>
+                )}
               </div>
             </div>
+            {/* 3 Action Cards — full width row */}
+            <div className="grid grid-cols-3 gap-3 mt-4">
+              {/* Card 1 — Create Client Estimate */}
+              <button
+                disabled={!canEdit || !currentClient || isPending || savedToClient || template.type !== "TEMPLATE"}
+                onClick={canEdit && currentClient && !savedToClient ? handleSaveToClient : undefined}
+                className="text-left rounded-2xl p-5 transition-all disabled:opacity-40 group"
+                style={{ background: savedToClient ? "#0a2e1a" : "#0d2318", border: `2px solid ${savedToClient ? "#16a34a" : currentClient ? "#22c55e" : "#1a3320"}` }}
+              >
+                <div className="text-2xl mb-2">📋</div>
+                <div className="text-sm font-bold mb-1" style={{ color: savedToClient ? "#16a34a" : "#22c55e" }}>
+                  {savedToClient ? "✓ Estimate Created" : isPending ? "Creating…" : "Create Client Estimate"}
+                </div>
+                <div className="text-xs leading-relaxed" style={{ color: "#8b949e" }}>
+                  {savedToClient ? `Saved for ${currentClient?.name}` : currentClient ? `Save a copy tied to ${currentClient.name}` : "Assign a client below first"}
+                </div>
+              </button>
+
+              {/* Card 2 — Save as New Template */}
+              <button
+                disabled={!canEdit}
+                onClick={canEdit ? () => setSaveAsNew(v => !v) : undefined}
+                className="text-left rounded-2xl p-5 transition-all disabled:opacity-40"
+                style={{ background: saveAsNew ? "#0d1a2e" : "#0d1117", border: `2px solid ${saveAsNew ? "#60a5fa" : "#30373f"}` }}
+              >
+                <div className="text-2xl mb-2">📄</div>
+                <div className="text-sm font-bold mb-1" style={{ color: "#60a5fa" }}>Save as New Template</div>
+                <div className="text-xs leading-relaxed" style={{ color: "#8b949e" }}>Fork this template with a different name to create a new variant</div>
+              </button>
+
+              {/* Card 3 — Export PDF */}
+              <a
+                href={`/api/${template.companyId}/estimates/${template.id}/pdf`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="block rounded-2xl p-5 transition-all"
+                style={{ background: "#1a1508", border: "2px solid #C9A84C" }}
+              >
+                <div className="text-2xl mb-2">📊</div>
+                <div className="text-sm font-bold mb-1" style={{ color: "#C9A84C" }}>Export PDF</div>
+                <div className="text-xs leading-relaxed" style={{ color: "#8b949e" }}>Download a ready-to-send PDF of the current estimate</div>
+              </a>
+            </div>
+
             <ClientSelector
               templateId={template.id}
               currentClient={currentClient}
