@@ -71,6 +71,26 @@ function groupTotal(items: Item[]): number {
 const UNITS = ["LS", "EA", "SF", "LF", "SY", "CY", "CF", "SQ", "MO", "HR", "DAY", "TN", "GAL"];
 const DETAIL_OPTIONS = ["Included", "Excluded", "TBD", "By Owner", "Allowances"];
 
+// ─── Summary groupings (super-divisions) ──────────────────────────────────────
+const SUMMARY_GROUPS_T: { label: string; prefixes: string[] }[] = [
+  { label: "SHELL", prefixes: ["03", "04"] },
+];
+function getGroupLabelT(csiCode: string | null): string | null {
+  if (!csiCode) return null;
+  const prefix = csiCode.replace(/\s/g, "").substring(0, 2);
+  return SUMMARY_GROUPS_T.find(g => g.prefixes.includes(prefix))?.label ?? null;
+}
+function groupDivisionsT(divisions: Division[]): { groupLabel: string | null; divs: Division[] }[] {
+  const result: { groupLabel: string | null; divs: Division[] }[] = [];
+  for (const div of divisions) {
+    const label = getGroupLabelT(div.csiCode);
+    const last = result[result.length - 1];
+    if (last && last.groupLabel === label && label !== null) { last.divs.push(div); }
+    else { result.push({ groupLabel: label, divs: [div] }); }
+  }
+  return result;
+}
+
 const SF_UNITS_T = new Set(["SF", "SQ"]);
 const DURATION_KW_T = ["project management", "laborer", "portable potty", "tool rental", "tools"];
 function isSfUnitT(u: string) { return SF_UNITS_T.has(u.toUpperCase().trim()); }
@@ -1270,10 +1290,22 @@ export default function TemplateEditor({
         )}
       </div>
 
-      {/* Divisions */}
+      {/* Divisions — grouped into super-sections (e.g. SHELL) */}
       <div className="space-y-3">
-        {divisions.map((div) => (
-          <TemplateDivisionSection key={div.id} division={div} otherDivisions={divisions.filter(d => d.id !== div.id)} canEdit={canEdit} />
+        {groupDivisionsT(divisions).map(({ groupLabel, divs }, gi) => (
+          <div key={gi}>
+            {groupLabel && (
+              <div className="flex items-center justify-between px-4 py-2 rounded-lg" style={{ background: "#C9A84C", color: "#0d1117" }}>
+                <span className="text-sm font-bold tracking-widest uppercase">{groupLabel}</span>
+                <span className="text-sm font-bold">${fmt(divs.reduce((s, d) => s + divisionTotal(d), 0))}</span>
+              </div>
+            )}
+            <div className={groupLabel ? "space-y-2 pl-2" : "space-y-3"}>
+              {divs.map((div) => (
+                <TemplateDivisionSection key={div.id} division={div} otherDivisions={divisions.filter(d => d.id !== div.id)} canEdit={canEdit} />
+              ))}
+            </div>
+          </div>
         ))}
       </div>
 

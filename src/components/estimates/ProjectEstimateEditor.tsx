@@ -41,6 +41,26 @@ function isSfUnit(u: string) { return SF_UNITS.has(u.toUpperCase().trim()); }
 function isDurationUnit(u: string) { return u.toUpperCase().trim() === "MO"; }
 function isDurationName(name: string) { const n = name.toLowerCase(); return DURATION_KW.some(k => n.includes(k)); }
 
+// ─── Summary groupings (super-divisions) ──────────────────────────────────────
+const SUMMARY_GROUPS_E: { label: string; prefixes: string[] }[] = [
+  { label: "SHELL", prefixes: ["03", "04"] },
+];
+function getGroupLabelE(csiCode: string | null): string | null {
+  if (!csiCode) return null;
+  const prefix = csiCode.replace(/\s/g, "").substring(0, 2);
+  return SUMMARY_GROUPS_E.find(g => g.prefixes.includes(prefix))?.label ?? null;
+}
+function groupDivisionsE(divisions: Division[]): { groupLabel: string | null; divs: Division[] }[] {
+  const result: { groupLabel: string | null; divs: Division[] }[] = [];
+  for (const div of divisions) {
+    const label = getGroupLabelE(div.csiCode);
+    const last = result[result.length - 1];
+    if (last && last.groupLabel === label && label !== null) { last.divs.push(div); }
+    else { result.push({ groupLabel: label, divs: [div] }); }
+  }
+  return result;
+}
+
 const DimensionsCtx = createContext<{ sqFt: number | null; durationMonths: number | null }>({ sqFt: null, durationMonths: null });
 
 function DetailSelect({ value, onChange }: { value: string; onChange: (v: string) => void }) {
@@ -660,10 +680,22 @@ export default function ProjectEstimateEditor({
         )}
       </div>
 
-      {/* Divisions */}
+      {/* Divisions — grouped into super-sections (e.g. SHELL) */}
       <div className="space-y-3">
-        {divisions.map((div) => (
-          <DivisionSection key={div.id} division={div} canEdit={canEdit} canArchive={canArchive} />
+        {groupDivisionsE(divisions).map(({ groupLabel, divs }, gi) => (
+          <div key={gi}>
+            {groupLabel && (
+              <div className="flex items-center justify-between px-4 py-2 rounded-lg" style={{ background: "#C9A84C", color: "#0d1117" }}>
+                <span className="text-sm font-bold tracking-widest uppercase">{groupLabel}</span>
+                <span className="text-sm font-bold">${divs.reduce((s, d) => s + computeDivisionTotal(d.groups, d.items), 0).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+              </div>
+            )}
+            <div className={groupLabel ? "space-y-2 pl-2" : "space-y-3"}>
+              {divs.map((div) => (
+                <DivisionSection key={div.id} division={div} canEdit={canEdit} canArchive={canArchive} />
+              ))}
+            </div>
+          </div>
         ))}
       </div>
 
