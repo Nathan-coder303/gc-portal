@@ -131,9 +131,9 @@ export async function POST(req: NextRequest, { params }: { params: { companyId: 
     existingSubBids.map(b => b.fileUrl!.split(":")[1]).filter(Boolean)
   );
 
-  // Only process messages we haven't seen yet, cap at 30 per run
+  // Only process messages we haven't seen yet, cap at 50 per run
   const newMessages = allMessages.filter(m => m.id && !processedMsgIds.has(m.id));
-  const toProcess = newMessages.slice(0, 30);
+  const toProcess = newMessages.slice(0, 50);
 
   let added = 0;
   let skippedInLoop = 0;

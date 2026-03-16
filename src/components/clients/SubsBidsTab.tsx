@@ -40,9 +40,13 @@ function getPdfHref(fileUrl: string, companyId: string): string {
   if (fileUrl.startsWith("gmail:")) {
     const parts = fileUrl.split(":");
     const msgId = parts[1];
+    // "gmail:msgId" (2 parts) = email had no PDF — no link
+    // "gmail:msgId:" (3 parts, empty attachmentId) = inline PDF — fetch from message
+    // "gmail:msgId:attachmentId" (3 parts) = normal attachment
+    if (parts.length < 3) return "";
     const attachmentId = parts[2];
-    if (!attachmentId) return ""; // gmail message with no PDF attachment
-    return `/api/${companyId}/gmail-attachment?msgId=${msgId}&attachmentId=${attachmentId}`;
+    const url = `/api/${companyId}/gmail-attachment?msgId=${msgId}`;
+    return attachmentId ? `${url}&attachmentId=${attachmentId}` : url;
   }
   return fileUrl;
 }
@@ -70,20 +74,28 @@ export default function SubsBidsTab({ clientId, companyId, clientName, clientAdd
   async function handleSyncGmail() {
     setSyncing(true);
     setSyncResult(null);
+    let totalAdded = 0;
+    let round = 0;
+    const MAX_ROUNDS = 20; // cap at ~600 emails processed per click
     try {
-      const res = await fetch(`/api/${companyId}/fetch-gmail-bids`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ clientId, clientName, clientAddress }),
-      });
-      const data = await res.json();
-      if (!res.ok) {
-        setSyncResult(`Error: ${data.error ?? "Sync failed"}`);
-        return;
+      while (round < MAX_ROUNDS) {
+        round++;
+        const res = await fetch(`/api/${companyId}/fetch-gmail-bids`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ clientId, clientName, clientAddress }),
+        });
+        const data = await res.json();
+        if (!res.ok) {
+          setSyncResult(`Error: ${data.error ?? "Sync failed"}`);
+          return;
+        }
+        totalAdded += data.added ?? 0;
+        setSyncResult(`Syncing… ${totalAdded} bids found so far (round ${round})`);
+        if ((data.remaining ?? 0) === 0) break;
       }
-      const msg = `Done — ${data.added} new bid${data.added !== 1 ? "s" : ""} imported${data.remaining > 0 ? `, ${data.remaining} more emails pending (sync again)` : ""}`;
-      setSyncResult(msg);
-      if (data.added > 0) router.refresh();
+      setSyncResult(`Done — ${totalAdded} new bid${totalAdded !== 1 ? "s" : ""} imported`);
+      if (totalAdded > 0) router.refresh();
     } catch (e) {
       setSyncResult("Sync failed: " + String(e));
     } finally {
