@@ -469,7 +469,7 @@ export function EstimatePdfDocument({ companyName, projectName, estimate, divisi
 
             {filteredDivs.map(({ div, filledItems, filledGroups }, di) => {
               return (
-                <View key={div.id} minPresenceAhead={80}>
+                <View key={div.id} minPresenceAhead={150}>
                   {/* Sub-division header (only when grouped under a super-section) */}
                   {groupLabel && (
                     <View style={[styles.divisionHeader, { marginTop: di === 0 ? 8 : 6 }]}>
