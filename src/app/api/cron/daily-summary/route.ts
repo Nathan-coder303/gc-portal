@@ -1,9 +1,18 @@
+/**
+ * GET /api/cron/daily-summary
+ * Runs at 11:59 PM ET (04:59 UTC EST / 03:59 UTC EDT).
+ * Generates a structured handoff document for the day and saves it to DailySummary.
+ * Covers leads, expenses, task updates, journal entries, and new estimates.
+ */
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import Anthropic from "@anthropic-ai/sdk";
 
 export const runtime = "nodejs";
 export const maxDuration = 60;
+
+function fmt(n: number) {
+  return n.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+}
 
 export async function GET(req: NextRequest) {
   const authHeader = req.headers.get("authorization");
@@ -11,100 +20,143 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  // Compute today in ET (UTC-4 EDT / UTC-5 EST)
+  // Compute today in ET (EDT = UTC-4 Mar–Nov, EST = UTC-5 Nov–Mar)
   const now = new Date();
   const etOffsetHours = now.getMonth() >= 2 && now.getMonth() <= 10 ? 4 : 5;
   const etNow = new Date(now.getTime() - etOffsetHours * 60 * 60 * 1000);
   const todayStr = etNow.toISOString().split("T")[0]; // "YYYY-MM-DD" in ET
 
-  // Query window: midnight ET → midnight ET next day (both in UTC)
+  // Query window: midnight ET → midnight ET next day (in UTC)
   const dayStart = new Date(`${todayStr}T00:00:00.000Z`);
-  dayStart.setUTCHours(etOffsetHours, 0, 0, 0); // shift to ET midnight
+  dayStart.setUTCHours(etOffsetHours, 0, 0, 0);
   const dayEnd = new Date(dayStart.getTime() + 24 * 60 * 60 * 1000 - 1);
 
-  // Use clean midnight UTC for DB date key (avoids upsert conflicts)
+  // Date key for upsert (UTC midnight for the ET date)
   const summaryDate = new Date(`${todayStr}T00:00:00.000Z`);
 
   const companies = await prisma.company.findMany({ select: { id: true, name: true } });
-  const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
   const results: Array<{ company: string; status: string; error?: string }> = [];
 
   for (const company of companies) {
     try {
-      const [expenses, taskChanges, journalEntries, projectEstimates, newTemplates] = await Promise.all([
+      const [leads, expenses, taskChanges, journalEntries, projectEstimates] = await Promise.all([
+        // Leads received today
+        prisma.lead.findMany({
+          where: { companyId: company.id, receivedAt: { gte: dayStart, lte: dayEnd } },
+          orderBy: { receivedAt: "asc" },
+        }),
+        // Expenses created today
         prisma.expense.findMany({
           where: { companyId: company.id, createdAt: { gte: dayStart, lte: dayEnd } },
           include: { project: { select: { name: true } }, costCode: { select: { name: true } } },
+          orderBy: { createdAt: "asc" },
         }),
+        // Task status changes today
         prisma.taskChangeLog.findMany({
-          where: { changedAt: { gte: dayStart, lte: dayEnd }, task: { project: { companyId: company.id } } },
+          where: {
+            changedAt: { gte: dayStart, lte: dayEnd },
+            task: { project: { companyId: company.id } },
+          },
           include: { task: { select: { name: true, project: { select: { name: true } } } } },
+          orderBy: { changedAt: "asc" },
         }),
+        // Journal entries created today
         prisma.journalEntry.findMany({
           where: { createdAt: { gte: dayStart, lte: dayEnd }, project: { companyId: company.id } },
           include: { project: { select: { name: true } } },
+          orderBy: { createdAt: "asc" },
         }),
+        // Estimates created today
         prisma.projectEstimate.findMany({
           where: { createdAt: { gte: dayStart, lte: dayEnd }, project: { companyId: company.id } },
           include: { project: { select: { name: true } } },
-        }),
-        prisma.estimateTemplate.findMany({
-          where: { companyId: company.id, type: "TEMPLATE", createdAt: { gte: dayStart, lte: dayEnd } },
-          select: { name: true, description: true },
+          orderBy: { createdAt: "asc" },
         }),
       ]);
 
-      const hasActivity =
-        expenses.length > 0 || taskChanges.length > 0 ||
-        journalEntries.length > 0 || projectEstimates.length > 0 || newTemplates.length > 0;
+      // ── Build structured handoff document ──────────────────────────────────
+      const lines: string[] = [];
 
-      let content: string;
+      const dateLabel = new Date(`${todayStr}T12:00:00.000Z`).toLocaleDateString("en-US", {
+        weekday: "long", year: "numeric", month: "long", day: "numeric", timeZone: "UTC",
+      });
+      lines.push(`=== MIBH Construction Portal — Daily Handoff ===`);
+      lines.push(`Date: ${dateLabel}`);
+      lines.push(`Generated: ${now.toLocaleString("en-US", { timeZone: "America/New_York", month: "short", day: "numeric", year: "numeric", hour: "numeric", minute: "2-digit" })} ET`);
+      lines.push(``);
 
-      if (!hasActivity) {
-        content = "No activity recorded today.";
+      // LEADS
+      lines.push(`### NEW LEADS (${leads.length})`);
+      if (leads.length === 0) {
+        lines.push(`  No new leads today.`);
       } else {
-        const dataBlob = JSON.stringify({
-          date: todayStr,
-          company: company.name,
-          expenses: expenses.map(e => ({
-            project: e.project.name, vendor: e.vendor, amount: Number(e.amount),
-            category: e.category, costCode: e.costCode?.name ?? null, description: e.description,
-          })),
-          taskChanges: taskChanges.map(tc => ({
-            task: tc.task.name, project: tc.task.project.name, field: tc.field,
-            from: tc.oldValue, to: tc.newValue,
-          })),
-          journalEntries: journalEntries.map(je => ({
-            project: (je as { project: { name: string }; memo: string; reference: string | null }).project.name,
-            memo: je.memo, reference: je.reference,
-          })),
-          projectEstimates: projectEstimates.map(pe => ({
-            project: pe.project.name, name: pe.name, status: pe.status,
-          })),
-          newEstimateTemplates: newTemplates.map(t => ({ name: t.name, description: t.description })),
-        }, null, 2);
-
-        try {
-          const message = await anthropic.messages.create({
-            model: "claude-haiku-4-5-20251001",
-            max_tokens: 512,
-            messages: [{
-              role: "user",
-              content: `You are an assistant that writes concise daily activity summaries for a construction project management company. Write a short plain-English paragraph (3–6 sentences) summarizing today's activity. Cover expenses, task progress, journal entries, new estimates, and new templates created. Be direct and factual.\n\n${dataBlob}`,
-            }],
-          });
-          content = message.content[0].type === "text" ? message.content[0].text.trim() : "Summary generation failed.";
-        } catch (aiErr) {
-          // Fallback: plain text summary without AI
-          const parts: string[] = [];
-          if (expenses.length > 0) parts.push(`${expenses.length} expense(s) logged totaling $${expenses.reduce((s, e) => s + Number(e.amount), 0).toLocaleString()}`);
-          if (taskChanges.length > 0) parts.push(`${taskChanges.length} task update(s)`);
-          if (journalEntries.length > 0) parts.push(`${journalEntries.length} journal entry/entries`);
-          if (projectEstimates.length > 0) parts.push(`${projectEstimates.length} project estimate(s) created`);
-          if (newTemplates.length > 0) parts.push(`${newTemplates.length} estimate template(s) created: ${newTemplates.map(t => t.name).join(", ")}`);
-          content = `Activity on ${todayStr}: ${parts.join("; ")}. (AI summary unavailable: ${aiErr instanceof Error ? aiErr.message : "unknown error"})`;
-        }
+        leads.forEach((l, i) => {
+          const parts = [l.name ?? "(no name)", l.phone ?? "no phone", l.email ?? "no email"];
+          if (l.projectType) parts.push(l.projectType);
+          if (l.city || l.state) parts.push([l.city, l.state].filter(Boolean).join(", "));
+          lines.push(`  ${i + 1}. ${parts.join(" | ")}`);
+          if (l.message && l.message.length > 0 && l.message !== l.emailSubject) {
+            lines.push(`     Message: ${l.message.slice(0, 120)}`);
+          }
+        });
       }
+      lines.push(``);
+
+      // EXPENSES
+      const expTotal = expenses.reduce((s, e) => s + Number(e.amount), 0);
+      lines.push(`### EXPENSES (${expenses.length} transaction${expenses.length !== 1 ? "s" : ""}${expenses.length > 0 ? ` — $${fmt(expTotal)} total` : ""})`);
+      if (expenses.length === 0) {
+        lines.push(`  No expenses logged today.`);
+      } else {
+        expenses.forEach(e => {
+          lines.push(`  • [${e.project.name}] ${e.vendor} — ${e.category}${e.costCode ? ` (${e.costCode.name})` : ""} — $${fmt(Number(e.amount))}`);
+          if (e.description) lines.push(`    "${e.description}"`);
+        });
+      }
+      lines.push(``);
+
+      // TASK UPDATES
+      lines.push(`### TASK UPDATES (${taskChanges.length})`);
+      if (taskChanges.length === 0) {
+        lines.push(`  No task changes today.`);
+      } else {
+        taskChanges.forEach(tc => {
+          lines.push(`  • [${tc.task.project.name}] "${tc.task.name}" — ${tc.field}: ${tc.oldValue ?? "—"} → ${tc.newValue ?? "—"}`);
+        });
+      }
+      lines.push(``);
+
+      // ESTIMATES
+      lines.push(`### NEW ESTIMATES (${projectEstimates.length})`);
+      if (projectEstimates.length === 0) {
+        lines.push(`  No new estimates today.`);
+      } else {
+        projectEstimates.forEach(pe => {
+          lines.push(`  • [${pe.project.name}] "${pe.name}" — ${pe.status}`);
+        });
+      }
+      lines.push(``);
+
+      // JOURNAL ENTRIES
+      lines.push(`### JOURNAL ENTRIES (${journalEntries.length})`);
+      if (journalEntries.length === 0) {
+        lines.push(`  No journal entries today.`);
+      } else {
+        journalEntries.forEach(je => {
+          lines.push(`  • [${(je as { project: { name: string } }).project.name}] ${je.memo}${je.reference ? ` (ref: ${je.reference})` : ""}`);
+        });
+      }
+      lines.push(``);
+
+      // Activity flag
+      const hasActivity = leads.length + expenses.length + taskChanges.length + journalEntries.length + projectEstimates.length > 0;
+      if (!hasActivity) {
+        lines.push(`No activity recorded today.`);
+        lines.push(``);
+      }
+
+      lines.push(`=== END HANDOFF ===`);
+      const content = lines.join("\n");
 
       await prisma.dailySummary.upsert({
         where: { companyId_date: { companyId: company.id, date: summaryDate } },
@@ -114,11 +166,11 @@ export async function GET(req: NextRequest) {
 
       results.push({ company: company.name, status: "ok" });
     } catch (err) {
-      const msg = err instanceof Error ? `${err.message} ${err.stack?.split("\n")[1] ?? ""}` : String(err);
+      const msg = err instanceof Error ? err.message : String(err);
       console.error(`DailySummary error for ${company.name}:`, err);
       results.push({ company: company.name, status: "error", error: msg });
     }
   }
 
-  return NextResponse.json({ date: todayStr, dayStart, dayEnd, results });
+  return NextResponse.json({ date: todayStr, results });
 }
