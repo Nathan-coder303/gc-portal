@@ -2,6 +2,17 @@
 
 import { useState } from "react";
 
+const MIKE_SIGNATURE = `Mike Baruh
+Founder/CEO | MIBH Construction
+Certified & Licensed General Contractor CGC 1527069
+Certified & Licensed Roofer CCC 1336817
+
+📱 Cell: 305.746.7307
+📧 Email: mike@mibhconstruction.com
+📍 Address: 2950 N 28 Terr, Hollywood, FL 33020
+🌐 Website: www.mibhconstruction.com
+📸 Instagram: @mibh_construction`;
+
 type Props = {
   templateId: string;
   companyId: string;
@@ -11,33 +22,18 @@ type Props = {
 };
 
 export default function SendEstimateEmailButton({ templateId, companyId, templateName, clientName, clientEmail }: Props) {
+  const defaultBody = `Dear ${clientName},\n\nPlease find attached your estimate for the project.\n\nDo not hesitate to contact us with any questions.\n\n${MIKE_SIGNATURE}`;
+
   const [open, setOpen] = useState(false);
   const [to, setTo] = useState(clientEmail ?? "");
   const [subject, setSubject] = useState(`Estimate – ${clientName}`);
-  const [body, setBody] = useState("");
-  const [loadingSignature, setLoadingSignature] = useState(false);
+  const [body, setBody] = useState(defaultBody);
   const [sending, setSending] = useState(false);
   const [result, setResult] = useState<{ ok: boolean; msg: string } | null>(null);
 
-  async function openModal() {
+  function openModal() {
     setOpen(true);
     setResult(null);
-    if (body) return; // already loaded
-    setLoadingSignature(true);
-    try {
-      const res = await fetch(`/api/${companyId}/send-estimate-email`);
-      if (res.ok) {
-        const data = await res.json();
-        const greeting = `Dear ${clientName},\n\nPlease find attached your estimate for the project.\n\nDo not hesitate to contact us with any questions.\n\n`;
-        setBody(greeting + (data.signature || ""));
-      } else {
-        setBody(`Dear ${clientName},\n\nPlease find attached your estimate for the project.\n\nDo not hesitate to contact us with any questions.\n\n`);
-      }
-    } catch {
-      setBody(`Dear ${clientName},\n\nPlease find attached your estimate for the project.\n\nDo not hesitate to contact us with any questions.\n\n`);
-    } finally {
-      setLoadingSignature(false);
-    }
   }
 
   async function send() {
@@ -112,13 +108,11 @@ export default function SendEstimateEmailButton({ templateId, companyId, templat
               <div>
                 <label className="block text-xs font-medium mb-1" style={{ color: "#8b949e" }}>Message</label>
                 <textarea
-                  rows={8}
+                  rows={10}
                   value={body}
                   onChange={e => setBody(e.target.value)}
-                  placeholder={loadingSignature ? "Loading your Gmail signature…" : ""}
-                  disabled={loadingSignature}
                   className="w-full rounded-lg px-3 py-2 text-sm font-mono"
-                  style={{ background: "#0d1117", border: "1px solid #30373f", color: "#e6edf3", resize: "vertical", opacity: loadingSignature ? 0.5 : 1 }}
+                  style={{ background: "#0d1117", border: "1px solid #30373f", color: "#e6edf3", resize: "vertical" }}
                 />
               </div>
             </div>
