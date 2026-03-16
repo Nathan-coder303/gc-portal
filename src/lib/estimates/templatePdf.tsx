@@ -317,35 +317,19 @@ function TemplatePdfDocument({ companyName, template, client, divisions, termsCo
           ))}
         </View>
 
+        {/* T&C inline — gold divider then content, no page break */}
+        {termsContent ? (
+          <View>
+            <View style={styles.sectionDivider} />
+            <Text style={styles.sectionTitle}>Terms &amp; Conditions</Text>
+            {termsContent.split(/\r?\n\r?\n|\r?\n(?=\d+[\.\)]?\s)/).filter(Boolean).map((para, i) => (
+              <Text key={i} style={[styles.termsText, { marginBottom: 6 }]}>{para.trim()}</Text>
+            ))}
+          </View>
+        ) : null}
+
         <Text style={styles.pageNumber} render={({ pageNumber, totalPages }) => `Page ${pageNumber} of ${totalPages}`} fixed />
       </Page>
-
-      {/* T&C — dedicated page, always rendered when content is set */}
-      {termsContent ? (
-        <Page size="LETTER" style={styles.page}>
-          {/* Page header repeat */}
-          <View style={[styles.header, { marginBottom: 12 }]}>
-            <View>
-              {/* eslint-disable-next-line jsx-a11y/alt-text */}
-              <Image style={styles.logo} src={path.join(process.cwd(), "public", "logo.png")} />
-              <Text style={styles.companyInfo}>2950 N 28 Terr, Hollywood, FL 33020</Text>
-              <Text style={styles.companyInfo}>Tel: 305-746-7307</Text>
-              <Text style={styles.companyInfo}>CGC1527069 | CCC1336817</Text>
-            </View>
-            <View style={styles.centerSection}>
-              <Text style={styles.centerBold}>Scope of Work: {template.name}</Text>
-            </View>
-            <View />
-          </View>
-
-          <Text style={styles.sectionTitle}>Terms &amp; Conditions</Text>
-          {termsContent.split(/\r?\n\r?\n|\r?\n(?=\d+[\.\)]?\s)/).filter(Boolean).map((para, i) => (
-            <Text key={i} style={[styles.termsText, { marginBottom: 6 }]}>{para.trim()}</Text>
-          ))}
-
-          <Text style={styles.pageNumber} render={({ pageNumber, totalPages }) => `Page ${pageNumber} of ${totalPages}`} fixed />
-        </Page>
-      ) : null}
     </Document>
   );
 }
