@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition, useRef, useCallback } from "react";
+import { useState, useTransition, useRef, useCallback, createContext, useContext } from "react";
 import { useRouter } from "next/navigation";
 import { TrashIcon, PencilIcon } from "@/components/ui/icons";
 import { lookupCsiCode, lookupItemCsiCode, formatCsiCode } from "@/lib/divisions";
@@ -71,6 +71,14 @@ function groupTotal(items: Item[]): number {
 const UNITS = ["LS", "EA", "SF", "LF", "SY", "CY", "CF", "SQ", "MO", "HR", "DAY", "TN", "GAL"];
 const DETAIL_OPTIONS = ["Included", "Excluded", "TBD", "By Owner", "Allowances"];
 
+const SF_UNITS_T = new Set(["SF", "SQ"]);
+const DURATION_KW_T = ["project management", "laborer", "portable potty", "tool rental", "tools"];
+function isSfUnitT(u: string) { return SF_UNITS_T.has(u.toUpperCase().trim()); }
+function isDurationUnitT(u: string) { return u.toUpperCase().trim() === "MO"; }
+function isDurationNameT(name: string) { const n = name.toLowerCase(); return DURATION_KW_T.some(k => n.includes(k)); }
+
+const TDimensionsCtx = createContext<{ sqFt: number | null; durationMonths: number | null }>({ sqFt: null, durationMonths: null });
+
 function DetailSelect({ value, onChange }: { value: string; onChange: (v: string) => void }) {
   const [custom, setCustom] = useState(!!value && !DETAIL_OPTIONS.includes(value));
   if (custom) {
@@ -125,6 +133,7 @@ function grandTotal(divisions: Division[]): number {
 }
 
 function ItemRow({ item, divisionId, groupId, canEdit }: { item: Item; divisionId: string; groupId?: string | null; canEdit: boolean }) {
+  const { sqFt, durationMonths } = useContext(TDimensionsCtx);
   const [editing, setEditing] = useState(false);
   const [isPending, startTransition] = useTransition();
   const { attributes, listeners, setNodeRef, isDragging } = useDraggable({
@@ -143,6 +152,12 @@ function ItemRow({ item, divisionId, groupId, canEdit }: { item: Item; divisionI
     notes: item.notes ?? "",
     visibleInPdf: item.visibleInPdf,
   });
+
+  function autoQtyT(name: string, unit: string, currentQty: string): string {
+    if (isSfUnitT(unit) && sqFt && sqFt > 0) return String(sqFt);
+    if ((isDurationUnitT(unit) || isDurationNameT(name)) && durationMonths && durationMonths > 0) return String(durationMonths);
+    return currentQty;
+  }
 
   function save() {
     startTransition(async () => {
@@ -214,10 +229,10 @@ function ItemRow({ item, divisionId, groupId, canEdit }: { item: Item; divisionI
     <tr style={{ borderTop: "1px solid #30373f", background: "#1a2d1a" }}>
       {canEdit && <td style={{ width: "24px" }} />}
       <td className="px-2 py-1"><input className={INPUT} style={{ ...inputStyleSm, width: "80px", fontFamily: "monospace" }} value={form.csiCode} onChange={(e) => setForm({ ...form, csiCode: formatCsiCode(e.target.value) })} placeholder="CSI" /></td>
-      <td className="px-2 py-1"><input className={INPUT} style={inputStyleSm} value={form.name} onChange={(e) => { const n = e.target.value; const auto = lookupItemCsiCode(n); setForm({ ...form, name: n, csiCode: auto ?? form.csiCode }); }} /></td>
+      <td className="px-2 py-1"><input className={INPUT} style={inputStyleSm} value={form.name} onChange={(e) => { const n = e.target.value; const auto = lookupItemCsiCode(n); setForm({ ...form, name: n, csiCode: auto ?? form.csiCode, defaultQty: autoQtyT(n, form.unit, form.defaultQty) }); }} /></td>
       <td className="px-2 py-1"><DetailSelect value={form.detail} onChange={(v) => setForm({ ...form, detail: v })} /></td>
       <td className="px-2 py-1"><input type="number" step="any" className={INPUT} style={{ ...inputStyle, width: "56px" }} value={form.defaultQty} onChange={(e) => setForm({ ...form, defaultQty: e.target.value })} /></td>
-      <td className="px-2 py-1"><UnitSelect value={form.unit} onChange={(v) => setForm({ ...form, unit: v })} /></td>
+      <td className="px-2 py-1"><UnitSelect value={form.unit} onChange={(v) => setForm({ ...form, unit: v, defaultQty: autoQtyT(form.name, v, form.defaultQty) })} /></td>
       <td className="px-2 py-1"><input type="number" step="any" className={INPUT} style={{ ...inputStyle, width: "80px" }} value={form.defaultUnitCost} onChange={(e) => setForm({ ...form, defaultUnitCost: e.target.value })} /></td>
       <td className="px-2 py-1"><input type="number" step="any" className={INPUT} style={{ ...inputStyle, width: "56px" }} value={form.defaultMarkupPct} onChange={(e) => setForm({ ...form, defaultMarkupPct: e.target.value })} /></td>
       <td className="px-2 py-1 text-xs font-semibold text-right" style={{ color: "#C9A84C" }}>{previewTotal > 0 ? `$${fmt(previewTotal)}` : "—"}</td>
@@ -233,9 +248,16 @@ function ItemRow({ item, divisionId, groupId, canEdit }: { item: Item; divisionI
 }
 
 function AddTemplateItemRow({ divisionId, groupId, canEdit }: { divisionId: string; groupId?: string | null; canEdit: boolean }) {
+  const { sqFt, durationMonths } = useContext(TDimensionsCtx);
   const [open, setOpen] = useState(false);
   const [isPending, startTransition] = useTransition();
   const [form, setForm] = useState({ name: "", csiCode: "", detail: "", unit: "", defaultQty: "", defaultUnitCost: "", defaultMarkupPct: "", notes: "", visibleInPdf: true });
+
+  function autoQtyT(name: string, unit: string, currentQty: string): string {
+    if (isSfUnitT(unit) && sqFt && sqFt > 0) return String(sqFt);
+    if ((isDurationUnitT(unit) || isDurationNameT(name)) && durationMonths && durationMonths > 0) return String(durationMonths);
+    return currentQty;
+  }
 
   if (!canEdit) return null;
 
@@ -273,10 +295,10 @@ function AddTemplateItemRow({ divisionId, groupId, canEdit }: { divisionId: stri
     <tr style={{ borderTop: "1px solid #30373f", background: "#0d2a1a" }}>
       {canEdit && <td style={{ width: "24px" }} />}
       <td className="px-2 py-1"><input className={INPUT} style={{ ...inputStyleSm, width: "80px", fontFamily: "monospace" }} value={form.csiCode} onChange={(e) => setForm({ ...form, csiCode: formatCsiCode(e.target.value) })} placeholder="CSI" /></td>
-      <td className="px-2 py-1"><input autoFocus className={INPUT} style={inputStyleSm} value={form.name} onChange={(e) => { const n = e.target.value; const auto = lookupItemCsiCode(n); setForm({ ...form, name: n, csiCode: auto ?? form.csiCode }); }} placeholder="Item name" /></td>
+      <td className="px-2 py-1"><input autoFocus className={INPUT} style={inputStyleSm} value={form.name} onChange={(e) => { const n = e.target.value; const auto = lookupItemCsiCode(n); setForm({ ...form, name: n, csiCode: auto ?? form.csiCode, defaultQty: autoQtyT(n, form.unit, form.defaultQty) }); }} placeholder="Item name" /></td>
       <td className="px-2 py-1"><DetailSelect value={form.detail} onChange={(v) => setForm({ ...form, detail: v })} /></td>
       <td className="px-2 py-1"><input type="number" step="any" className={INPUT} style={{ ...inputStyle, width: "56px" }} value={form.defaultQty} onChange={(e) => setForm({ ...form, defaultQty: e.target.value })} /></td>
-      <td className="px-2 py-1"><UnitSelect value={form.unit} onChange={(v) => setForm({ ...form, unit: v })} /></td>
+      <td className="px-2 py-1"><UnitSelect value={form.unit} onChange={(v) => setForm({ ...form, unit: v, defaultQty: autoQtyT(form.name, v, form.defaultQty) })} /></td>
       <td className="px-2 py-1"><input type="number" step="any" className={INPUT} style={{ ...inputStyle, width: "80px" }} value={form.defaultUnitCost} onChange={(e) => setForm({ ...form, defaultUnitCost: e.target.value })} /></td>
       <td className="px-2 py-1"><input type="number" step="any" className={INPUT} style={{ ...inputStyle, width: "56px" }} value={form.defaultMarkupPct} onChange={(e) => setForm({ ...form, defaultMarkupPct: e.target.value })} /></td>
       <td />
@@ -934,6 +956,7 @@ export default function TemplateEditor({
   }
 
   return (
+    <TDimensionsCtx.Provider value={{ sqFt: typeof sqFt === "number" ? sqFt : null, durationMonths: typeof durationMonths === "number" ? durationMonths : null }}>
     <DndContext collisionDetection={closestCenter} onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
     <div className="space-y-4">
       {/* Header card */}
@@ -1360,5 +1383,6 @@ export default function TemplateEditor({
       )}
     </DragOverlay>
     </DndContext>
+    </TDimensionsCtx.Provider>
   );
 }

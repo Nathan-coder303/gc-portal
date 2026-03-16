@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useState, useTransition, createContext, useContext } from "react";
 import { TrashIcon } from "@/components/ui/icons";
 import { DndContext, DragOverlay, useDroppable, useDraggable, closestCenter } from "@dnd-kit/core";
 import type { DragStartEvent, DragEndEvent } from "@dnd-kit/core";
@@ -35,6 +35,14 @@ type Estimate = { id: string; name: string; description: string | null; status: 
 const STATUS_OPTIONS = ["DRAFT", "PENDING", "APPROVED", "REJECTED"];
 const DETAIL_OPTIONS = ["Included", "Excluded", "TBD", "By Owner", "Allowances"];
 
+const SF_UNITS = new Set(["SF", "SQ"]);
+const DURATION_KW = ["project management", "laborer", "portable potty", "tool rental", "tools"];
+function isSfUnit(u: string) { return SF_UNITS.has(u.toUpperCase().trim()); }
+function isDurationUnit(u: string) { return u.toUpperCase().trim() === "MO"; }
+function isDurationName(name: string) { const n = name.toLowerCase(); return DURATION_KW.some(k => n.includes(k)); }
+
+const DimensionsCtx = createContext<{ sqFt: number | null; durationMonths: number | null }>({ sqFt: null, durationMonths: null });
+
 function DetailSelect({ value, onChange }: { value: string; onChange: (v: string) => void }) {
   const [custom, setCustom] = useState(!!value && !DETAIL_OPTIONS.includes(value));
   if (custom) {
@@ -67,6 +75,7 @@ function ItemRowEdit({
   canEdit: boolean;
   canArchive: boolean;
 }) {
+  const { sqFt, durationMonths } = useContext(DimensionsCtx);
   const [editing, setEditing] = useState(false);
   const [isPending, startTransition] = useTransition();
   const [form, setForm] = useState({
@@ -80,6 +89,12 @@ function ItemRowEdit({
     vendor: item.vendor ?? "",
     notes: item.notes ?? "",
   });
+
+  function autoQty(name: string, unit: string, currentQty: number): number {
+    if (isSfUnit(unit) && sqFt && sqFt > 0) return sqFt;
+    if ((isDurationUnit(unit) || isDurationName(name)) && durationMonths && durationMonths > 0) return durationMonths;
+    return currentQty;
+  }
 
   const total = computeItemTotal(item);
 
@@ -147,14 +162,14 @@ function ItemRowEdit({
         <input className="w-20 border border-slate-300 rounded px-2 py-1 text-xs font-mono" value={form.csiCode} onChange={(e) => setForm({ ...form, csiCode: formatCsiCode(e.target.value) })} placeholder="CSI" />
       </td>
       <td className="px-2 py-1">
-        <input className="w-full border border-slate-300 rounded px-2 py-1 text-xs" value={form.name} onChange={(e) => { const n = e.target.value; const auto = lookupItemCsiCode(n); setForm({ ...form, name: n, csiCode: auto ?? form.csiCode }); }} />
+        <input className="w-full border border-slate-300 rounded px-2 py-1 text-xs" value={form.name} onChange={(e) => { const n = e.target.value; const auto = lookupItemCsiCode(n); setForm({ ...form, name: n, csiCode: auto ?? form.csiCode, qty: autoQty(n, form.unit, form.qty) }); }} />
       </td>
       <td className="px-2 py-1"><DetailSelect value={form.detail} onChange={(v) => setForm({ ...form, detail: v })} /></td>
       <td className="px-2 py-1">
         <input type="number" step="any" className="w-16 border border-slate-300 rounded px-2 py-1 text-xs text-right" value={form.qty} onChange={(e) => setForm({ ...form, qty: Number(e.target.value) })} />
       </td>
       <td className="px-2 py-1">
-        <input className="w-16 border border-slate-300 rounded px-2 py-1 text-xs text-center" value={form.unit} onChange={(e) => setForm({ ...form, unit: e.target.value })} placeholder="unit" />
+        <input className="w-16 border border-slate-300 rounded px-2 py-1 text-xs text-center" value={form.unit} onChange={(e) => { const u = e.target.value; setForm({ ...form, unit: u, qty: autoQty(form.name, u, form.qty) }); }} placeholder="unit" />
       </td>
       <td className="px-2 py-1">
         <input type="number" step="any" className="w-20 border border-slate-300 rounded px-2 py-1 text-xs text-right" value={form.unitCost} onChange={(e) => setForm({ ...form, unitCost: Number(e.target.value) })} />
@@ -176,11 +191,18 @@ function ItemRowEdit({
 }
 
 function AddItemRow({ divisionId, groupId, canEdit }: { divisionId: string; groupId?: string | null; canEdit: boolean }) {
+  const { sqFt, durationMonths } = useContext(DimensionsCtx);
   const [open, setOpen] = useState(false);
   const [isPending, startTransition] = useTransition();
   const [form, setForm] = useState({ name: "", csiCode: "", detail: "", unit: "", qty: "1", unitCost: "0", markupPct: "0" });
 
   if (!canEdit) return null;
+
+  function autoQty(name: string, unit: string, currentQty: string): string {
+    if (isSfUnit(unit) && sqFt && sqFt > 0) return String(sqFt);
+    if ((isDurationUnit(unit) || isDurationName(name)) && durationMonths && durationMonths > 0) return String(durationMonths);
+    return currentQty;
+  }
 
   function save() {
     if (!form.name.trim()) return;
@@ -218,14 +240,14 @@ function AddItemRow({ divisionId, groupId, canEdit }: { divisionId: string; grou
         <input className="w-20 border border-slate-300 rounded px-2 py-1 text-xs font-mono" value={form.csiCode} onChange={(e) => setForm({ ...form, csiCode: formatCsiCode(e.target.value) })} placeholder="CSI" />
       </td>
       <td className="px-2 py-1">
-        <input autoFocus className="w-full border border-slate-300 rounded px-2 py-1 text-xs" value={form.name} onChange={(e) => { const n = e.target.value; const auto = lookupItemCsiCode(n); setForm({ ...form, name: n, csiCode: auto ?? form.csiCode }); }} placeholder="Item name" />
+        <input autoFocus className="w-full border border-slate-300 rounded px-2 py-1 text-xs" value={form.name} onChange={(e) => { const n = e.target.value; const auto = lookupItemCsiCode(n); setForm({ ...form, name: n, csiCode: auto ?? form.csiCode, qty: autoQty(n, form.unit, form.qty) }); }} placeholder="Item name" />
       </td>
       <td className="px-2 py-1"><DetailSelect value={form.detail} onChange={(v) => setForm({ ...form, detail: v })} /></td>
       <td className="px-2 py-1">
         <input type="number" step="any" className="w-16 border border-slate-300 rounded px-2 py-1 text-xs text-right" value={form.qty} onChange={(e) => setForm({ ...form, qty: e.target.value })} />
       </td>
       <td className="px-2 py-1">
-        <input className="w-16 border border-slate-300 rounded px-2 py-1 text-xs text-center" value={form.unit} onChange={(e) => setForm({ ...form, unit: e.target.value })} placeholder="unit" />
+        <input className="w-16 border border-slate-300 rounded px-2 py-1 text-xs text-center" value={form.unit} onChange={(e) => { const u = e.target.value; setForm({ ...form, unit: u, qty: autoQty(form.name, u, form.qty) }); }} placeholder="unit" />
       </td>
       <td className="px-2 py-1">
         <input type="number" step="any" className="w-20 border border-slate-300 rounded px-2 py-1 text-xs text-right" value={form.unitCost} onChange={(e) => setForm({ ...form, unitCost: e.target.value })} />
@@ -504,6 +526,7 @@ export default function ProjectEstimateEditor({
   }
 
   return (
+    <DimensionsCtx.Provider value={{ sqFt: typeof sqFt === "number" ? sqFt : null, durationMonths: typeof durationMonths === "number" ? durationMonths : null }}>
     <DndContext collisionDetection={closestCenter} onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
     <div className="space-y-4">
       {/* Header */}
@@ -708,5 +731,6 @@ export default function ProjectEstimateEditor({
       )}
     </DragOverlay>
     </DndContext>
+    </DimensionsCtx.Provider>
   );
 }
