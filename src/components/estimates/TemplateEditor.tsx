@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition, useRef, useCallback, createContext, useContext } from "react";
+import { useState, useTransition, useRef, useCallback, createContext, useContext, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { TrashIcon, PencilIcon } from "@/components/ui/icons";
 import { lookupCsiCode, lookupItemCsiCode, formatCsiCode } from "@/lib/divisions";
@@ -181,7 +181,7 @@ function ItemRow({ item, divisionId, groupId, canEdit }: { item: Item; divisionI
     return currentQty;
   }
 
-  function save() {
+  function doSave(closeAfter: boolean) {
     startTransition(async () => {
       await upsertTemplateItem(divisionId, {
         id: item.id,
@@ -198,9 +198,29 @@ function ItemRow({ item, divisionId, groupId, canEdit }: { item: Item; divisionI
         notes: form.notes || null,
         visibleInPdf: form.visibleInPdf,
       });
-      setEditing(false);
+      if (closeAfter) setEditing(false);
     });
   }
+
+  function save() { doSave(true); }
+
+  // Auto-save 1.5s after last change, only if something actually changed
+  useEffect(() => {
+    if (!editing) return;
+    const hasChanges =
+      form.name !== item.name ||
+      form.csiCode !== (item.csiCode ?? "") ||
+      form.detail !== (item.detail ?? "") ||
+      form.unit !== (item.unit ?? "") ||
+      form.defaultQty !== (item.defaultQty?.toString() ?? "") ||
+      form.defaultUnitCost !== (item.defaultUnitCost?.toString() ?? "") ||
+      form.defaultMarkupPct !== (item.defaultMarkupPct?.toString() ?? "") ||
+      form.notes !== (item.notes ?? "") ||
+      form.visibleInPdf !== item.visibleInPdf;
+    if (!hasChanges) return;
+    const timer = setTimeout(() => doSave(false), 1500);
+    return () => clearTimeout(timer);
+  }, [form, editing]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const total = itemTotal(item);
 
@@ -260,9 +280,10 @@ function ItemRow({ item, divisionId, groupId, canEdit }: { item: Item; divisionI
       <td className="px-2 py-1 text-xs font-semibold text-right" style={{ color: "#C9A84C" }}>{previewTotal > 0 ? `$${fmt(previewTotal)}` : "—"}</td>
       <td className="px-2 py-1"><input className={INPUT} style={inputStyleSm} value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} placeholder="notes" /></td>
       <td className="px-2 py-1">
-        <div className="flex gap-1 justify-end">
+        <div className="flex gap-1 justify-end items-center">
+          {isPending && <span className="text-xs" style={{ color: "#8b949e" }}>Saving…</span>}
           <button onClick={save} disabled={isPending} className="text-xs px-2 py-1 rounded font-medium" style={{ background: "#C9A84C", color: "#0d1117" }}>Save</button>
-          <button onClick={() => setEditing(false)} className="text-xs px-2" style={{ color: "#8b949e" }}>Cancel</button>
+          <button onClick={() => setEditing(false)} className="text-xs px-2" style={{ color: "#8b949e" }}>✕</button>
         </div>
       </td>
     </tr>
