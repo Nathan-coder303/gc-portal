@@ -281,6 +281,15 @@ export async function reorderTemplateGroups(divisionId: string, orderedIds: stri
 
 // ─── Item CRUD ────────────────────────────────────────────────────────────────
 
+// Keywords that identify duration-driven items (MO unit or these name patterns)
+const DURATION_KEYWORDS = ["project management", "laborer", "portable potty", "tool rental", "tools"];
+
+function isDurationItem(name: string, unit: string | null): boolean {
+  const n = name.toLowerCase();
+  const u = (unit ?? "").toUpperCase().trim();
+  return u === "MO" || DURATION_KEYWORDS.some(k => n.includes(k));
+}
+
 export async function upsertTemplateItem(
   divisionId: string,
   data: {
@@ -303,12 +312,29 @@ export async function upsertTemplateItem(
   if (!session) throw new Error("Unauthorized");
   requirePermission(session, "estimateTemplate:edit");
 
+  // Auto-apply sqFt / durationMonths if the item matches criteria
+  const division = await prisma.estimateTemplateDivision.findUnique({
+    where: { id: divisionId },
+    select: { template: { select: { sqFt: true, durationMonths: true } } },
+  });
+  const unit = (data.unit ?? "").toUpperCase().trim();
+  const nameLower = data.name.toLowerCase();
+  let autoDefaultQty = data.defaultQty ?? null;
+  if (division?.template) {
+    const { sqFt, durationMonths } = division.template;
+    if (unit === "SF" && sqFt) {
+      autoDefaultQty = Number(sqFt);
+    } else if (isDurationItem(nameLower, data.unit ?? null) && durationMonths) {
+      autoDefaultQty = Number(durationMonths);
+    }
+  }
+
   const payload = {
     name: data.name,
     csiCode: data.csiCode ?? null,
     detail: data.detail ?? null,
     unit: data.unit ?? null,
-    defaultQty: data.defaultQty ?? null,
+    defaultQty: autoDefaultQty,
     defaultUnitCost: data.defaultUnitCost ?? null,
     defaultLaborCost: data.defaultLaborCost ?? null,
     defaultMaterialCost: data.defaultMaterialCost ?? null,
@@ -617,15 +643,6 @@ export async function updateTemplateGcFee(templateId: string, gcFeePercent: numb
 
   revalidatePath(`/${session.user.companyId}/estimates`);
   return { success: true };
-}
-
-// Keywords that identify duration-driven items (MO unit or these name patterns)
-const DURATION_KEYWORDS = ["project management", "laborer", "portable potty", "tool rental", "tools"];
-
-function isDurationItem(name: string, unit: string | null): boolean {
-  const n = name.toLowerCase();
-  const u = (unit ?? "").toUpperCase().trim();
-  return u === "MO" || DURATION_KEYWORDS.some(k => n.includes(k));
 }
 
 export async function updateTemplateSqFt(templateId: string, sqFt: number | null) {

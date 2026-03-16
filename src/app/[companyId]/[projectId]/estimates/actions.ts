@@ -394,12 +394,29 @@ export async function upsertEstimateItem(
   if (!session) throw new Error("Unauthorized");
   requirePermission(session, "estimate:edit");
 
+  // Auto-apply sqFt / durationMonths if the item matches criteria
+  const division = await prisma.projectEstimateDivision.findUnique({
+    where: { id: divisionId },
+    select: { estimate: { select: { sqFt: true, durationMonths: true } } },
+  });
+  const unit = (data.unit ?? "").toUpperCase().trim();
+  const nameLower = data.name.toLowerCase();
+  let autoQty = data.qty ?? 1;
+  if (division?.estimate) {
+    const { sqFt, durationMonths } = division.estimate;
+    if (unit === "SF" && sqFt) {
+      autoQty = Number(sqFt);
+    } else if (isDurationItem(nameLower, data.unit ?? null) && durationMonths) {
+      autoQty = Number(durationMonths);
+    }
+  }
+
   const payload = {
     name: data.name,
     csiCode: data.csiCode ?? null,
     detail: data.detail ?? null,
     unit: data.unit ?? null,
-    qty: data.qty ?? 1,
+    qty: autoQty,
     unitCost: data.unitCost ?? 0,
     laborCost: data.laborCost ?? 0,
     materialCost: data.materialCost ?? 0,
