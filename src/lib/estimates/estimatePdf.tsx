@@ -468,7 +468,6 @@ export function EstimatePdfDocument({ companyName, projectName, estimate, divisi
             </View>
 
             {filteredDivs.map(({ div, filledItems, filledGroups }, di) => {
-              const divTotal = computeDivisionTotal(filledGroups, filledItems);
               return (
                 <View key={div.id} minPresenceAhead={80}>
                   {/* Sub-division header (only when grouped under a super-section) */}
@@ -478,7 +477,6 @@ export function EstimatePdfDocument({ companyName, projectName, estimate, divisi
                         {div.csiCode && <Text style={styles.divisionCsi}>{div.csiCode}</Text>}
                         <Text style={styles.divisionName}>{div.name}</Text>
                       </View>
-                      <Text style={styles.divisionTotal}>${fmt(divTotal)}</Text>
                     </View>
                   )}
 

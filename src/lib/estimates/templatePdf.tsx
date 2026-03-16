@@ -307,7 +307,7 @@ function TemplatePdfDocument({ companyName, template, client, divisions, termsCo
                         {div.csiCode ? <Text style={styles.divisionCsi}>{div.csiCode}</Text> : null}
                         <Text style={styles.divisionName}>{div.name}</Text>
                       </View>
-                      <Text style={styles.divisionTotal}>${fmt(divTotal)}</Text>
+                      {!groupLabel && <Text style={styles.divisionTotal}>${fmt(divTotal)}</Text>}
                     </View>
 
                     {filledGroups.map((grp) => {
