@@ -9,6 +9,7 @@ import ClientBidTab from "@/components/clients/ClientBidTab";
 import { can } from "@/lib/auth/permissions";
 import DeleteEstimateButton from "@/components/clients/DeleteEstimateButton";
 import EditEstimateModal from "@/components/clients/EditEstimateModal";
+import SendEstimateEmailButton from "@/components/clients/SendEstimateEmailButton";
 
 export default async function ClientDetailPage({
   params,
@@ -194,10 +195,17 @@ export default async function ClientDetailPage({
                         Created {format(est.createdAt, "MMM d, yyyy")}
                       </div>
                     </Link>
-                    <div className="flex items-center gap-4 shrink-0">
+                    <div className="flex items-center gap-3 shrink-0">
                       <span className="text-lg font-bold" style={{ color: "#C9A84C" }}>
                         ${fmt(total)}
                       </span>
+                      <SendEstimateEmailButton
+                        templateId={est.id}
+                        companyId={params.companyId}
+                        templateName={est.name}
+                        clientName={safeClient.name}
+                        clientEmail={safeClient.email}
+                      />
                       <Link href={`/${params.companyId}/estimates/${est.id}`} className="text-lg" style={{ color: "#8b949e" }}>→</Link>
                       {canEdit && (
                         <EditEstimateModal

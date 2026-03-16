@@ -1230,34 +1230,50 @@ export default function TemplateEditor({
                 <div className="min-w-[280px] max-w-[380px]">
                   <PaymentScheduleCard templateId={template.id} initialRows={paymentRows} canEdit={canEdit} />
                 </div>
-                {/* Actions */}
-                <div className="flex flex-col gap-2 items-start">
+                {/* 3 Action Cards */}
+                <div className="flex flex-col gap-2" style={{ minWidth: "200px" }}>
+                  {/* Card 1 — Create Client Estimate */}
+                  <button
+                    disabled={!canEdit || !currentClient || isPending || savedToClient || template.type !== "TEMPLATE"}
+                    onClick={canEdit && currentClient && !savedToClient ? handleSaveToClient : undefined}
+                    className="text-left rounded-xl p-3 transition-all disabled:opacity-40"
+                    style={{ background: savedToClient ? "#0a2e1a" : "#0d2318", border: `2px solid ${savedToClient ? "#16a34a" : currentClient ? "#22c55e" : "#1e3a2b"}`, cursor: canEdit && currentClient && !savedToClient ? "pointer" : "default" }}
+                  >
+                    <div className="text-xs font-bold" style={{ color: savedToClient ? "#16a34a" : "#22c55e" }}>
+                      {savedToClient ? "✓ Estimate Created" : isPending ? "Creating…" : "Create Client Estimate"}
+                    </div>
+                    <div className="text-[10px] mt-0.5" style={{ color: "#8b949e" }}>
+                      {savedToClient ? `Saved for ${currentClient?.name}` : currentClient ? `For ${currentClient.name}` : "Assign a client below first"}
+                    </div>
+                  </button>
+
+                  {/* Card 2 — Save as New Template */}
+                  <button
+                    disabled={!canEdit}
+                    onClick={canEdit ? () => setSaveAsNew(v => !v) : undefined}
+                    className="text-left rounded-xl p-3 transition-all disabled:opacity-40"
+                    style={{ background: saveAsNew ? "#161f2e" : "#0d1117", border: `2px solid ${saveAsNew ? "#60a5fa" : "#30373f"}`, cursor: canEdit ? "pointer" : "default" }}
+                  >
+                    <div className="text-xs font-bold" style={{ color: "#60a5fa" }}>Save as New Template</div>
+                    <div className="text-[10px] mt-0.5" style={{ color: "#8b949e" }}>Fork with a different name</div>
+                  </button>
+
+                  {/* Card 3 — Export PDF */}
                   <a
                     href={`/api/${template.companyId}/estimates/${template.id}/pdf`}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="text-xs px-3 py-1.5 rounded-lg font-medium"
-                    style={{ background: "#30373f", color: "#e6edf3" }}
+                    className="block rounded-xl p-3 transition-all"
+                    style={{ background: "#1a1508", border: "2px solid #C9A84C" }}
                   >
-                    Export PDF
+                    <div className="text-xs font-bold" style={{ color: "#C9A84C" }}>Export PDF</div>
+                    <div className="text-[10px] mt-0.5" style={{ color: "#8b949e" }}>Download estimate</div>
                   </a>
+
                   {canEdit && (
-                    <>
-                      <button onClick={() => setSaveAsNew(!saveAsNew)} className="text-xs px-3 py-1.5 rounded-lg font-medium" style={{ border: "1px solid #30373f", color: "#e6edf3" }}>
-                        Save as New Template
-                      </button>
-                      {currentClient && template.type === "TEMPLATE" && (
-                        <button
-                          onClick={handleSaveToClient}
-                          disabled={isPending || savedToClient}
-                          className="text-xs px-3 py-1.5 rounded-lg font-medium disabled:opacity-50"
-                          style={{ background: savedToClient ? "#16a34a" : "#22c55e", color: "#fff" }}
-                        >
-                          {savedToClient ? "✓ Saved to Client" : isPending ? "Saving..." : "Save to Client"}
-                        </button>
-                      )}
-                      <button onClick={() => setEditingHeader(true)} className="text-xs" style={{ color: "#C9A84C" }}>Edit</button>
-                    </>
+                    <button onClick={() => setEditingHeader(true)} className="text-[10px] text-center" style={{ color: "#484f58" }}>
+                      Edit header details
+                    </button>
                   )}
                 </div>
               </div>
@@ -1272,21 +1288,22 @@ export default function TemplateEditor({
         )}
 
         {saveAsNew && (
-          <div className="mt-4 pt-4 space-y-2" style={{ borderTop: "1px solid #30373f" }}>
-            <label className="block text-xs font-medium" style={{ color: "#8b949e" }}>New Template Name</label>
+          <div className="rounded-xl p-4 space-y-2" style={{ background: "#0d1421", border: "2px solid #60a5fa" }}>
+            <p className="text-xs font-semibold" style={{ color: "#60a5fa" }}>New Template Name</p>
             <div className="flex gap-2 items-center">
               <input
                 autoFocus
                 value={newName}
                 onChange={(e) => setNewName(e.target.value)}
+                onKeyDown={(e) => e.key === "Enter" && handleSaveAsNew()}
                 className="flex-1 rounded-lg px-3 py-2 text-sm"
                 style={inputStyleSm}
                 placeholder="e.g. Addition v2"
               />
-              <button onClick={handleSaveAsNew} disabled={isPending} className="px-4 py-2 rounded-lg text-sm font-medium" style={{ background: "#22c55e", color: "#fff" }}>
-                {isPending ? "Saving..." : "Save Copy"}
+              <button onClick={handleSaveAsNew} disabled={isPending} className="px-4 py-2 rounded-lg text-sm font-semibold" style={{ background: "#60a5fa", color: "#0d1117" }}>
+                {isPending ? "Saving…" : "Save"}
               </button>
-              <button onClick={() => setSaveAsNew(false)} className="text-sm px-2" style={{ color: "#8b949e" }}>Cancel</button>
+              <button onClick={() => setSaveAsNew(false)} className="text-sm px-2" style={{ color: "#8b949e" }}>✕</button>
             </div>
             {saveError && <p className="text-xs" style={{ color: "#ef4444" }}>{saveError}</p>}
           </div>

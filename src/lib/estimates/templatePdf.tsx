@@ -418,8 +418,8 @@ function TemplatePdfDocument({ companyName, template, client, divisions, termsCo
           </View>
         ) : null}
 
-        {/* Signature Block */}
-        <View style={styles.sigSection}>
+        {/* Signature Block — break to new page if less than 220pt remain */}
+        <View style={styles.sigSection} minPresenceAhead={220}>
           <View style={styles.sectionDivider} />
           <Text style={[styles.sectionTitle, { marginBottom: 4 }]}>Agreement &amp; Authorization</Text>
           <Text style={{ fontSize: 8, color: "#475569", marginBottom: 4 }}>
