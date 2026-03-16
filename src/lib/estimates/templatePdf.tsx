@@ -115,12 +115,21 @@ const styles = StyleSheet.create({
   payColPct: { width: 40, textAlign: "right", fontSize: 8 },
 
   pageNumber: { position: "absolute", bottom: 24, right: 40, fontSize: 8, color: "#94a3b8" },
+
+  // Signature block
+  sigSection: { marginTop: 28 },
+  sigRow: { flexDirection: "row", gap: 40, marginTop: 20 },
+  sigBlock: { flex: 1 },
+  sigPartyLabel: { fontSize: 9, fontFamily: "Helvetica-Bold", color: DARK, textTransform: "uppercase", letterSpacing: 1, marginBottom: 16 },
+  sigLine: { borderBottomWidth: 1, borderBottomColor: "#475569", marginBottom: 3 },
+  sigLineLabel: { fontSize: 7, color: "#94a3b8" },
+  sigPrefilled: { fontSize: 9, color: DARK, fontFamily: "Helvetica-Bold", marginBottom: 3 },
 });
 
 // Defined outside StyleSheet.create to avoid any style inheritance/override issues
 const GRAND_TOTAL_VALUE_STYLE = { fontSize: 16 as const, fontFamily: "Helvetica-Bold" as const, color: "#C9A84C" as const };
 
-type Item = { id: string; name: string; detail: string | null; unit: string | null; defaultQty: number | null; defaultUnitCost: number | null; defaultMarkupPct: number | null; visibleInPdf: boolean };
+type Item = { id: string; name: string; detail: string | null; unit: string | null; defaultQty: number | null; defaultUnitCost: number | null; defaultMarkupPct: number | null; visibleInPdf: boolean; notes: string | null };
 type Group = { id: string; name: string; items: Item[] };
 type Division = { id: string; csiCode: string | null; name: string; groups: Group[]; items: Item[] };
 
@@ -152,25 +161,30 @@ function ItemTableHeader() {
 function ItemRow({ item, index }: { item: Item; index: number }) {
   const isExcluded = item.detail === "Excluded";
   const total = calcTotal(item.defaultQty, item.defaultUnitCost, item.defaultMarkupPct);
-  const style = index % 2 === 0 ? styles.tableRow : styles.tableRowAlt;
+  const rowStyle = index % 2 === 0 ? styles.tableRow : styles.tableRowAlt;
   const detailColor = isExcluded ? "#dc2626" : item.detail === "Allowances" ? "#d97706" : "#334155";
   return (
-    <View style={style}>
-      <Text style={[styles.cellText, styles.colName]}>{item.name}</Text>
-      <Text style={[{ fontSize: 7, color: detailColor, textAlign: "center" }, styles.colDetail]}>{item.detail?.toUpperCase() ?? ""}</Text>
-      {isExcluded ? (
-        <>
-          <Text style={[styles.cellMuted, styles.colQty]}>—</Text>
-          <Text style={[styles.cellMuted, styles.colUnit]}>{item.unit ?? ""}</Text>
-          <Text style={[styles.cellMuted, styles.colTotal]}>$0.00</Text>
-        </>
-      ) : (
-        <>
-          <Text style={[styles.cellMuted, styles.colQty]}>{item.defaultQty ?? "—"}</Text>
-          <Text style={[styles.cellMuted, styles.colUnit]}>{item.unit ?? ""}</Text>
-          <Text style={[styles.cellBold, styles.colTotal]}>{total > 0 ? `$${fmt(total)}` : "—"}</Text>
-        </>
-      )}
+    <View style={{ borderBottomWidth: 1, borderBottomColor: "#f1f5f9", backgroundColor: index % 2 === 0 ? undefined : "#fafafa" }}>
+      <View style={[rowStyle, { borderBottomWidth: 0 }]}>
+        <Text style={[styles.cellText, styles.colName]}>{item.name}</Text>
+        <Text style={[{ fontSize: 7, color: detailColor, textAlign: "center" }, styles.colDetail]}>{item.detail?.toUpperCase() ?? ""}</Text>
+        {isExcluded ? (
+          <>
+            <Text style={[styles.cellMuted, styles.colQty]}>—</Text>
+            <Text style={[styles.cellMuted, styles.colUnit]}>{item.unit ?? ""}</Text>
+            <Text style={[styles.cellMuted, styles.colTotal]}>$0.00</Text>
+          </>
+        ) : (
+          <>
+            <Text style={[styles.cellMuted, styles.colQty]}>{item.defaultQty ?? "—"}</Text>
+            <Text style={[styles.cellMuted, styles.colUnit]}>{item.unit ?? ""}</Text>
+            <Text style={[styles.cellBold, styles.colTotal]}>{total > 0 ? `$${fmt(total)}` : "—"}</Text>
+          </>
+        )}
+      </View>
+      {item.notes ? (
+        <Text style={{ fontSize: 7, color: "#64748b", fontFamily: "Helvetica-Oblique", paddingHorizontal: 8, paddingBottom: 3 }}>{item.notes}</Text>
+      ) : null}
     </View>
   );
 }
@@ -377,6 +391,42 @@ function TemplatePdfDocument({ companyName, template, client, divisions, termsCo
             ))}
           </View>
         ) : null}
+
+        {/* Signature Block */}
+        <View style={styles.sigSection}>
+          <View style={styles.sectionDivider} />
+          <Text style={[styles.sectionTitle, { marginBottom: 4 }]}>Agreement &amp; Authorization</Text>
+          <Text style={{ fontSize: 8, color: "#475569", marginBottom: 4 }}>
+            By signing below, both parties agree to the scope of work, pricing, and terms described in this document.
+          </Text>
+          <View style={styles.sigRow}>
+            {/* Customer */}
+            <View style={styles.sigBlock}>
+              <Text style={styles.sigPartyLabel}>Customer</Text>
+              <View style={[styles.sigLine, { marginBottom: 3, height: 20 }]} />
+              <Text style={styles.sigLineLabel}>Signature</Text>
+              <View style={{ height: 14 }} />
+              <View style={styles.sigLine} />
+              <Text style={styles.sigLineLabel}>Name (Print)</Text>
+              <View style={{ height: 14 }} />
+              <View style={styles.sigLine} />
+              <Text style={styles.sigLineLabel}>Date</Text>
+            </View>
+            {/* Contractor */}
+            <View style={styles.sigBlock}>
+              <Text style={styles.sigPartyLabel}>Contractor</Text>
+              <View style={[styles.sigLine, { marginBottom: 3, height: 20 }]} />
+              <Text style={styles.sigLineLabel}>Signature</Text>
+              <View style={{ height: 14 }} />
+              <View style={styles.sigLine} />
+              <Text style={styles.sigPrefilled}>Mike Baruh</Text>
+              <Text style={styles.sigLineLabel}>Name (Print)</Text>
+              <View style={{ height: 14 }} />
+              <View style={styles.sigLine} />
+              <Text style={styles.sigLineLabel}>Date</Text>
+            </View>
+          </View>
+        </View>
 
         <Text style={styles.pageNumber} render={({ pageNumber, totalPages }) => `Page ${pageNumber} of ${totalPages}`} fixed />
       </Page>

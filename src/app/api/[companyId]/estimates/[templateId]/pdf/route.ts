@@ -63,6 +63,7 @@ export async function GET(
         defaultUnitCost: i.defaultUnitCost ? Number(i.defaultUnitCost) : null,
         defaultMarkupPct: i.defaultMarkupPct ? Number(i.defaultMarkupPct) : null,
         visibleInPdf: i.visibleInPdf,
+        notes: i.notes,
       })),
     })),
     items: d.items.map((i) => ({
@@ -74,6 +75,7 @@ export async function GET(
       defaultUnitCost: i.defaultUnitCost ? Number(i.defaultUnitCost) : null,
       defaultMarkupPct: i.defaultMarkupPct ? Number(i.defaultMarkupPct) : null,
       visibleInPdf: i.visibleInPdf,
+      notes: i.notes,
     })),
   }));
 
