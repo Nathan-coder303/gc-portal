@@ -402,7 +402,6 @@ export async function upsertEstimateItem(
     where: { id: divisionId },
     select: { estimate: { select: { sqFt: true, durationMonths: true } } },
   });
-  const unit = (data.unit ?? "").toUpperCase().trim();
   const nameLower = data.name.toLowerCase();
   let autoQty = data.qty ?? 1;
   if (division?.estimate) {

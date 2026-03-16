@@ -322,7 +322,6 @@ export async function upsertTemplateItem(
     where: { id: divisionId },
     select: { template: { select: { sqFt: true, durationMonths: true } } },
   });
-  const unit = (data.unit ?? "").toUpperCase().trim();
   const nameLower = data.name.toLowerCase();
   let autoDefaultQty = data.defaultQty ?? null;
   if (division?.template) {
