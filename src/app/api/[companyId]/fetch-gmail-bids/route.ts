@@ -8,8 +8,6 @@ import { auth } from "@/lib/auth";
 export const runtime = "nodejs";
 export const maxDuration = 60;
 
-const GMAIL_QUERY = "has:attachment filename:pdf (bid OR estimate OR proposal OR quote)";
-
 function getOAuthClient() {
   const oauth2Client = new google.auth.OAuth2(
     process.env.GOOGLE_CLIENT_ID,
@@ -48,7 +46,6 @@ function extractBody(payload: any): string {
   return "";
 }
 
-// Recursively find all PDF parts (handles nested multipart emails)
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 function extractPdfParts(payload: any): any[] {
   if (!payload) return [];
@@ -63,6 +60,30 @@ function extractPdfParts(payload: any): any[] {
     }
   }
   return results;
+}
+
+// Build a targeted Gmail search using the client address/name
+function buildGmailQuery(clientName?: string, clientAddress?: string): string {
+  const baseTerms = "(bid OR estimate OR proposal OR quote)";
+
+  // Extract the most distinctive part of the address (street number + first word of street)
+  // e.g. "7729 Carlyle Ave, Miami Beach, FL" → "7729 Carlyle"
+  if (clientAddress) {
+    const parts = clientAddress.trim().split(/[\s,]+/);
+    const addressKey = parts.slice(0, 2).join(" "); // e.g. "7729 Carlyle"
+    if (addressKey.length > 3) {
+      return `"${addressKey}" ${baseTerms}`;
+    }
+  }
+
+  // Fallback: search by client name keywords
+  if (clientName) {
+    const nameKey = clientName.split(/\s+/).slice(0, 2).join(" ");
+    return `"${nameKey}" ${baseTerms}`;
+  }
+
+  // Last resort: all bid emails with attachments (capped tightly)
+  return `has:attachment filename:pdf ${baseTerms}`;
 }
 
 export async function POST(req: NextRequest, { params }: { params: { companyId: string } }) {
@@ -84,39 +105,41 @@ export async function POST(req: NextRequest, { params }: { params: { companyId: 
   const gmail = google.gmail({ version: "v1", auth: authClient });
   const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 
-  // Paginate through all matching Gmail messages (no is:unread filter so we catch everything)
+  // Use targeted query — dramatically fewer emails to process
+  const gmailQuery = buildGmailQuery(clientName, clientAddress);
+
+  // Paginate through matching messages (targeted query → usually < 50 results)
   const allMessages: { id?: string | null }[] = [];
   let pageToken: string | undefined;
   do {
     const listRes = await gmail.users.messages.list({
       userId: "me",
-      q: GMAIL_QUERY,
+      q: gmailQuery,
       maxResults: 100,
       pageToken,
     });
     allMessages.push(...(listRes.data.messages ?? []));
     pageToken = listRes.data.nextPageToken ?? undefined;
-  } while (pageToken && allMessages.length < 500);
+  } while (pageToken && allMessages.length < 200);
 
-  // Bulk dedup: one query to get all already-imported Gmail message IDs
+  // Bulk dedup: one query to get all already-imported Gmail message IDs for this client
   const existingSubBids = await prisma.subBid.findMany({
-    where: {
-      companyId: params.companyId,
-      fileUrl: { startsWith: "gmail:" },
-    },
+    where: { clientId, fileUrl: { startsWith: "gmail:" } },
     select: { fileUrl: true },
   });
   const processedMsgIds = new Set(
     existingSubBids.map(b => b.fileUrl!.split(":")[1]).filter(Boolean)
   );
 
-  // Only process messages we haven't seen yet, cap at 20 per run to stay within timeout
+  // Only process messages we haven't seen yet, cap at 30 per run
   const newMessages = allMessages.filter(m => m.id && !processedMsgIds.has(m.id));
-  const toProcess = newMessages.slice(0, 20);
+  const toProcess = newMessages.slice(0, 30);
 
   let added = 0;
   let skippedInLoop = 0;
   const errors: string[] = [];
+
+  const divisionList = STANDARD_DIVISIONS.map(d => `${d.code} - ${d.name}`).join("\n");
 
   for (const msg of toProcess) {
     try {
@@ -127,31 +150,27 @@ export async function POST(req: NextRequest, { params }: { params: { companyId: 
       const subject = headers.find(h => h.name === "Subject")?.value ?? "";
       const from = headers.find(h => h.name === "From")?.value ?? "";
       const bodyText = extractBody(payload);
-
-      // Recursively find PDF attachments
       const pdfParts = extractPdfParts(payload);
 
-      const divisionList = STANDARD_DIVISIONS.map(d => `${d.code} - ${d.name}`).join("\n");
-
-      const prompt = `You are parsing a construction subcontractor bid email. This email is being checked as a potential bid for the project: ${clientName ?? ""}${clientAddress ? ` at ${clientAddress}` : ""}.
+      const prompt = `You are parsing a construction subcontractor bid email for project: ${clientName ?? ""}${clientAddress ? ` at ${clientAddress}` : ""}.
 
 FROM: ${from}
 SUBJECT: ${subject}
 EMAIL BODY:
 ${bodyText.slice(0, 2000)}
 
-Does this email appear to be a subcontractor bid or proposal for the project above? Look for matches on address, project name, or job number in the subject/body.
+Is this a subcontractor bid or proposal related to this project? Look for the address, project name, or job number.
 
-AVAILABLE DIVISIONS (pick the best match for the trade/scope in this bid):
+AVAILABLE DIVISIONS:
 ${divisionList}
 
 Respond ONLY with valid JSON, no markdown:
 {
-  "isMatch": <true if this looks like a bid for this project, false otherwise>,
-  "divisionCode": "<2-digit code from list above, or null if unclear>",
-  "contractorName": "<company or person sending the bid>",
-  "amount": <number without $ or commas, or null if not found>,
-  "notes": "<brief 1-sentence summary of scope>"
+  "isMatch": <true if this is a bid for this project>,
+  "divisionCode": "<2-digit code, or null>",
+  "contractorName": "<sender company/name>",
+  "amount": <number or null>,
+  "notes": "<1-sentence scope summary>"
 }`;
 
       const aiMsg = await anthropic.messages.create({
@@ -177,7 +196,6 @@ Respond ONLY with valid JSON, no markdown:
       const division = STANDARD_DIVISIONS.find(d => d.code === parsed.divisionCode);
       if (!division) { skippedInLoop++; continue; }
 
-      // Always store gmail msg ID in fileUrl for dedup on future runs
       const fileUrl = pdfParts.length > 0
         ? `gmail:${msg.id}:${pdfParts[0].body?.attachmentId ?? ""}`
         : `gmail:${msg.id}`;
@@ -200,13 +218,6 @@ Respond ONLY with valid JSON, no markdown:
         },
       });
 
-      // Mark as read so Gmail stays clean
-      await gmail.users.messages.modify({
-        userId: "me",
-        id: msg.id!,
-        requestBody: { removeLabelIds: ["UNREAD"] },
-      });
-
       added++;
     } catch (err) {
       errors.push(String(err));
@@ -215,5 +226,12 @@ Respond ONLY with valid JSON, no markdown:
 
   const remaining = newMessages.length - toProcess.length;
   const skipped = (allMessages.length - newMessages.length) + skippedInLoop;
-  return NextResponse.json({ added, skipped, remaining, errors: errors.slice(0, 10) });
+  return NextResponse.json({
+    added,
+    skipped,
+    remaining,
+    totalFound: allMessages.length,
+    query: gmailQuery,
+    errors: errors.slice(0, 5),
+  });
 }
