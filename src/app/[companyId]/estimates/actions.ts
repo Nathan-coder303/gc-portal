@@ -283,6 +283,11 @@ export async function reorderTemplateGroups(divisionId: string, orderedIds: stri
 
 // Keywords that identify duration-driven items (MO unit or these name patterns)
 const DURATION_KEYWORDS = ["project management", "laborer", "portable potty", "tool rental", "tools"];
+const SF_UNITS = new Set(["SF", "SQ"]);
+
+function isSfItem(unit: string | null): boolean {
+  return SF_UNITS.has((unit ?? "").toUpperCase().trim());
+}
 
 function isDurationItem(name: string, unit: string | null): boolean {
   const n = name.toLowerCase();
@@ -322,9 +327,9 @@ export async function upsertTemplateItem(
   let autoDefaultQty = data.defaultQty ?? null;
   if (division?.template) {
     const { sqFt, durationMonths } = division.template;
-    if (unit === "SF" && sqFt) {
+    if (isSfItem(data.unit ?? null) && sqFt && Number(sqFt) > 0) {
       autoDefaultQty = Number(sqFt);
-    } else if (isDurationItem(nameLower, data.unit ?? null) && durationMonths) {
+    } else if (isDurationItem(nameLower, data.unit ?? null) && durationMonths && Number(durationMonths) > 0) {
       autoDefaultQty = Number(durationMonths);
     }
   }
@@ -656,18 +661,14 @@ export async function updateTemplateSqFt(templateId: string, sqFt: number | null
   });
 
   if (sqFt && sqFt > 0) {
-    // Find all SF items under this template
     const sfItems = await prisma.estimateTemplateItem.findMany({
-      where: {
-        archivedAt: null,
-        unit: { equals: "SF", mode: "insensitive" },
-        division: { templateId },
-      },
-      select: { id: true },
+      where: { archivedAt: null, division: { templateId } },
+      select: { id: true, unit: true },
     });
-    if (sfItems.length > 0) {
+    const matchIds = sfItems.filter(i => isSfItem(i.unit)).map(i => i.id);
+    if (matchIds.length > 0) {
       await prisma.estimateTemplateItem.updateMany({
-        where: { id: { in: sfItems.map(i => i.id) } },
+        where: { id: { in: matchIds } },
         data: { defaultQty: sqFt },
       });
     }

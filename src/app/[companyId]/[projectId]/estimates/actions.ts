@@ -186,6 +186,12 @@ export async function updateEstimateGcFee(estimateId: string, gcFeePercent: numb
 }
 
 const DURATION_KEYWORDS = ["project management", "laborer", "portable potty", "tool rental", "tools"];
+// SF and SQ (squares) both use the sqFt value as qty
+const SF_UNITS = new Set(["SF", "SQ"]);
+
+function isSfItem(unit: string | null): boolean {
+  return SF_UNITS.has((unit ?? "").toUpperCase().trim());
+}
 
 function isDurationItem(name: string, unit: string | null): boolean {
   const n = name.toLowerCase();
@@ -205,16 +211,13 @@ export async function updateEstimateSqFt(estimateId: string, sqFt: number | null
 
   if (sqFt && sqFt > 0) {
     const sfItems = await prisma.projectEstimateItem.findMany({
-      where: {
-        archivedAt: null,
-        unit: { equals: "SF", mode: "insensitive" },
-        division: { estimateId },
-      },
-      select: { id: true },
+      where: { archivedAt: null, division: { estimateId } },
+      select: { id: true, unit: true },
     });
-    if (sfItems.length > 0) {
+    const matchIds = sfItems.filter(i => isSfItem(i.unit)).map(i => i.id);
+    if (matchIds.length > 0) {
       await prisma.projectEstimateItem.updateMany({
-        where: { id: { in: sfItems.map(i => i.id) } },
+        where: { id: { in: matchIds } },
         data: { qty: sqFt },
       });
     }
@@ -404,9 +407,9 @@ export async function upsertEstimateItem(
   let autoQty = data.qty ?? 1;
   if (division?.estimate) {
     const { sqFt, durationMonths } = division.estimate;
-    if (unit === "SF" && sqFt) {
+    if (isSfItem(data.unit ?? null) && sqFt && Number(sqFt) > 0) {
       autoQty = Number(sqFt);
-    } else if (isDurationItem(nameLower, data.unit ?? null) && durationMonths) {
+    } else if (isDurationItem(nameLower, data.unit ?? null) && durationMonths && Number(durationMonths) > 0) {
       autoQty = Number(durationMonths);
     }
   }
