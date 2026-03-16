@@ -26,6 +26,44 @@ function getOAuthClient() {
   return oauth2Client;
 }
 
+// GET — returns the authenticated Gmail address and default signature for the modal
+export async function GET(
+  _req: NextRequest,
+  _ctx: { params: { companyId: string } }
+) {
+  const session = await auth();
+  if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
+  try {
+    const oauth2Client = getOAuthClient();
+    const gmail = google.gmail({ version: "v1", auth: oauth2Client });
+
+    const [profile, sendAsList] = await Promise.all([
+      gmail.users.getProfile({ userId: "me" }),
+      gmail.users.settings.sendAs.list({ userId: "me" }),
+    ]);
+
+    const fromEmail = profile.data.emailAddress ?? "";
+    // Find the default (primary) send-as entry for its signature
+    const defaultSendAs = sendAsList.data.sendAs?.find((s) => s.isDefault) ?? sendAsList.data.sendAs?.[0];
+    // Strip HTML tags from signature for plain-text use
+    const rawSignature = defaultSendAs?.signature ?? "";
+    const plainSignature = rawSignature
+      .replace(/<br\s*\/?>/gi, "\n")
+      .replace(/<[^>]+>/g, "")
+      .replace(/&amp;/g, "&")
+      .replace(/&lt;/g, "<")
+      .replace(/&gt;/g, ">")
+      .replace(/&nbsp;/g, " ")
+      .trim();
+
+    return NextResponse.json({ fromEmail, signature: plainSignature });
+  } catch (err) {
+    console.error("Gmail profile fetch error:", err);
+    return NextResponse.json({ fromEmail: "", signature: "" });
+  }
+}
+
 export async function POST(
   req: NextRequest,
   { params }: { params: { companyId: string } }
@@ -152,12 +190,16 @@ export async function POST(
   const oauth2Client = getOAuthClient();
   const gmail = google.gmail({ version: "v1", auth: oauth2Client });
 
+  // Use the actual authenticated Gmail address as From
+  const profile = await gmail.users.getProfile({ userId: "me" });
+  const fromEmail = profile.data.emailAddress ?? "me";
+
   const boundary = `----=_Part_${Date.now()}`;
   const filename = `${template.name.replace(/[^a-z0-9]/gi, "-").toLowerCase()}-estimate.pdf`;
   const pdfBase64 = buffer.toString("base64");
 
   const mimeLines = [
-    `From: mike@mibhconstruction.com`,
+    `From: ${fromEmail}`,
     `To: ${to}`,
     `Subject: ${subject}`,
     `MIME-Version: 1.0`,

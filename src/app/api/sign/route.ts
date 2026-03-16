@@ -63,6 +63,7 @@ export async function GET(req: NextRequest) {
     where: { signatureToken: token },
     select: {
       id: true,
+      companyId: true,
       name: true,
       estimateNumber: true,
       estimateDate: true,
@@ -84,5 +85,6 @@ export async function GET(req: NextRequest) {
     alreadySigned: !!template.signedAt,
     signedAt: template.signedAt?.toISOString() ?? null,
     signedByName: template.signedByName ?? null,
+    pdfUrl: `/api/${template.companyId}/estimates/${template.id}/pdf`,
   });
 }

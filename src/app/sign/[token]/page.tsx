@@ -12,6 +12,7 @@ type EstimateInfo = {
   alreadySigned: boolean;
   signedAt: string | null;
   signedByName: string | null;
+  pdfUrl: string | null;
 };
 
 export default function SignPage() {
@@ -167,6 +168,17 @@ export default function SignPage() {
           <p className="text-xs mt-4" style={{ color: "#94a3b8" }}>
             Thank you. {info.companyName} will be in touch shortly.
           </p>
+          {info.pdfUrl && (
+            <a
+              href={info.pdfUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-block mt-4 text-xs font-semibold px-3 py-1.5 rounded-lg transition-opacity hover:opacity-80"
+              style={{ background: "#fff7e6", color: "#C9A84C", border: "1px solid #C9A84C" }}
+            >
+              📄 View Estimate &amp; T&amp;C
+            </a>
+          )}
         </div>
       </div>
     );
@@ -196,9 +208,22 @@ export default function SignPage() {
             )}
             {info.clientName && <span>{info.clientName}</span>}
           </div>
-          <p className="text-sm mt-4" style={{ color: "#334155" }}>
-            Please review your estimate and sign below to authorize the work described.
-          </p>
+          <div className="flex items-center justify-between mt-4">
+            <p className="text-sm" style={{ color: "#334155" }}>
+              Please review your estimate and sign below to authorize the work described.
+            </p>
+            {info.pdfUrl && (
+              <a
+                href={info.pdfUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="shrink-0 ml-4 text-xs font-semibold px-3 py-1.5 rounded-lg flex items-center gap-1.5 transition-opacity hover:opacity-80"
+                style={{ background: "#fff7e6", color: "#C9A84C", border: "1px solid #C9A84C" }}
+              >
+                📄 View Estimate &amp; T&amp;C
+              </a>
+            )}
+          </div>
         </div>
 
         {/* Signature pad */}
