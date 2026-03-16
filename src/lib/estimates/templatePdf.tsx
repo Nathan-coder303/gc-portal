@@ -301,7 +301,7 @@ function TemplatePdfDocument({ companyName, template, client, divisions, termsCo
                   .reduce((s, i) => s + calcTotal(i.defaultQty, i.defaultUnitCost, i.defaultMarkupPct), 0);
 
                 return (
-                  <View key={div.id}>
+                  <View key={div.id} minPresenceAhead={80}>
                     <View style={[styles.divisionHeader, groupLabel ? { marginTop: 6 } : {}]}>
                       <View style={styles.divisionLeft}>
                         {div.csiCode ? <Text style={styles.divisionCsi}>{div.csiCode}</Text> : null}
@@ -313,7 +313,7 @@ function TemplatePdfDocument({ companyName, template, client, divisions, termsCo
                     {filledGroups.map((grp) => {
                       const grpTotal = grp.items.reduce((s, i) => s + calcTotal(i.defaultQty, i.defaultUnitCost, i.defaultMarkupPct), 0);
                       return (
-                        <View key={grp.id}>
+                        <View key={grp.id} minPresenceAhead={60}>
                           <View style={styles.groupHeader}>
                             <Text style={styles.groupName}>{grp.name}</Text>
                             <Text style={styles.groupTotal}>{grpTotal > 0 ? `$${fmt(grpTotal)}` : ""}</Text>
