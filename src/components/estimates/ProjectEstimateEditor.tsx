@@ -16,6 +16,8 @@ import {
   updateEstimateSqFt,
   updateEstimateDurationMonths,
   reorderEstimateDivisions,
+  updateEstimateSummaryGroup,
+  type SummaryGroupData,
 } from "@/app/[companyId]/[projectId]/estimates/actions";
 import {
   computeItemTotal,
@@ -478,6 +480,7 @@ export default function ProjectEstimateEditor({
   canArchive,
   companyId,
   projectId,
+  initialSummaryGroups,
 }: {
   estimate: Estimate;
   divisions: Division[];
@@ -485,6 +488,7 @@ export default function ProjectEstimateEditor({
   canArchive: boolean;
   companyId: string;
   projectId: string;
+  initialSummaryGroups?: Record<string, SummaryGroupData> | null;
 }) {
   const [isPending, startTransition] = useTransition();
   const [editingHeader, setEditingHeader] = useState(false);
@@ -501,6 +505,9 @@ export default function ProjectEstimateEditor({
   const grandTotal = subtotal + gcFeeAmount;
   const [sqFt, setSqFt] = useState<number | "">(estimate.sqFt ?? "");
   const [durationMonths, setDurationMonths] = useState<number | "">(estimate.durationMonths ?? "");
+  const [summaryGroups, setSummaryGroups] = useState<Record<string, SummaryGroupData>>(initialSummaryGroups ?? {});
+  const [editingSummaryGroup, setEditingSummaryGroup] = useState<string | null>(null);
+  const [sgForm, setSgForm] = useState<SummaryGroupData>({ qty: null, unit: null, unitCost: null, markupPct: null, manualTotal: null });
   const [activeDivName, setActiveDivName] = useState<string | null>(null);
 
   function handleDragStart(event: DragStartEvent) {
@@ -682,21 +689,112 @@ export default function ProjectEstimateEditor({
 
       {/* Divisions — grouped into super-sections (e.g. SHELL) */}
       <div className="space-y-3">
-        {groupDivisionsE(divisions).map(({ groupLabel, divs }, gi) => (
-          <div key={gi}>
-            {groupLabel && (
-              <div className="flex items-center justify-between px-4 py-2 rounded-lg" style={{ background: "#C9A84C", color: "#0d1117" }}>
-                <span className="text-sm font-bold tracking-widest uppercase">{groupLabel}</span>
-                <span className="text-sm font-bold">${divs.reduce((s, d) => s + computeDivisionTotal(d.groups, d.items), 0).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+        {groupDivisionsE(divisions).map(({ groupLabel, divs }, gi) => {
+          const rawTotal = divs.reduce((s, d) => s + computeDivisionTotal(d.groups, d.items), 0);
+          const sg = groupLabel ? summaryGroups[groupLabel] : undefined;
+          let overrideTotal: number | null = null;
+          if (sg) {
+            if (sg.manualTotal !== null && sg.manualTotal !== undefined) overrideTotal = sg.manualTotal;
+            else if (sg.qty !== null || sg.unitCost !== null) overrideTotal = (sg.qty ?? 0) * (sg.unitCost ?? 0) * (1 + (sg.markupPct ?? 0) / 100);
+          }
+          const displayTotal = overrideTotal !== null ? overrideTotal : rawTotal;
+          const isEditing = editingSummaryGroup === groupLabel;
+          const computedSgTotal = sgForm.qty !== null || sgForm.unitCost !== null
+            ? (sgForm.qty ?? 0) * (sgForm.unitCost ?? 0) * (1 + (sgForm.markupPct ?? 0) / 100)
+            : null;
+          const UNITS_E = ["LS", "EA", "SF", "LF", "SY", "CY", "CF", "SQ", "MO", "HR", "DAY", "TN", "GAL"];
+
+          return (
+            <div key={gi}>
+              {groupLabel && (
+                <div>
+                  <div className="flex items-center justify-between px-4 py-2 rounded-lg" style={{ background: "#C9A84C", color: "#0d1117" }}>
+                    <span className="text-sm font-bold tracking-widest uppercase">{groupLabel}</span>
+                    <div className="flex items-center gap-3">
+                      <span className="text-sm font-bold">${displayTotal.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                      {canEdit && (
+                        <button
+                          onClick={() => {
+                            if (isEditing) { setEditingSummaryGroup(null); }
+                            else {
+                              setSgForm(sg ?? { qty: null, unit: null, unitCost: null, markupPct: null, manualTotal: null });
+                              setEditingSummaryGroup(groupLabel);
+                            }
+                          }}
+                          className="text-xs font-semibold px-2 py-0.5 rounded"
+                          style={{ background: "rgba(0,0,0,0.25)", color: "#0d1117" }}
+                        >
+                          {isEditing ? "×" : "Edit"}
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                  {isEditing && (
+                    <div className="rounded-b-lg p-3 space-y-2 bg-amber-50 border border-amber-300 border-t-0">
+                      <p className="text-xs font-semibold text-amber-700">Override {groupLabel} Total</p>
+                      <div className="flex flex-wrap gap-2">
+                        <div>
+                          <label className="block text-xs text-slate-500 mb-0.5">Qty</label>
+                          <input type="number" className="border border-slate-300 rounded px-2 py-1 text-xs w-20"
+                            value={sgForm.qty ?? ""} onChange={e => setSgForm(f => ({ ...f, qty: e.target.value ? Number(e.target.value) : null }))} placeholder="Qty" />
+                        </div>
+                        <div>
+                          <label className="block text-xs text-slate-500 mb-0.5">Unit</label>
+                          <select className="border border-slate-300 rounded px-2 py-1 text-xs w-20"
+                            value={sgForm.unit ?? ""} onChange={e => setSgForm(f => ({ ...f, unit: e.target.value || null }))}>
+                            <option value="">—</option>
+                            {UNITS_E.map(u => <option key={u} value={u}>{u}</option>)}
+                          </select>
+                        </div>
+                        <div>
+                          <label className="block text-xs text-slate-500 mb-0.5">Unit Cost</label>
+                          <input type="number" className="border border-slate-300 rounded px-2 py-1 text-xs w-24"
+                            value={sgForm.unitCost ?? ""} onChange={e => setSgForm(f => ({ ...f, unitCost: e.target.value ? Number(e.target.value) : null }))} placeholder="0.00" />
+                        </div>
+                        <div>
+                          <label className="block text-xs text-slate-500 mb-0.5">Markup %</label>
+                          <input type="number" className="border border-slate-300 rounded px-2 py-1 text-xs w-20"
+                            value={sgForm.markupPct ?? ""} onChange={e => setSgForm(f => ({ ...f, markupPct: e.target.value ? Number(e.target.value) : null }))} placeholder="0" />
+                        </div>
+                        <div>
+                          <label className="block text-xs text-slate-500 mb-0.5">Manual Total Override</label>
+                          <input type="number" className="border border-slate-300 rounded px-2 py-1 text-xs w-28"
+                            value={sgForm.manualTotal ?? ""} onChange={e => setSgForm(f => ({ ...f, manualTotal: e.target.value ? Number(e.target.value) : null }))} placeholder="0.00" />
+                        </div>
+                      </div>
+                      {computedSgTotal !== null && sgForm.manualTotal === null && (
+                        <p className="text-xs text-slate-500">Computed: ${fmt(computedSgTotal)}</p>
+                      )}
+                      <div className="flex gap-2 mt-2">
+                        <button
+                          className="text-xs rounded px-3 py-1 font-semibold text-white bg-amber-600 hover:bg-amber-700"
+                          onClick={() => startTransition(async () => {
+                            await updateEstimateSummaryGroup(estimate.id, groupLabel, sgForm);
+                            setSummaryGroups(g => ({ ...g, [groupLabel]: sgForm }));
+                            setEditingSummaryGroup(null);
+                          })}
+                        >Save</button>
+                        <button
+                          className="text-xs rounded px-3 py-1 text-slate-600 bg-slate-200 hover:bg-slate-300"
+                          onClick={() => startTransition(async () => {
+                            await updateEstimateSummaryGroup(estimate.id, groupLabel, null);
+                            setSummaryGroups(g => { const n = { ...g }; delete n[groupLabel]; return n; });
+                            setEditingSummaryGroup(null);
+                          })}
+                        >Reset to auto</button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+              <div className={groupLabel ? "space-y-2 pl-2" : "space-y-3"}>
+                {divs.map((div) => (
+                  <DivisionSection key={div.id} division={div} canEdit={canEdit} canArchive={canArchive} />
+                ))}
               </div>
-            )}
-            <div className={groupLabel ? "space-y-2 pl-2" : "space-y-3"}>
-              {divs.map((div) => (
-                <DivisionSection key={div.id} division={div} canEdit={canEdit} canArchive={canArchive} />
-              ))}
             </div>
-          </div>
-        ))}
+          );
+        })}
       </div>
 
       {/* Add Division */}

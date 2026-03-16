@@ -705,6 +705,27 @@ export async function updateTemplateDurationMonths(templateId: string, months: n
   return { success: true };
 }
 
+// ─── Summary Group overrides ───────────────────────────────────────────────────
+
+export type SummaryGroupData = { qty: number | null; unit: string | null; unitCost: number | null; markupPct: number | null; manualTotal: number | null };
+
+export async function updateTemplateSummaryGroup(templateId: string, label: string, data: SummaryGroupData | null) {
+  const session = await auth();
+  if (!session) throw new Error("Unauthorized");
+  requirePermission(session, "estimateTemplate:edit");
+
+  const template = await prisma.estimateTemplate.findUnique({ where: { id: templateId }, select: { summaryGroups: true } });
+  const current = (template?.summaryGroups as Record<string, SummaryGroupData> | null) ?? {};
+  if (data === null) {
+    delete current[label];
+  } else {
+    current[label] = data;
+  }
+  await prisma.estimateTemplate.update({ where: { id: templateId }, data: { summaryGroups: current, updatedBy: session.user.id } });
+  revalidatePath(`/${session.user.companyId}/estimates`);
+  return { success: true };
+}
+
 // ─── Terms Templates ──────────────────────────────────────────────────────────
 
 export async function listTermsTemplates() {

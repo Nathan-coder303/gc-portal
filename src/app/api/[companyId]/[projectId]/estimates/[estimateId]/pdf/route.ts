@@ -59,6 +59,7 @@ export async function GET(
         materialCost: Number(i.materialCost),
         markupPct: Number(i.markupPct),
         manualTotal: i.manualTotal ? Number(i.manualTotal) : null,
+        notes: i.notes,
       })),
     })),
     items: d.items.map((i) => ({
@@ -72,6 +73,7 @@ export async function GET(
       materialCost: Number(i.materialCost),
       markupPct: Number(i.markupPct),
       manualTotal: i.manualTotal ? Number(i.manualTotal) : null,
+      notes: i.notes,
     })),
   }));
 
@@ -86,6 +88,7 @@ export async function GET(
     },
     divisions,
     gcFeePercent: estimate.gcFeePercent ? Number(estimate.gcFeePercent) : null,
+    summaryGroups: (estimate.summaryGroups as Record<string, { qty: number | null; unit: string | null; unitCost: number | null; markupPct: number | null; manualTotal: number | null }> | null) ?? null,
   });
 
   const filename = `${estimate.name.replace(/[^a-z0-9]/gi, "-").toLowerCase()}-estimate.pdf`;

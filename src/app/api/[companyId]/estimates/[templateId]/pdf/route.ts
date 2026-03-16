@@ -88,6 +88,7 @@ export async function GET(
     termsContent: template.termsContent,
     paymentSchedule: (template.paymentSchedule as { payment: string; trigger: string; pct: number }[] | null) ?? DEFAULT_PAYMENT_SCHEDULE,
     gcFeePercent: template.gcFeePercent ? Number(template.gcFeePercent) : null,
+    summaryGroups: (template.summaryGroups as Record<string, { qty: number | null; unit: string | null; unitCost: number | null; markupPct: number | null; manualTotal: number | null }> | null) ?? null,
   });
 
   const filename = `${template.name.replace(/[^a-z0-9]/gi, "-").toLowerCase()}-template.pdf`;

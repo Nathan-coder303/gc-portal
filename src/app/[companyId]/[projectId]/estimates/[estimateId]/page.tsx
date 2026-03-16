@@ -125,6 +125,7 @@ export default async function EstimateEditorPage({
         divisions={divisions}
         canEdit={can(session.user.role, "estimate:edit")}
         canArchive={can(session.user.role, "estimate:edit")}
+        initialSummaryGroups={estimate.summaryGroups as Record<string, { qty: number | null; unit: string | null; unitCost: number | null; markupPct: number | null; manualTotal: number | null }> | null}
       />
     </div>
   );

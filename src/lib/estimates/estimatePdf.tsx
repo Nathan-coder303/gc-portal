@@ -7,7 +7,7 @@ import {
   renderToBuffer,
 } from "@react-pdf/renderer";
 import React from "react";
-import { computeItemTotal, computeGroupTotal, computeDivisionTotal, computeEstimateTotal, fmt } from "./totals";
+import { computeItemTotal, computeGroupTotal, computeDivisionTotal, fmt } from "./totals";
 
 // ─── Summary groupings (super-divisions) ──────────────────────────────────────
 const SUMMARY_GROUPS: { label: string; prefixes: string[] }[] = [
@@ -187,22 +187,22 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    backgroundColor: "#C9A84C",
+    backgroundColor: "#1e293b",
     paddingHorizontal: 8,
     paddingVertical: 5,
     marginTop: 10,
     borderRadius: 3,
   },
-  groupSuperLabel: { fontSize: 10, fontFamily: "Helvetica-Bold", color: "#0f172a", letterSpacing: 1 },
-  groupSuperTotal: { fontSize: 10, fontFamily: "Helvetica-Bold", color: "#0f172a" },
+  groupSuperLabel: { fontSize: 10, fontFamily: "Helvetica-Bold", color: "#ffffff" },
+  groupSuperTotal: { fontSize: 10, fontFamily: "Helvetica-Bold", color: "#93c5fd" },
   groupSuperSummaryRow: {
     flexDirection: "row",
     justifyContent: "space-between",
-    backgroundColor: "#fef9ec",
+    backgroundColor: "#1e293b",
     paddingHorizontal: 8,
     paddingVertical: 4,
-    borderBottomWidth: 1,
-    borderBottomColor: "#fde68a",
+    borderRadius: 2,
+    marginTop: 4,
   },
 });
 
@@ -217,8 +217,19 @@ type Item = {
   materialCost: number;
   markupPct: number;
   manualTotal: number | null;
+  notes: string | null;
 };
 type Group = { id: string; name: string; items: Item[] };
+
+type SummaryGroupOverride = { qty: number | null; unit: string | null; unitCost: number | null; markupPct: number | null; manualTotal: number | null };
+
+function computeOverrideTotal(sg: SummaryGroupOverride): number | null {
+  if (sg.manualTotal !== null && sg.manualTotal !== undefined) return sg.manualTotal;
+  if (sg.qty !== null || sg.unitCost !== null) {
+    return (sg.qty ?? 0) * (sg.unitCost ?? 0) * (1 + (sg.markupPct ?? 0) / 100);
+  }
+  return null;
+}
 
 type EstimatePdfProps = {
   companyName: string;
@@ -226,6 +237,7 @@ type EstimatePdfProps = {
   estimate: { name: string; description: string | null; status: string; createdAt: Date };
   divisions: Division[];
   gcFeePercent?: number | null;
+  summaryGroups?: Record<string, SummaryGroupOverride> | null;
 };
 
 function ItemTableHeader() {
@@ -248,32 +260,45 @@ function ItemRow({ item, index }: { item: Item; index: number }) {
   const style = index % 2 === 0 ? styles.tableRow : styles.tableRowAlt;
   const detailColor = isExcluded ? "#dc2626" : item.detail === "Allowances" ? "#d97706" : "#334155";
   return (
-    <View style={style}>
-      <Text style={[styles.cellText, styles.colName]}>{item.name}</Text>
-      <Text style={[{ fontSize: 7, color: detailColor, textAlign: "center" }, styles.colDetail]}>{item.detail?.toUpperCase() ?? ""}</Text>
-      {isExcluded ? (
-        <>
-          <Text style={[styles.cellTextMuted, styles.colQty]}>—</Text>
-          <Text style={[styles.cellTextMuted, styles.colUnit]}>{item.unit ?? ""}</Text>
-          <Text style={[styles.cellTextMuted, styles.colCost]}>—</Text>
-          <Text style={[styles.cellTextMuted, styles.colMarkup]}>—</Text>
-          <Text style={[styles.cellTextMuted, styles.colTotal]}>$0.00</Text>
-        </>
-      ) : (
-        <>
-          <Text style={[styles.cellText, styles.colQty]}>{item.qty}</Text>
-          <Text style={[styles.cellTextMuted, styles.colUnit]}>{item.unit ?? ""}</Text>
-          <Text style={[styles.cellText, styles.colCost]}>{item.unitCost > 0 ? `$${fmt(item.unitCost)}` : "—"}</Text>
-          <Text style={[styles.cellTextMuted, styles.colMarkup]}>{item.markupPct > 0 ? `${item.markupPct}%` : "—"}</Text>
-          <Text style={[styles.cellTextBold, styles.colTotal]}>${fmt(total)}</Text>
-        </>
-      )}
+    <View style={{ borderBottomWidth: 1, borderBottomColor: "#f1f5f9", backgroundColor: index % 2 === 0 ? undefined : "#fafafa" }}>
+      <View style={[style, { borderBottomWidth: 0 }]}>
+        <Text style={[styles.cellText, styles.colName]}>{item.name}</Text>
+        <Text style={[{ fontSize: 7, color: detailColor, textAlign: "center" }, styles.colDetail]}>{item.detail?.toUpperCase() ?? ""}</Text>
+        {isExcluded ? (
+          <>
+            <Text style={[styles.cellTextMuted, styles.colQty]}>—</Text>
+            <Text style={[styles.cellTextMuted, styles.colUnit]}>{item.unit ?? ""}</Text>
+            <Text style={[styles.cellTextMuted, styles.colCost]}>—</Text>
+            <Text style={[styles.cellTextMuted, styles.colMarkup]}>—</Text>
+            <Text style={[styles.cellTextMuted, styles.colTotal]}>$0.00</Text>
+          </>
+        ) : (
+          <>
+            <Text style={[styles.cellText, styles.colQty]}>{item.qty}</Text>
+            <Text style={[styles.cellTextMuted, styles.colUnit]}>{item.unit ?? ""}</Text>
+            <Text style={[styles.cellText, styles.colCost]}>{item.unitCost > 0 ? `$${fmt(item.unitCost)}` : "—"}</Text>
+            <Text style={[styles.cellTextMuted, styles.colMarkup]}>{item.markupPct > 0 ? `${item.markupPct}%` : "—"}</Text>
+            <Text style={[styles.cellTextBold, styles.colTotal]}>${fmt(total)}</Text>
+          </>
+        )}
+      </View>
+      {item.notes ? (
+        <Text style={{ fontSize: 7, color: "#64748b", fontFamily: "Helvetica-Oblique", paddingHorizontal: 8, paddingBottom: 3 }}>{item.notes}</Text>
+      ) : null}
     </View>
   );
 }
 
-export function EstimatePdfDocument({ companyName, projectName, estimate, divisions, gcFeePercent }: EstimatePdfProps) {
-  const grandTotal = computeEstimateTotal(divisions);
+export function EstimatePdfDocument({ companyName, projectName, estimate, divisions, gcFeePercent, summaryGroups }: EstimatePdfProps) {
+  const grouped = groupDivisions(divisions);
+  // Grand total: use override for labeled groups if set
+  const grandTotal = grouped.reduce((sum, { groupLabel, divs }) => {
+    if (groupLabel && summaryGroups?.[groupLabel]) {
+      const override = computeOverrideTotal(summaryGroups[groupLabel]);
+      if (override !== null) return sum + override;
+    }
+    return sum + divs.reduce((s, d) => s + computeDivisionTotal(d.groups, d.items), 0);
+  }, 0);
   const divisionCount = divisions.length;
   const itemCount = divisions.reduce(
     (s, d) => s + d.items.length + d.groups.reduce((gs, g) => gs + g.items.length, 0),
@@ -335,8 +360,10 @@ export function EstimatePdfDocument({ companyName, projectName, estimate, divisi
           <Text style={[styles.headerText, { width: 80, textAlign: "right" }]}>Subtotal</Text>
           <Text style={[styles.headerText, { width: 60, textAlign: "right" }]}>% of Total</Text>
         </View>
-        {groupDivisions(divisions).map(({ groupLabel, divs }, gi) => {
-          const groupTotal = divs.reduce((s, d) => s + computeDivisionTotal(d.groups, d.items), 0);
+        {grouped.map(({ groupLabel, divs }, gi) => {
+          const rawGroupTotal = divs.reduce((s, d) => s + computeDivisionTotal(d.groups, d.items), 0);
+          const overrideTotal = groupLabel && summaryGroups?.[groupLabel] ? computeOverrideTotal(summaryGroups[groupLabel]) : null;
+          const groupTotal = overrideTotal !== null ? overrideTotal : rawGroupTotal;
           const hasContent = divs.some(d => {
             const hasExcluded = [...d.items, ...d.groups.flatMap(g => g.items)].some(i => i.detail === "Excluded");
             return computeDivisionTotal(d.groups, d.items) > 0 || hasExcluded;
@@ -347,9 +374,9 @@ export function EstimatePdfDocument({ companyName, projectName, estimate, divisi
             <View key={gi}>
               {groupLabel && (
                 <View style={styles.groupSuperSummaryRow}>
-                  <Text style={[styles.cellTextBold, { flex: 1, color: "#92400e" }]}>{groupLabel}</Text>
-                  <Text style={[styles.cellTextBold, { width: 80, textAlign: "right", color: "#92400e" }]}>${fmt(groupTotal)}</Text>
-                  <Text style={[styles.cellTextMuted, { width: 60, textAlign: "right" }]}>{fmt(groupPct)}%</Text>
+                  <Text style={[styles.cellTextBold, { flex: 1, color: "#ffffff" }]}>{groupLabel}</Text>
+                  <Text style={[styles.cellTextBold, { width: 80, textAlign: "right", color: "#93c5fd" }]}>${fmt(groupTotal)}</Text>
+                  <Text style={[styles.cellTextMuted, { width: 60, textAlign: "right", color: "#94a3b8" }]}>{fmt(groupPct)}%</Text>
                 </View>
               )}
               {divs.map((div) => {
@@ -410,7 +437,7 @@ export function EstimatePdfDocument({ companyName, projectName, estimate, divisi
       </Page>
 
       {/* Detail pages — one per group (merged divisions share a page) */}
-      {groupDivisions(divisions).map(({ groupLabel, divs }, gi) => {
+      {grouped.map(({ groupLabel, divs }, gi) => {
         const filteredDivs = divs.map(div => ({
           div,
           filledItems: div.items.filter(i => computeItemTotal(i) > 0 || !!i.detail),
@@ -421,8 +448,10 @@ export function EstimatePdfDocument({ companyName, projectName, estimate, divisi
 
         if (filteredDivs.length === 0) return null;
 
-        const pageTotal = filteredDivs.reduce((s, { filledItems, filledGroups }) =>
+        const rawPageTotal = filteredDivs.reduce((s, { filledItems, filledGroups }) =>
           s + computeDivisionTotal(filledGroups, filledItems), 0);
+        const overridePageTotal = groupLabel && summaryGroups?.[groupLabel] ? computeOverrideTotal(summaryGroups[groupLabel]) : null;
+        const pageTotal = overridePageTotal !== null ? overridePageTotal : rawPageTotal;
 
         const pageTitle = groupLabel
           ? groupLabel

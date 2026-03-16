@@ -430,6 +430,7 @@ model EstimateTemplate {
   gcFeePercent    Decimal?                   @db.Decimal(5, 2)
   sqFt            Decimal?                   @db.Decimal(10, 2)
   durationMonths  Decimal?                   @db.Decimal(5, 2)
+  summaryGroups   Json?
   divisions       EstimateTemplateDivision[]
   estimates   ProjectEstimate[]
 
@@ -502,6 +503,7 @@ model ProjectEstimate {
   gcFeePercent   Decimal?                  @db.Decimal(5, 2)
   sqFt           Decimal?                  @db.Decimal(10, 2)
   durationMonths Decimal?                  @db.Decimal(5, 2)
+  summaryGroups  Json?
   createdBy   String
   createdAt   DateTime                  @default(now())
   updatedAt   DateTime                  @updatedAt

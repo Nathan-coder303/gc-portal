@@ -479,3 +479,19 @@ export async function archiveEstimateItem(itemId: string) {
   revalidatePath(`/${session.user.companyId}`);
   return { success: true };
 }
+
+// ─── Summary Group overrides ───────────────────────────────────────────────────
+
+export type SummaryGroupData = { qty: number | null; unit: string | null; unitCost: number | null; markupPct: number | null; manualTotal: number | null };
+
+export async function updateEstimateSummaryGroup(estimateId: string, label: string, data: SummaryGroupData | null) {
+  const session = await auth();
+  if (!session) throw new Error("Unauthorized");
+  requirePermission(session, "estimate:edit");
+  const estimate = await prisma.projectEstimate.findUnique({ where: { id: estimateId }, select: { summaryGroups: true } });
+  const current = (estimate?.summaryGroups as Record<string, SummaryGroupData> | null) ?? {};
+  if (data === null) { delete current[label]; } else { current[label] = data; }
+  await prisma.projectEstimate.update({ where: { id: estimateId }, data: { summaryGroups: current } });
+  revalidatePath(`/${session.user.companyId}`);
+  return { success: true };
+}

@@ -96,9 +96,9 @@ const styles = StyleSheet.create({
   grandTotalBar: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", backgroundColor: DARK, padding: 10, marginTop: 14, borderRadius: 3 },
   grandTotalLabel: { fontSize: 12, fontFamily: "Helvetica-Bold", color: "#C9A84C" },
 
-  groupSuperHeader: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", backgroundColor: GOLD, paddingHorizontal: 10, paddingVertical: 6, marginTop: 14, borderRadius: 3 },
-  groupSuperLabel: { fontSize: 11, fontFamily: "Helvetica-Bold", color: "#0f172a", letterSpacing: 1 },
-  groupSuperTotal: { fontSize: 11, fontFamily: "Helvetica-Bold", color: "#0f172a" },
+  groupSuperHeader: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", backgroundColor: DARK, paddingHorizontal: 8, paddingVertical: 5, marginTop: 12, borderRadius: 3 },
+  groupSuperLabel: { fontSize: 10, fontFamily: "Helvetica-Bold", color: "#ffffff" },
+  groupSuperTotal: { fontSize: 10, fontFamily: "Helvetica-Bold", color: "#ffffff" },
   sectionDivider: { borderBottomWidth: 2, borderBottomColor: GOLD, marginTop: 20, marginBottom: 0 },
   sectionTitle: { fontSize: 12, fontFamily: "Helvetica-Bold", color: DARK, marginBottom: 8, paddingTop: 12 },
 
@@ -135,6 +135,16 @@ type Division = { id: string; csiCode: string | null; name: string; groups: Grou
 
 type PaymentRow = { payment: string; trigger: string; pct: number };
 
+type SummaryGroupOverride = { qty: number | null; unit: string | null; unitCost: number | null; markupPct: number | null; manualTotal: number | null };
+
+function computeOverrideTotal(sg: SummaryGroupOverride): number | null {
+  if (sg.manualTotal !== null && sg.manualTotal !== undefined) return sg.manualTotal;
+  if (sg.qty !== null || sg.unitCost !== null) {
+    return (sg.qty ?? 0) * (sg.unitCost ?? 0) * (1 + (sg.markupPct ?? 0) / 100);
+  }
+  return null;
+}
+
 type TemplatePdfProps = {
   companyName: string;
   template: { name: string; description: string | null; estimateNumber: string | null; estimateDate: string | null };
@@ -144,6 +154,7 @@ type TemplatePdfProps = {
   termsContent?: string | null;
   paymentSchedule?: PaymentRow[] | null;
   gcFeePercent?: number | null;
+  summaryGroups?: Record<string, SummaryGroupOverride> | null;
 };
 
 function ItemTableHeader() {
@@ -189,13 +200,26 @@ function ItemRow({ item, index }: { item: Item; index: number }) {
   );
 }
 
-function TemplatePdfDocument({ companyName, template, client, divisions, termsContent, paymentSchedule, gcFeePercent }: Omit<TemplatePdfProps, "showTerms">) {
-  const grandTotal = divisions.reduce((sum, div) => {
-    const divSum = [
-      ...div.items.filter(isItemFilled),
-      ...div.groups.flatMap(g => g.items.filter(isItemFilled)),
-    ].reduce((s, i) => s + calcTotal(i.defaultQty, i.defaultUnitCost, i.defaultMarkupPct), 0);
-    return sum + divSum;
+function TemplatePdfDocument({ companyName, template, client, divisions, termsContent, paymentSchedule, gcFeePercent, summaryGroups }: Omit<TemplatePdfProps, "showTerms">) {
+  const grouped = groupDivisions(divisions);
+
+  // Compute raw totals per group label (or null for ungrouped)
+  function rawGroupTotal(divs: Division[]): number {
+    return divs.reduce((sum, div) => {
+      return sum + [
+        ...div.items.filter(isItemFilled),
+        ...div.groups.flatMap(g => g.items.filter(isItemFilled)),
+      ].reduce((s, i) => s + calcTotal(i.defaultQty, i.defaultUnitCost, i.defaultMarkupPct), 0);
+    }, 0);
+  }
+
+  // Grand total: use override for labeled groups if set
+  const grandTotal = grouped.reduce((sum, { groupLabel, divs }) => {
+    if (groupLabel && summaryGroups?.[groupLabel]) {
+      const override = computeOverrideTotal(summaryGroups[groupLabel]);
+      if (override !== null) return sum + override;
+    }
+    return sum + rawGroupTotal(divs);
   }, 0);
 
   const allowancesTotal = divisions.reduce((sum, div) => {
@@ -247,7 +271,7 @@ function TemplatePdfDocument({ companyName, template, client, divisions, termsCo
         </View>
 
         {/* Divisions — grouped into super-sections (e.g. SHELL) */}
-        {groupDivisions(divisions).map(({ groupLabel, divs }, gi) => {
+        {grouped.map(({ groupLabel, divs }, gi) => {
           // Pre-filter each division's items
           const filteredDivs = divs.map(div => ({
             div,
@@ -257,8 +281,10 @@ function TemplatePdfDocument({ companyName, template, client, divisions, termsCo
 
           if (filteredDivs.length === 0) return null;
 
-          const groupTotal = filteredDivs.reduce((s, { filledItems, filledGroups }) =>
+          const rawTotal = filteredDivs.reduce((s, { filledItems, filledGroups }) =>
             s + [...filledItems, ...filledGroups.flatMap(g => g.items)].reduce((ss, i) => ss + calcTotal(i.defaultQty, i.defaultUnitCost, i.defaultMarkupPct), 0), 0);
+          const overrideTotal = groupLabel && summaryGroups?.[groupLabel] ? computeOverrideTotal(summaryGroups[groupLabel]) : null;
+          const groupTotal = overrideTotal !== null ? overrideTotal : rawTotal;
 
           return (
             <View key={gi}>

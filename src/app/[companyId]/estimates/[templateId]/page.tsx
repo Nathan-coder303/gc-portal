@@ -129,6 +129,7 @@ export default async function TemplateEditorPage({
           } : null}
           allClients={clients.map(c => ({ id: c.id, name: c.name, address: c.address, city: c.city, state: c.state, zip: c.zip, email: c.email, phone: c.phone }))}
           termsTemplates={termsTemplates}
+          initialSummaryGroups={template.summaryGroups as Record<string, { qty: number | null; unit: string | null; unitCost: number | null; markupPct: number | null; manualTotal: number | null }> | null}
         />
     </div>
   );

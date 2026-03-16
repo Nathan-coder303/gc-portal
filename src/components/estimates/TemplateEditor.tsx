@@ -28,6 +28,8 @@ import {
   upsertTermsTemplate,
   moveItemBetweenDivisions,
   reorderTemplateDivisions,
+  updateTemplateSummaryGroup,
+  type SummaryGroupData,
 } from "@/app/[companyId]/estimates/actions";
 
 type Item = {
@@ -829,6 +831,7 @@ export default function TemplateEditor({
   currentClient,
   allClients,
   termsTemplates: initialTermsTemplates,
+  initialSummaryGroups,
 }: {
   template: Template;
   divisions: Division[];
@@ -836,6 +839,7 @@ export default function TemplateEditor({
   currentClient: { id: string; name: string; address: string | null; city: string | null; state: string | null; zip: string | null; email: string | null; phone: string | null } | null;
   allClients: { id: string; name: string; address: string | null; city: string | null; state: string | null; zip: string | null; email: string | null; phone: string | null }[];
   termsTemplates: { id: string; name: string; content: string }[];
+  initialSummaryGroups?: Record<string, SummaryGroupData> | null;
 }) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
@@ -881,6 +885,9 @@ export default function TemplateEditor({
   const total = subtotal + gcFeeAmount;
   const [sqFt, setSqFt] = useState<number | "">(template.sqFt ?? "");
   const [durationMonths, setDurationMonths] = useState<number | "">(template.durationMonths ?? "");
+  const [summaryGroups, setSummaryGroups] = useState<Record<string, SummaryGroupData>>(initialSummaryGroups ?? {});
+  const [editingSummaryGroup, setEditingSummaryGroup] = useState<string | null>(null);
+  const [sgForm, setSgForm] = useState<SummaryGroupData>({ qty: null, unit: null, unitCost: null, markupPct: null, manualTotal: null });
   const [activeDragItem, setActiveDragItem] = useState<{ id: string; name: string; type: "item" | "division" } | null>(null);
 
   function handleDragStart(event: DragStartEvent) {
@@ -1292,21 +1299,113 @@ export default function TemplateEditor({
 
       {/* Divisions — grouped into super-sections (e.g. SHELL) */}
       <div className="space-y-3">
-        {groupDivisionsT(divisions).map(({ groupLabel, divs }, gi) => (
-          <div key={gi}>
-            {groupLabel && (
-              <div className="flex items-center justify-between px-4 py-2 rounded-lg" style={{ background: "#C9A84C", color: "#0d1117" }}>
-                <span className="text-sm font-bold tracking-widest uppercase">{groupLabel}</span>
-                <span className="text-sm font-bold">${fmt(divs.reduce((s, d) => s + divisionTotal(d), 0))}</span>
+        {groupDivisionsT(divisions).map(({ groupLabel, divs }, gi) => {
+          const rawTotal = divs.reduce((s, d) => s + divisionTotal(d), 0);
+          const sg = groupLabel ? summaryGroups[groupLabel] : undefined;
+          let overrideTotal: number | null = null;
+          if (sg) {
+            if (sg.manualTotal !== null && sg.manualTotal !== undefined) overrideTotal = sg.manualTotal;
+            else if (sg.qty !== null || sg.unitCost !== null) overrideTotal = (sg.qty ?? 0) * (sg.unitCost ?? 0) * (1 + (sg.markupPct ?? 0) / 100);
+          }
+          const displayTotal = overrideTotal !== null ? overrideTotal : rawTotal;
+          const isEditing = editingSummaryGroup === groupLabel;
+          const computedSgTotal = sgForm.qty !== null || sgForm.unitCost !== null
+            ? (sgForm.qty ?? 0) * (sgForm.unitCost ?? 0) * (1 + (sgForm.markupPct ?? 0) / 100)
+            : null;
+
+          return (
+            <div key={gi}>
+              {groupLabel && (
+                <div>
+                  <div className="flex items-center justify-between px-4 py-2 rounded-lg" style={{ background: "#C9A84C", color: "#0d1117" }}>
+                    <span className="text-sm font-bold tracking-widest uppercase">{groupLabel}</span>
+                    <div className="flex items-center gap-3">
+                      <span className="text-sm font-bold">${fmt(displayTotal)}</span>
+                      {canEdit && (
+                        <button
+                          onClick={() => {
+                            if (isEditing) { setEditingSummaryGroup(null); }
+                            else {
+                              setSgForm(sg ?? { qty: null, unit: null, unitCost: null, markupPct: null, manualTotal: null });
+                              setEditingSummaryGroup(groupLabel);
+                            }
+                          }}
+                          className="text-xs font-semibold px-2 py-0.5 rounded"
+                          style={{ background: "rgba(0,0,0,0.25)", color: "#0d1117" }}
+                        >
+                          {isEditing ? "×" : "Edit"}
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                  {isEditing && (
+                    <div className="rounded-b-lg p-3 space-y-2" style={{ background: "#1c2128", border: "1px solid #C9A84C", borderTop: "none" }}>
+                      <p className="text-xs font-semibold mb-1" style={{ color: "#C9A84C" }}>Override {groupLabel} Total</p>
+                      <div className="flex flex-wrap gap-2">
+                        <div>
+                          <label className="block text-xs mb-0.5" style={{ color: "#8b949e" }}>Qty</label>
+                          <input type="number" className="rounded px-2 py-1 text-xs w-20" style={inputStyle}
+                            value={sgForm.qty ?? ""} onChange={e => setSgForm(f => ({ ...f, qty: e.target.value ? Number(e.target.value) : null }))} placeholder="Qty" />
+                        </div>
+                        <div>
+                          <label className="block text-xs mb-0.5" style={{ color: "#8b949e" }}>Unit</label>
+                          <select className="rounded px-2 py-1 text-xs" style={{ ...inputStyle, width: "72px" }}
+                            value={sgForm.unit ?? ""} onChange={e => setSgForm(f => ({ ...f, unit: e.target.value || null }))}>
+                            <option value="">—</option>
+                            {UNITS.map(u => <option key={u} value={u}>{u}</option>)}
+                          </select>
+                        </div>
+                        <div>
+                          <label className="block text-xs mb-0.5" style={{ color: "#8b949e" }}>Unit Cost</label>
+                          <input type="number" className="rounded px-2 py-1 text-xs w-24" style={inputStyle}
+                            value={sgForm.unitCost ?? ""} onChange={e => setSgForm(f => ({ ...f, unitCost: e.target.value ? Number(e.target.value) : null }))} placeholder="0.00" />
+                        </div>
+                        <div>
+                          <label className="block text-xs mb-0.5" style={{ color: "#8b949e" }}>Markup %</label>
+                          <input type="number" className="rounded px-2 py-1 text-xs w-20" style={inputStyle}
+                            value={sgForm.markupPct ?? ""} onChange={e => setSgForm(f => ({ ...f, markupPct: e.target.value ? Number(e.target.value) : null }))} placeholder="0" />
+                        </div>
+                        <div>
+                          <label className="block text-xs mb-0.5" style={{ color: "#8b949e" }}>Manual Total Override</label>
+                          <input type="number" className="rounded px-2 py-1 text-xs w-28" style={inputStyle}
+                            value={sgForm.manualTotal ?? ""} onChange={e => setSgForm(f => ({ ...f, manualTotal: e.target.value ? Number(e.target.value) : null }))} placeholder="0.00" />
+                        </div>
+                      </div>
+                      {computedSgTotal !== null && sgForm.manualTotal === null && (
+                        <p className="text-xs" style={{ color: "#8b949e" }}>Computed: ${fmt(computedSgTotal)}</p>
+                      )}
+                      <div className="flex gap-2 mt-2">
+                        <button
+                          className="text-xs rounded px-3 py-1 font-semibold"
+                          style={{ background: "#C9A84C", color: "#0d1117" }}
+                          onClick={() => startTransition(async () => {
+                            await updateTemplateSummaryGroup(template.id, groupLabel, sgForm);
+                            setSummaryGroups(g => ({ ...g, [groupLabel]: sgForm }));
+                            setEditingSummaryGroup(null);
+                          })}
+                        >Save</button>
+                        <button
+                          className="text-xs rounded px-3 py-1"
+                          style={{ background: "#30373f", color: "#e6edf3" }}
+                          onClick={() => startTransition(async () => {
+                            await updateTemplateSummaryGroup(template.id, groupLabel, null);
+                            setSummaryGroups(g => { const n = { ...g }; delete n[groupLabel]; return n; });
+                            setEditingSummaryGroup(null);
+                          })}
+                        >Reset to auto</button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+              <div className={groupLabel ? "space-y-2 pl-2" : "space-y-3"}>
+                {divs.map((div) => (
+                  <TemplateDivisionSection key={div.id} division={div} otherDivisions={divisions.filter(d => d.id !== div.id)} canEdit={canEdit} />
+                ))}
               </div>
-            )}
-            <div className={groupLabel ? "space-y-2 pl-2" : "space-y-3"}>
-              {divs.map((div) => (
-                <TemplateDivisionSection key={div.id} division={div} otherDivisions={divisions.filter(d => d.id !== div.id)} canEdit={canEdit} />
-              ))}
             </div>
-          </div>
-        ))}
+          );
+        })}
       </div>
 
       {/* Add Division */}
