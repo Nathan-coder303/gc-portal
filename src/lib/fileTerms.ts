@@ -4,10 +4,10 @@ import path from "path";
 export type TermsPreset = { id: string; name: string; content: string };
 
 const PRESETS: { id: string; name: string; file: string }[] = [
-  { id: "standard", name: "Standard", file: "standard.txt" },
+  { id: "roof", name: "Roof", file: "roof.txt" },
   { id: "addition", name: "Addition", file: "addition.txt" },
-  { id: "renovation", name: "Renovation", file: "renovation.txt" },
-  { id: "new-construction", name: "New Construction", file: "new-construction.txt" },
+  { id: "bathroom", name: "Bathroom", file: "bathroom.txt" },
+  { id: "kitchen", name: "Kitchen", file: "kitchen.txt" },
 ];
 
 export function getFileTermsPresets(): TermsPreset[] {
