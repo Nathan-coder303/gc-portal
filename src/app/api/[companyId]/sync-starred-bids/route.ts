@@ -45,7 +45,12 @@ function extractBody(payload: any): string {
     if (plain) return decodeBase64(plain.body.data).toString("utf-8");
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const html = all.find((p: any) => p.mimeType === "text/html" && p.body?.data);
-    if (html) return decodeBase64(html.body.data).toString("utf-8").replace(/<[^>]+>/g, " ");
+    if (html) return decodeBase64(html.body.data).toString("utf-8")
+        .replace(/<style[^>]*>[\s\S]*?<\/style>/gi, " ")
+        .replace(/<script[^>]*>[\s\S]*?<\/script>/gi, " ")
+        .replace(/<[^>]+>/g, " ")
+        .replace(/\s+/g, " ")
+        .trim();
   }
   return "";
 }
