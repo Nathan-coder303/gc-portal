@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import Link from "next/link";
 import SyncLeadsButton from "@/components/today/SyncLeadsButton";
+import SyncBidsButton from "@/components/today/SyncBidsButton";
 import TodayLeadCard from "@/components/leads/TodayLeadCard";
 
 export default async function TodayPage({
@@ -75,7 +76,10 @@ export default async function TodayPage({
         <h1 className="text-2xl font-bold" style={{ color: "#e6edf3" }}>
           Today&apos;s Overview
         </h1>
-        <SyncLeadsButton companyId={params.companyId} />
+        <div className="flex items-center gap-3">
+          <SyncBidsButton companyId={params.companyId} />
+          <SyncLeadsButton companyId={params.companyId} />
+        </div>
       </div>
       <p className="text-sm mb-8" style={{ color: "#8b949e" }}>
         {today}
