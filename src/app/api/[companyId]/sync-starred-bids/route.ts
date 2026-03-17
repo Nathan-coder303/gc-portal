@@ -132,7 +132,7 @@ export async function POST(
   const buildClientList = (clients: typeof existingClients) =>
     clients.length > 0
       ? clients.map(c => `${c.id} | ${c.name}${c.address ? ` | ${c.address}` : ""}${c.city ? `, ${c.city}` : ""}`).join("\n")
-      : "(none yet — extract project address and name from the email)";
+      : "(none yet - extract project address and name from the email)";
 
   let added = 0;
   let notBid = 0;
@@ -155,6 +155,7 @@ export async function POST(
       const safeSubject = toAscii(subject);
       const safeFrom = toAscii(from);
       const safeBody = toAscii(bodyText).slice(0, 3000);
+      const safeClientList = toAscii(buildClientList(clients));
 
       const prompt = `You are helping a general contractor organize incoming subcontractor bids.
 
@@ -170,7 +171,7 @@ BODY:
 ${safeBody}
 
 EXISTING CLIENTS (id | name | address):
-${buildClientList(clients)}
+${safeClientList}
 
 AVAILABLE CSI DIVISIONS:
 ${divisionList}
