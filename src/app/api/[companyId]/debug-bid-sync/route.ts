@@ -133,16 +133,20 @@ export async function GET(
     .join("\n");
   const divisionList = STANDARD_DIVISIONS.map(d => `${d.code} - ${d.name}`).join("\n");
 
+  const safeFrom = from.replace(/[^\x00-\x7F]/g, " ");
+  const safeSubject = subject.replace(/[^\x00-\x7F]/g, " ");
+  const safeBody = bodyText.replace(/[^\x00-\x7F]/g, " ").slice(0, 3000);
+
   const prompt = `You are helping a general contractor organize incoming subcontractor bids.
 
 These emails may be:
 - A bid/estimate sent directly from a subcontractor
 - A bid notification from PlanHub (from:projectnotification@planhub.com) — these say a sub submitted a bid for a project. THESE COUNT AS BIDS.
 
-EMAIL FROM: ${from}
-SUBJECT: ${subject}
+EMAIL FROM: ${safeFrom}
+SUBJECT: ${safeSubject}
 BODY:
-${bodyText.slice(0, 3000)}
+${safeBody}
 
 ACTIVE CLIENTS (id | name | address):
 ${clientList}
