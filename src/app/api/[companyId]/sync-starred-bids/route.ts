@@ -108,6 +108,7 @@ export async function POST(
     "from:noreply@buildingconnected.com",
     "from:noreply@smartbid.net",
     "is:starred",
+    "label:portal-bids",
   ].join(" OR ");
 
   const allMessages: { id?: string | null }[] = [];
