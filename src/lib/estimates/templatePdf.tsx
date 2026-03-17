@@ -200,7 +200,7 @@ function ItemRow({ item, index }: { item: Item; index: number }) {
   );
 }
 
-function TemplatePdfDocument({ companyName, template, client, divisions, termsContent, paymentSchedule, gcFeePercent, summaryGroups }: Omit<TemplatePdfProps, "showTerms">) {
+function TemplatePdfDocument({ companyName, template, client, divisions, showTerms, termsContent, paymentSchedule, gcFeePercent, summaryGroups }: TemplatePdfProps) {
   const grouped = groupDivisions(divisions);
 
   // Compute raw totals per group label (or null for ungrouped)
@@ -222,6 +222,10 @@ function TemplatePdfDocument({ companyName, template, client, divisions, termsCo
     return sum + rawGroupTotal(divs);
   }, 0);
 
+  const hasAllowances = divisions.some(div =>
+    div.items.some(i => i.detail === "Allowances") ||
+    div.groups.some(g => g.items.some(i => i.detail === "Allowances"))
+  );
   const allowancesTotal = divisions.reduce((sum, div) => {
     return sum + [
       ...div.items.filter(i => i.detail === "Allowances"),
@@ -251,13 +255,14 @@ function TemplatePdfDocument({ companyName, template, client, divisions, termsCo
 
           {/* Center: Scope of Work, Date, Estimate # — all same bold size */}
           <View style={styles.centerSection}>
-            <Text style={styles.centerBold}>Scope of Work: {template.name}</Text>
+            <Text style={styles.centerBold}>Scope of Work:</Text>
+            <Text style={styles.centerBold}>{template.name}</Text>
             {dateDisplay ? <Text style={styles.centerBold}>{dateDisplay}</Text> : null}
             {template.estimateNumber ? <Text style={styles.centerBold}>Estimate #{template.estimateNumber}</Text> : null}
           </View>
 
-          {/* Right: Client */}
-          <View>
+          {/* Right: Client — marginTop aligns with address text (below 90px logo + gap) */}
+          <View style={{ marginTop: 96 }}>
             {client ? (
               <>
                 <Text style={styles.clientName}>{client.name}</Text>
@@ -275,8 +280,8 @@ function TemplatePdfDocument({ companyName, template, client, divisions, termsCo
           // Pre-filter each division's items
           const filteredDivs = divs.map(div => ({
             div,
-            filledItems: div.items.filter(i => isItemFilled(i) || !!i.detail),
-            filledGroups: div.groups.map(g => ({ ...g, items: g.items.filter(i => isItemFilled(i) || !!i.detail) })).filter(g => g.items.length > 0),
+            filledItems: div.items.filter(i => isItemFilled(i) || !!i.detail || !!i.notes || !!i.name),
+            filledGroups: div.groups.map(g => ({ ...g, items: g.items.filter(i => isItemFilled(i) || !!i.detail || !!i.notes || !!i.name) })).filter(g => g.items.length > 0),
           })).filter(({ filledItems, filledGroups }) => filledItems.length > 0 || filledGroups.length > 0);
 
           if (filteredDivs.length === 0) return null;
@@ -338,10 +343,10 @@ function TemplatePdfDocument({ companyName, template, client, divisions, termsCo
         })}
 
         {/* Allowances total */}
-        {allowancesTotal > 0 && (
+        {hasAllowances && (
           <View style={[styles.grandTotalBar, { marginTop: 6, backgroundColor: "#2d2410" }]}>
             <Text style={[styles.grandTotalLabel, { fontSize: 10 }]}>TOTAL ALLOWANCES</Text>
-            <Text style={[GRAND_TOTAL_VALUE_STYLE, { fontSize: 13 }]}>${fmt(allowancesTotal)}</Text>
+            <Text style={[GRAND_TOTAL_VALUE_STYLE, { fontSize: 13 }]}>{allowancesTotal > 0 ? `$${fmt(allowancesTotal)}` : "TBD"}</Text>
           </View>
         )}
 
@@ -385,7 +390,8 @@ function TemplatePdfDocument({ companyName, template, client, divisions, termsCo
             <Text style={styles.companyInfo}>CGC1527069 | CCC1336817</Text>
           </View>
           <View style={styles.centerSection}>
-            <Text style={styles.centerBold}>Scope of Work: {template.name}</Text>
+            <Text style={styles.centerBold}>Scope of Work:</Text>
+            <Text style={styles.centerBold}>{template.name}</Text>
           </View>
           <View />
         </View>
@@ -408,11 +414,11 @@ function TemplatePdfDocument({ companyName, template, client, divisions, termsCo
         </View>
 
         {/* T&C inline — gold divider then content, no page break */}
-        {termsContent ? (
+        {(showTerms || termsContent) ? (
           <View>
             <View style={styles.sectionDivider} />
             <Text style={styles.sectionTitle}>Terms &amp; Conditions</Text>
-            {termsContent.split(/\r?\n\r?\n|\r?\n(?=\d+[\.\)]?\s)/).filter(Boolean).map((para, i) => (
+            {(termsContent ?? "").split(/\r?\n\r?\n|\r?\n(?=\d+[\.\)]?\s)/).filter(Boolean).map((para, i) => (
               <Text key={i} style={[styles.termsText, { marginBottom: 6 }]}>{para.trim()}</Text>
             ))}
           </View>

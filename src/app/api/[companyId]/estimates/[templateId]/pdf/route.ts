@@ -91,7 +91,9 @@ export async function GET(
     summaryGroups: (template.summaryGroups as Record<string, { qty: number | null; unit: string | null; unitCost: number | null; markupPct: number | null; manualTotal: number | null }> | null) ?? null,
   });
 
-  const filename = `${template.name.replace(/[^a-z0-9]/gi, "-").toLowerCase()}-template.pdf`;
+  const clientSlug = template.client ? `-for-${template.client.name.replace(/[^a-z0-9]/gi, "-")}` : "";
+  const estimateSlug = template.estimateNumber ? `Estimate-${template.estimateNumber}` : template.name.replace(/[^a-z0-9]/gi, "-");
+  const filename = `${estimateSlug}${clientSlug}.pdf`;
 
   return new Response(buffer as unknown as BodyInit, {
     status: 200,
