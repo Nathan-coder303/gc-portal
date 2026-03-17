@@ -13,10 +13,15 @@ export default async function TodayPage({
   const session = await auth();
   if (!session) redirect("/login");
 
-  const todayStart = new Date();
-  todayStart.setHours(0, 0, 0, 0);
-  const todayEnd = new Date();
-  todayEnd.setHours(23, 59, 59, 999);
+  // Compute start/end of today in Eastern Time (handles EST/EDT automatically)
+  const now = new Date();
+  const etDateStr = now.toLocaleDateString("en-CA", { timeZone: "America/New_York" }); // "YYYY-MM-DD"
+  const [etY, etM, etD] = etDateStr.split("-").map(Number);
+  // Find the UTC time that corresponds to midnight ET (try EDT=4, EST=5)
+  let todayStart = new Date(Date.UTC(etY, etM - 1, etD, 4, 0, 0, 0));
+  const verifyHour = parseInt(todayStart.toLocaleString("en-US", { timeZone: "America/New_York", hour: "2-digit", hour12: false }));
+  if (verifyHour !== 0) todayStart = new Date(Date.UTC(etY, etM - 1, etD, 5, 0, 0, 0)); // fall back to EST
+  const todayEnd = new Date(todayStart.getTime() + 24 * 60 * 60 * 1000 - 1); // 23:59:59.999 ET
 
   const [todayLeads, allLeadsCount, estimatesToSend] = await Promise.all([
     // Leads received today from email
