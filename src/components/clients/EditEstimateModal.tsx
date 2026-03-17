@@ -24,7 +24,8 @@ export default function EditEstimateModal({
   const [name, setName] = useState(initialName);
   const [description, setDescription] = useState(initialDescription ?? "");
   const [estimateNumber, setEstimateNumber] = useState(initialEstimateNumber ?? "");
-  const [estimateDate, setEstimateDate] = useState(initialEstimateDate ?? "");
+  const todayIso = new Date().toLocaleDateString("en-CA"); // "YYYY-MM-DD"
+  const [estimateDate, setEstimateDate] = useState(initialEstimateDate ?? todayIso);
   const [isPending, startTransition] = useTransition();
 
   function handleOpen() {
@@ -97,10 +98,11 @@ export default function EditEstimateModal({
                 <div>
                   <label className="block text-xs mb-1" style={{ color: "#8b949e" }}>Estimate Date</label>
                   <input
+                    type="date"
                     value={estimateDate}
                     onChange={(e) => setEstimateDate(e.target.value)}
                     className="w-full rounded px-3 py-2 text-sm outline-none"
-                    style={{ background: "#0d1117", border: "1px solid #30373f", color: "#e6edf3" }}
+                    style={{ background: "#0d1117", border: "1px solid #30373f", color: "#e6edf3", colorScheme: "dark" }}
                   />
                 </div>
               </div>

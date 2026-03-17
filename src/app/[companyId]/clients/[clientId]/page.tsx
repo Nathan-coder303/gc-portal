@@ -75,8 +75,8 @@ export default async function ClientDetailPage({
     subBids = Array.from(map.values()).sort((a, b) => a.divisionCode.localeCompare(b.divisionCode));
   }
 
-  function calcEstimateTotal(divisions: typeof safeClient.templates[0]["divisions"]): number {
-    return divisions.reduce((sum, div) => {
+  function calcEstimateTotal(divisions: typeof safeClient.templates[0]["divisions"], gcFeePercent: typeof safeClient.templates[0]["gcFeePercent"]): number {
+    const raw = divisions.reduce((sum, div) => {
       const allItems = [...div.items, ...div.groups.flatMap((g) => g.items)];
       return (
         sum +
@@ -88,6 +88,8 @@ export default async function ClientDetailPage({
         }, 0)
       );
     }, 0);
+    const fee = gcFeePercent ? raw * Number(gcFeePercent) / 100 : 0;
+    return raw + fee;
   }
 
   function fmt(n: number) {
@@ -174,7 +176,7 @@ export default async function ClientDetailPage({
           ) : (
             <div className="space-y-3">
               {safeClient.templates.map((est) => {
-                const total = calcEstimateTotal(est.divisions);
+                const total = calcEstimateTotal(est.divisions, est.gcFeePercent);
                 return (
                   <div
                     key={est.id}

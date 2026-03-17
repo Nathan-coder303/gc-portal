@@ -375,47 +375,30 @@ function TemplatePdfDocument({ companyName, template, client, divisions, showTer
           <Text style={GRAND_TOTAL_VALUE_STYLE}>${fmt(grandTotalWithGc)}</Text>
         </View>
 
-        <Text style={styles.pageNumber} render={({ pageNumber, totalPages }) => `Page ${pageNumber} of ${totalPages}`} fixed />
-      </Page>
-
-      {/* T&C + Payment Schedule — always on a dedicated final page */}
-      <Page size="LETTER" style={styles.page}>
-        {/* Page header repeat */}
-        <View style={[styles.header, { marginBottom: 12 }]}>
-          <View>
-            {/* eslint-disable-next-line jsx-a11y/alt-text */}
-            <Image style={styles.logo} src={path.join(process.cwd(), "public", "logo.png")} />
-            <Text style={styles.companyInfo}>2950 N 28 Terr, Hollywood, FL 33020</Text>
-            <Text style={styles.companyInfo}>Tel: 305-746-7307</Text>
-            <Text style={styles.companyInfo}>CGC1527069 | CCC1336817</Text>
-          </View>
-          <View style={styles.centerSection}>
-            <Text style={styles.centerBold}>Scope of Work:</Text>
-            <Text style={styles.centerBold}>{template.name}</Text>
-          </View>
-          <View />
-        </View>
-
-        {/* Payment Schedule */}
-        <Text style={styles.sectionTitle}>Payment Schedule</Text>
-        <View style={styles.payTable}>
-          <View style={styles.payHeaderRow}>
-            <Text style={[{ fontSize: 7, fontFamily: "Helvetica-Bold", color: GOLD, textTransform: "uppercase" }, styles.payColPayment]}>Payment</Text>
-            <Text style={[{ fontSize: 7, fontFamily: "Helvetica-Bold", color: GOLD, textTransform: "uppercase" }, styles.payColTrigger]}>Trigger / Milestone</Text>
-            <Text style={[{ fontSize: 7, fontFamily: "Helvetica-Bold", color: GOLD, textTransform: "uppercase", textAlign: "right" }, styles.payColPct]}>%</Text>
-          </View>
-          {(paymentSchedule ?? []).map((row, idx) => (
-            <View key={idx} style={idx % 2 === 0 ? styles.payRow : styles.payRowAlt}>
-              <Text style={[{ color: "#0f172a", fontFamily: "Helvetica-Bold" }, styles.payColPayment]}>{row.payment}</Text>
-              <Text style={[{ color: "#475569" }, styles.payColTrigger]}>{row.trigger}</Text>
-              <Text style={[{ color: GOLD, fontFamily: "Helvetica-Bold", textAlign: "right" }, styles.payColPct]}>{row.pct}%</Text>
+        {/* Payment Schedule — flows right after estimate total */}
+        {(paymentSchedule ?? []).length > 0 && (
+          <View style={{ marginTop: 16 }} minPresenceAhead={100}>
+            <Text style={styles.sectionTitle}>Payment Schedule</Text>
+            <View style={styles.payTable}>
+              <View style={styles.payHeaderRow}>
+                <Text style={[{ fontSize: 7, fontFamily: "Helvetica-Bold", color: GOLD, textTransform: "uppercase" }, styles.payColPayment]}>Payment</Text>
+                <Text style={[{ fontSize: 7, fontFamily: "Helvetica-Bold", color: GOLD, textTransform: "uppercase" }, styles.payColTrigger]}>Trigger / Milestone</Text>
+                <Text style={[{ fontSize: 7, fontFamily: "Helvetica-Bold", color: GOLD, textTransform: "uppercase", textAlign: "right" }, styles.payColPct]}>%</Text>
+              </View>
+              {(paymentSchedule ?? []).map((row, idx) => (
+                <View key={idx} style={idx % 2 === 0 ? styles.payRow : styles.payRowAlt}>
+                  <Text style={[{ color: "#0f172a", fontFamily: "Helvetica-Bold" }, styles.payColPayment]}>{row.payment}</Text>
+                  <Text style={[{ color: "#475569" }, styles.payColTrigger]}>{row.trigger}</Text>
+                  <Text style={[{ color: GOLD, fontFamily: "Helvetica-Bold", textAlign: "right" }, styles.payColPct]}>{row.pct}%</Text>
+                </View>
+              ))}
             </View>
-          ))}
-        </View>
+          </View>
+        )}
 
-        {/* T&C inline — always shown when showTerms or content present */}
+        {/* T&C — flows after payment schedule, breaks to new page if needed */}
         {(showTerms || !!termsContent) && (
-          <View>
+          <View minPresenceAhead={80}>
             <View style={styles.sectionDivider} />
             <Text style={styles.sectionTitle}>Terms &amp; Conditions</Text>
             {termsContent

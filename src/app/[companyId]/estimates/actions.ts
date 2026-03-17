@@ -819,6 +819,14 @@ export async function saveAsClientEstimate(sourceTemplateId: string, clientId: s
         sortOrder: 0,
         createdBy: session.user.id,
         updatedBy: session.user.id,
+        // Copy financial & doc fields from source
+        estimateNumber: source.estimateNumber,
+        estimateDate: source.estimateDate,
+        gcFeePercent: source.gcFeePercent,
+        paymentSchedule: source.paymentSchedule ?? undefined,
+        summaryGroups: source.summaryGroups ?? undefined,
+        termsContent: source.termsContent,
+        showTerms: source.showTerms,
       },
     });
 
@@ -834,7 +842,7 @@ export async function saveAsClientEstimate(sourceTemplateId: string, clientId: s
           await tx.estimateTemplateItem.create({
             data: {
               divisionId: newDiv.id, groupId: newGrp.id,
-              name: item.name, unit: item.unit,
+              name: item.name, detail: item.detail, unit: item.unit,
               defaultQty: item.defaultQty, defaultUnitCost: item.defaultUnitCost,
               defaultLaborCost: item.defaultLaborCost, defaultMaterialCost: item.defaultMaterialCost,
               defaultMarkupPct: item.defaultMarkupPct, notes: item.notes,
@@ -847,7 +855,7 @@ export async function saveAsClientEstimate(sourceTemplateId: string, clientId: s
         await tx.estimateTemplateItem.create({
           data: {
             divisionId: newDiv.id, groupId: null,
-            name: item.name, unit: item.unit,
+            name: item.name, detail: item.detail, unit: item.unit,
             defaultQty: item.defaultQty, defaultUnitCost: item.defaultUnitCost,
             defaultLaborCost: item.defaultLaborCost, defaultMaterialCost: item.defaultMaterialCost,
             defaultMarkupPct: item.defaultMarkupPct, notes: item.notes,
