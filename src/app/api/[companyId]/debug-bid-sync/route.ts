@@ -108,7 +108,7 @@ export async function GET(
       step: "all_already_processed",
       totalFound: allMessages.length,
       processedMsgIds: processedMsgIds.size,
-      sampleProcessedIds: [...processedMsgIds].slice(0, 3),
+      sampleProcessedIds: Array.from(processedMsgIds).slice(0, 3),
     });
   }
 
