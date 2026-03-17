@@ -25,7 +25,6 @@ import {
   updateTemplateGcFee,
   updateTemplateSqFt,
   updateTemplateDurationMonths,
-  upsertTermsTemplate,
   moveItemBetweenDivisions,
   reorderTemplateDivisions,
   updateTemplateSummaryGroup,
@@ -869,13 +868,11 @@ export default function TemplateEditor({
   const [showTerms, setShowTerms] = useState(template.showTerms);
   const [termsContent, setTermsContent] = useState(template.termsContent ?? "");
   const [termsDirty, setTermsDirty] = useState(false);
-  const [termsTemplates, setTermsTemplates] = useState(initialTermsTemplates);
+  const termsTemplates = initialTermsTemplates;
   const [selectedTermsTplId, setSelectedTermsTplId] = useState<string>(() => {
     // Pre-select whichever saved T&C matches the current content
     return initialTermsTemplates.find(t => t.content === (template.termsContent ?? ""))?.id ?? "";
   });
-  const [savingTermsAs, setSavingTermsAs] = useState(false);
-  const [newTermsName, setNewTermsName] = useState("");
   const termsDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const saveTermsContent = useCallback((content: string) => {
     if (termsDebounceRef.current) clearTimeout(termsDebounceRef.current);
@@ -1100,51 +1097,7 @@ export default function TemplateEditor({
                             <option key={t.id} value={t.id}>{t.name}</option>
                           ))}
                         </select>
-                        <button
-                          type="button"
-                          onClick={() => { setSavingTermsAs(true); setNewTermsName(""); }}
-                          className="text-xs px-2 py-1.5 rounded-lg shrink-0"
-                          style={{ border: "1px solid #30373f", color: "#8b949e" }}
-                        >
-                          Save as preset
-                        </button>
                       </div>
-                      {savingTermsAs && (
-                        <div className="flex gap-2 items-center">
-                          <input
-                            autoFocus
-                            value={newTermsName}
-                            onChange={e => setNewTermsName(e.target.value)}
-                            placeholder="Preset name (e.g. Standard Residential)"
-                            className="flex-1 rounded-lg px-3 py-1.5 text-xs"
-                            style={{ background: "#0d1117", border: "1px solid #30373f", color: "#e6edf3" }}
-                          />
-                          <button
-                            type="button"
-                            disabled={!newTermsName.trim() || isPending}
-                            onClick={() => {
-                              startTransition(async () => {
-                                const result = await upsertTermsTemplate({ name: newTermsName, content: termsContent });
-                                const existing = termsTemplates.find(t => t.name === newTermsName.trim());
-                                const newId = result?.id ?? Date.now().toString();
-                                if (!existing) {
-                                  setTermsTemplates(prev => [...prev, { id: newId, name: newTermsName.trim(), content: termsContent }]);
-                                  setSelectedTermsTplId(newId);
-                                } else {
-                                  setSelectedTermsTplId(existing.id);
-                                }
-                                setSavingTermsAs(false);
-                                setNewTermsName("");
-                              });
-                            }}
-                            className="text-xs px-3 py-1.5 rounded-lg disabled:opacity-50"
-                            style={{ background: "#22c55e", color: "#fff" }}
-                          >
-                            Save
-                          </button>
-                          <button type="button" onClick={() => setSavingTermsAs(false)} className="text-xs px-2" style={{ color: "#8b949e" }}>Cancel</button>
-                        </div>
-                      )}
                       <textarea
                         value={termsContent}
                         onChange={e => { setTermsContent(e.target.value); setTermsDirty(true); saveTermsContent(e.target.value); }}

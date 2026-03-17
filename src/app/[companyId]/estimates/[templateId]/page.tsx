@@ -5,6 +5,7 @@ import { can } from "@/lib/auth/permissions";
 import TemplateEditor from "@/components/estimates/TemplateEditor";
 import Link from "next/link";
 import { getCorrectCsiCode, lookupItemCsiCode } from "@/lib/divisions";
+import { getFileTermsPresets } from "@/lib/fileTerms";
 
 export default async function TemplateEditorPage({
   params,
@@ -15,7 +16,7 @@ export default async function TemplateEditorPage({
   if (!session) redirect("/login");
   if (!can(session.user.role, "estimate:read")) redirect(`/${params.companyId}`);
 
-  const [template, clients, termsTemplates] = await Promise.all([
+  const [template, clients] = await Promise.all([
     prisma.estimateTemplate.findFirst({
       where: { id: params.templateId, companyId: params.companyId, archivedAt: null },
       include: {
@@ -40,8 +41,8 @@ export default async function TemplateEditorPage({
       },
     }),
     prisma.client.findMany({ where: { companyId: params.companyId }, orderBy: { name: "asc" } }),
-    prisma.termsTemplate.findMany({ where: { companyId: params.companyId }, orderBy: { name: "asc" }, select: { id: true, name: true, content: true } }),
   ]);
+  const termsTemplates = getFileTermsPresets();
 
   if (!template) redirect(`/${params.companyId}/estimates`);
 
