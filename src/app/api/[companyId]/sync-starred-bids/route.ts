@@ -1,10 +1,10 @@
 /**
  * POST /api/[companyId]/sync-starred-bids
  *
- * Reads all starred emails in Gmail, uses AI to determine which client
- * and CSI division each one belongs to, then creates SubBid records.
+ * Reads starred + bid-platform emails in Gmail, uses AI + code-based matching
+ * to determine which client and CSI division each one belongs to, then creates SubBid records.
  *
- * User workflow: star any bid email in Gmail → click "Sync Starred Bids"
+ * User workflow: star any bid email in Gmail → click "Sync All Bids"
  */
 import { NextRequest, NextResponse } from "next/server";
 import { google } from "googleapis";
@@ -46,11 +46,11 @@ function extractBody(payload: any): string {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const html = all.find((p: any) => p.mimeType === "text/html" && p.body?.data);
     if (html) return decodeBase64(html.body.data).toString("utf-8")
-        .replace(/<style[^>]*>[\s\S]*?<\/style>/gi, " ")
-        .replace(/<script[^>]*>[\s\S]*?<\/script>/gi, " ")
-        .replace(/<[^>]+>/g, " ")
-        .replace(/\s+/g, " ")
-        .trim();
+      .replace(/<style[^>]*>[\s\S]*?<\/style>/gi, " ")
+      .replace(/<script[^>]*>[\s\S]*?<\/script>/gi, " ")
+      .replace(/<[^>]+>/g, " ")
+      .replace(/\s+/g, " ")
+      .trim();
   }
   return "";
 }
@@ -60,9 +60,40 @@ function extractPdfParts(payload: any): any[] {
   if (!payload) return [];
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const results: any[] = [];
-  if (payload.mimeType === "application/pdf" || payload.filename?.endsWith(".pdf")) results.push(payload);
+  // Catch application/pdf AND application/octet-stream with .pdf filename (PlanHub)
+  if (
+    payload.mimeType === "application/pdf" ||
+    payload.mimeType === "application/octet-stream" && payload.filename?.endsWith(".pdf") ||
+    payload.filename?.endsWith(".pdf")
+  ) {
+    results.push(payload);
+  }
   if (payload.parts) for (const p of payload.parts) results.push(...extractPdfParts(p));
   return results;
+}
+
+/** Try to match a client by finding their street address in the email body */
+function codeMatchClient(
+  bodyText: string,
+  subject: string,
+  clients: { id: string; name: string; address: string | null; city: string | null }[]
+): string | null {
+  const haystack = (subject + " " + bodyText).toLowerCase();
+  for (const c of clients) {
+    if (!c.address) continue;
+    // Match on street number + first word of street (e.g. "7729 carlyle")
+    const parts = c.address.trim().split(/[\s,]+/);
+    const streetNum = parts[0]; // e.g. "7729"
+    const streetWord = parts[1] ?? ""; // e.g. "carlyle"
+    if (streetNum.length >= 3 && streetWord.length >= 3) {
+      const key = (streetNum + " " + streetWord).toLowerCase();
+      if (haystack.includes(key)) return c.id;
+    }
+    // Also try full first-segment of address
+    const addrSeg = c.address.split(",")[0].trim().toLowerCase();
+    if (addrSeg.length > 5 && haystack.includes(addrSeg)) return c.id;
+  }
+  return null;
 }
 
 export async function POST(
@@ -79,7 +110,6 @@ export async function POST(
   const gmail = google.gmail({ version: "v1", auth: getOAuthClient() });
   const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 
-  // Load all clients for this company (to let AI match emails to them)
   const clients = await prisma.client.findMany({
     where: { companyId: params.companyId },
     select: { id: true, name: true, address: true, city: true, state: true },
@@ -98,8 +128,6 @@ export async function POST(
     existingBids.map(b => b.fileUrl!.split(":")[1]).filter(Boolean)
   );
 
-  // Known bid notification senders + starred emails
-  // Add more senders here as needed
   const BID_QUERY = [
     "from:projectnotification@planhub.com",
     "from:noreply@buildingconnected.com",
@@ -131,8 +159,11 @@ export async function POST(
   const divisionList = STANDARD_DIVISIONS.map(d => `${d.code} - ${d.name}`).join("\n");
 
   let added = 0;
-  let skipped = 0;
+  let notBid = 0;
+  let noClient = 0;
   const errors: string[] = [];
+  // Track which msg IDs we processed this run (for remaining count purposes)
+  const processedThisRun = new Set<string>();
 
   for (const msg of toProcess) {
     try {
@@ -144,35 +175,40 @@ export async function POST(
       const bodyText = extractBody(payload);
       const pdfParts = extractPdfParts(payload);
 
-      const prompt = `You are helping a general contractor organize subcontractor bids.
+      const prompt = `You are helping a general contractor organize incoming subcontractor bids.
+
+These emails may be:
+- A bid/estimate sent directly from a subcontractor
+- A bid notification from PlanHub (from:projectnotification@planhub.com) — these say a sub submitted a bid for a project. THESE COUNT AS BIDS.
+- A bid notification from BuildingConnected or SmartBid — same, THESE COUNT AS BIDS.
+- A starred email the contractor flagged as a bid
 
 EMAIL FROM: ${from}
 SUBJECT: ${subject}
 BODY:
-${bodyText.slice(0, 2500)}
+${bodyText.slice(0, 3000)}
 
 ACTIVE CLIENTS (id | name | address):
 ${clientList}
 
-AVAILABLE DIVISIONS:
+AVAILABLE CSI DIVISIONS:
 ${divisionList}
 
-Is this a subcontractor bid, estimate, or proposal email?
-If yes, determine:
-1. Which client it belongs to (match by address, project name, or any context clue)
-2. Which CSI division covers the work
-3. The bid amount (number only, no $ sign, null if not found)
-4. The contractor/company name (from sender)
-5. A one-sentence scope summary
+Task:
+1. Is this related to a subcontractor bid, quote, estimate, or proposal? (bid notifications count)
+2. Which client does it belong to? Match by street address (number + street name), project name, or any clue.
+3. Which CSI division best describes the work?
+4. What is the bid amount (number only, no $)?
+5. Who is the contractor or bidding company?
 
 Respond ONLY with valid JSON, no markdown:
 {
   "isBid": <true or false>,
-  "clientId": "<client id from list, or null if cannot determine>",
-  "divisionCode": "<2-digit code, or null>",
-  "contractorName": "<sender company/name>",
+  "clientId": "<exact id from the client list above, or null>",
+  "divisionCode": "<2-digit code from divisions, or null>",
+  "contractorName": "<bidding company or person name>",
   "amount": <number or null>,
-  "notes": "<one sentence scope summary>"
+  "notes": "<one sentence describing the scope of work>"
 }`;
 
       const aiMsg = await anthropic.messages.create({
@@ -182,22 +218,54 @@ Respond ONLY with valid JSON, no markdown:
       });
 
       const aiText = aiMsg.content[0].type === "text" ? aiMsg.content[0].text.trim() : "{}";
-      let parsed: { isBid?: boolean; clientId?: string | null; divisionCode?: string | null; contractorName?: string; amount?: number | null; notes?: string };
+      let parsed: {
+        isBid?: boolean;
+        clientId?: string | null;
+        divisionCode?: string | null;
+        contractorName?: string;
+        amount?: number | null;
+        notes?: string;
+      };
       try {
         parsed = JSON.parse(aiText.replace(/```json\n?|\n?```/g, ""));
       } catch {
-        skipped++;
+        // Mark as processed so we don't keep retrying a malformed response
+        processedThisRun.add(msg.id!);
         continue;
       }
 
-      if (!parsed.isBid || !parsed.clientId || !parsed.divisionCode) {
-        skipped++;
+      // Not a bid at all — skip and mark processed
+      if (!parsed.isBid) {
+        notBid++;
+        processedThisRun.add(msg.id!);
         continue;
       }
 
+      // Try code-based client match if AI failed
+      if (!parsed.clientId) {
+        parsed.clientId = codeMatchClient(bodyText, subject, clients);
+      }
+
+      // Still no client — can't save (FK constraint), skip but DON'T mark processed
+      // so user can assign manually in future or we can improve matching
+      if (!parsed.clientId) {
+        noClient++;
+        processedThisRun.add(msg.id!); // mark so we don't infinite-loop
+        errors.push(`No client match for: "${subject.slice(0, 60)}"`);
+        continue;
+      }
+
+      // Validate client exists
       const client = clients.find(c => c.id === parsed.clientId);
-      const division = STANDARD_DIVISIONS.find(d => d.code === parsed.divisionCode);
-      if (!client || !division) { skipped++; continue; }
+      if (!client) {
+        noClient++;
+        processedThisRun.add(msg.id!);
+        continue;
+      }
+
+      // Default to "01 General Conditions" if AI couldn't determine division
+      const divCode = parsed.divisionCode ?? "01";
+      const division = STANDARD_DIVISIONS.find(d => d.code === divCode) ?? STANDARD_DIVISIONS[0];
 
       const fileUrl = pdfParts.length > 0
         ? `gmail:${msg.id}:${pdfParts[0].body?.attachmentId ?? ""}`
@@ -221,19 +289,26 @@ Respond ONLY with valid JSON, no markdown:
         },
       });
 
+      processedThisRun.add(msg.id!);
       added++;
     } catch (err) {
       errors.push(String(err));
     }
   }
 
+  // remaining = messages not yet processed (either not in this run, or in this run but no-client)
+  const trueRemaining = Math.max(0, newMessages.length - processedThisRun.size - processedMsgIds.size + existingBids.length);
+  const remaining = Math.max(0, newMessages.length - toProcess.length);
+
   return NextResponse.json({
-    starred: allMessages.length,
+    found: allMessages.length,
     newUnprocessed: newMessages.length,
     processed: toProcess.length,
     added,
-    skipped,
-    remaining: Math.max(0, newMessages.length - toProcess.length),
-    errors: errors.slice(0, 5),
+    notBid,
+    noClient,
+    remaining,
+    trueRemaining,
+    errors: errors.slice(0, 10),
   });
 }
