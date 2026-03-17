@@ -84,7 +84,7 @@ export async function GET(
     template: { name: template.name, description: template.description, estimateNumber: template.estimateNumber, estimateDate: template.estimateDate },
     client: template.client ? { name: template.client.name, address: template.client.address, city: template.client.city, state: template.client.state, zip: template.client.zip } : null,
     divisions,
-    showTerms: template.showTerms,
+    showTerms: true,
     termsContent: template.termsContent,
     paymentSchedule: (template.paymentSchedule as { payment: string; trigger: string; pct: number }[] | null) ?? DEFAULT_PAYMENT_SCHEDULE,
     gcFeePercent: template.gcFeePercent ? Number(template.gcFeePercent) : null,

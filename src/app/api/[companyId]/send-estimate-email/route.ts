@@ -159,7 +159,7 @@ export async function POST(
         }
       : null,
     divisions,
-    showTerms: template.showTerms,
+    showTerms: true,
     termsContent: template.termsContent,
     paymentSchedule:
       (template.paymentSchedule as { payment: string; trigger: string; pct: number }[] | null) ??
@@ -192,7 +192,9 @@ export async function POST(
   const fromEmail = profile.data.emailAddress ?? "me";
 
   const boundary = `----=_Part_${Date.now()}`;
-  const filename = `${template.name.replace(/[^a-z0-9]/gi, "-").toLowerCase()}-estimate.pdf`;
+  const clientSlug = template.client ? `-for-${template.client.name.replace(/[^a-z0-9]/gi, "-")}` : "";
+  const estimateSlug = template.estimateNumber ? `Estimate-${template.estimateNumber}` : template.name.replace(/[^a-z0-9]/gi, "-");
+  const filename = `${estimateSlug}${clientSlug}.pdf`;
   const pdfBase64 = buffer.toString("base64");
 
   // RFC 2047 encode subject to handle non-ASCII characters (em dash, accents, etc.)

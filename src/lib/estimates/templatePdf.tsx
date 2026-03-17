@@ -258,7 +258,7 @@ function TemplatePdfDocument({ companyName, template, client, divisions, showTer
             <Text style={styles.centerBold}>Scope of Work:</Text>
             <Text style={styles.centerBold}>{template.name}</Text>
             {dateDisplay ? <Text style={styles.centerBold}>{dateDisplay}</Text> : null}
-            {template.estimateNumber ? <Text style={styles.centerBold}>Estimate #{template.estimateNumber}</Text> : null}
+            <Text style={styles.centerBold}>{template.estimateNumber ? `Estimate #${template.estimateNumber}` : "ESTIMATE"}</Text>
           </View>
 
           {/* Right: Client — marginTop aligns with address text (below 90px logo + gap) */}
@@ -280,8 +280,8 @@ function TemplatePdfDocument({ companyName, template, client, divisions, showTer
           // Pre-filter each division's items
           const filteredDivs = divs.map(div => ({
             div,
-            filledItems: div.items.filter(i => isItemFilled(i) || !!i.detail || !!i.notes || !!i.name),
-            filledGroups: div.groups.map(g => ({ ...g, items: g.items.filter(i => isItemFilled(i) || !!i.detail || !!i.notes || !!i.name) })).filter(g => g.items.length > 0),
+            filledItems: div.items.filter(i => isItemFilled(i) || !!i.detail),
+            filledGroups: div.groups.map(g => ({ ...g, items: g.items.filter(i => isItemFilled(i) || !!i.detail) })).filter(g => g.items.length > 0),
           })).filter(({ filledItems, filledGroups }) => filledItems.length > 0 || filledGroups.length > 0);
 
           if (filteredDivs.length === 0) return null;
@@ -413,16 +413,18 @@ function TemplatePdfDocument({ companyName, template, client, divisions, showTer
           ))}
         </View>
 
-        {/* T&C inline — gold divider then content, no page break */}
-        {(showTerms || termsContent) ? (
+        {/* T&C inline — always shown when showTerms or content present */}
+        {(showTerms || !!termsContent) && (
           <View>
             <View style={styles.sectionDivider} />
             <Text style={styles.sectionTitle}>Terms &amp; Conditions</Text>
-            {(termsContent ?? "").split(/\r?\n\r?\n|\r?\n(?=\d+[\.\)]?\s)/).filter(Boolean).map((para, i) => (
-              <Text key={i} style={[styles.termsText, { marginBottom: 6 }]}>{para.trim()}</Text>
-            ))}
+            {termsContent
+              ? termsContent.split(/\r?\n\r?\n|\r?\n(?=\d+[\.\)]?\s)/).filter(Boolean).map((para, i) => (
+                  <Text key={i} style={[styles.termsText, { marginBottom: 6 }]}>{para.trim()}</Text>
+                ))
+              : null}
           </View>
-        ) : null}
+        )}
 
         {/* Signature Block — break to new page if less than 220pt remain */}
         <View style={styles.sigSection} minPresenceAhead={220}>
