@@ -164,14 +164,25 @@ Respond ONLY with valid JSON:
   "notes": "<one sentence describing the scope of work>"
 }`;
 
+  // Strip ALL non-ASCII from the assembled prompt before sending
+  const safePrompt = prompt.replace(/[^\x00-\x7F]/g, " ");
+
   let aiResponse: string = "";
   let aiError: string | null = null;
   let aiParsed = null;
+
+  // Also test: what non-ASCII chars are in the prompt?
+  const nonAscii: Array<{ index: number; char: string; code: number }> = [];
+  for (let i = 0; i < prompt.length; i++) {
+    const code = prompt.charCodeAt(i);
+    if (code > 127) nonAscii.push({ index: i, char: prompt[i], code });
+  }
+
   try {
     const aiMsg = await anthropic.messages.create({
       model: "claude-haiku-4-5-20251001",
       max_tokens: 300,
-      messages: [{ role: "user", content: prompt }],
+      messages: [{ role: "user", content: safePrompt }],
     });
     aiResponse = aiMsg.content[0].type === "text" ? aiMsg.content[0].text.trim() : "{}";
     aiParsed = JSON.parse(aiResponse.replace(/```json\n?|\n?```/g, ""));
@@ -195,5 +206,6 @@ Respond ONLY with valid JSON:
     aiResponse,
     aiParsed,
     aiError,
+    nonAsciiInPrompt: nonAscii,
   });
 }
