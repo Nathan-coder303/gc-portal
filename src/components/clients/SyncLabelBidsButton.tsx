@@ -25,17 +25,18 @@ export default function SyncLabelBidsButton({
         round++;
         const res = await fetch(`/api/${companyId}/clients/${clientId}/sync-label-bids`, { method: "POST" });
         const text = await res.text();
-        let data: { error?: string; detail?: string; added?: number; remaining?: number };
+        let data: { error?: string; detail?: string; added?: number; remaining?: number; found?: number; newUnprocessed?: number; processed?: number; errors?: string[] };
         try { data = JSON.parse(text); } catch { throw new Error(`Server error: ${text.slice(0, 200)}`); }
         if (!res.ok) throw new Error([data.error, data.detail].filter(Boolean).join(": "));
 
         totalAdded += data.added ?? 0;
         const remaining = data.remaining ?? 0;
-        setResult(`Round ${round}: ${totalAdded} bids saved · ${remaining} left…`);
+        const debugInfo = `found:${data.found ?? 0} new:${data.newUnprocessed ?? 0} processed:${data.processed ?? 0} added:${data.added ?? 0}${data.errors?.length ? ` errors:${data.errors.join("|")}` : ""}`;
+        setResult(`Round ${round}: ${debugInfo}`);
         if (remaining === 0) break;
       }
 
-      setResult(totalAdded > 0 ? `Done: +${totalAdded} bids imported` : "No new bids found in 7729 bids label");
+      setResult(totalAdded > 0 ? `Done: +${totalAdded} bids imported` : "Done: 0 added (check found/new counts above)");
       setStatus("done");
       if (totalAdded > 0) router.refresh();
     } catch (e) {
