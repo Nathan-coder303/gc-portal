@@ -71,7 +71,8 @@ function extractPdfParts(payload: any): any[] {
 }
 
 function toAscii(s: string): string {
-  return s.replace(/[^\x00-\x7F]/g, " ");
+  // Keep only printable ASCII: tab, newline, CR, and 0x20–0x7E
+  return s.replace(/[^\x09\x0A\x0D\x20-\x7E]/g, " ");
 }
 
 export async function POST(
