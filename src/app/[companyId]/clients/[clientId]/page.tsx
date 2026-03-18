@@ -10,6 +10,7 @@ import { can } from "@/lib/auth/permissions";
 import DeleteEstimateButton from "@/components/clients/DeleteEstimateButton";
 import EditEstimateModal from "@/components/clients/EditEstimateModal";
 import SendEstimateEmailButton from "@/components/clients/SendEstimateEmailButton";
+import SyncLabelBidsButton from "@/components/clients/SyncLabelBidsButton";
 
 export default async function ClientDetailPage({
   params,
@@ -249,13 +250,18 @@ export default async function ClientDetailPage({
       )}
 
       {activeTab === "subs-bids" && (
-        <SubsBidsTab
-          clientId={params.clientId}
-          companyId={params.companyId}
-          subBids={subBids}
-          canEdit={canEdit}
-          canDelete={canDelete}
-        />
+        <div>
+          <div className="flex justify-end mb-3">
+            <SyncLabelBidsButton companyId={params.companyId} clientId={params.clientId} />
+          </div>
+          <SubsBidsTab
+            clientId={params.clientId}
+            companyId={params.companyId}
+            subBids={subBids}
+            canEdit={canEdit}
+            canDelete={canDelete}
+          />
+        </div>
       )}
 
       {activeTab === "client-bid" && (
