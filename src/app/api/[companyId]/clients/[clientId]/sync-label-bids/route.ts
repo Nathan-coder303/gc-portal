@@ -105,13 +105,22 @@ export async function POST(
       existingBids.map(b => b.fileUrl!.split(":")[1]).filter(Boolean)
     );
 
+    // Resolve the "7729 bids" label ID dynamically
+    const labelsRes = await gmail.users.labels.list({ userId: "me" });
+    const label = labelsRes.data.labels?.find(
+      l => l.name?.toLowerCase() === "7729 bids"
+    );
+    if (!label?.id) {
+      return NextResponse.json({ error: "Gmail label '7729 bids' not found. Make sure the label exists in Gmail." }, { status: 400 });
+    }
+
     // Fetch all emails with the 7729 bids label
     const allMessages: { id?: string | null }[] = [];
     let pageToken: string | undefined;
     do {
       const listRes = await gmail.users.messages.list({
         userId: "me",
-        q: "label:7729-bids",
+        labelIds: [label.id],
         maxResults: 100,
         pageToken,
       });
