@@ -19,6 +19,7 @@ export default function SyncLabelBidsButton({
     setResult("Checking 7729 bids label…");
     let totalAdded = 0;
     let round = 0;
+    let lastDebug = "";
 
     try {
       while (round < 10) {
@@ -31,12 +32,12 @@ export default function SyncLabelBidsButton({
 
         totalAdded += data.added ?? 0;
         const remaining = data.remaining ?? 0;
-        const debugInfo = `${data.gmailEmail ?? "?"} label:${data.labelId ?? "?"} found:${data.found ?? 0} new:${data.newUnprocessed ?? 0} added:${data.added ?? 0}${data.errors?.length ? ` err:${data.errors[0]}` : ""}`;
-        setResult(`Round ${round}: ${debugInfo}`);
+        lastDebug = `${data.gmailEmail ?? "?"} label:${data.labelId ?? "?"} found:${data.found ?? 0} new:${data.newUnprocessed ?? 0} added:${data.added ?? 0}${data.errors?.length ? ` err:${data.errors[0]}` : ""}`;
+        setResult(lastDebug);
         if (remaining === 0) break;
       }
 
-      setResult(totalAdded > 0 ? `Done: +${totalAdded} bids imported` : "Done: 0 added (check found/new counts above)");
+      setResult(totalAdded > 0 ? `Done: +${totalAdded} bids imported` : lastDebug);
       setStatus("done");
       if (totalAdded > 0) router.refresh();
     } catch (e) {
