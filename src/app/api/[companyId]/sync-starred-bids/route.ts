@@ -85,8 +85,13 @@ export async function POST(
     return NextResponse.json({ error: "Gmail credentials not configured" }, { status: 500 });
   }
 
-  const gmail = google.gmail({ version: "v1", auth: getOAuthClient() });
-  const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
+  let gmail: ReturnType<typeof google.gmail>, anthropic: Anthropic;
+  try {
+    gmail = google.gmail({ version: "v1", auth: getOAuthClient() });
+    anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
+  } catch (err) {
+    return NextResponse.json({ error: "Init failed", detail: String(err) }, { status: 500 });
+  }
 
   // Load existing clients (may be empty — we'll auto-create as needed)
   const existingClients = await prisma.client.findMany({
@@ -108,7 +113,7 @@ export async function POST(
     "from:noreply@buildingconnected.com",
     "from:noreply@smartbid.net",
     "is:starred",
-    "label:portal-bids",
+    "label:7729-bids",
   ].join(" OR ");
 
   const allMessages: { id?: string | null }[] = [];
