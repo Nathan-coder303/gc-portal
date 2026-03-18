@@ -3,6 +3,7 @@ import { auth } from "@/lib/auth";
 import { redirect } from "next/navigation";
 import { initClientSubBids } from "@/app/[companyId]/clients/actions";
 import SubsBidsTab, { SubBidRow } from "@/components/clients/SubsBidsTab";
+import SyncLabelBidsButton from "@/components/clients/SyncLabelBidsButton";
 import { can } from "@/lib/auth/permissions";
 
 function groupBids(raw: { id: string; divisionCode: string; divisionName: string; contractorName: string | null; amount: unknown; notes: string | null; fileUrl: string | null; fileName: string | null; status: string; isPlaceholder: boolean }[]): SubBidRow[] {
@@ -74,6 +75,7 @@ export default async function ProjectSubsBidsPage({
           <h2 className="text-lg font-bold" style={{ color: "#e6edf3" }}>Subs Bids</h2>
           <p className="text-sm mt-0.5" style={{ color: "#8b949e" }}>Client: {client.name}</p>
         </div>
+        <SyncLabelBidsButton companyId={params.companyId} clientId={client.id} />
       </div>
       <SubsBidsTab
         clientId={client.id}
