@@ -21,9 +21,9 @@ export default function SyncBidsButton({ companyId }: { companyId: string }) {
         round++;
         const res = await fetch(`/api/${companyId}/sync-starred-bids`, { method: "POST" });
         const text = await res.text();
-        let data: Record<string, unknown>;
+        let data: { error?: string; added?: number; notBid?: number; noClient?: number; remaining?: number };
         try { data = JSON.parse(text); } catch { throw new Error(`Server error: ${text.slice(0, 200)}`); }
-        if (!res.ok) throw new Error((data.error as string) ?? "Failed");
+        if (!res.ok) throw new Error(data.error ?? "Failed");
 
         totalAdded += data.added ?? 0;
         totalNotBid += data.notBid ?? 0;
