@@ -25,13 +25,13 @@ export default function SyncLabelBidsButton({
         round++;
         const res = await fetch(`/api/${companyId}/clients/${clientId}/sync-label-bids`, { method: "POST" });
         const text = await res.text();
-        let data: { error?: string; detail?: string; added?: number; remaining?: number; found?: number; newUnprocessed?: number; processed?: number; errors?: string[] };
+        let data: { error?: string; detail?: string; added?: number; remaining?: number; found?: number; newUnprocessed?: number; processed?: number; errors?: string[]; gmailEmail?: string; labelId?: string; allLabels?: string[] };
         try { data = JSON.parse(text); } catch { throw new Error(`Server error: ${text.slice(0, 200)}`); }
-        if (!res.ok) throw new Error([data.error, data.detail].filter(Boolean).join(": "));
+        if (!res.ok) throw new Error([data.error, data.detail, data.gmailEmail ? `account:${data.gmailEmail}` : "", data.allLabels ? `labels:${data.allLabels.slice(0,10).join(",")}` : ""].filter(Boolean).join(" | "));
 
         totalAdded += data.added ?? 0;
         const remaining = data.remaining ?? 0;
-        const debugInfo = `found:${data.found ?? 0} new:${data.newUnprocessed ?? 0} processed:${data.processed ?? 0} added:${data.added ?? 0}${data.errors?.length ? ` errors:${data.errors.join("|")}` : ""}`;
+        const debugInfo = `${data.gmailEmail ?? "?"} label:${data.labelId ?? "?"} found:${data.found ?? 0} new:${data.newUnprocessed ?? 0} added:${data.added ?? 0}${data.errors?.length ? ` err:${data.errors[0]}` : ""}`;
         setResult(`Round ${round}: ${debugInfo}`);
         if (remaining === 0) break;
       }

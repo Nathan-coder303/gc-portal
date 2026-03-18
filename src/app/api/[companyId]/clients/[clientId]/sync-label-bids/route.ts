@@ -96,6 +96,10 @@ export async function POST(
     const gmail = google.gmail({ version: "v1", auth: getOAuthClient() });
     const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 
+    // Confirm which Gmail account is being accessed
+    const profileRes = await gmail.users.getProfile({ userId: "me" });
+    const gmailEmail = profileRes.data.emailAddress ?? "unknown";
+
     // Get already-imported gmail msg IDs to deduplicate
     const existingBids = await prisma.subBid.findMany({
       where: { clientId: params.clientId, fileUrl: { startsWith: "gmail:" } },
@@ -111,7 +115,8 @@ export async function POST(
       l => l.name?.toLowerCase() === "7729 bids"
     );
     if (!label?.id) {
-      return NextResponse.json({ error: "Gmail label '7729 bids' not found. Make sure the label exists in Gmail." }, { status: 400 });
+      const allLabelNames = labelsRes.data.labels?.map(l => l.name).filter(Boolean) ?? [];
+      return NextResponse.json({ error: "Gmail label '7729 bids' not found", gmailEmail, allLabels: allLabelNames }, { status: 400 });
     }
 
     // Fetch all emails with the 7729 bids label
@@ -222,6 +227,8 @@ Respond ONLY with valid JSON, no markdown:
     const remaining = Math.max(0, newMessages.length - toProcess.length);
 
     return NextResponse.json({
+      gmailEmail,
+      labelId: label.id,
       found: allMessages.length,
       newUnprocessed: newMessages.length,
       processed: toProcess.length,
