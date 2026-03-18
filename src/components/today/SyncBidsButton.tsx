@@ -23,7 +23,7 @@ export default function SyncBidsButton({ companyId }: { companyId: string }) {
         const text = await res.text();
         let data: { error?: string; added?: number; notBid?: number; noClient?: number; remaining?: number };
         try { data = JSON.parse(text); } catch { throw new Error(`Server error: ${text.slice(0, 200)}`); }
-        if (!res.ok) throw new Error(data.error ?? "Failed");
+        if (!res.ok) throw new Error([data.error, (data as Record<string,unknown>).detail].filter(Boolean).join(": "));
 
         totalAdded += data.added ?? 0;
         totalNotBid += data.notBid ?? 0;
