@@ -95,7 +95,9 @@ export async function POST(
     if (!client) return NextResponse.json({ error: "Client not found" }, { status: 404 });
 
     const gmail = google.gmail({ version: "v1", auth: getOAuthClient() });
-    const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
+    // Sanitize API key — strip any invisible/non-ASCII chars that cause ByteString errors in fetch headers
+    const safeApiKey = (process.env.ANTHROPIC_API_KEY ?? "").replace(/[^\x20-\x7E]/g, "").trim();
+    const anthropic = new Anthropic({ apiKey: safeApiKey });
 
     // Confirm which Gmail account is being accessed
     const profileRes = await gmail.users.getProfile({ userId: "me" });
