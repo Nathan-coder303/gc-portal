@@ -143,7 +143,15 @@ export async function POST(
 
     for (const msg of toProcess) {
       try {
-        const full = await gmail.users.messages.get({ userId: "me", id: msg.id! });
+        // Step 1: fetch message
+        let full;
+        try {
+          full = await gmail.users.messages.get({ userId: "me", id: msg.id! });
+        } catch (e) {
+          errors.push(`[gmail-get] ${String(e).slice(0, 80)}`);
+          continue;
+        }
+
         const payload = full.data.payload!;
         const headers = payload.headers ?? [];
         const subject = headers.find(h => h.name === "Subject")?.value ?? "";
@@ -155,7 +163,10 @@ export async function POST(
         const safeFrom = toAscii(from);
         const safeBody = toAscii(bodyText).slice(0, 3000);
 
-        const prompt = toAscii(`You are helping a general contractor organize subcontractor bids for project: ${client.name}.
+        // Step 2: AI extraction (optional — fall back to defaults on failure)
+        let parsed: { divisionCode?: string | null; contractorName?: string; amount?: number | null; notes?: string } = {};
+        try {
+          const prompt = toAscii(`You are helping a general contractor organize subcontractor bids for project: ${client.name}.
 
 EMAIL FROM: ${safeFrom}
 SUBJECT: ${safeSubject}
@@ -178,19 +189,16 @@ Respond ONLY with valid JSON, no markdown:
   "amount": <number or null>,
   "notes": "<one sentence describing scope>"
 }`);
-
-        const aiMsg = await anthropic.messages.create({
-          model: "claude-haiku-4-5-20251001",
-          max_tokens: 200,
-          messages: [{ role: "user", content: prompt }],
-        });
-
-        const aiText = aiMsg.content[0].type === "text" ? aiMsg.content[0].text.trim() : "{}";
-        let parsed: { divisionCode?: string | null; contractorName?: string; amount?: number | null; notes?: string };
-        try {
+          const aiMsg = await anthropic.messages.create({
+            model: "claude-haiku-4-5-20251001",
+            max_tokens: 200,
+            messages: [{ role: "user", content: prompt }],
+          });
+          const aiText = aiMsg.content[0].type === "text" ? aiMsg.content[0].text.trim() : "{}";
           parsed = JSON.parse(aiText.replace(/```json\n?|\n?```/g, ""));
-        } catch {
-          parsed = {};
+        } catch (e) {
+          errors.push(`[ai] ${String(e).slice(0, 80)}`);
+          // continue without AI — save with defaults below
         }
 
         const divCode = parsed.divisionCode ?? "01";
@@ -207,13 +215,13 @@ Respond ONLY with valid JSON, no markdown:
             companyId: params.companyId,
             divisionCode: division.code,
             divisionName: division.name,
-            contractorName: parsed.contractorName ?? from,
+            contractorName: parsed.contractorName ?? safeFrom,
             amount: parsed.amount ?? null,
-            notes: parsed.notes ?? null,
+            notes: parsed.notes ?? safeSubject,
             fileUrl,
             fileName,
             status: "RECEIVED",
-            emailSource: from,
+            emailSource: safeFrom,
             isPlaceholder: false,
           },
         });
