@@ -6,6 +6,8 @@ import { TrashIcon, PencilIcon } from "@/components/ui/icons";
 import { lookupCsiCode, lookupItemCsiCode, formatCsiCode } from "@/lib/divisions";
 import { DndContext, DragOverlay, useDroppable, useDraggable, closestCenter } from "@dnd-kit/core";
 import type { DragStartEvent, DragEndEvent } from "@dnd-kit/core";
+import { SortableContext, useSortable, verticalListSortingStrategy, arrayMove } from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
 import {
   upsertTemplateItem,
   archiveTemplateItem,
@@ -578,6 +580,84 @@ const DEFAULT_PAYMENT_SCHEDULE: PaymentRow[] = [
   { payment: "Completion", trigger: "Final inspection / punchlist", pct: 10 },
 ];
 
+function SortablePaymentRow({
+  id,
+  row,
+  idx,
+  canEdit,
+  updateRow,
+  removeRow,
+}: {
+  id: string;
+  row: PaymentRow;
+  idx: number;
+  canEdit: boolean;
+  updateRow: (idx: number, field: keyof PaymentRow, value: string | number) => void;
+  removeRow: (idx: number) => void;
+}) {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id });
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.4 : 1,
+    borderBottom: "1px solid #30373f22",
+  };
+
+  return (
+    <tr ref={setNodeRef} style={style}>
+      {canEdit && (
+        <td className="py-1 pr-1 w-4 cursor-grab" style={{ color: "#4a5568", touchAction: "none" }} {...attributes} {...listeners}>
+          ⠿
+        </td>
+      )}
+      <td className="py-1 pr-1">
+        {canEdit ? (
+          <input
+            value={row.payment}
+            onChange={e => updateRow(idx, "payment", e.target.value)}
+            className="w-full rounded px-1 py-0.5 text-xs"
+            style={{ background: "#1e2736", border: "1px solid #30373f44", color: "#e6edf3" }}
+          />
+        ) : (
+          <span style={{ color: "#e6edf3" }}>{row.payment}</span>
+        )}
+      </td>
+      <td className="py-1 px-1">
+        {canEdit ? (
+          <input
+            value={row.trigger}
+            onChange={e => updateRow(idx, "trigger", e.target.value)}
+            className="w-full rounded px-1 py-0.5 text-xs"
+            style={{ background: "#1e2736", border: "1px solid #30373f44", color: "#8b949e" }}
+          />
+        ) : (
+          <span style={{ color: "#8b949e" }}>{row.trigger}</span>
+        )}
+      </td>
+      <td className="py-1 pl-1 text-right">
+        {canEdit ? (
+          <input
+            type="number"
+            min={0}
+            max={100}
+            value={row.pct}
+            onChange={e => updateRow(idx, "pct", e.target.value)}
+            className="rounded px-1 py-0.5 text-xs text-right"
+            style={{ background: "#1e2736", border: "1px solid #30373f44", color: "#C9A84C", width: "44px" }}
+          />
+        ) : (
+          <span style={{ color: "#C9A84C" }}>{row.pct}%</span>
+        )}
+      </td>
+      {canEdit && (
+        <td className="py-1 pl-1">
+          <button onClick={() => removeRow(idx)} className="text-xs" style={{ color: "#ef4444" }}>✕</button>
+        </td>
+      )}
+    </tr>
+  );
+}
+
 function PaymentScheduleCard({
   templateId,
   initialRows,
@@ -590,6 +670,7 @@ function PaymentScheduleCard({
   const [rows, setRows] = useState<PaymentRow[]>(initialRows);
   const [isPending, startTransition] = useTransition();
   const [dirty, setDirty] = useState(false);
+  const rowIds = rows.map((_, i) => `row-${i}`);
 
   function updateRow(idx: number, field: keyof PaymentRow, value: string | number) {
     const updated = rows.map((r, i) => i === idx ? { ...r, [field]: field === "pct" ? Number(value) : value } : r);
@@ -604,6 +685,16 @@ function PaymentScheduleCard({
 
   function removeRow(idx: number) {
     setRows(rows.filter((_, i) => i !== idx));
+    setDirty(true);
+  }
+
+  function handleDragEnd(event: DragEndEvent) {
+    const { active, over } = event;
+    if (!over || active.id === over.id) return;
+    const oldIdx = rowIds.indexOf(active.id as string);
+    const newIdx = rowIds.indexOf(over.id as string);
+    if (oldIdx === -1 || newIdx === -1) return;
+    setRows(arrayMove(rows, oldIdx, newIdx));
     setDirty(true);
   }
 
@@ -629,66 +720,34 @@ function PaymentScheduleCard({
           )}
         </div>
       </div>
-      <table className="w-full text-xs">
-        <thead>
-          <tr style={{ borderBottom: "1px solid #30373f" }}>
-            <th className="text-left pb-1 font-medium" style={{ color: "#8b949e" }}>Payment</th>
-            <th className="text-left pb-1 font-medium pl-2" style={{ color: "#8b949e" }}>Trigger</th>
-            <th className="text-right pb-1 font-medium pl-2 w-12" style={{ color: "#8b949e" }}>%</th>
-            {canEdit && <th className="w-6" />}
-          </tr>
-        </thead>
-        <tbody>
-          {rows.map((row, idx) => (
-            <tr key={idx} style={{ borderBottom: "1px solid #30373f22" }}>
-              <td className="py-1 pr-1">
-                {canEdit ? (
-                  <input
-                    value={row.payment}
-                    onChange={e => updateRow(idx, "payment", e.target.value)}
-                    className="w-full rounded px-1 py-0.5 text-xs"
-                    style={{ background: "#1e2736", border: "1px solid #30373f44", color: "#e6edf3" }}
-                  />
-                ) : (
-                  <span style={{ color: "#e6edf3" }}>{row.payment}</span>
-                )}
-              </td>
-              <td className="py-1 px-1">
-                {canEdit ? (
-                  <input
-                    value={row.trigger}
-                    onChange={e => updateRow(idx, "trigger", e.target.value)}
-                    className="w-full rounded px-1 py-0.5 text-xs"
-                    style={{ background: "#1e2736", border: "1px solid #30373f44", color: "#8b949e" }}
-                  />
-                ) : (
-                  <span style={{ color: "#8b949e" }}>{row.trigger}</span>
-                )}
-              </td>
-              <td className="py-1 pl-1 text-right">
-                {canEdit ? (
-                  <input
-                    type="number"
-                    min={0}
-                    max={100}
-                    value={row.pct}
-                    onChange={e => updateRow(idx, "pct", e.target.value)}
-                    className="rounded px-1 py-0.5 text-xs text-right"
-                    style={{ background: "#1e2736", border: "1px solid #30373f44", color: "#C9A84C", width: "44px" }}
-                  />
-                ) : (
-                  <span style={{ color: "#C9A84C" }}>{row.pct}%</span>
-                )}
-              </td>
-              {canEdit && (
-                <td className="py-1 pl-1">
-                  <button onClick={() => removeRow(idx)} className="text-xs" style={{ color: "#ef4444" }}>✕</button>
-                </td>
-              )}
-            </tr>
-          ))}
-        </tbody>
-      </table>
+      <DndContext collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+        <SortableContext items={rowIds} strategy={verticalListSortingStrategy}>
+          <table className="w-full text-xs">
+            <thead>
+              <tr style={{ borderBottom: "1px solid #30373f" }}>
+                {canEdit && <th className="w-4" />}
+                <th className="text-left pb-1 font-medium" style={{ color: "#8b949e" }}>Payment</th>
+                <th className="text-left pb-1 font-medium pl-2" style={{ color: "#8b949e" }}>Trigger</th>
+                <th className="text-right pb-1 font-medium pl-2 w-12" style={{ color: "#8b949e" }}>%</th>
+                {canEdit && <th className="w-6" />}
+              </tr>
+            </thead>
+            <tbody>
+              {rows.map((row, idx) => (
+                <SortablePaymentRow
+                  key={rowIds[idx]}
+                  id={rowIds[idx]}
+                  row={row}
+                  idx={idx}
+                  canEdit={canEdit}
+                  updateRow={updateRow}
+                  removeRow={removeRow}
+                />
+              ))}
+            </tbody>
+          </table>
+        </SortableContext>
+      </DndContext>
       {canEdit && (
         <button onClick={addRow} className="mt-2 text-xs self-start" style={{ color: "#C9A84C" }}>+ Add Row</button>
       )}
