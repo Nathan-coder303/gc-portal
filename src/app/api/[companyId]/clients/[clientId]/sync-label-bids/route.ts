@@ -24,10 +24,6 @@ function getOAuthClient() {
   return oauth2Client;
 }
 
-function decodeBase64(data: string): Buffer {
-  return Buffer.from(data.replace(/-/g, "+").replace(/_/g, "/"), "base64");
-}
-
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 function extractPdfParts(payload: any): any[] {
   if (!payload) return [];
