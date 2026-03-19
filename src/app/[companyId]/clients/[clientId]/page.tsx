@@ -54,7 +54,7 @@ export default async function ClientDetailPage({
   if (activeTab === "subs-bids" || activeTab === "client-bid") {
     await initClientSubBids(params.clientId, params.companyId);
     const raw = await prisma.subBid.findMany({
-      where: { clientId: params.clientId },
+      where: { clientId: params.clientId, status: { not: "EXCLUDED" } },
       orderBy: { createdAt: "asc" },
     });
     const map = new Map<string, SubBidRow>();

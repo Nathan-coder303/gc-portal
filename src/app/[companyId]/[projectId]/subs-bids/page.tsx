@@ -60,7 +60,7 @@ export default async function ProjectSubsBidsPage({
   await initClientSubBids(client.id, params.companyId);
 
   const raw = await prisma.subBid.findMany({
-    where: { clientId: client.id },
+    where: { clientId: client.id, status: { not: "EXCLUDED" } },
     orderBy: { createdAt: "asc" },
   });
 

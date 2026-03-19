@@ -159,58 +159,103 @@ export async function POST(
         const headers = payload.headers ?? [];
         const subject = headers.find(h => h.name === "Subject")?.value ?? "";
         const from = headers.find(h => h.name === "From")?.value ?? "";
-        const bodyText = extractBody(payload);
         const pdfParts = extractPdfParts(payload);
+
+        // Skip emails with no PDF — those are just correspondence threads
+        if (pdfParts.length === 0) {
+          // Mark as processed so we don't revisit, but don't save a bid card
+          await prisma.subBid.create({
+            data: {
+              clientId: params.clientId,
+              companyId: params.companyId,
+              divisionCode: "00",
+              divisionName: "Correspondence",
+              contractorName: null,
+              amount: null,
+              notes: null,
+              fileUrl: `gmail:${msg.id}`,
+              fileName: null,
+              status: "EXCLUDED",
+              emailSource: toAscii(from),
+              isPlaceholder: true,
+            },
+          });
+          continue;
+        }
 
         const safeSubject = toAscii(subject);
         const safeFrom = toAscii(from);
-        const safeBody = toAscii(bodyText).slice(0, 3000);
 
-        // Step 2: AI extraction (optional — fall back to defaults on failure)
+        // Step 2: Download PDF attachment
+        let pdfBase64: string | null = null;
+        const pdfPart = pdfParts[0];
+        if (pdfPart.body?.attachmentId) {
+          try {
+            const attRes = await gmail.users.messages.attachments.get({
+              userId: "me",
+              messageId: msg.id!,
+              id: pdfPart.body.attachmentId,
+            });
+            pdfBase64 = (attRes.data.data ?? "").replace(/-/g, "+").replace(/_/g, "/");
+          } catch (e) {
+            errors.push(`[pdf-dl] ${String(e).slice(0, 60)}`);
+          }
+        }
+
+        // Step 3: AI extraction via direct fetch (bypasses SDK ByteString issues)
         let parsed: { divisionCode?: string | null; contractorName?: string; amount?: number | null; notes?: string } = {};
         try {
-          const prompt = toAscii(`You are helping a general contractor organize subcontractor bids for project: ${client.name}.
+          const prompt = `You are helping a general contractor organize subcontractor bids for project: ${client.name}.
 
 EMAIL FROM: ${safeFrom}
 SUBJECT: ${safeSubject}
-BODY:
-${safeBody}
+ATTACHED PDF: ${pdfPart.filename ?? "bid proposal"}
 
 AVAILABLE CSI DIVISIONS:
 ${divisionList}
 
-Extract:
-1. Which CSI division best describes the work?
+${pdfBase64 ? "Read the attached PDF and extract:" : "Extract from the email subject/sender:"}
+1. Which CSI division best describes the work (use the 2-digit code)?
 2. Bid amount (number only, no $)?
-3. Contractor/bidding company name?
-4. One sentence describing the scope of work.
+3. Contractor/company name?
+4. One sentence describing the scope.
 
 Respond ONLY with valid JSON, no markdown:
-{
-  "divisionCode": "<2-digit CSI code, or null>",
-  "contractorName": "<bidding company or person name>",
-  "amount": <number or null>,
-  "notes": "<one sentence describing scope>"
-}`);
-          const aiMsg = await anthropic.messages.create({
-            model: "claude-haiku-4-5-20251001",
-            max_tokens: 200,
-            messages: [{ role: "user", content: prompt }],
+{"divisionCode":"<2-digit code>","contractorName":"<name>","amount":<number or null>,"notes":"<one sentence>"}`;
+
+          const contentBlocks: unknown[] = [];
+          if (pdfBase64) {
+            contentBlocks.push({ type: "document", source: { type: "base64", media_type: "application/pdf", data: pdfBase64 } });
+          }
+          contentBlocks.push({ type: "text", text: prompt });
+
+          const aiRes = await fetch("https://api.anthropic.com/v1/messages", {
+            method: "POST",
+            headers: {
+              "content-type": "application/json",
+              "x-api-key": safeApiKey,
+              "anthropic-version": "2023-06-01",
+              ...(pdfBase64 ? { "anthropic-beta": "pdfs-2024-09-25" } : {}),
+            },
+            body: JSON.stringify({
+              model: "claude-haiku-4-5-20251001",
+              max_tokens: 300,
+              messages: [{ role: "user", content: contentBlocks }],
+            }),
           });
-          const aiText = aiMsg.content[0].type === "text" ? aiMsg.content[0].text.trim() : "{}";
+          const aiJson = await aiRes.json() as { content?: { type: string; text: string }[]; error?: { message: string } };
+          if (aiJson.error) throw new Error(aiJson.error.message);
+          const aiText = aiJson.content?.[0]?.type === "text" ? aiJson.content[0].text.trim() : "{}";
           parsed = JSON.parse(aiText.replace(/```json\n?|\n?```/g, ""));
         } catch (e) {
           errors.push(`[ai] ${String(e).slice(0, 80)}`);
-          // continue without AI — save with defaults below
         }
 
         const divCode = parsed.divisionCode ?? "01";
         const division = STANDARD_DIVISIONS.find(d => d.code === divCode) ?? STANDARD_DIVISIONS[0];
 
-        const fileUrl = pdfParts.length > 0
-          ? `gmail:${msg.id}:${pdfParts[0].body?.attachmentId ?? ""}`
-          : `gmail:${msg.id}`;
-        const fileName = pdfParts[0]?.filename ?? null;
+        const fileUrl = `gmail:${msg.id}:${pdfPart.body?.attachmentId ?? ""}`;
+        const fileName = pdfPart.filename ?? null;
 
         await prisma.subBid.create({
           data: {

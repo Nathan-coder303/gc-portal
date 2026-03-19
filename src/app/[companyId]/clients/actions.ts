@@ -150,6 +150,17 @@ export async function deleteSubBid(id: string, clientId: string, companyId: stri
   if (!session) throw new Error("Unauthorized");
   if (!can(session.user.role, "expense:archive")) throw new Error("Forbidden — ADMIN only");
 
-  await prisma.subBid.delete({ where: { id } });
+  const bid = await prisma.subBid.findUnique({ where: { id }, select: { fileUrl: true } });
+
+  if (bid?.fileUrl?.startsWith("gmail:")) {
+    // Soft delete — keep fileUrl so re-sync never reimports this email
+    await prisma.subBid.update({
+      where: { id },
+      data: { contractorName: null, amount: null, notes: null, fileName: null, isPlaceholder: true, status: "EXCLUDED" },
+    });
+  } else {
+    await prisma.subBid.delete({ where: { id } });
+  }
+
   revalidatePath(`/${companyId}/clients/${clientId}`);
 }
