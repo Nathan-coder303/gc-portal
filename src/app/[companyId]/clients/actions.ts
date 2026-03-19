@@ -143,8 +143,26 @@ export async function updateClientEstimate(
       updatedBy: session.user.id,
     },
   });
+
+  // Propagate sqFt/durationMonths to item quantities (same logic as TemplateEditor inline fields)
+  const allItems = await prisma.estimateTemplateItem.findMany({
+    where: { archivedAt: null, division: { templateId: estimateId } },
+    select: { id: true, name: true, unit: true },
+  });
+
+  if (data.sqFt && data.sqFt > 0) {
+    const sfIds = allItems.filter(i => i.unit && /^(SF|sq\.?\s*ft\.?|square\s*feet?)$/i.test(i.unit)).map(i => i.id);
+    if (sfIds.length > 0) await prisma.estimateTemplateItem.updateMany({ where: { id: { in: sfIds } }, data: { defaultQty: data.sqFt } });
+  }
+
+  if (data.durationMonths && data.durationMonths > 0) {
+    const durIds = allItems.filter(i => i.unit && /^(MO|month|months?)$/i.test(i.unit) || /month|potty|trailer|mgmt|management/i.test(i.name ?? "")).map(i => i.id);
+    if (durIds.length > 0) await prisma.estimateTemplateItem.updateMany({ where: { id: { in: durIds } }, data: { defaultQty: data.durationMonths } });
+  }
+
   revalidatePath(`/${companyId}/clients/${clientId}`);
   revalidatePath(`/${companyId}/estimates`);
+  revalidatePath(`/${companyId}/estimates/${estimateId}`);
 }
 
 export async function deleteSubBid(id: string, clientId: string, companyId: string) {
