@@ -69,9 +69,11 @@ export async function POST(
   if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const body = await req.json().catch(() => ({}));
-  const { templateId, to, subject, body: emailBody } = body as {
+  const { templateId, to, cc, bcc, subject, body: emailBody } = body as {
     templateId?: string;
     to?: string;
+    cc?: string;
+    bcc?: string;
     subject?: string;
     body?: string;
   };
@@ -205,6 +207,8 @@ export async function POST(
   const mimeLines = [
     `From: ${fromEmail}`,
     `To: ${to}`,
+    ...(cc ? [`Cc: ${cc}`] : []),
+    ...(bcc ? [`Bcc: ${bcc}`] : []),
     `Subject: ${encodedSubject}`,
     `MIME-Version: 1.0`,
     `Content-Type: multipart/mixed; boundary="${boundary}"`,

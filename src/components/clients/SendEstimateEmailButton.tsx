@@ -37,6 +37,8 @@ export default function SendEstimateEmailButton({ templateId, companyId, templat
 
   const [open, setOpen] = useState(false);
   const [to, setTo] = useState(clientEmail ?? "");
+  const [cc, setCc] = useState("");
+  const [bcc, setBcc] = useState("");
   const [subject, setSubject] = useState(defaultSubject);
   const [body, setBody] = useState(defaultBody);
   const [sending, setSending] = useState(false);
@@ -55,7 +57,7 @@ export default function SendEstimateEmailButton({ templateId, companyId, templat
       const res = await fetch(`/api/${companyId}/send-estimate-email`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ templateId, to, subject, body }),
+        body: JSON.stringify({ templateId, to, cc: cc.trim() || undefined, bcc: bcc.trim() || undefined, subject, body }),
       });
       const data = await res.json();
       if (res.ok) {
@@ -105,6 +107,30 @@ export default function SendEstimateEmailButton({ templateId, companyId, templat
                   style={{ background: "#0d1117", border: "1px solid #30373f", color: "#e6edf3" }}
                   placeholder="client@email.com"
                 />
+              </div>
+              <div className="flex gap-2">
+                <div className="flex-1">
+                  <label className="block text-xs font-medium mb-1" style={{ color: "#8b949e" }}>CC</label>
+                  <input
+                    type="text"
+                    value={cc}
+                    onChange={e => setCc(e.target.value)}
+                    className="w-full rounded-lg px-3 py-2 text-sm"
+                    style={{ background: "#0d1117", border: "1px solid #30373f", color: "#e6edf3" }}
+                    placeholder="cc@email.com"
+                  />
+                </div>
+                <div className="flex-1">
+                  <label className="block text-xs font-medium mb-1" style={{ color: "#8b949e" }}>BCC</label>
+                  <input
+                    type="text"
+                    value={bcc}
+                    onChange={e => setBcc(e.target.value)}
+                    className="w-full rounded-lg px-3 py-2 text-sm"
+                    style={{ background: "#0d1117", border: "1px solid #30373f", color: "#e6edf3" }}
+                    placeholder="bcc@email.com"
+                  />
+                </div>
               </div>
               <div>
                 <label className="block text-xs font-medium mb-1" style={{ color: "#8b949e" }}>Subject</label>
