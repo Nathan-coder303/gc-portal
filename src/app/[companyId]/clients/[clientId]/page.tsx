@@ -195,7 +195,7 @@ export default async function ClientDetailPage({
                         {est.name}
                       </div>
                       <div className="text-xs mt-0.5" style={{ color: "#8b949e" }}>
-                        Created {format(est.createdAt, "MMM d, yyyy, h:mm a")}
+                        Created {est.createdAt.toLocaleString("en-US", { timeZone: "America/New_York", month: "short", day: "numeric", year: "numeric", hour: "numeric", minute: "2-digit", hour12: true })}
                       </div>
                     </Link>
                     <div className="flex items-center gap-3 shrink-0">
@@ -231,6 +231,8 @@ export default async function ClientDetailPage({
                           initialDescription={est.description ?? null}
                           initialEstimateNumber={est.estimateNumber ?? null}
                           initialEstimateDate={est.estimateDate ?? null}
+                          initialSqFt={est.sqFt ? Number(est.sqFt) : null}
+                          initialDurationMonths={est.durationMonths ? Number(est.durationMonths) : null}
                         />
                       )}
                       {canDelete && (

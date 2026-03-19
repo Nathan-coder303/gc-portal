@@ -11,6 +11,8 @@ export default function EditEstimateModal({
   initialDescription,
   initialEstimateNumber,
   initialEstimateDate,
+  initialSqFt,
+  initialDurationMonths,
 }: {
   estimateId: string;
   clientId: string;
@@ -19,6 +21,8 @@ export default function EditEstimateModal({
   initialDescription: string | null;
   initialEstimateNumber: string | null;
   initialEstimateDate: string | null;
+  initialSqFt: number | null;
+  initialDurationMonths: number | null;
 }) {
   const [open, setOpen] = useState(false);
   const [name, setName] = useState(initialName);
@@ -26,6 +30,8 @@ export default function EditEstimateModal({
   const [estimateNumber, setEstimateNumber] = useState(initialEstimateNumber ?? "");
   const todayIso = new Date().toLocaleDateString("en-CA"); // "YYYY-MM-DD"
   const [estimateDate, setEstimateDate] = useState(initialEstimateDate ?? todayIso);
+  const [sqFt, setSqFt] = useState(initialSqFt?.toString() ?? "");
+  const [durationMonths, setDurationMonths] = useState(initialDurationMonths?.toString() ?? "");
   const [isPending, startTransition] = useTransition();
 
   function handleOpen() {
@@ -33,6 +39,8 @@ export default function EditEstimateModal({
     setDescription(initialDescription ?? "");
     setEstimateNumber(initialEstimateNumber ?? "");
     setEstimateDate(initialEstimateDate ?? "");
+    setSqFt(initialSqFt?.toString() ?? "");
+    setDurationMonths(initialDurationMonths?.toString() ?? "");
     setOpen(true);
   }
 
@@ -44,6 +52,8 @@ export default function EditEstimateModal({
         description: description || null,
         estimateNumber: estimateNumber || null,
         estimateDate: estimateDate || null,
+        sqFt: sqFt ? Number(sqFt) : null,
+        durationMonths: durationMonths ? Number(durationMonths) : null,
       });
       setOpen(false);
     });
@@ -116,6 +126,33 @@ export default function EditEstimateModal({
                   className="w-full rounded px-3 py-2 text-sm outline-none resize-none"
                   style={{ background: "#0d1117", border: "1px solid #30373f", color: "#e6edf3" }}
                 />
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs mb-1" style={{ color: "#8b949e" }}>Sq Ft</label>
+                  <input
+                    type="number"
+                    min={0}
+                    value={sqFt}
+                    onChange={(e) => setSqFt(e.target.value)}
+                    className="w-full rounded px-3 py-2 text-sm outline-none"
+                    style={{ background: "#0d1117", border: "1px solid #30373f", color: "#e6edf3" }}
+                    placeholder="0"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs mb-1" style={{ color: "#8b949e" }}>Duration (months)</label>
+                  <input
+                    type="number"
+                    min={0}
+                    value={durationMonths}
+                    onChange={(e) => setDurationMonths(e.target.value)}
+                    className="w-full rounded px-3 py-2 text-sm outline-none"
+                    style={{ background: "#0d1117", border: "1px solid #30373f", color: "#e6edf3" }}
+                    placeholder="0"
+                  />
+                </div>
               </div>
             </div>
 

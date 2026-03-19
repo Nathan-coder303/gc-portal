@@ -125,7 +125,7 @@ export async function updateClientEstimate(
   estimateId: string,
   clientId: string,
   companyId: string,
-  data: { name: string; description?: string | null; estimateNumber?: string | null; estimateDate?: string | null }
+  data: { name: string; description?: string | null; estimateNumber?: string | null; estimateDate?: string | null; sqFt?: number | null; durationMonths?: number | null }
 ) {
   const session = await auth();
   if (!session) throw new Error("Unauthorized");
@@ -138,6 +138,8 @@ export async function updateClientEstimate(
       description: data.description?.trim() || null,
       estimateNumber: data.estimateNumber?.trim() || null,
       estimateDate: data.estimateDate?.trim() || null,
+      sqFt: data.sqFt ?? null,
+      durationMonths: data.durationMonths ?? null,
       updatedBy: session.user.id,
     },
   });
