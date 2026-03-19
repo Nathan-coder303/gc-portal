@@ -188,14 +188,19 @@ export default async function ClientDetailPage({
                       href={`/${params.companyId}/estimates/${est.id}`}
                       className="flex-1 min-w-0 group"
                     >
-                      <div
-                        className="font-semibold transition-colors group-hover:text-[#C9A84C]"
-                        style={{ color: "#e6edf3" }}
-                      >
-                        {est.name}
+                      <div className="flex items-baseline gap-2">
+                        <span
+                          className="font-semibold transition-colors group-hover:text-[#C9A84C]"
+                          style={{ color: "#e6edf3" }}
+                        >
+                          {est.name}
+                        </span>
+                        {est.estimateNumber && (
+                          <span className="font-semibold" style={{ color: "#8b949e" }}>#{est.estimateNumber}</span>
+                        )}
                       </div>
                       <div className="text-xs mt-0.5" style={{ color: "#8b949e" }}>
-                        Created {est.createdAt.toLocaleString("en-US", { timeZone: "America/New_York", month: "short", day: "numeric", year: "numeric", hour: "numeric", minute: "2-digit", hour12: true })}
+                        Created {est.createdAt.toLocaleString("en-US", { timeZone: "America/New_York", month: "short", day: "numeric", year: "numeric", hour: "numeric", minute: "2-digit", hour12: true })} ET
                       </div>
                     </Link>
                     <div className="flex items-center gap-3 shrink-0">
