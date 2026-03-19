@@ -111,6 +111,8 @@ export async function POST(
     const divisionList = STANDARD_DIVISIONS.map(d => `${d.code} - ${d.name}`).join("\n");
 
     let added = 0;
+    let pdfsLoaded = 0;
+    let aiSample = "";
     const errors: string[] = [];
 
     for (const msg of toProcess) {
@@ -159,6 +161,7 @@ export async function POST(
         let pdfBase64: string | null = null;
         const pdfPart = pdfParts[0];
         if (pdfPart.body?.attachmentId) {
+          // Standard attachment — fetch separately
           try {
             const attRes = await gmail.users.messages.attachments.get({
               userId: "me",
@@ -166,9 +169,14 @@ export async function POST(
               id: pdfPart.body.attachmentId,
             });
             pdfBase64 = (attRes.data.data ?? "").replace(/-/g, "+").replace(/_/g, "/");
+            if (pdfBase64) pdfsLoaded++;
           } catch (e) {
             errors.push(`[pdf-dl] ${String(e).slice(0, 60)}`);
           }
+        } else if (pdfPart.body?.data) {
+          // Inline/embedded attachment (small PDFs included directly in message)
+          pdfBase64 = pdfPart.body.data.replace(/-/g, "+").replace(/_/g, "/");
+          pdfsLoaded++;
         }
 
         // Step 3: AI extraction via direct fetch (bypasses SDK ByteString issues)
@@ -204,7 +212,7 @@ Respond ONLY with valid JSON, no markdown:
               "content-type": "application/json",
               "x-api-key": safeApiKey,
               "anthropic-version": "2023-06-01",
-              ...(pdfBase64 ? { "anthropic-beta": "pdfs-2024-09-25" } : {}),
+              "anthropic-beta": "pdfs-2024-09-25",
             },
             body: JSON.stringify({
               model: "claude-haiku-4-5-20251001",
@@ -215,6 +223,7 @@ Respond ONLY with valid JSON, no markdown:
           const aiJson = await aiRes.json() as { content?: { type: string; text: string }[]; error?: { message: string } };
           if (aiJson.error) throw new Error(aiJson.error.message);
           const aiText = aiJson.content?.[0]?.type === "text" ? aiJson.content[0].text.trim() : "{}";
+          if (!aiSample) aiSample = aiText.slice(0, 120);
           parsed = JSON.parse(aiText.replace(/```json\n?|\n?```/g, ""));
         } catch (e) {
           errors.push(`[ai] ${String(e).slice(0, 80)}`);
@@ -258,6 +267,8 @@ Respond ONLY with valid JSON, no markdown:
       newUnprocessed: newMessages.length,
       processed: toProcess.length,
       added,
+      pdfsLoaded,
+      aiSample,
       remaining,
       errors: errors.slice(0, 5),
     });
