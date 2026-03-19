@@ -8,6 +8,21 @@ import { requirePermission } from "@/lib/auth/permissions";
 import { writeAuditLog } from "@/lib/audit/log";
 import { STANDARD_TEMPLATE_DIVISIONS } from "@/lib/standardTemplateData";
 
+// ─── Estimate Number Auto-Increment ───────────────────────────────────────────
+
+async function getNextEstimateNumber(companyId: string): Promise<string> {
+  const all = await prisma.estimateTemplate.findMany({
+    where: { companyId, estimateNumber: { not: null } },
+    select: { estimateNumber: true },
+  });
+  let max = 0;
+  for (const t of all) {
+    const n = parseInt(t.estimateNumber ?? "", 10);
+    if (!isNaN(n) && n > max) max = n;
+  }
+  return String(max + 1);
+}
+
 // ─── Template CRUD ────────────────────────────────────────────────────────────
 
 export async function createTemplate(formData: FormData) {
@@ -808,6 +823,8 @@ export async function saveAsClientEstimate(sourceTemplateId: string, clientId: s
     return { success: true, id: existing.id, clientId };
   }
 
+  const nextNumber = await getNextEstimateNumber(session.user.companyId);
+
   const newEstimate = await prisma.$transaction(async (tx) => {
     const tpl = await tx.estimateTemplate.create({
       data: {
@@ -819,8 +836,8 @@ export async function saveAsClientEstimate(sourceTemplateId: string, clientId: s
         sortOrder: 0,
         createdBy: session.user.id,
         updatedBy: session.user.id,
-        // Copy financial & doc fields from source
-        estimateNumber: source.estimateNumber,
+        // Copy financial & doc fields from source; assign fresh estimate number
+        estimateNumber: nextNumber,
         estimateDate: source.estimateDate,
         gcFeePercent: source.gcFeePercent,
         paymentSchedule: source.paymentSchedule ?? undefined,
