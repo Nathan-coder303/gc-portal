@@ -7,6 +7,8 @@ import Link from "next/link";
 import { getCorrectCsiCode, lookupItemCsiCode } from "@/lib/divisions";
 import { getFileTermsPresets } from "@/lib/fileTerms";
 
+export const dynamic = "force-dynamic";
+
 export default async function TemplateEditorPage({
   params,
 }: {
