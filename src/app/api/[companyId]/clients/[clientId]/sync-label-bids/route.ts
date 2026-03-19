@@ -7,7 +7,6 @@
  */
 import { NextRequest, NextResponse } from "next/server";
 import { google } from "googleapis";
-import Anthropic from "@anthropic-ai/sdk";
 import { prisma } from "@/lib/prisma";
 import { auth } from "@/lib/auth";
 import { STANDARD_DIVISIONS } from "@/lib/divisions";
@@ -27,31 +26,6 @@ function getOAuthClient() {
 
 function decodeBase64(data: string): Buffer {
   return Buffer.from(data.replace(/-/g, "+").replace(/_/g, "/"), "base64");
-}
-
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-function extractBody(payload: any): string {
-  if (!payload) return "";
-  if (payload.body?.data) return decodeBase64(payload.body.data).toString("utf-8");
-  if (payload.parts) {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const all: any[] = [];
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const collect = (parts: any[]) => { for (const p of parts) { all.push(p); if (p.parts) collect(p.parts); } };
-    collect(payload.parts);
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const plain = all.find((p: any) => p.mimeType === "text/plain" && p.body?.data);
-    if (plain) return decodeBase64(plain.body.data).toString("utf-8");
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const html = all.find((p: any) => p.mimeType === "text/html" && p.body?.data);
-    if (html) return decodeBase64(html.body.data).toString("utf-8")
-      .replace(/<style[^>]*>[\s\S]*?<\/style>/gi, " ")
-      .replace(/<script[^>]*>[\s\S]*?<\/script>/gi, " ")
-      .replace(/<[^>]+>/g, " ")
-      .replace(/\s+/g, " ")
-      .trim();
-  }
-  return "";
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -97,7 +71,6 @@ export async function POST(
     const gmail = google.gmail({ version: "v1", auth: getOAuthClient() });
     // Sanitize API key — strip any invisible/non-ASCII chars that cause ByteString errors in fetch headers
     const safeApiKey = (process.env.ANTHROPIC_API_KEY ?? "").replace(/[^\x20-\x7E]/g, "").trim();
-    const anthropic = new Anthropic({ apiKey: safeApiKey });
 
     // Confirm which Gmail account is being accessed
     const profileRes = await gmail.users.getProfile({ userId: "me" });
