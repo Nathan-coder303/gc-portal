@@ -113,7 +113,7 @@ export default async function ClientDetailPage({
         <div className="flex flex-wrap gap-3 mt-2">
           {safeClient.address && (
             <span className="text-sm" style={{ color: "#8b949e" }}>
-              {safeClient.address}
+              {[safeClient.address, safeClient.city, safeClient.state, safeClient.zip].filter(Boolean).join(", ")}
             </span>
           )}
           {safeClient.email && (
@@ -195,7 +195,7 @@ export default async function ClientDetailPage({
                         {est.name}
                       </div>
                       <div className="text-xs mt-0.5" style={{ color: "#8b949e" }}>
-                        Created {format(est.createdAt, "MMM d, yyyy")}
+                        Created {format(est.createdAt, "MMM d, yyyy, h:mm a")}
                       </div>
                     </Link>
                     <div className="flex items-center gap-3 shrink-0">
