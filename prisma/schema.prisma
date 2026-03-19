@@ -435,6 +435,7 @@ model EstimateTemplate {
   signatureData   String?
   signedAt        DateTime?
   signedByName    String?
+  lastSentAt      DateTime?
   divisions       EstimateTemplateDivision[]
   estimates   ProjectEstimate[]
 

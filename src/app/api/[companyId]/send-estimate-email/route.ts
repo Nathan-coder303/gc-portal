@@ -238,5 +238,10 @@ export async function POST(
     return NextResponse.json({ error: "Failed to send email", detail: String(err) }, { status: 500 });
   }
 
+  await prisma.estimateTemplate.update({
+    where: { id: templateId },
+    data: { lastSentAt: new Date() },
+  });
+
   return NextResponse.json({ success: true });
 }

@@ -202,6 +202,11 @@ export default async function ClientDetailPage({
                       <div className="text-xs mt-0.5" style={{ color: "#8b949e" }}>
                         Created {est.createdAt.toLocaleString("en-US", { timeZone: "America/New_York", month: "short", day: "numeric", year: "numeric", hour: "numeric", minute: "2-digit", hour12: true })} ET
                       </div>
+                      {est.lastSentAt && (
+                        <div className="text-xs mt-0.5" style={{ color: "#4a9eff" }}>
+                          Sent {est.lastSentAt.toLocaleString("en-US", { timeZone: "America/New_York", month: "short", day: "numeric", year: "numeric", hour: "numeric", minute: "2-digit", hour12: true })} ET
+                        </div>
+                      )}
                     </Link>
                     <div className="flex items-center gap-3 shrink-0">
                       {est.signedAt && (
