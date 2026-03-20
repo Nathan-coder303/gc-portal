@@ -170,7 +170,7 @@ export default async function LedgerPage({
       )}
 
       {/* Summary cards */}
-      <div className="grid grid-cols-2 gap-4 mb-6">
+      {false && <div className="grid grid-cols-2 gap-4 mb-6">
         <div className="rounded-xl p-4" style={CARD}>
           <div className="text-xs mb-1" style={{ color: "#8b949e" }}>Cash Position</div>
           <div className="text-xl font-bold font-mono" style={{ color: cashBalance >= 0 ? "#4ade80" : "#f87171" }}>
@@ -197,9 +197,10 @@ export default async function LedgerPage({
             </div>
           );
         })}
-      </div>
+      </div>}
 
       {/* Account Balances */}
+      {false &&
       <div className="rounded-xl overflow-hidden mb-6" style={CARD}>
         <div className="px-4 py-3" style={{ borderBottom: "1px solid #30373f" }}>
           <h2 className="font-semibold" style={{ color: "#e6edf3" }}>Account Balances</h2>
@@ -231,10 +232,10 @@ export default async function LedgerPage({
           </tbody>
         </table>
         </div>
-      </div>
+      </div>}
 
       {/* New Journal Entry */}
-      {!isPartner && (
+      {false && !isPartner && (
         <div className="rounded-xl p-5 mb-6" style={CARD}>
           <h2 className="font-semibold mb-4" style={{ color: "#e6edf3" }}>New Journal Entry</h2>
           <LedgerForms
@@ -247,7 +248,7 @@ export default async function LedgerPage({
       )}
 
       {/* Journal Entries Table */}
-      <div className="rounded-xl overflow-hidden mb-6" style={CARD}>
+      {false && <div className="rounded-xl overflow-hidden mb-6" style={CARD}>
         <div className="px-4 py-3" style={{ borderBottom: "1px solid #30373f" }}>
           <h2 className="font-semibold" style={{ color: "#e6edf3" }}>Journal Entries</h2>
           <p className="text-xs mt-0.5" style={{ color: "#8b949e" }}>Entries are immutable — use Reverse to correct an error</p>
@@ -316,9 +317,9 @@ export default async function LedgerPage({
           </tbody>
         </table>
         </div>
-      </div>
+      </div>}
 
-      {capitalLines.length > 0 && (
+      {false && capitalLines.length > 0 && (
         <div className="rounded-xl overflow-hidden mb-6" style={CARD}>
           <div className="px-4 py-3" style={{ borderBottom: "1px solid #30373f" }}>
             <h2 className="font-semibold" style={{ color: "#e6edf3" }}>Partner Capital Statements</h2>
