@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 import { getDailySummaries } from "@/lib/daily-summary";
 import { prisma } from "@/lib/prisma";
 import DarkCalendar from "@/components/calendar/DarkCalendar";
+import { auth } from "@/lib/auth";
 
 export default async function HubPage({
   params,
@@ -10,6 +11,9 @@ export default async function HubPage({
   params: { companyId: string };
   searchParams?: { tab?: string };
 }) {
+  const session = await auth();
+  if (session?.user.role === "PARTNER") redirect(`/${params.companyId}/projects`);
+
   const tab = searchParams?.tab;
 
   if (tab === "calendar") {

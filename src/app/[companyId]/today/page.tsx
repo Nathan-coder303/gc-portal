@@ -13,6 +13,7 @@ export default async function TodayPage({
 }) {
   const session = await auth();
   if (!session) redirect("/login");
+  if (session.user.role === "PARTNER") redirect(`/${params.companyId}/projects`);
 
   // Compute start/end of today in Eastern Time (handles EST/EDT automatically)
   const now = new Date();
