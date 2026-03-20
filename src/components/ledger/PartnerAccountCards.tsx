@@ -436,6 +436,7 @@ export default function PartnerAccountCards({
   llcEntries: Entry[];
   capitalLinesByPartner: Record<string, CapitalLine[]>;
   isAdmin: boolean;
+  isPartner?: boolean;
 }) {
   const defaultOrder = [...partners.map((p) => p.id), "llc", ...(isAdmin ? ["master"] : [])];
 
@@ -525,7 +526,7 @@ export default function PartnerAccountCards({
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
           {order.map((id) =>
             cardMap[id] ? (
-              <SortableCard key={id} id={id} fullWidth={id === "llc" || id === "master"}>
+              <SortableCard key={id} id={id} fullWidth={id === "llc" || id === "master" || isPartner}>
                 {(dragHandleProps) => cardMap[id](dragHandleProps)}
               </SortableCard>
             ) : null
