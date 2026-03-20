@@ -461,6 +461,8 @@ function MasterCard({
     { label: "Bank Account", value: -BANK_ACCOUNT },
   ];
 
+  const [open, setOpen] = useState(true);
+
   return (
     <div className="rounded-xl p-4 flex flex-col gap-3" style={{ background: "#0d1117", border: `1px solid ${GOLD}` }}>
       <div className="flex items-start justify-between">
@@ -482,16 +484,26 @@ function MasterCard({
         </div>
       </div>
 
-      <div className="space-y-2">
-        {rows.map((row) => (
-          <div key={row.label} className="flex items-center justify-between gap-2">
-            <span className="text-xs" style={{ color: row.dynamic ? "#c9d1d9" : "#8b949e" }}>{row.label}</span>
-            <span className="text-xs font-mono font-semibold shrink-0"
-              style={{ color: row.value >= 0 ? "#4ade80" : "#f87171" }}>
-              {row.value >= 0 ? "+" : "−"}${fmt(Math.abs(row.value))}
-            </span>
+      <div>
+        <button onClick={() => setOpen((o) => !o)} className="flex items-center justify-between w-full text-left">
+          <span className="text-[10px] font-semibold uppercase tracking-wider" style={{ color: "#8b949e" }}>
+            Breakdown ({rows.length})
+          </span>
+          <span className="text-[10px]" style={{ color: "#8b949e" }}>{open ? "▲" : "▼"}</span>
+        </button>
+        {open && (
+          <div className="space-y-2 mt-1.5">
+            {rows.map((row) => (
+              <div key={row.label} className="flex items-center justify-between gap-2">
+                <span className="text-xs font-semibold" style={{ color: "#e6edf3" }}>{row.label}</span>
+                <span className="text-xs font-mono font-semibold shrink-0"
+                  style={{ color: row.value >= 0 ? "#4ade80" : "#f87171" }}>
+                  {row.value >= 0 ? "+" : "−"}${fmt(Math.abs(row.value))}
+                </span>
+              </div>
+            ))}
           </div>
-        ))}
+        )}
       </div>
     </div>
   );
