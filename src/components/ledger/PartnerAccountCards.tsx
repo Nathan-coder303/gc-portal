@@ -497,7 +497,7 @@ function MasterCard({
   );
 }
 
-function SortableCard({ id, children }: { id: string; children: (dragHandleProps: React.HTMLAttributes<HTMLDivElement>) => React.ReactNode }) {
+function SortableCard({ id, fullWidth, children }: { id: string; fullWidth?: boolean; children: (dragHandleProps: React.HTMLAttributes<HTMLDivElement>) => React.ReactNode }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id });
   const style: React.CSSProperties = {
     transform: CSS.Transform.toString(transform),
@@ -506,7 +506,7 @@ function SortableCard({ id, children }: { id: string; children: (dragHandleProps
     zIndex: isDragging ? 10 : undefined,
   };
   return (
-    <div ref={setNodeRef} style={style}>
+    <div ref={setNodeRef} style={style} className={fullWidth ? "col-span-1 sm:col-span-2 lg:col-span-3" : undefined}>
       {children({ ...attributes, ...listeners })}
     </div>
   );
@@ -628,7 +628,7 @@ export default function PartnerAccountCards({
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
           {order.map((id) =>
             cardMap[id] ? (
-              <SortableCard key={id} id={id}>
+              <SortableCard key={id} id={id} fullWidth={id === "llc" || id === "master"}>
                 {(dragHandleProps) => cardMap[id](dragHandleProps)}
               </SortableCard>
             ) : null
