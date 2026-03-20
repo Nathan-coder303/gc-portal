@@ -437,7 +437,7 @@ export default function PartnerAccountCards({
   capitalLinesByPartner: Record<string, CapitalLine[]>;
   isAdmin: boolean;
 }) {
-  const defaultOrder = [...partners.map((p) => p.id), "llc", "master"];
+  const defaultOrder = [...partners.map((p) => p.id), "llc", ...(isAdmin ? ["master"] : [])];
 
   const [order, setOrder] = useState<string[]>(defaultOrder);
 
