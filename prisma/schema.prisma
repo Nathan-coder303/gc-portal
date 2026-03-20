@@ -345,9 +345,10 @@ model PartnerAccountEntry {
   description String
   amount      Decimal  @db.Decimal(14, 2)
   entryType   String   // "CREDIT" or "DEBIT"
-  date        DateTime @db.Date
-  createdAt   DateTime @default(now())
-  createdBy   String
+  date          DateTime @db.Date
+  createdAt     DateTime @default(now())
+  createdBy     String
+  linkedEntryId String?
 
   @@index([projectId])
   @@index([partnerId])

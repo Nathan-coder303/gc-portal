@@ -630,10 +630,17 @@ export async function updatePartnerAccountEntry(
   const session = await auth();
   if (!session) throw new Error("Unauthorized");
   requirePermission(session, "partner:edit");
-  await prisma.partnerAccountEntry.update({
+  const entry = await prisma.partnerAccountEntry.update({
     where: { id },
     data: { description: data.description, amount: data.amount, date: new Date(data.date) },
   });
+  // Cascade date and amount to the linked counterpart entry
+  if (entry.linkedEntryId) {
+    await prisma.partnerAccountEntry.update({
+      where: { id: entry.linkedEntryId },
+      data: { amount: data.amount, date: new Date(data.date) },
+    });
+  }
   revalidatePath(`/${companyId}/${projectId}/ledger`);
   return { success: true };
 }
