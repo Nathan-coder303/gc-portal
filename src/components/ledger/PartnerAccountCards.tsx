@@ -158,6 +158,7 @@ function AccountCard({
   const [balanceInput, setBalanceInput] = useState(String(beginningBalance));
   const [savingBalance, setSavingBalance] = useState(false);
   const [journalOpen, setJournalOpen] = useState(false);
+  const [txOpen, setTxOpen] = useState(true);
   const [addingEntry, setAddingEntry] = useState<"CREDIT" | "DEBIT" | null>(null);
   const [source, setSource] = useState("");
   const [payee, setPayee] = useState("");
@@ -274,13 +275,25 @@ function AccountCard({
         )}
       </div>
 
-      {/* Manual transactions */}
+      {/* Manual transactions — collapsible */}
       {entries.length > 0 && (
-        <div className="space-y-1">
-          <div className="text-[10px] font-semibold uppercase tracking-wider mb-1" style={{ color: "#8b949e" }}>Manual Transactions</div>
-          {entries.map((e) => (
-            <EditableEntry key={e.id} entry={e} isAdmin={isAdmin} onSave={onSave} onDelete={onDelete} />
-          ))}
+        <div>
+          <button
+            onClick={() => setTxOpen((o) => !o)}
+            className="flex items-center justify-between w-full text-left"
+          >
+            <span className="text-[10px] font-semibold uppercase tracking-wider" style={{ color: "#8b949e" }}>
+              Transactions ({entries.length})
+            </span>
+            <span className="text-[10px]" style={{ color: "#8b949e" }}>{txOpen ? "▲" : "▼"}</span>
+          </button>
+          {txOpen && (
+            <div className="space-y-1 mt-1.5">
+              {entries.map((e) => (
+                <EditableEntry key={e.id} entry={e} isAdmin={isAdmin} onSave={onSave} onDelete={onDelete} />
+              ))}
+            </div>
+          )}
         </div>
       )}
 
