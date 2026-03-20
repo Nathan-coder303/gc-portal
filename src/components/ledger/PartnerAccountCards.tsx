@@ -510,7 +510,7 @@ export default function PartnerAccountCards({
   }
   cardMap["llc"] = (dragHandleProps: React.HTMLAttributes<HTMLDivElement>) => (
     <AccountCard
-      title="LLC Account"
+      title="13 Million 84 LLC"
       subtitle="Project Account"
       beginningBalance={llcBeginningBalance}
       entries={llcEntries}
