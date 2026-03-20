@@ -165,7 +165,6 @@ export default async function LedgerPage({
             llcEntries={llcEntries}
             capitalLinesByPartner={capitalLinesByPartner}
             isAdmin={isAdmin}
-            payees={payeeNames}
           />
         </div>
       )}

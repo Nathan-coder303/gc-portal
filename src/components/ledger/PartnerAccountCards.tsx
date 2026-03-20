@@ -4,12 +4,10 @@ import { useState, useEffect } from "react";
 import {
   updatePartnerBeginningBalance,
   updateLlcBeginningBalance,
-  addPartnerAccountEntry,
   deletePartnerAccountEntry,
   updatePartnerAccountEntry,
 } from "@/app/[companyId]/[projectId]/ledger/actions";
 import { format } from "date-fns";
-import PayeeSelect from "@/components/ledger/PayeeSelect";
 import {
   DndContext,
   closestCenter,
@@ -28,7 +26,6 @@ import { CSS } from "@dnd-kit/utilities";
 
 const GOLD = "#C9A84C";
 const INPUT_STYLE = { background: "#1e2736", border: "1px solid #30373f", color: "#e6edf3" };
-const TODAY = new Date().toISOString().split("T")[0];
 
 type Entry = {
   id: string;
@@ -430,7 +427,6 @@ export default function PartnerAccountCards({
   llcEntries,
   capitalLinesByPartner,
   isAdmin,
-  payees,
 }: {
   projectId: string;
   companyId: string;
@@ -440,9 +436,7 @@ export default function PartnerAccountCards({
   llcEntries: Entry[];
   capitalLinesByPartner: Record<string, CapitalLine[]>;
   isAdmin: boolean;
-  payees: string[];
 }) {
-  const partnerNames = partners.map((p) => p.name);
   const defaultOrder = [...partners.map((p) => p.id), "llc", "master"];
 
   const [order, setOrder] = useState<string[]>(defaultOrder);
