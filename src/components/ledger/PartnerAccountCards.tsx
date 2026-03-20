@@ -411,6 +411,92 @@ function AccountCard({
   );
 }
 
+function MasterCard({
+  partners,
+  partnerEntriesMap,
+  capitalLinesByPartner,
+  llcEntries,
+  showDragHandle,
+  dragHandleProps,
+}: {
+  partners: Partner[];
+  partnerEntriesMap: Record<string, Entry[]>;
+  capitalLinesByPartner: Record<string, CapitalLine[]>;
+  llcEntries: Entry[];
+  showDragHandle?: boolean;
+  dragHandleProps?: React.HTMLAttributes<HTMLDivElement>;
+}) {
+  function partnerBalance(p: Partner) {
+    const entries = partnerEntriesMap[p.id] ?? [];
+    const credits = entries.filter((e) => e.entryType === "CREDIT").reduce((s, e) => s + e.amount, 0);
+    const debits = entries.filter((e) => e.entryType === "DEBIT").reduce((s, e) => s + e.amount, 0);
+    const lines = capitalLinesByPartner[p.id] ?? [];
+    const jc = lines.reduce((s, l) => s + l.credit, 0);
+    const jd = lines.reduce((s, l) => s + l.debit, 0);
+    return p.beginningBalance + credits - debits + jc - jd;
+  }
+
+  const eddie = partners.find((p) => p.name === "Eddie Yakubov");
+  const yosef = partners.find((p) => p.name === "Yosef Yakubov");
+  const eddieBalance = eddie ? partnerBalance(eddie) : 0;
+  const yosefBalance = yosef ? partnerBalance(yosef) : 0;
+
+  const llcExpenseItems = llcEntries.filter((e) => e.entryType === "DEBIT");
+  const llcExpenses = llcExpenseItems.reduce((s, e) => s + e.amount, 0);
+
+  const EDDIE_CONTRIB = 55000;
+  const YOSEF_CONTRIB = 25000;
+  const CASH_ON_HAND = 25000;
+  const BANK_ACCOUNT = 150000;
+
+  const total = eddieBalance + yosefBalance + EDDIE_CONTRIB + YOSEF_CONTRIB - CASH_ON_HAND - llcExpenses - BANK_ACCOUNT;
+
+  const rows: { label: string; value: number; dynamic?: boolean }[] = [
+    { label: "Eddie's Balance", value: eddieBalance, dynamic: true },
+    { label: "Yosef's Balance", value: yosefBalance, dynamic: true },
+    { label: "Contribution to LLC (Eddie)", value: EDDIE_CONTRIB },
+    { label: "Contribution to LLC (Yosef)", value: YOSEF_CONTRIB },
+    { label: "Cash on Hand", value: -CASH_ON_HAND },
+    { label: `Items Paid by LLC (${llcExpenseItems.length})`, value: -llcExpenses, dynamic: true },
+    { label: "Bank Account", value: -BANK_ACCOUNT },
+  ];
+
+  return (
+    <div className="rounded-xl p-4 flex flex-col gap-3" style={{ background: "#0d1117", border: `1px solid ${GOLD}` }}>
+      <div className="flex items-start justify-between">
+        <div>
+          <div className="text-[10px] font-semibold uppercase tracking-wider mb-0.5" style={{ color: GOLD }}>Master Summary</div>
+          <div className="text-sm font-bold" style={{ color: "#e6edf3" }}>Mike Master</div>
+        </div>
+        {showDragHandle && (
+          <div {...(dragHandleProps ?? {})} className="cursor-grab active:cursor-grabbing px-1 py-0.5 rounded text-sm select-none" style={{ color: "#8b949e", touchAction: "none" }}>
+            ⠿
+          </div>
+        )}
+      </div>
+
+      <div className="rounded-lg p-3" style={{ background: "#1e2736", border: `1px solid ${GOLD}44` }}>
+        <div className="text-[10px] mb-0.5" style={{ color: "#8b949e" }}>Net Total</div>
+        <div className="text-xl font-bold font-mono" style={{ color: total >= 0 ? "#4ade80" : "#f87171" }}>
+          {total < 0 ? "−" : ""}${fmt(Math.abs(total))}
+        </div>
+      </div>
+
+      <div className="space-y-2">
+        {rows.map((row) => (
+          <div key={row.label} className="flex items-center justify-between gap-2">
+            <span className="text-xs" style={{ color: row.dynamic ? "#c9d1d9" : "#8b949e" }}>{row.label}</span>
+            <span className="text-xs font-mono font-semibold shrink-0"
+              style={{ color: row.value >= 0 ? "#4ade80" : "#f87171" }}>
+              {row.value >= 0 ? "+" : "−"}${fmt(Math.abs(row.value))}
+            </span>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 function SortableCard({ id, children }: { id: string; children: (dragHandleProps: React.HTMLAttributes<HTMLDivElement>) => React.ReactNode }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id });
   const style: React.CSSProperties = {
@@ -448,7 +534,7 @@ export default function PartnerAccountCards({
   payees: string[];
 }) {
   const partnerNames = partners.map((p) => p.name);
-  const defaultOrder = [...partners.map((p) => p.id), "llc"];
+  const defaultOrder = [...partners.map((p) => p.id), "llc", "master"];
 
   const [order, setOrder] = useState<string[]>(defaultOrder);
 
@@ -521,6 +607,16 @@ export default function PartnerAccountCards({
       onDelete={(id) => deletePartnerAccountEntry(id, companyId, projectId)}
       payees={payees}
       partnerNames={partnerNames}
+      showDragHandle={true}
+      dragHandleProps={dragHandleProps}
+    />
+  );
+  cardMap["master"] = (dragHandleProps: React.HTMLAttributes<HTMLDivElement>) => (
+    <MasterCard
+      partners={partners}
+      partnerEntriesMap={partnerEntriesMap}
+      capitalLinesByPartner={capitalLinesByPartner}
+      llcEntries={llcEntries}
       showDragHandle={true}
       dragHandleProps={dragHandleProps}
     />
