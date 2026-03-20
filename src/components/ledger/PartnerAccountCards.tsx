@@ -149,12 +149,9 @@ function AccountCard({
   entries,
   capitalLines,
   onUpdateBeginning,
-  onAdd,
   onSave,
   onDelete,
   isAdmin,
-  payees,
-  partnerNames,
   showDragHandle,
   dragHandleProps,
 }: {
@@ -164,12 +161,9 @@ function AccountCard({
   entries: Entry[];
   capitalLines?: CapitalLine[];
   onUpdateBeginning: (amount: number) => Promise<void | { success: boolean }>;
-  onAdd: (e: { description: string; amount: number; entryType: "CREDIT" | "DEBIT"; date: string }) => Promise<void | { success: boolean }>;
   onSave: (id: string, data: { description: string; amount: number; date: string }) => Promise<void | { success: boolean }>;
   onDelete: (id: string) => Promise<void | { success: boolean }>;
   isAdmin: boolean;
-  payees: string[];
-  partnerNames: string[];
   showDragHandle?: boolean;
   dragHandleProps?: React.HTMLAttributes<HTMLDivElement>;
 }) {
@@ -178,13 +172,6 @@ function AccountCard({
   const [savingBalance, setSavingBalance] = useState(false);
   const [journalOpen, setJournalOpen] = useState(false);
   const [txOpen, setTxOpen] = useState(true);
-  const [addingEntry, setAddingEntry] = useState<"CREDIT" | "DEBIT" | null>(null);
-  const [source, setSource] = useState("");
-  const [payee, setPayee] = useState("");
-  const [desc, setDesc] = useState("");
-  const [amount, setAmount] = useState("");
-  const [date, setDate] = useState(TODAY);
-  const [saving, setSaving] = useState(false);
 
   const credits = entries.filter((e) => e.entryType === "CREDIT").reduce((s, e) => s + e.amount, 0);
   const debits = entries.filter((e) => e.entryType === "DEBIT").reduce((s, e) => s + e.amount, 0);
@@ -200,17 +187,7 @@ function AccountCard({
     } finally { setSavingBalance(false); }
   }
 
-  async function saveEntry() {
-    if (!addingEntry || !amount) return;
-    setSaving(true);
-    try {
-      const fullDesc = [source, payee, desc].filter(Boolean).join(" → ") || "Entry";
-      await onAdd({ description: fullDesc, amount: parseFloat(amount), entryType: addingEntry, date });
-      setSource(""); setPayee(""); setDesc(""); setAmount(""); setDate(TODAY); setAddingEntry(null);
-    } finally { setSaving(false); }
-  }
-
-  return (
+return (
     <div className="rounded-xl p-4 flex flex-col gap-3" style={{ background: "#0d1117", border: "1px solid #30373f" }}>
       {/* Header */}
       <div className="flex items-start justify-between">
@@ -327,86 +304,6 @@ function AccountCard({
         </div>
       )}
 
-      {/* Add entry */}
-      {addingEntry ? (
-        <div className="rounded-lg p-3 space-y-2" style={{ background: "#1e2736", border: `1px solid ${addingEntry === "CREDIT" ? "#166534" : "#6b2a2a"}` }}>
-          <div className="text-xs font-semibold" style={{ color: addingEntry === "CREDIT" ? "#4ade80" : "#f87171" }}>
-            {addingEntry === "CREDIT" ? "+ Credit / Income" : "− Debit / Expense"}
-          </div>
-          <div className="flex flex-col gap-2">
-            <div className="grid grid-cols-2 gap-2">
-              <div>
-                <label className="block text-[10px] mb-1" style={{ color: "#8b949e" }}>Payment Source / From</label>
-                <select value={source} onChange={(e) => setSource(e.target.value)}
-                  className="w-full rounded-lg px-2 py-1.5 text-xs focus:outline-none"
-                  style={INPUT_STYLE}>
-                  <option value="">— Select —</option>
-                  <option value="Chase 8536">Chase 8536</option>
-                  {partnerNames.map((n) => (
-                    <option key={n} value={`${n}'s Account`}>{n}&apos;s Account</option>
-                  ))}
-                  <option value="Cash">Cash</option>
-                  <option value="Check">Check</option>
-                  <option value="ACH">ACH</option>
-                  <option value="Wire Transfer">Wire Transfer</option>
-                  <option value="Zelle">Zelle</option>
-                  <option value="Other">Other</option>
-                </select>
-              </div>
-              <div>
-                <label className="block text-[10px] mb-1" style={{ color: "#8b949e" }}>Payee / To</label>
-                <PayeeSelect
-                  initialPayees={payees}
-                  value={payee}
-                  onChange={setPayee}
-                  inputStyle={{ ...INPUT_STYLE, fontSize: "12px" }}
-                />
-              </div>
-            </div>
-            <div>
-              <label className="block text-[10px] mb-1" style={{ color: "#8b949e" }}>Description</label>
-              <input type="text" value={desc} onChange={(e) => setDesc(e.target.value)}
-                placeholder="e.g. Rental income" className="w-full rounded-lg px-2 py-1.5 text-xs focus:outline-none"
-                style={INPUT_STYLE} />
-            </div>
-            <div className="grid grid-cols-2 gap-2">
-              <div>
-                <label className="block text-[10px] mb-1" style={{ color: "#8b949e" }}>Amount ($)</label>
-                <input type="number" min="0.01" step="0.01" value={amount} onChange={(e) => setAmount(e.target.value)}
-                  placeholder="0.00" className="w-full rounded-lg px-2 py-1.5 text-xs focus:outline-none"
-                  style={INPUT_STYLE} />
-              </div>
-              <div>
-                <label className="block text-[10px] mb-1" style={{ color: "#8b949e" }}>Date</label>
-                <input type="date" value={date} onChange={(e) => setDate(e.target.value)}
-                  className="w-full rounded-lg px-2 py-1.5 text-xs focus:outline-none"
-                  style={INPUT_STYLE} />
-              </div>
-            </div>
-          </div>
-          <div className="flex gap-2 pt-1">
-            <button onClick={saveEntry} disabled={saving || !amount}
-              className="px-3 py-1.5 text-xs font-semibold rounded-lg disabled:opacity-50"
-              style={{ background: GOLD, color: "#0d1117" }}>{saving ? "Saving..." : "Save"}</button>
-            <button onClick={() => { setAddingEntry(null); setSource(""); setPayee(""); setDesc(""); setAmount(""); }}
-              className="px-3 py-1.5 text-xs rounded-lg"
-              style={{ background: "#30373f", color: "#8b949e" }}>Cancel</button>
-          </div>
-        </div>
-      ) : (
-        <div className="flex gap-2">
-          <button onClick={() => setAddingEntry("CREDIT")}
-            className="flex-1 py-2 text-xs font-semibold rounded-lg"
-            style={{ background: "#0d2a1a", color: "#4ade80", border: "1px solid #166534" }}>
-            + Credit / Income
-          </button>
-          <button onClick={() => setAddingEntry("DEBIT")}
-            className="flex-1 py-2 text-xs font-semibold rounded-lg"
-            style={{ background: "#2d1b1b", color: "#f87171", border: "1px solid #6b2a2a" }}>
-            − Debit / Expense
-          </button>
-        </div>
-      )}
     </div>
   );
 }
@@ -596,11 +493,8 @@ export default function PartnerAccountCards({
         capitalLines={capitalLinesByPartner[partner.id] ?? []}
         isAdmin={isAdmin}
         onUpdateBeginning={(amount) => updatePartnerBeginningBalance(partner.id, amount)}
-        onAdd={(e) => addPartnerAccountEntry({ ...e, projectId, companyId, accountType: "PARTNER", partnerId: partner.id })}
         onSave={makeSave()}
         onDelete={(id) => deletePartnerAccountEntry(id, companyId, projectId)}
-        payees={payees}
-        partnerNames={partnerNames}
         showDragHandle={true}
         dragHandleProps={dragHandleProps}
       />
@@ -614,11 +508,8 @@ export default function PartnerAccountCards({
       entries={llcEntries}
       isAdmin={isAdmin}
       onUpdateBeginning={(amount) => updateLlcBeginningBalance(projectId, amount)}
-      onAdd={(e) => addPartnerAccountEntry({ ...e, projectId, companyId, accountType: "LLC" })}
       onSave={makeSave()}
       onDelete={(id) => deletePartnerAccountEntry(id, companyId, projectId)}
-      payees={payees}
-      partnerNames={partnerNames}
       showDragHandle={true}
       dragHandleProps={dragHandleProps}
     />
