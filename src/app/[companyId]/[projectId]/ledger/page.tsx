@@ -52,10 +52,10 @@ export default async function LedgerPage({
   const partners = isPartner
     ? allPartners.filter((p) => {
         const pName = p.name.toLowerCase();
-        if (userName && pName.includes(userName)) return true;
-        if (userLastName && pName.includes(userLastName)) return true;
-        const firstName = userName?.split(" ")[0];
-        if (firstName && firstName.length > 2 && pName.includes(firstName)) return true;
+        // If we have a first name, require it to match (don't match on shared last name alone)
+        if (userName) return pName.includes(userName);
+        // Fallback: last name only if no first name set
+        if (userLastName) return pName.includes(userLastName);
         return false;
       })
     : allPartners;
