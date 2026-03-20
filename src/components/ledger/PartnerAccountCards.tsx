@@ -427,6 +427,7 @@ export default function PartnerAccountCards({
   llcEntries,
   capitalLinesByPartner,
   isAdmin,
+  isPartner,
 }: {
   projectId: string;
   companyId: string;
