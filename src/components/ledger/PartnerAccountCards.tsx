@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   updatePartnerBeginningBalance,
   updateLlcBeginningBalance,
@@ -10,6 +10,21 @@ import {
 } from "@/app/[companyId]/[projectId]/ledger/actions";
 import { format } from "date-fns";
 import PayeeSelect from "@/components/ledger/PayeeSelect";
+import {
+  DndContext,
+  closestCenter,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  DragEndEvent,
+} from "@dnd-kit/core";
+import {
+  SortableContext,
+  useSortable,
+  arrayMove,
+  rectSortingStrategy,
+} from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
 
 const GOLD = "#C9A84C";
 const INPUT_STYLE = { background: "#1e2736", border: "1px solid #30373f", color: "#e6edf3" };
@@ -140,6 +155,8 @@ function AccountCard({
   isAdmin,
   payees,
   partnerNames,
+  showDragHandle,
+  dragHandleProps,
 }: {
   title: string;
   subtitle?: string;
@@ -153,6 +170,8 @@ function AccountCard({
   isAdmin: boolean;
   payees: string[];
   partnerNames: string[];
+  showDragHandle?: boolean;
+  dragHandleProps?: React.HTMLAttributes<HTMLDivElement>;
 }) {
   const [editingBalance, setEditingBalance] = useState(false);
   const [balanceInput, setBalanceInput] = useState(String(beginningBalance));
@@ -194,9 +213,20 @@ function AccountCard({
   return (
     <div className="rounded-xl p-4 flex flex-col gap-3" style={{ background: "#0d1117", border: "1px solid #30373f" }}>
       {/* Header */}
-      <div>
-        <div className="text-[10px] font-semibold uppercase tracking-wider mb-0.5" style={{ color: "#8b949e" }}>{subtitle}</div>
-        <div className="text-sm font-bold" style={{ color: "#e6edf3" }}>{title}</div>
+      <div className="flex items-start justify-between">
+        <div>
+          <div className="text-[10px] font-semibold uppercase tracking-wider mb-0.5" style={{ color: "#8b949e" }}>{subtitle}</div>
+          <div className="text-sm font-bold" style={{ color: "#e6edf3" }}>{title}</div>
+        </div>
+        {showDragHandle && (
+          <div
+            {...(dragHandleProps ?? {})}
+            className="cursor-grab active:cursor-grabbing px-1 py-0.5 rounded text-sm select-none"
+            style={{ color: "#8b949e", touchAction: "none" }}
+          >
+            ⠿
+          </div>
+        )}
       </div>
 
       {/* Balance */}
@@ -381,6 +411,21 @@ function AccountCard({
   );
 }
 
+function SortableCard({ id, children }: { id: string; children: (dragHandleProps: React.HTMLAttributes<HTMLDivElement>) => React.ReactNode }) {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id });
+  const style: React.CSSProperties = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.5 : 1,
+    zIndex: isDragging ? 10 : undefined,
+  };
+  return (
+    <div ref={setNodeRef} style={style}>
+      {children({ ...attributes, ...listeners })}
+    </div>
+  );
+}
+
 export default function PartnerAccountCards({
   projectId,
   companyId,
@@ -403,43 +448,97 @@ export default function PartnerAccountCards({
   payees: string[];
 }) {
   const partnerNames = partners.map((p) => p.name);
+  const defaultOrder = [...partners.map((p) => p.id), "llc"];
+
+  const [order, setOrder] = useState<string[]>(defaultOrder);
+
+  useEffect(() => {
+    const saved = localStorage.getItem(`partner-cards-order-${projectId}`);
+    if (saved) {
+      try {
+        const parsed: string[] = JSON.parse(saved);
+        // Merge: keep saved order but add any new ids, remove stale ones
+        const valid = parsed.filter((id) => defaultOrder.includes(id));
+        const missing = defaultOrder.filter((id) => !valid.includes(id));
+        setOrder([...valid, ...missing]);
+      } catch { /* ignore */ }
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [projectId]);
+
+  const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 5 } }));
+
+  function handleDragEnd(event: DragEndEvent) {
+    const { active, over } = event;
+    if (over && active.id !== over.id) {
+      setOrder((prev) => {
+        const oldIndex = prev.indexOf(String(active.id));
+        const newIndex = prev.indexOf(String(over.id));
+        const next = arrayMove(prev, oldIndex, newIndex);
+        localStorage.setItem(`partner-cards-order-${projectId}`, JSON.stringify(next));
+        return next;
+      });
+    }
+  }
+
   function makeSave() {
     return (id: string, data: { description: string; amount: number; date: string }) =>
       updatePartnerAccountEntry(id, data, companyId, projectId).then(() => {});
   }
 
-  return (
-    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-      {partners.map((partner) => (
-        <AccountCard
-          key={partner.id}
-          title={`${partner.name}'s Account`}
-          subtitle="Partner's Account"
-          beginningBalance={partner.beginningBalance}
-          entries={partnerEntriesMap[partner.id] ?? []}
-          capitalLines={capitalLinesByPartner[partner.id] ?? []}
-          isAdmin={isAdmin}
-          onUpdateBeginning={(amount) => updatePartnerBeginningBalance(partner.id, amount)}
-          onAdd={(e) => addPartnerAccountEntry({ ...e, projectId, companyId, accountType: "PARTNER", partnerId: partner.id })}
-          onSave={makeSave()}
-          onDelete={(id) => deletePartnerAccountEntry(id, companyId, projectId)}
-          payees={payees}
-          partnerNames={partnerNames}
-        />
-      ))}
+  type CardRenderer = (dragHandleProps: React.HTMLAttributes<HTMLDivElement>) => React.ReactNode;
+  const cardMap: Record<string, CardRenderer> = {};
+  for (const partner of partners) {
+    cardMap[partner.id] = (dragHandleProps: React.HTMLAttributes<HTMLDivElement>) => (
       <AccountCard
-        title="LLC Account"
-        subtitle="Project Account"
-        beginningBalance={llcBeginningBalance}
-        entries={llcEntries}
+        title={`${partner.name}'s Account`}
+        subtitle="Partner's Account"
+        beginningBalance={partner.beginningBalance}
+        entries={partnerEntriesMap[partner.id] ?? []}
+        capitalLines={capitalLinesByPartner[partner.id] ?? []}
         isAdmin={isAdmin}
-        onUpdateBeginning={(amount) => updateLlcBeginningBalance(projectId, amount)}
-        onAdd={(e) => addPartnerAccountEntry({ ...e, projectId, companyId, accountType: "LLC" })}
+        onUpdateBeginning={(amount) => updatePartnerBeginningBalance(partner.id, amount)}
+        onAdd={(e) => addPartnerAccountEntry({ ...e, projectId, companyId, accountType: "PARTNER", partnerId: partner.id })}
         onSave={makeSave()}
         onDelete={(id) => deletePartnerAccountEntry(id, companyId, projectId)}
         payees={payees}
         partnerNames={partnerNames}
+        showDragHandle={true}
+        dragHandleProps={dragHandleProps}
       />
-    </div>
+    );
+  }
+  cardMap["llc"] = (dragHandleProps: React.HTMLAttributes<HTMLDivElement>) => (
+    <AccountCard
+      title="LLC Account"
+      subtitle="Project Account"
+      beginningBalance={llcBeginningBalance}
+      entries={llcEntries}
+      isAdmin={isAdmin}
+      onUpdateBeginning={(amount) => updateLlcBeginningBalance(projectId, amount)}
+      onAdd={(e) => addPartnerAccountEntry({ ...e, projectId, companyId, accountType: "LLC" })}
+      onSave={makeSave()}
+      onDelete={(id) => deletePartnerAccountEntry(id, companyId, projectId)}
+      payees={payees}
+      partnerNames={partnerNames}
+      showDragHandle={true}
+      dragHandleProps={dragHandleProps}
+    />
+  );
+
+  return (
+    <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+      <SortableContext items={order} strategy={rectSortingStrategy}>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+          {order.map((id) =>
+            cardMap[id] ? (
+              <SortableCard key={id} id={id}>
+                {(dragHandleProps) => cardMap[id](dragHandleProps)}
+              </SortableCard>
+            ) : null
+          )}
+        </div>
+      </SortableContext>
+    </DndContext>
   );
 }
