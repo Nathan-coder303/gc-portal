@@ -22,6 +22,7 @@ export default async function ProjectsPage({
   if (session.user.companyId !== params.companyId) redirect(`/${session.user.companyId}`);
 
   const isAdmin = can(session.user.role, "project:edit");
+  const isPartner = session.user.role === "PARTNER";
 
   // PARTNER users with explicit project access are restricted to those projects
   let projectFilter: { companyId: string; id?: { in: string[] } } = { companyId: params.companyId };
@@ -30,9 +31,7 @@ export default async function ProjectsPage({
       where: { userId: session.user.id },
       select: { projectId: true },
     });
-    if (access.length > 0) {
-      projectFilter = { companyId: params.companyId, id: { in: access.map((a) => a.projectId) } };
-    }
+    projectFilter = { companyId: params.companyId, id: { in: access.map((a) => a.projectId) } };
   }
 
   const projects = await prisma.project.findMany({
@@ -54,7 +53,7 @@ export default async function ProjectsPage({
         {projects.map((p) => (
           <div key={p.id} className="relative group">
             <Link
-              href={`/${params.companyId}/${p.id}/dashboard`}
+              href={`/${params.companyId}/${p.id}/${isPartner ? "ledger" : "dashboard"}`}
               className="flex flex-col items-center justify-center rounded-2xl py-10 px-10 text-center transition-all hover:border-[#C9A84C88]"
               style={{ background: "#0d1117", border: "1px solid #C9A84C44", minHeight: "220px" }}
             >

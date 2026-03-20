@@ -50,7 +50,7 @@ export default async function CompanyLayout({
         </div>
 
         <Suspense fallback={<div className="flex-1" />}>
-          <CompanySidebarNav companyId={params.companyId} />
+          <CompanySidebarNav companyId={params.companyId} role={session.user.role} />
         </Suspense>
 
         <div className="px-3 pb-5 pt-4" style={{ borderTop: "1px solid #30373f" }}>

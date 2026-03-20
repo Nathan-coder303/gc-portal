@@ -35,14 +35,16 @@ function isActive(label: string, pathname: string, companyId: string, tab: strin
   return false;
 }
 
-export default function CompanySidebarNav({ companyId }: { companyId: string }) {
+export default function CompanySidebarNav({ companyId, role }: { companyId: string; role?: string }) {
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const tab = searchParams.get("tab");
+  const isPartner = role === "PARTNER";
+  const visibleNav = isPartner ? NAV.filter((n) => n.label === "Projects") : NAV;
 
   return (
     <nav className="flex-1 px-3 pt-2 space-y-1">
-      {NAV.map(({ label, icon, href }) => {
+      {visibleNav.map(({ label, icon, href }) => {
         const active = isActive(label, pathname, companyId, tab);
         return (
           <Link
@@ -61,21 +63,23 @@ export default function CompanySidebarNav({ companyId }: { companyId: string }) 
         );
       })}
 
-      <div className="pt-2 pb-1">
-        <div className="text-[10px] uppercase tracking-widest px-3 pb-1 font-bold" style={{ color: "#30373f" }}>
-          Coming Soon
-        </div>
-        {SOON.map(({ label, icon }) => (
-          <div key={label} className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm opacity-40 cursor-not-allowed">
-            <span className="text-base leading-none">{icon}</span>
-            <span style={{ color: "#8b949e" }}>{label}</span>
-            <span className="ml-auto text-[9px] font-bold px-1.5 py-0.5 rounded uppercase tracking-wider"
-              style={{ background: "#C9A84C22", color: "#C9A84C", border: "1px solid #C9A84C44" }}>
-              Soon
-            </span>
+      {!isPartner && (
+        <div className="pt-2 pb-1">
+          <div className="text-[10px] uppercase tracking-widest px-3 pb-1 font-bold" style={{ color: "#30373f" }}>
+            Coming Soon
           </div>
-        ))}
-      </div>
+          {SOON.map(({ label, icon }) => (
+            <div key={label} className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm opacity-40 cursor-not-allowed">
+              <span className="text-base leading-none">{icon}</span>
+              <span style={{ color: "#8b949e" }}>{label}</span>
+              <span className="ml-auto text-[9px] font-bold px-1.5 py-0.5 rounded uppercase tracking-wider"
+                style={{ background: "#C9A84C22", color: "#C9A84C", border: "1px solid #C9A84C44" }}>
+                Soon
+              </span>
+            </div>
+          ))}
+        </div>
+      )}
     </nav>
   );
 }
