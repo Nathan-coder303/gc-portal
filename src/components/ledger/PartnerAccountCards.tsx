@@ -248,7 +248,7 @@ function AccountCard({
       {/* Beginning balance */}
       <div>
         <div className="flex items-center justify-between mb-1">
-          <span className="text-[10px] font-medium" style={{ color: "#8b949e" }}>Beginning Balance</span>
+          <span className="text-[10px] font-medium" style={{ color: "#8b949e" }}>Beginning Balance <span style={{ color: "#6b7280" }}>as of 01/01/26</span></span>
           {isAdmin && !editingBalance && (
             <button onClick={() => { setEditingBalance(true); setBalanceInput(String(beginningBalance)); }}
               className="text-[10px] px-2 py-0.5 rounded"
