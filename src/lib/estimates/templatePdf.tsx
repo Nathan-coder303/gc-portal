@@ -437,8 +437,8 @@ function TemplatePdfDocument({ companyName, template, client, divisions, showTer
         </View>
       )}
       {/* Signature Block */}
-      <View style={styles.sigSection} minPresenceAhead={220}>
-        <View style={styles.sectionDivider} />
+      <View style={[styles.sigSection, { marginTop: 14 }]} minPresenceAhead={220}>
+        <View style={[styles.sectionDivider, { marginTop: 10 }]} />
         <Text style={[styles.sectionTitle, { marginBottom: 4 }]}>Agreement &amp; Authorization</Text>
         <Text style={{ fontSize: 8, color: "#475569", marginBottom: 4 }}>
           By signing below, both parties agree to the scope of work, pricing, and terms described in this document.
@@ -652,7 +652,7 @@ function TemplatePdfDocument({ companyName, template, client, divisions, showTer
 
       {/* Payment terms + signature: on their own page when extra page is present */}
       {includeRoofUpgradesPage && (
-        <Page size="LETTER" style={styles.page}>
+        <Page size="LETTER" style={[styles.page, { paddingTop: 20 }]}>
           {paymentTermsSignatureBlock}
           <Text style={styles.pageNumber} render={({ pageNumber, totalPages }) => `Page ${pageNumber} of ${totalPages}`} fixed />
         </Page>
