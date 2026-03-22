@@ -85,8 +85,16 @@ function ClientRow({ client, companyId, isAdmin }: { client: Client; companyId: 
     );
   }
 
+  const [hovered, setHovered] = useState(false);
+
   return (
-    <div className="rounded-xl p-4 flex items-center justify-between group transition-colors" style={{ background: "#1e2736", border: "1px solid #30373f" }}>
+    <div
+      className="rounded-xl p-4 flex items-center justify-between group transition-all cursor-pointer"
+      style={{ background: "#1e2736", border: `1px solid ${hovered ? "#C9A84C88" : "#30373f"}`, boxShadow: hovered ? "0 0 0 1px #C9A84C22" : "none" }}
+      onMouseEnter={() => setHovered(true)}
+      onMouseLeave={() => setHovered(false)}
+      onClick={() => router.push(`/${companyId}/clients/${client.id}`)}
+    >
       <div className="flex items-center gap-4 flex-1 min-w-0">
         <div className="w-10 h-10 rounded-full flex items-center justify-center shrink-0 font-bold text-sm" style={{ background: "#C9A84C1a", color: "#C9A84C" }}>
           {client.name.slice(0, 2).toUpperCase()}
@@ -99,22 +107,22 @@ function ClientRow({ client, companyId, isAdmin }: { client: Client; companyId: 
         </div>
       </div>
       <div className="flex items-center gap-3 shrink-0">
-        <Link href={`/${companyId}/clients/${client.id}`} className="text-xs px-2 py-0.5 rounded" style={{ border: "1px solid #C9A84C55", color: "#C9A84C" }}>
+        <span className="text-xs px-2 py-0.5 rounded" style={{ border: "1px solid #C9A84C55", color: "#C9A84C" }}>
           {client.estimateCount} estimate{client.estimateCount !== 1 ? "s" : ""} →
-        </Link>
+        </span>
         {isAdmin && (
           <>
-            <button onClick={() => setEditing(true)} className="w-7 h-7 rounded flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity" style={{ background: "#C9A84C22", color: "#C9A84C", border: "1px solid #C9A84C44" }} title="Edit">
+            <button onClick={e => { e.stopPropagation(); setEditing(true); }} className="w-7 h-7 rounded flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity" style={{ background: "#C9A84C22", color: "#C9A84C", border: "1px solid #C9A84C44" }} title="Edit">
               <PencilIcon size={13} />
             </button>
             {showDelete ? (
-              <div className="flex gap-1 items-center">
+              <div className="flex gap-1 items-center" onClick={e => e.stopPropagation()}>
                 <span className="text-xs" style={{ color: "#8b949e" }}>Sure?</span>
                 <button onClick={handleDelete} disabled={isPending} className="text-xs font-medium" style={{ color: "#ef4444" }}>Yes</button>
                 <button onClick={() => setShowDelete(false)} className="text-xs" style={{ color: "#8b949e" }}>No</button>
               </div>
             ) : (
-              <button onClick={() => setShowDelete(true)} className="w-7 h-7 rounded flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity" style={{ background: "#f8514922", color: "#f85149", border: "1px solid #f8514933" }} title="Delete">
+              <button onClick={e => { e.stopPropagation(); setShowDelete(true); }} className="w-7 h-7 rounded flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity" style={{ background: "#f8514922", color: "#f85149", border: "1px solid #f8514933" }} title="Delete">
                 <TrashIcon size={13} />
               </button>
             )}

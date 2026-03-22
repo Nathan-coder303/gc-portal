@@ -11,6 +11,7 @@ import DeleteEstimateButton from "@/components/clients/DeleteEstimateButton";
 import EditEstimateModal from "@/components/clients/EditEstimateModal";
 import SendEstimateEmailButton from "@/components/clients/SendEstimateEmailButton";
 import SyncLabelBidsButton from "@/components/clients/SyncLabelBidsButton";
+import ClientFilesTab from "@/components/clients/ClientFilesTab";
 
 export default async function ClientDetailPage({
   params,
@@ -97,10 +98,16 @@ export default async function ClientDetailPage({
     return n.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
   }
 
+  const clientFiles = await prisma.clientFile.findMany({
+    where: { clientId: params.clientId, companyId: params.companyId },
+    orderBy: { uploadedAt: "desc" },
+  });
+
   const tabs = [
     { key: "estimates", label: "Estimates" },
     { key: "subs-bids", label: "Subs Bids" },
     { key: "client-bid", label: "Client Bid" },
+    { key: "files", label: `Files${clientFiles.length > 0 ? ` (${clientFiles.length})` : ""}` },
   ];
 
   return (
@@ -291,6 +298,21 @@ export default async function ClientDetailPage({
 
       {activeTab === "client-bid" && (
         <ClientBidTab subBids={subBids} clientName={safeClient.name} />
+      )}
+
+      {activeTab === "files" && (
+        <ClientFilesTab
+          companyId={params.companyId}
+          clientId={params.clientId}
+          initialFiles={clientFiles.map(f => ({
+            id: f.id,
+            fileName: f.fileName,
+            fileUrl: f.fileUrl,
+            fileSize: f.fileSize,
+            mimeType: f.mimeType,
+            uploadedAt: f.uploadedAt.toISOString(),
+          }))}
+        />
       )}
     </div>
   );
