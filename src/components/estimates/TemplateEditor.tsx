@@ -29,6 +29,7 @@ import {
   updateTemplateDurationMonths,
   moveItemBetweenDivisions,
   reorderTemplateDivisions,
+  reorderTemplateItems,
   updateTemplateSummaryGroup,
   updateTemplateHasSkylights,
   updateTemplateHasRoofDrains,
@@ -161,7 +162,7 @@ function ItemRow({ item, divisionId, groupId, canEdit }: { item: Item; divisionI
   const { sqFt, durationMonths, isRoof } = useContext(TDimensionsCtx);
   const [editing, setEditing] = useState(false);
   const [isPending, startTransition] = useTransition();
-  const { attributes, listeners, setNodeRef, isDragging } = useDraggable({
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
     id: item.id,
     data: { sourceDivisionId: divisionId, itemName: item.name },
     disabled: !canEdit,
@@ -249,7 +250,7 @@ function ItemRow({ item, divisionId, groupId, canEdit }: { item: Item; divisionI
 
   if (!editing) {
     return (
-      <tr ref={setNodeRef} className="group text-sm" style={{ borderTop: "1px solid #30373f", opacity: isDragging ? 0.35 : 1 }}>
+      <tr ref={setNodeRef} className="group text-sm" style={{ borderTop: "1px solid #30373f", opacity: isDragging ? 0.35 : 1, transform: CSS.Transform.toString(transform), transition }}>
         {canEdit && (
           <td className="px-1 py-2 text-center select-none" style={{ color: "#8b949e", width: "24px", cursor: "grab", fontSize: "14px" }} {...listeners} {...attributes}>
             ⠿
@@ -385,7 +386,24 @@ function AddTemplateItemRow({ divisionId, groupId, canEdit }: { divisionId: stri
 }
 
 function TemplateItemTable({ divisionId, groupId, items, canEdit }: { divisionId: string; groupId?: string | null; items: Item[]; canEdit: boolean }) {
+  const [, startTransition] = useTransition();
+  const itemIds = items.map(i => i.id);
+
+  function handleItemDragEnd(event: DragEndEvent) {
+    const { active, over } = event;
+    if (!over || active.id === over.id) return;
+    const oldIdx = itemIds.indexOf(active.id as string);
+    const newIdx = itemIds.indexOf(over.id as string);
+    if (oldIdx < 0 || newIdx < 0) return;
+    const newOrder = arrayMove(itemIds, oldIdx, newIdx);
+    startTransition(async () => {
+      await reorderTemplateItems(groupId ?? divisionId, groupId ? "group" : "division", newOrder);
+    });
+  }
+
   return (
+    <DndContext collisionDetection={closestCenter} onDragEnd={handleItemDragEnd}>
+    <SortableContext items={itemIds} strategy={verticalListSortingStrategy}>
     <div className="overflow-x-auto">
       <table className="w-full text-sm">
         <thead>
@@ -411,6 +429,8 @@ function TemplateItemTable({ divisionId, groupId, items, canEdit }: { divisionId
         </tbody>
       </table>
     </div>
+    </SortableContext>
+    </DndContext>
   );
 }
 

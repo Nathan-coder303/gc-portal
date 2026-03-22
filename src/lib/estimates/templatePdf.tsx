@@ -405,7 +405,7 @@ function TemplatePdfDocument({ companyName, template, client, divisions, showTer
         {isRoof && (
           <View style={{ marginBottom: 10, paddingVertical: 8, paddingHorizontal: 10, borderRadius: 4, backgroundColor: "#f8fafc", borderWidth: 1, borderColor: "#e2e8f0" }}>
             {ROOF_INTRO_PARAS.map((para, i) => (
-              <Text key={i} style={{ fontSize: 7.5, color: "#334155", lineHeight: 1.55, marginBottom: i < ROOF_INTRO_PARAS.length - 1 ? 5 : 0 }}>{para}</Text>
+              <Text key={i} style={{ fontSize: 9.5, color: "#334155", lineHeight: 1.6, marginBottom: i < ROOF_INTRO_PARAS.length - 1 ? 6 : 0 }}>{para}</Text>
             ))}
           </View>
         )}
@@ -451,13 +451,8 @@ function TemplatePdfDocument({ companyName, template, client, divisions, showTer
                     </View>
 
                     {filledGroups.map((grp) => {
-                      const grpTotal = grp.items.reduce((s, i) => s + calcTotal(i.defaultQty, i.defaultUnitCost, i.defaultMarkupPct), 0);
                       return (
                         <View key={grp.id} minPresenceAhead={60}>
-                          <View style={styles.groupHeader}>
-                            <Text style={styles.groupName}>{grp.name}</Text>
-                            <Text style={styles.groupTotal}>{grpTotal > 0 ? `$${fmt(grpTotal)}` : ""}</Text>
-                          </View>
                           <ItemTableHeader showLineNum={isRoof} />
                           {grp.items.map((item, idx) => <ItemRow key={item.id} item={item} index={idx} lineNum={lineNumMap.get(item.id)} />)}
                         </View>
