@@ -64,7 +64,7 @@ export default function ClientFilesTab({
           const body = await res.json().catch(() => ({}));
           setErrors(prev => [...prev, `Failed to upload "${file.name}": ${body.error ?? res.statusText}`]);
         }
-      } catch (e) {
+      } catch {
         setErrors(prev => [...prev, `Failed to upload "${file.name}": network error`]);
       } finally {
         setUploading(prev => prev.filter(n => n !== file.name));
