@@ -73,7 +73,7 @@ function groupTotal(items: Item[]): number {
   return items.reduce((s, i) => s + itemTotal(i), 0);
 }
 
-const UNITS = ["LS", "EA", "SF", "LF", "SY", "CY", "CF", "SQ", "MO", "HR", "DAY", "TN", "GAL"];
+const UNITS = ["_", "LS", "EA", "SF", "LF", "SY", "CY", "CF", "SQ", "MO", "HR", "DAY", "TN", "GAL"];
 const DETAIL_OPTIONS = ["Included", "Excluded", "TBD", "By Owner", "Allowances"];
 
 // ─── Summary groupings (super-divisions) ──────────────────────────────────────
@@ -184,6 +184,14 @@ function ItemRow({ item, divisionId, groupId, canEdit }: { item: Item; divisionI
     visibleInPdf: item.visibleInPdf,
   });
 
+  // Sync defaultQty when sqFt changes for roof SQ items
+  useEffect(() => {
+    if (isRoof && isSfUnitT(form.unit) && sqFt && sqFt > 0) {
+      const corrected = String(Math.ceil(sqFt / 100));
+      setForm(prev => ({ ...prev, defaultQty: corrected }));
+    }
+  }, [sqFt, isRoof]); // eslint-disable-line react-hooks/exhaustive-deps
+
   function autoQtyT(name: string, unit: string, currentQty: string): string {
     if (isSfUnitT(unit) && sqFt && sqFt > 0) {
       return String(isRoof ? Math.ceil(sqFt / 100) : sqFt);
@@ -227,7 +235,7 @@ function ItemRow({ item, divisionId, groupId, canEdit }: { item: Item; divisionI
       form.csiCode !== (item.csiCode ?? "") ||
       form.detail !== (item.detail ?? "") ||
       form.unit !== (item.unit ?? "") ||
-      form.defaultQty !== (item.defaultQty?.toString() ?? "") ||
+      form.defaultQty !== roofSqQty() ||
       form.defaultUnitCost !== (item.defaultUnitCost?.toString() ?? "") ||
       form.defaultMarkupPct !== (item.defaultMarkupPct?.toString() ?? "") ||
       form.notes !== (item.notes ?? "") ||
@@ -250,7 +258,7 @@ function ItemRow({ item, divisionId, groupId, canEdit }: { item: Item; divisionI
         <td className="px-3 py-2 text-xs font-mono" style={{ color: "#8b949e", whiteSpace: "nowrap" }}>{item.csiCode ?? ""}</td>
         <td className="px-3 py-2" style={{ color: "#e6edf3" }}>{item.name}</td>
         <td className="px-3 py-2 text-xs" style={{ color: item.detail === "Allowances" ? "#C9A84C" : item.detail === "Excluded" ? "#ef4444" : "#8b949e" }}>{item.detail ?? "—"}</td>
-        <td className="px-3 py-2 text-right" style={{ color: "#8b949e" }}>{item.defaultQty ?? "—"}</td>
+        <td className="px-3 py-2 text-right" style={{ color: "#8b949e" }}>{roofSqQty() || "—"}</td>
         <td className="px-3 py-2 text-center" style={{ color: "#8b949e" }}>{item.unit ?? "—"}</td>
         <td className="px-3 py-2 text-right" style={{ color: "#8b949e" }}>{item.defaultUnitCost != null ? `$${fmt(item.defaultUnitCost)}` : "—"}</td>
         <td className="px-3 py-2 text-right" style={{ color: "#8b949e" }}>{item.defaultMarkupPct != null ? `${item.defaultMarkupPct}%` : "—"}</td>
