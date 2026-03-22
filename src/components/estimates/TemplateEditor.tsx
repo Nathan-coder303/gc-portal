@@ -30,6 +30,8 @@ import {
   moveItemBetweenDivisions,
   reorderTemplateDivisions,
   updateTemplateSummaryGroup,
+  updateTemplateHasSkylights,
+  updateTemplateHasRoofDrains,
   type SummaryGroupData,
 } from "@/app/[companyId]/estimates/actions";
 
@@ -50,7 +52,7 @@ type Item = {
 type Group = { id: string; name: string; items: Item[] };
 type Division = { id: string; csiCode: string | null; name: string; groups: Group[]; items: Item[] };
 type PaymentRow = { payment: string; trigger: string; pct: number };
-type Template = { id: string; name: string; description: string | null; companyId: string; estimateNumber: string | null; estimateDate: string | null; paymentSchedule: PaymentRow[] | null; showTerms: boolean; termsContent: string | null; type: string; gcFeePercent: number | null; sqFt: number | null; durationMonths: number | null };
+type Template = { id: string; name: string; description: string | null; companyId: string; estimateNumber: string | null; estimateDate: string | null; paymentSchedule: PaymentRow[] | null; showTerms: boolean; termsContent: string | null; type: string; gcFeePercent: number | null; sqFt: number | null; durationMonths: number | null; hasSkylights: boolean | null; hasRoofDrains: boolean | null };
 
 const INPUT = "rounded px-2 py-1 text-xs" as const;
 const inputStyle = { background: "#0d1117", border: "1px solid #30373f", color: "#e6edf3" };
@@ -100,7 +102,7 @@ function isSfUnitT(u: string) { return SF_UNITS_T.has(u.toUpperCase().trim()); }
 function isDurationUnitT(u: string) { return u.toUpperCase().trim() === "MO"; }
 function isDurationNameT(name: string) { const n = name.toLowerCase(); return DURATION_KW_T.some(k => n.includes(k)); }
 
-const TDimensionsCtx = createContext<{ sqFt: number | null; durationMonths: number | null }>({ sqFt: null, durationMonths: null });
+const TDimensionsCtx = createContext<{ sqFt: number | null; durationMonths: number | null; isRoof: boolean }>({ sqFt: null, durationMonths: null, isRoof: false });
 
 function DetailSelect({ value, onChange }: { value: string; onChange: (v: string) => void }) {
   const [custom, setCustom] = useState(!!value && !DETAIL_OPTIONS.includes(value));
@@ -156,7 +158,7 @@ function grandTotal(divisions: Division[]): number {
 }
 
 function ItemRow({ item, divisionId, groupId, canEdit }: { item: Item; divisionId: string; groupId?: string | null; canEdit: boolean }) {
-  const { sqFt, durationMonths } = useContext(TDimensionsCtx);
+  const { sqFt, durationMonths, isRoof } = useContext(TDimensionsCtx);
   const [editing, setEditing] = useState(false);
   const [isPending, startTransition] = useTransition();
   const { attributes, listeners, setNodeRef, isDragging } = useDraggable({
@@ -177,7 +179,9 @@ function ItemRow({ item, divisionId, groupId, canEdit }: { item: Item; divisionI
   });
 
   function autoQtyT(name: string, unit: string, currentQty: string): string {
-    if (isSfUnitT(unit) && sqFt && sqFt > 0) return String(sqFt);
+    if (isSfUnitT(unit) && sqFt && sqFt > 0) {
+      return String(isRoof ? Math.ceil(sqFt / 100) : sqFt);
+    }
     if ((isDurationUnitT(unit) || isDurationNameT(name)) && durationMonths && durationMonths > 0) return String(durationMonths);
     return currentQty;
   }
@@ -292,13 +296,15 @@ function ItemRow({ item, divisionId, groupId, canEdit }: { item: Item; divisionI
 }
 
 function AddTemplateItemRow({ divisionId, groupId, canEdit }: { divisionId: string; groupId?: string | null; canEdit: boolean }) {
-  const { sqFt, durationMonths } = useContext(TDimensionsCtx);
+  const { sqFt, durationMonths, isRoof } = useContext(TDimensionsCtx);
   const [open, setOpen] = useState(false);
   const [isPending, startTransition] = useTransition();
   const [form, setForm] = useState({ name: "", csiCode: "", detail: "", unit: "", defaultQty: "", defaultUnitCost: "", defaultMarkupPct: "", notes: "", visibleInPdf: true });
 
   function autoQtyT(name: string, unit: string, currentQty: string): string {
-    if (isSfUnitT(unit) && sqFt && sqFt > 0) return String(sqFt);
+    if (isSfUnitT(unit) && sqFt && sqFt > 0) {
+      return String(isRoof ? Math.ceil(sqFt / 100) : sqFt);
+    }
     if ((isDurationUnitT(unit) || isDurationNameT(name)) && durationMonths && durationMonths > 0) return String(durationMonths);
     return currentQty;
   }
@@ -962,6 +968,9 @@ export default function TemplateEditor({
   const total = subtotal + gcFeeAmount;
   const [sqFt, setSqFt] = useState<number | "">(template.sqFt ?? "");
   const [durationMonths, setDurationMonths] = useState<number | "">(template.durationMonths ?? "");
+  const isRoofTemplate = template.name.toLowerCase().includes("roof");
+  const [hasSkylights, setHasSkylights] = useState<boolean>(template.hasSkylights ?? true);
+  const [hasRoofDrains, setHasRoofDrains] = useState<boolean>(template.hasRoofDrains ?? true);
   const [summaryGroups, setSummaryGroups] = useState<Record<string, SummaryGroupData>>(initialSummaryGroups ?? {});
   const [editingSummaryGroup, setEditingSummaryGroup] = useState<string | null>(null);
   const [sgForm, setSgForm] = useState<SummaryGroupData>({ qty: null, unit: null, unitCost: null, markupPct: null, manualTotal: null });
@@ -1060,7 +1069,7 @@ export default function TemplateEditor({
   }
 
   return (
-    <TDimensionsCtx.Provider value={{ sqFt: typeof sqFt === "number" ? sqFt : null, durationMonths: typeof durationMonths === "number" ? durationMonths : null }}>
+    <TDimensionsCtx.Provider value={{ sqFt: typeof sqFt === "number" ? sqFt : null, durationMonths: typeof durationMonths === "number" ? durationMonths : null, isRoof: isRoofTemplate }}>
     <DndContext collisionDetection={closestCenter} onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
     <div className="space-y-4">
       {/* Header card */}
@@ -1220,7 +1229,9 @@ export default function TemplateEditor({
                   <div className="rounded-xl px-4 py-3 flex items-center justify-between gap-3" style={{ background: "#0d1117", border: "1px solid #30373f" }}>
                     <div>
                       <div className="text-xs font-medium" style={{ color: "#e6edf3" }}>Sq Ft</div>
-                      <div className="text-[10px] mt-0.5" style={{ color: "#484f58" }}>Updates SF unit items</div>
+                      <div className="text-[10px] mt-0.5" style={{ color: "#484f58" }}>
+                        {isRoofTemplate ? "Rounds up to next 100 ÷ 100 = SQ qty" : "Updates SF unit items"}
+                      </div>
                     </div>
                     <input
                       type="number"
@@ -1237,27 +1248,61 @@ export default function TemplateEditor({
                       style={{ background: "#161b22", border: "1px solid #30373f", color: "#C9A84C" }}
                     />
                   </div>
-                  {/* Duration card */}
-                  <div className="rounded-xl px-4 py-3 flex items-center justify-between gap-3" style={{ background: "#0d1117", border: "1px solid #30373f" }}>
-                    <div>
-                      <div className="text-xs font-medium" style={{ color: "#e6edf3" }}>Duration (months)</div>
-                      <div className="text-[10px] mt-0.5" style={{ color: "#484f58" }}>Updates mgmt, labor, potty, tools</div>
+                  {/* Duration card (non-roof) / Roof Options (roof) */}
+                  {isRoofTemplate ? (
+                    <div className="rounded-xl px-4 py-3 space-y-2" style={{ background: "#0d1117", border: "1px solid #30373f" }}>
+                      <div className="text-xs font-medium mb-1" style={{ color: "#e6edf3" }}>Roof Options</div>
+                      <label className="flex items-center justify-between gap-3 cursor-pointer">
+                        <span className="text-xs" style={{ color: "#8b949e" }}>Skylights</span>
+                        <button
+                          onClick={() => {
+                            const next = !hasSkylights;
+                            setHasSkylights(next);
+                            startTransition(async () => { await updateTemplateHasSkylights(template.id, next); });
+                          }}
+                          className="text-xs px-3 py-0.5 rounded-full font-semibold"
+                          style={{ background: hasSkylights ? "#0d2318" : "#1e2736", color: hasSkylights ? "#22c55e" : "#8b949e", border: `1px solid ${hasSkylights ? "#22c55e" : "#30373f"}` }}
+                        >
+                          {hasSkylights ? "Yes" : "No"}
+                        </button>
+                      </label>
+                      <label className="flex items-center justify-between gap-3 cursor-pointer">
+                        <span className="text-xs" style={{ color: "#8b949e" }}>Roof Drains</span>
+                        <button
+                          onClick={() => {
+                            const next = !hasRoofDrains;
+                            setHasRoofDrains(next);
+                            startTransition(async () => { await updateTemplateHasRoofDrains(template.id, next); });
+                          }}
+                          className="text-xs px-3 py-0.5 rounded-full font-semibold"
+                          style={{ background: hasRoofDrains ? "#0d2318" : "#1e2736", color: hasRoofDrains ? "#22c55e" : "#8b949e", border: `1px solid ${hasRoofDrains ? "#22c55e" : "#30373f"}` }}
+                        >
+                          {hasRoofDrains ? "Yes" : "No"}
+                        </button>
+                      </label>
                     </div>
-                    <input
-                      type="number"
-                      min="0"
-                      step="0.5"
-                      value={durationMonths}
-                      onChange={e => setDurationMonths(e.target.value === "" ? "" : Number(e.target.value))}
-                      onBlur={() => {
-                        const val = durationMonths === "" ? null : Number(durationMonths);
-                        startTransition(async () => { await updateTemplateDurationMonths(template.id, val); });
-                      }}
-                      placeholder="0"
-                      className="rounded px-2 py-1 text-xs text-right w-20"
-                      style={{ background: "#161b22", border: "1px solid #30373f", color: "#C9A84C" }}
-                    />
-                  </div>
+                  ) : (
+                    <div className="rounded-xl px-4 py-3 flex items-center justify-between gap-3" style={{ background: "#0d1117", border: "1px solid #30373f" }}>
+                      <div>
+                        <div className="text-xs font-medium" style={{ color: "#e6edf3" }}>Duration (months)</div>
+                        <div className="text-[10px] mt-0.5" style={{ color: "#484f58" }}>Updates mgmt, labor, potty, tools</div>
+                      </div>
+                      <input
+                        type="number"
+                        min="0"
+                        step="0.5"
+                        value={durationMonths}
+                        onChange={e => setDurationMonths(e.target.value === "" ? "" : Number(e.target.value))}
+                        onBlur={() => {
+                          const val = durationMonths === "" ? null : Number(durationMonths);
+                          startTransition(async () => { await updateTemplateDurationMonths(template.id, val); });
+                        }}
+                        placeholder="0"
+                        className="rounded px-2 py-1 text-xs text-right w-20"
+                        style={{ background: "#161b22", border: "1px solid #30373f", color: "#C9A84C" }}
+                      />
+                    </div>
+                  )}
                 </div>
                 {/* Payment Schedule card */}
                 <div className="min-w-[280px] max-w-[380px]">
@@ -1352,7 +1397,13 @@ export default function TemplateEditor({
 
       {/* Divisions — grouped into super-sections (e.g. SHELL) */}
       <div className="space-y-3">
-        {groupDivisionsT(divisions).map(({ groupLabel, divs }, gi) => {
+        {groupDivisionsT(divisions.filter(d => {
+          if (!isRoofTemplate) return true;
+          const n = d.name.toLowerCase();
+          if (n.includes("skylight") && !hasSkylights) return false;
+          if ((n.includes("drain") || n.includes("roof drain")) && !hasRoofDrains) return false;
+          return true;
+        })).map(({ groupLabel, divs }, gi) => {
           const rawTotal = divs.reduce((s, d) => s + divisionTotal(d), 0);
           const sg = groupLabel ? summaryGroups[groupLabel] : undefined;
           let overrideTotal: number | null = null;

@@ -87,14 +87,17 @@ export async function PATCH(req: NextRequest) {
     const clientLabel = template.client?.name ?? "Unknown client";
     const portalUrl = `https://portal.mibhconstruction.com/${template.companyId}/clients`;
 
-    const notifSubject = `Estimate Signed: ${estimateLabel} by ${clientLabel}`;
+    const countersignUrl = `https://portal.mibhconstruction.com/countersign/${token}`;
+    const notifSubject = `✍️ Action Required: Countersign estimate for ${clientLabel}`;
     const notifBody = [
-      `Your estimate has been signed!`,
+      `${clientLabel} has signed the estimate. Your countersignature is required.`,
       ``,
       `Estimate: ${estimateLabel}`,
       `Client: ${clientLabel}`,
       `Signed by: ${signedByName}`,
       `Signed at: ${signedTime}`,
+      ``,
+      `👉 Click here to countersign: ${countersignUrl}`,
       ``,
       `View in portal: ${portalUrl}`,
     ].join("\n");

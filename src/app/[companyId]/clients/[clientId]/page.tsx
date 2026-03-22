@@ -209,7 +209,18 @@ export default async function ClientDetailPage({
                       )}
                     </Link>
                     <div className="flex items-center gap-3 shrink-0">
-                      {est.signedAt && (
+                      {est.counterSignedAt ? (
+                        <a
+                          href={`/api/${params.companyId}/estimates/${est.id}/pdf?countersigned=1`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-xs px-2 py-0.5 rounded-full font-semibold"
+                          style={{ background: "#0d2318", color: "#22c55e", border: "1px solid #22c55e", textDecoration: "none" }}
+                          title={`Countersigned on ${format(est.counterSignedAt, "MMM d, yyyy")}`}
+                        >
+                          ✓ Countersigned
+                        </a>
+                      ) : est.signedAt && (
                         <span
                           className="text-xs px-2 py-0.5 rounded-full font-semibold"
                           style={{ background: "#0d2318", color: "#22c55e", border: "1px solid #22c55e" }}
@@ -243,6 +254,8 @@ export default async function ClientDetailPage({
                           initialEstimateDate={est.estimateDate ?? null}
                           initialSqFt={est.sqFt ? Number(est.sqFt) : null}
                           initialDurationMonths={est.durationMonths ? Number(est.durationMonths) : null}
+                          initialHasSkylights={est.hasSkylights}
+                          initialHasRoofDrains={est.hasRoofDrains}
                         />
                       )}
                       {canDelete && (

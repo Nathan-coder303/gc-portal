@@ -23,6 +23,8 @@ export async function GET(
   if (!can(session.user.role, "estimate:read"))
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
+  const countersigned = req.nextUrl.searchParams.get("countersigned") === "1";
+
   const [template, company] = await Promise.all([
     prisma.estimateTemplate.findFirst({
       where: { id: params.templateId, companyId: params.companyId, archivedAt: null },
@@ -89,11 +91,19 @@ export async function GET(
     paymentSchedule: (template.paymentSchedule as { payment: string; trigger: string; pct: number }[] | null) ?? DEFAULT_PAYMENT_SCHEDULE,
     gcFeePercent: template.gcFeePercent ? Number(template.gcFeePercent) : null,
     summaryGroups: (template.summaryGroups as Record<string, { qty: number | null; unit: string | null; unitCost: number | null; markupPct: number | null; manualTotal: number | null }> | null) ?? null,
+    ...(countersigned && {
+      clientSignatureData: template.signatureData ?? null,
+      clientSignedByName: template.signedByName ?? null,
+      clientSignedAt: template.signedAt ?? null,
+      contractorSignatureData: template.counterSignatureData ?? null,
+      contractorSignedAt: template.counterSignedAt ?? null,
+    }),
+    includeRoofUpgradesPage: template.name.toLowerCase().includes("roof"),
   });
 
   const clientSlug = template.client ? `-for-${template.client.name.replace(/[^a-z0-9]/gi, "-")}` : "";
   const estimateSlug = template.estimateNumber ? `Estimate-${template.estimateNumber}` : template.name.replace(/[^a-z0-9]/gi, "-");
-  const filename = `${estimateSlug}${clientSlug}.pdf`;
+  const filename = `${estimateSlug}${clientSlug}${countersigned ? "-countersigned" : ""}.pdf`;
 
   return new Response(buffer as unknown as BodyInit, {
     status: 200,

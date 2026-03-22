@@ -125,11 +125,13 @@ export async function updateClientEstimate(
   estimateId: string,
   clientId: string,
   companyId: string,
-  data: { name: string; description?: string | null; estimateNumber?: string | null; estimateDate?: string | null; sqFt?: number | null; durationMonths?: number | null }
+  data: { name: string; description?: string | null; estimateNumber?: string | null; estimateDate?: string | null; sqFt?: number | null; durationMonths?: number | null; hasSkylights?: boolean | null; hasRoofDrains?: boolean | null }
 ) {
   const session = await auth();
   if (!session) throw new Error("Unauthorized");
   if (!can(session.user.role, "estimateTemplate:edit")) throw new Error("Forbidden");
+
+  const isRoof = data.name.toLowerCase().includes("roof");
 
   await prisma.estimateTemplate.update({
     where: { id: estimateId },
@@ -139,7 +141,9 @@ export async function updateClientEstimate(
       estimateNumber: data.estimateNumber?.trim() || null,
       estimateDate: data.estimateDate?.trim() || null,
       sqFt: data.sqFt ?? null,
-      durationMonths: data.durationMonths ?? null,
+      durationMonths: isRoof ? null : (data.durationMonths ?? null),
+      ...(data.hasSkylights != null && { hasSkylights: data.hasSkylights }),
+      ...(data.hasRoofDrains != null && { hasRoofDrains: data.hasRoofDrains }),
       updatedBy: session.user.id,
     },
   });
@@ -151,11 +155,12 @@ export async function updateClientEstimate(
   });
 
   if (data.sqFt && data.sqFt > 0) {
-    const sfIds = allItems.filter(i => i.unit && /^(SF|sq\.?\s*ft\.?|square\s*feet?)$/i.test(i.unit)).map(i => i.id);
-    if (sfIds.length > 0) await prisma.estimateTemplateItem.updateMany({ where: { id: { in: sfIds } }, data: { defaultQty: data.sqFt } });
+    const effectiveQty = isRoof ? Math.ceil(data.sqFt / 100) : data.sqFt;
+    const sfIds = allItems.filter(i => i.unit && /^(SF|SQ|sq\.?\s*ft\.?|square\s*feet?)$/i.test(i.unit)).map(i => i.id);
+    if (sfIds.length > 0) await prisma.estimateTemplateItem.updateMany({ where: { id: { in: sfIds } }, data: { defaultQty: effectiveQty } });
   }
 
-  if (data.durationMonths && data.durationMonths > 0) {
+  if (!isRoof && data.durationMonths && data.durationMonths > 0) {
     const durIds = allItems.filter(i => i.unit && /^(MO|month|months?)$/i.test(i.unit) || /month|potty|trailer|mgmt|management/i.test(i.name ?? "")).map(i => i.id);
     if (durIds.length > 0) await prisma.estimateTemplateItem.updateMany({ where: { id: { in: durIds } }, data: { defaultQty: data.durationMonths } });
   }

@@ -172,6 +172,7 @@ export async function POST(
         string,
         { qty: number | null; unit: string | null; unitCost: number | null; markupPct: number | null; manualTotal: number | null }
       > | null) ?? null,
+    includeRoofUpgradesPage: template.name.toLowerCase().includes("roof"),
   });
 
   // Generate (or reuse) a signature token for this estimate

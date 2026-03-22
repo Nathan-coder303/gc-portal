@@ -155,6 +155,12 @@ type TemplatePdfProps = {
   paymentSchedule?: PaymentRow[] | null;
   gcFeePercent?: number | null;
   summaryGroups?: Record<string, SummaryGroupOverride> | null;
+  clientSignatureData?: string | null;
+  clientSignedByName?: string | null;
+  clientSignedAt?: Date | null;
+  contractorSignatureData?: string | null;
+  contractorSignedAt?: Date | null;
+  includeRoofUpgradesPage?: boolean;
 };
 
 function ItemTableHeader() {
@@ -200,7 +206,7 @@ function ItemRow({ item, index }: { item: Item; index: number }) {
   );
 }
 
-function TemplatePdfDocument({ companyName, template, client, divisions, showTerms, termsContent, paymentSchedule, gcFeePercent, summaryGroups }: TemplatePdfProps) {
+function TemplatePdfDocument({ companyName, template, client, divisions, showTerms, termsContent, paymentSchedule, gcFeePercent, summaryGroups, clientSignatureData, clientSignedByName, clientSignedAt, contractorSignatureData, contractorSignedAt, includeRoofUpgradesPage }: TemplatePdfProps) {
   const grouped = groupDivisions(divisions);
 
   // Compute raw totals per group label (or null for ungrouped)
@@ -238,6 +244,92 @@ function TemplatePdfDocument({ companyName, template, client, divisions, showTer
   const grandTotalWithGc = grandTotal + gcFeeAmount;
 
   const dateDisplay = fmtDate(template.estimateDate);
+  const roofUpgradesPath = path.join(process.cwd(), "public", "roof-upgrades-page.png");
+
+  const paymentTermsSignatureBlock = (
+    <>
+      {/* Payment Schedule */}
+      {(paymentSchedule ?? []).length > 0 && (
+        <View style={{ marginTop: 16 }} minPresenceAhead={100}>
+          <Text style={styles.sectionTitle}>Payment Schedule</Text>
+          <View style={styles.payTable}>
+            <View style={styles.payHeaderRow}>
+              <Text style={[{ fontSize: 7, fontFamily: "Helvetica-Bold", color: GOLD, textTransform: "uppercase" }, styles.payColPayment]}>Payment</Text>
+              <Text style={[{ fontSize: 7, fontFamily: "Helvetica-Bold", color: GOLD, textTransform: "uppercase" }, styles.payColTrigger]}>Trigger / Milestone</Text>
+              <Text style={[{ fontSize: 7, fontFamily: "Helvetica-Bold", color: GOLD, textTransform: "uppercase", textAlign: "right" }, styles.payColPct]}>%</Text>
+            </View>
+            {(paymentSchedule ?? []).map((row, idx) => (
+              <View key={idx} style={idx % 2 === 0 ? styles.payRow : styles.payRowAlt}>
+                <Text style={[{ color: "#0f172a", fontFamily: "Helvetica-Bold" }, styles.payColPayment]}>{row.payment}</Text>
+                <Text style={[{ color: "#475569" }, styles.payColTrigger]}>{row.trigger}</Text>
+                <Text style={[{ color: GOLD, fontFamily: "Helvetica-Bold", textAlign: "right" }, styles.payColPct]}>{row.pct}%</Text>
+              </View>
+            ))}
+          </View>
+        </View>
+      )}
+      {/* T&C */}
+      {(showTerms || !!termsContent) && (
+        <View minPresenceAhead={80}>
+          <View style={styles.sectionDivider} />
+          <Text style={styles.sectionTitle}>Terms &amp; Conditions</Text>
+          {termsContent
+            ? termsContent.split(/\r?\n\r?\n|\r?\n(?=\d+[\.\)]?\s)/).filter(Boolean).map((para, i) => (
+                <Text key={i} style={[styles.termsText, { marginBottom: 6 }]}>{para.trim()}</Text>
+              ))
+            : null}
+        </View>
+      )}
+      {/* Signature Block */}
+      <View style={styles.sigSection} minPresenceAhead={220}>
+        <View style={styles.sectionDivider} />
+        <Text style={[styles.sectionTitle, { marginBottom: 4 }]}>Agreement &amp; Authorization</Text>
+        <Text style={{ fontSize: 8, color: "#475569", marginBottom: 4 }}>
+          By signing below, both parties agree to the scope of work, pricing, and terms described in this document.
+        </Text>
+        <View style={styles.sigRow}>
+          {/* Customer */}
+          <View style={styles.sigBlock}>
+            <Text style={styles.sigPartyLabel}>Customer</Text>
+            {clientSignatureData
+              ? <Image src={clientSignatureData} style={{ height: 40, marginBottom: 3, objectFit: "contain", objectPositionX: 0 }} />
+              : <View style={[styles.sigLine, { marginBottom: 3, height: 40 }]} />}
+            <Text style={styles.sigLineLabel}>Signature</Text>
+            <View style={{ height: 10 }} />
+            <View style={styles.sigLine} />
+            {clientSignedByName
+              ? <Text style={styles.sigPrefilled}>{clientSignedByName}</Text>
+              : <View style={{ height: 12 }} />}
+            <Text style={styles.sigLineLabel}>Name (Print)</Text>
+            <View style={{ height: 10 }} />
+            <View style={styles.sigLine} />
+            {clientSignedAt
+              ? <Text style={styles.sigPrefilled}>{clientSignedAt.toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" })}</Text>
+              : <View style={{ height: 12 }} />}
+            <Text style={styles.sigLineLabel}>Date</Text>
+          </View>
+          {/* Contractor */}
+          <View style={styles.sigBlock}>
+            <Text style={styles.sigPartyLabel}>Contractor</Text>
+            {contractorSignatureData
+              ? <Image src={contractorSignatureData} style={{ height: 40, marginBottom: 3, objectFit: "contain", objectPositionX: 0 }} />
+              : <View style={[styles.sigLine, { marginBottom: 3, height: 40 }]} />}
+            <Text style={styles.sigLineLabel}>Signature</Text>
+            <View style={{ height: 10 }} />
+            <View style={styles.sigLine} />
+            <Text style={styles.sigPrefilled}>Mike Baruh</Text>
+            <Text style={styles.sigLineLabel}>Name (Print)</Text>
+            <View style={{ height: 10 }} />
+            <View style={styles.sigLine} />
+            {contractorSignedAt
+              ? <Text style={styles.sigPrefilled}>{contractorSignedAt.toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" })}</Text>
+              : <View style={{ height: 12 }} />}
+            <Text style={styles.sigLineLabel}>Date</Text>
+          </View>
+        </View>
+      </View>
+    </>
+  );
 
   return (
     <Document title={`${template.name} — Estimate`} author={companyName}>
@@ -375,78 +467,28 @@ function TemplatePdfDocument({ companyName, template, client, divisions, showTer
           <Text style={GRAND_TOTAL_VALUE_STYLE}>${fmt(grandTotalWithGc)}</Text>
         </View>
 
-        {/* Payment Schedule — flows right after estimate total */}
-        {(paymentSchedule ?? []).length > 0 && (
-          <View style={{ marginTop: 16 }} minPresenceAhead={100}>
-            <Text style={styles.sectionTitle}>Payment Schedule</Text>
-            <View style={styles.payTable}>
-              <View style={styles.payHeaderRow}>
-                <Text style={[{ fontSize: 7, fontFamily: "Helvetica-Bold", color: GOLD, textTransform: "uppercase" }, styles.payColPayment]}>Payment</Text>
-                <Text style={[{ fontSize: 7, fontFamily: "Helvetica-Bold", color: GOLD, textTransform: "uppercase" }, styles.payColTrigger]}>Trigger / Milestone</Text>
-                <Text style={[{ fontSize: 7, fontFamily: "Helvetica-Bold", color: GOLD, textTransform: "uppercase", textAlign: "right" }, styles.payColPct]}>%</Text>
-              </View>
-              {(paymentSchedule ?? []).map((row, idx) => (
-                <View key={idx} style={idx % 2 === 0 ? styles.payRow : styles.payRowAlt}>
-                  <Text style={[{ color: "#0f172a", fontFamily: "Helvetica-Bold" }, styles.payColPayment]}>{row.payment}</Text>
-                  <Text style={[{ color: "#475569" }, styles.payColTrigger]}>{row.trigger}</Text>
-                  <Text style={[{ color: GOLD, fontFamily: "Helvetica-Bold", textAlign: "right" }, styles.payColPct]}>{row.pct}%</Text>
-                </View>
-              ))}
-            </View>
-          </View>
-        )}
-
-        {/* T&C — flows after payment schedule, breaks to new page if needed */}
-        {(showTerms || !!termsContent) && (
-          <View minPresenceAhead={80}>
-            <View style={styles.sectionDivider} />
-            <Text style={styles.sectionTitle}>Terms &amp; Conditions</Text>
-            {termsContent
-              ? termsContent.split(/\r?\n\r?\n|\r?\n(?=\d+[\.\)]?\s)/).filter(Boolean).map((para, i) => (
-                  <Text key={i} style={[styles.termsText, { marginBottom: 6 }]}>{para.trim()}</Text>
-                ))
-              : null}
-          </View>
-        )}
-
-        {/* Signature Block — break to new page if less than 220pt remain */}
-        <View style={styles.sigSection} minPresenceAhead={220}>
-          <View style={styles.sectionDivider} />
-          <Text style={[styles.sectionTitle, { marginBottom: 4 }]}>Agreement &amp; Authorization</Text>
-          <Text style={{ fontSize: 8, color: "#475569", marginBottom: 4 }}>
-            By signing below, both parties agree to the scope of work, pricing, and terms described in this document.
-          </Text>
-          <View style={styles.sigRow}>
-            {/* Customer */}
-            <View style={styles.sigBlock}>
-              <Text style={styles.sigPartyLabel}>Customer</Text>
-              <View style={[styles.sigLine, { marginBottom: 3, height: 20 }]} />
-              <Text style={styles.sigLineLabel}>Signature</Text>
-              <View style={{ height: 14 }} />
-              <View style={styles.sigLine} />
-              <Text style={styles.sigLineLabel}>Name (Print)</Text>
-              <View style={{ height: 14 }} />
-              <View style={styles.sigLine} />
-              <Text style={styles.sigLineLabel}>Date</Text>
-            </View>
-            {/* Contractor */}
-            <View style={styles.sigBlock}>
-              <Text style={styles.sigPartyLabel}>Contractor</Text>
-              <View style={[styles.sigLine, { marginBottom: 3, height: 20 }]} />
-              <Text style={styles.sigLineLabel}>Signature</Text>
-              <View style={{ height: 14 }} />
-              <View style={styles.sigLine} />
-              <Text style={styles.sigPrefilled}>Mike Baruh</Text>
-              <Text style={styles.sigLineLabel}>Name (Print)</Text>
-              <View style={{ height: 14 }} />
-              <View style={styles.sigLine} />
-              <Text style={styles.sigLineLabel}>Date</Text>
-            </View>
-          </View>
-        </View>
+        {/* Payment terms + signature: inline when no extra page */}
+        {!includeRoofUpgradesPage && paymentTermsSignatureBlock}
 
         <Text style={styles.pageNumber} render={({ pageNumber, totalPages }) => `Page ${pageNumber} of ${totalPages}`} fixed />
       </Page>
+
+      {/* Roof Upgrades extra page — full bleed image */}
+      {includeRoofUpgradesPage && (
+        <Page size="LETTER" style={{ padding: 0, margin: 0 }}>
+          {/* eslint-disable-next-line jsx-a11y/alt-text */}
+          <Image src={roofUpgradesPath} style={{ width: "100%", height: "100%", objectFit: "contain" }} />
+          <Text style={styles.pageNumber} render={({ pageNumber, totalPages }) => `Page ${pageNumber} of ${totalPages}`} fixed />
+        </Page>
+      )}
+
+      {/* Payment terms + signature: on their own page when extra page is present */}
+      {includeRoofUpgradesPage && (
+        <Page size="LETTER" style={styles.page}>
+          {paymentTermsSignatureBlock}
+          <Text style={styles.pageNumber} render={({ pageNumber, totalPages }) => `Page ${pageNumber} of ${totalPages}`} fixed />
+        </Page>
+      )}
     </Document>
   );
 }

@@ -13,6 +13,8 @@ export default function EditEstimateModal({
   initialEstimateDate,
   initialSqFt,
   initialDurationMonths,
+  initialHasSkylights,
+  initialHasRoofDrains,
 }: {
   estimateId: string;
   clientId: string;
@@ -23,16 +25,22 @@ export default function EditEstimateModal({
   initialEstimateDate: string | null;
   initialSqFt: number | null;
   initialDurationMonths: number | null;
+  initialHasSkylights: boolean | null;
+  initialHasRoofDrains: boolean | null;
 }) {
   const [open, setOpen] = useState(false);
   const [name, setName] = useState(initialName);
   const [description, setDescription] = useState(initialDescription ?? "");
   const [estimateNumber, setEstimateNumber] = useState(initialEstimateNumber ?? "");
-  const todayIso = new Date().toLocaleDateString("en-CA"); // "YYYY-MM-DD"
+  const todayIso = new Date().toLocaleDateString("en-CA");
   const [estimateDate, setEstimateDate] = useState(initialEstimateDate ?? todayIso);
   const [sqFt, setSqFt] = useState(initialSqFt?.toString() ?? "");
   const [durationMonths, setDurationMonths] = useState(initialDurationMonths?.toString() ?? "");
+  const [hasSkylights, setHasSkylights] = useState<boolean>(initialHasSkylights ?? true);
+  const [hasRoofDrains, setHasRoofDrains] = useState<boolean>(initialHasRoofDrains ?? true);
   const [isPending, startTransition] = useTransition();
+
+  const isRoof = name.toLowerCase().includes("roof");
 
   function handleOpen() {
     setName(initialName);
@@ -41,6 +49,8 @@ export default function EditEstimateModal({
     setEstimateDate(initialEstimateDate ?? "");
     setSqFt(initialSqFt?.toString() ?? "");
     setDurationMonths(initialDurationMonths?.toString() ?? "");
+    setHasSkylights(initialHasSkylights ?? true);
+    setHasRoofDrains(initialHasRoofDrains ?? true);
     setOpen(true);
   }
 
@@ -53,7 +63,9 @@ export default function EditEstimateModal({
         estimateNumber: estimateNumber || null,
         estimateDate: estimateDate || null,
         sqFt: sqFt ? Number(sqFt) : null,
-        durationMonths: durationMonths ? Number(durationMonths) : null,
+        durationMonths: isRoof ? null : (durationMonths ? Number(durationMonths) : null),
+        hasSkylights: isRoof ? hasSkylights : null,
+        hasRoofDrains: isRoof ? hasRoofDrains : null,
       });
       setOpen(false);
     });
@@ -130,7 +142,9 @@ export default function EditEstimateModal({
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-xs mb-1" style={{ color: "#8b949e" }}>Sq Ft</label>
+                  <label className="block text-xs mb-1" style={{ color: "#8b949e" }}>
+                    Sq Ft{isRoof && <span className="ml-1" style={{ color: "#484f58" }}>→ ÷100 SQ qty</span>}
+                  </label>
                   <input
                     type="number"
                     min={0}
@@ -141,18 +155,46 @@ export default function EditEstimateModal({
                     placeholder="0"
                   />
                 </div>
-                <div>
-                  <label className="block text-xs mb-1" style={{ color: "#8b949e" }}>Duration (months)</label>
-                  <input
-                    type="number"
-                    min={0}
-                    value={durationMonths}
-                    onChange={(e) => setDurationMonths(e.target.value)}
-                    className="w-full rounded px-3 py-2 text-sm outline-none"
-                    style={{ background: "#0d1117", border: "1px solid #30373f", color: "#e6edf3" }}
-                    placeholder="0"
-                  />
-                </div>
+                {isRoof ? (
+                  <div className="space-y-2">
+                    <label className="block text-xs mb-1" style={{ color: "#8b949e" }}>Roof Options</label>
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs" style={{ color: "#8b949e" }}>Skylights</span>
+                      <button
+                        type="button"
+                        onClick={() => setHasSkylights(v => !v)}
+                        className="text-xs px-3 py-0.5 rounded-full font-semibold"
+                        style={{ background: hasSkylights ? "#0d2318" : "#1e2736", color: hasSkylights ? "#22c55e" : "#8b949e", border: `1px solid ${hasSkylights ? "#22c55e" : "#30373f"}` }}
+                      >
+                        {hasSkylights ? "Yes" : "No"}
+                      </button>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs" style={{ color: "#8b949e" }}>Roof Drains</span>
+                      <button
+                        type="button"
+                        onClick={() => setHasRoofDrains(v => !v)}
+                        className="text-xs px-3 py-0.5 rounded-full font-semibold"
+                        style={{ background: hasRoofDrains ? "#0d2318" : "#1e2736", color: hasRoofDrains ? "#22c55e" : "#8b949e", border: `1px solid ${hasRoofDrains ? "#22c55e" : "#30373f"}` }}
+                      >
+                        {hasRoofDrains ? "Yes" : "No"}
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <div>
+                    <label className="block text-xs mb-1" style={{ color: "#8b949e" }}>Duration (months)</label>
+                    <input
+                      type="number"
+                      min={0}
+                      value={durationMonths}
+                      onChange={(e) => setDurationMonths(e.target.value)}
+                      className="w-full rounded px-3 py-2 text-sm outline-none"
+                      style={{ background: "#0d1117", border: "1px solid #30373f", color: "#e6edf3" }}
+                      placeholder="0"
+                    />
+                  </div>
+                )}
               </div>
             </div>
 

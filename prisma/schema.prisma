@@ -432,11 +432,15 @@ model EstimateTemplate {
   sqFt            Decimal?                   @db.Decimal(10, 2)
   durationMonths  Decimal?                   @db.Decimal(5, 2)
   summaryGroups   Json?
-  signatureToken  String?   @unique
-  signatureData   String?
-  signedAt        DateTime?
-  signedByName    String?
-  lastSentAt      DateTime?
+  signatureToken         String?   @unique
+  signatureData          String?
+  signedAt               DateTime?
+  signedByName           String?
+  lastSentAt             DateTime?
+  counterSignatureData   String?
+  counterSignedAt        DateTime?
+  hasSkylights           Boolean                    @default(true)
+  hasRoofDrains          Boolean                    @default(true)
   divisions       EstimateTemplateDivision[]
   estimates   ProjectEstimate[]
 

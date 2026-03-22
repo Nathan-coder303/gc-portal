@@ -675,6 +675,10 @@ export async function updateTemplateSqFt(templateId: string, sqFt: number | null
   });
 
   if (sqFt && sqFt > 0) {
+    const template = await prisma.estimateTemplate.findUnique({ where: { id: templateId }, select: { name: true } });
+    const isRoof = template?.name?.toLowerCase().includes("roof") ?? false;
+    const effectiveQty = isRoof ? Math.ceil(sqFt / 100) : sqFt;
+
     const sfItems = await prisma.estimateTemplateItem.findMany({
       where: { archivedAt: null, division: { templateId } },
       select: { id: true, unit: true },
@@ -683,7 +687,7 @@ export async function updateTemplateSqFt(templateId: string, sqFt: number | null
     if (matchIds.length > 0) {
       await prisma.estimateTemplateItem.updateMany({
         where: { id: { in: matchIds } },
-        data: { defaultQty: sqFt },
+        data: { defaultQty: effectiveQty },
       });
     }
   }
@@ -716,6 +720,24 @@ export async function updateTemplateDurationMonths(templateId: string, months: n
     }
   }
 
+  revalidatePath(`/${session.user.companyId}/estimates`);
+  return { success: true };
+}
+
+export async function updateTemplateHasSkylights(templateId: string, value: boolean) {
+  const session = await auth();
+  if (!session) throw new Error("Unauthorized");
+  requirePermission(session, "estimateTemplate:edit");
+  await prisma.estimateTemplate.update({ where: { id: templateId }, data: { hasSkylights: value, updatedBy: session.user.id } });
+  revalidatePath(`/${session.user.companyId}/estimates`);
+  return { success: true };
+}
+
+export async function updateTemplateHasRoofDrains(templateId: string, value: boolean) {
+  const session = await auth();
+  if (!session) throw new Error("Unauthorized");
+  requirePermission(session, "estimateTemplate:edit");
+  await prisma.estimateTemplate.update({ where: { id: templateId }, data: { hasRoofDrains: value, updatedBy: session.user.id } });
   revalidatePath(`/${session.user.companyId}/estimates`);
   return { success: true };
 }

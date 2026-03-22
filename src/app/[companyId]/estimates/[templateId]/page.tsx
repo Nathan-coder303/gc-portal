@@ -117,7 +117,7 @@ export default async function TemplateEditorPage({
         ← Estimates
       </Link>
       <TemplateEditor
-          template={{ id: template.id, name: template.name, description: template.description, companyId: params.companyId, estimateNumber: template.estimateNumber, estimateDate: template.estimateDate, paymentSchedule: template.paymentSchedule as { payment: string; trigger: string; pct: number }[] | null, showTerms: template.showTerms, termsContent: template.termsContent, type: template.type, gcFeePercent: template.gcFeePercent ? Number(template.gcFeePercent) : null, sqFt: template.sqFt ? Number(template.sqFt) : null, durationMonths: template.durationMonths ? Number(template.durationMonths) : null }}
+          template={{ id: template.id, name: template.name, description: template.description, companyId: params.companyId, estimateNumber: template.estimateNumber, estimateDate: template.estimateDate, paymentSchedule: template.paymentSchedule as { payment: string; trigger: string; pct: number }[] | null, showTerms: template.showTerms, termsContent: template.termsContent, type: template.type, gcFeePercent: template.gcFeePercent ? Number(template.gcFeePercent) : null, sqFt: template.sqFt ? Number(template.sqFt) : null, durationMonths: template.durationMonths ? Number(template.durationMonths) : null, hasSkylights: template.hasSkylights, hasRoofDrains: template.hasRoofDrains }}
           divisions={divisions}
           canEdit={can(session.user.role, "estimateTemplate:edit")}
           currentClient={template.client ? {
