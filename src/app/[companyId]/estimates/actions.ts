@@ -110,6 +110,110 @@ export async function renameTemplate(templateId: string, name: string) {
   return { success: true };
 }
 
+export async function duplicateTemplate(templateId: string) {
+  const session = await auth();
+  if (!session) throw new Error("Unauthorized");
+  requirePermission(session, "estimateTemplate:edit");
+
+  const source = await prisma.estimateTemplate.findFirst({
+    where: { id: templateId, companyId: session.user.companyId },
+    include: {
+      divisions: {
+        where: { archivedAt: null },
+        orderBy: { sortOrder: "asc" },
+        include: {
+          groups: {
+            where: { archivedAt: null },
+            orderBy: { sortOrder: "asc" },
+            include: { items: { where: { archivedAt: null }, orderBy: { sortOrder: "asc" } } },
+          },
+          items: { where: { archivedAt: null, groupId: null }, orderBy: { sortOrder: "asc" } },
+        },
+      },
+    },
+  });
+  if (!source) throw new Error("Template not found");
+
+  // Create the template shell
+  const copy = await prisma.estimateTemplate.create({
+    data: {
+      companyId: session.user.companyId,
+      name: `Copy of ${source.name}`,
+      description: source.description,
+      type: source.type,
+      createdBy: session.user.id,
+      gcFeePercent: source.gcFeePercent,
+      sqFt: source.sqFt,
+      durationMonths: source.durationMonths,
+      paymentSchedule: source.paymentSchedule ?? undefined,
+      showTerms: source.showTerms,
+      termsContent: source.termsContent,
+      summaryGroups: source.summaryGroups ?? undefined,
+      hasSkylights: source.hasSkylights,
+      hasRoofDrains: source.hasRoofDrains,
+      insulationType: source.insulationType,
+    },
+  });
+
+  // Duplicate divisions → groups → items sequentially
+  for (let di = 0; di < source.divisions.length; di++) {
+    const srcDiv = source.divisions[di];
+    const newDiv = await prisma.estimateTemplateDivision.create({
+      data: { templateId: copy.id, csiCode: srcDiv.csiCode, name: srcDiv.name, sortOrder: di },
+    });
+
+    // Groups with their items
+    for (let gi = 0; gi < srcDiv.groups.length; gi++) {
+      const srcGrp = srcDiv.groups[gi];
+      const newGrp = await prisma.estimateTemplateGroup.create({
+        data: { divisionId: newDiv.id, name: srcGrp.name, sortOrder: gi },
+      });
+      for (let ii = 0; ii < srcGrp.items.length; ii++) {
+        const item = srcGrp.items[ii];
+        await prisma.estimateTemplateItem.create({
+          data: {
+            divisionId: newDiv.id,
+            groupId: newGrp.id,
+            name: item.name,
+            csiCode: item.csiCode,
+            detail: item.detail,
+            unit: item.unit,
+            defaultQty: item.defaultQty,
+            defaultUnitCost: item.defaultUnitCost,
+            defaultMarkupPct: item.defaultMarkupPct,
+            visibleInPdf: item.visibleInPdf,
+            notes: item.notes,
+            sortOrder: ii,
+          },
+        });
+      }
+    }
+
+    // Ungrouped items
+    for (let ii = 0; ii < srcDiv.items.length; ii++) {
+      const item = srcDiv.items[ii];
+      await prisma.estimateTemplateItem.create({
+        data: {
+          divisionId: newDiv.id,
+          name: item.name,
+          csiCode: item.csiCode,
+          detail: item.detail,
+          unit: item.unit,
+          defaultQty: item.defaultQty,
+          defaultUnitCost: item.defaultUnitCost,
+          defaultMarkupPct: item.defaultMarkupPct,
+          visibleInPdf: item.visibleInPdf,
+          notes: item.notes,
+          sortOrder: ii,
+        },
+      });
+    }
+  }
+
+  revalidatePath(`/${session.user.companyId}/estimates`);
+  return { id: copy.id };
+}
+
 export async function updateTemplate(
   templateId: string,
   name: string,

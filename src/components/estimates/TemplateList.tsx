@@ -2,7 +2,7 @@
 
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { createTemplate, createStandardTemplate, archiveTemplate, renameTemplate } from "@/app/[companyId]/estimates/actions";
+import { createTemplate, createStandardTemplate, archiveTemplate, renameTemplate, duplicateTemplate } from "@/app/[companyId]/estimates/actions";
 import { TrashIcon, PencilIcon } from "@/components/ui/icons";
 
 type Template = {
@@ -22,8 +22,10 @@ function TemplateCard({
   tpl: Template; companyId: string; canEdit: boolean; canArchive: boolean;
   isPending: boolean; startTransition: (fn: () => Promise<void>) => void;
 }) {
+  const router = useRouter();
   const [editingName, setEditingName] = useState(false);
   const [nameVal, setNameVal] = useState(tpl.name);
+  const [duplicating, setDuplicating] = useState(false);
 
   function saveName() {
     if (!nameVal.trim() || nameVal.trim() === tpl.name) { setEditingName(false); return; }
@@ -64,6 +66,26 @@ function TemplateCard({
         </div>
       </a>
       <div className="absolute top-3 right-3 flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+        {canEdit && (
+          <button
+            onClick={async (e) => {
+              e.preventDefault();
+              setDuplicating(true);
+              try {
+                const result = await duplicateTemplate(tpl.id);
+                router.push(`/${companyId}/estimates/${result.id}`);
+              } finally {
+                setDuplicating(false);
+              }
+            }}
+            disabled={duplicating}
+            className="w-7 h-7 rounded flex items-center justify-center"
+            style={{ background: "#1e273688", color: "#8b949e", border: "1px solid #30373f" }}
+            title="Duplicate"
+          >
+            {duplicating ? "…" : "⧉"}
+          </button>
+        )}
         {canEdit && (
           <button
             onClick={(e) => { e.preventDefault(); setEditingName(true); setNameVal(tpl.name); }}
