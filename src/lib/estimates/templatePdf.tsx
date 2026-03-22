@@ -220,14 +220,6 @@ function CoverPages({ template, client }: Pick<TemplatePdfProps, "template" | "c
   const today = new Date().toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" });
   const clientCity = [client?.city, client?.state, client?.zip].filter(Boolean).join(", ");
 
-  const infoRow = (label: string, value: string | null | undefined) =>
-    value ? (
-      <View key={label} style={{ flexDirection: "row", marginBottom: 2 }}>
-        <Text style={{ fontSize: 8.5, fontFamily: "Helvetica-Bold", color: DARK, width: 72 }}>{label}:</Text>
-        <Text style={{ fontSize: 8.5, color: "#334155", flex: 1 }}>{value}</Text>
-      </View>
-    ) : null;
-
   return (
     <Page size="LETTER" style={{ fontFamily: "Helvetica", padding: 0 }}>
       {/* Header */}
@@ -246,21 +238,21 @@ function CoverPages({ template, client }: Pick<TemplatePdfProps, "template" | "c
       <Image src={photosPath} style={{ width: 612, height: 285, objectFit: "cover" }} />
       <View style={{ height: 3, backgroundColor: GOLD }} />
 
-      {/* Client info + project name row */}
-      <View style={{ flexDirection: "row", paddingHorizontal: 24, paddingTop: 12, paddingBottom: 10, gap: 20, borderBottomWidth: 1, borderBottomColor: "#e2e8f0" }}>
+      {/* Gold info rectangle */}
+      <View style={{ flexDirection: "row", backgroundColor: GOLD, paddingHorizontal: 24, paddingVertical: 18 }}>
         <View style={{ flex: 1 }}>
-          <Text style={{ fontSize: 8, fontFamily: "Helvetica-Bold", color: GOLD, marginBottom: 6, textTransform: "uppercase", letterSpacing: 1 }}>Project Details</Text>
-          {infoRow("Address", client?.address)}
-          {clientCity ? infoRow("City", clientCity) : null}
-          {infoRow("Client", client?.name)}
-          {client?.phone ? infoRow("Tel", client.phone) : null}
-          {client?.email ? infoRow("Email", client.email) : null}
+          {client?.address ? <Text style={{ fontSize: 9.5, color: "#fff", marginBottom: 4 }}>{client.address}</Text> : null}
+          {clientCity ? <Text style={{ fontSize: 9.5, color: "#fff", marginBottom: 4 }}>{clientCity}</Text> : null}
+          {client?.name ? <Text style={{ fontSize: 9.5, color: "#fff", marginBottom: 4 }}>{client.name}</Text> : null}
+          {client?.phone ? <Text style={{ fontSize: 9.5, color: "#fff", marginBottom: 4 }}>{client.phone}</Text> : null}
+          {client?.email ? <Text style={{ fontSize: 9.5, color: "#fff" }}>{client.email}</Text> : null}
         </View>
-        <View style={{ width: 180, borderLeftWidth: 1, borderLeftColor: "#e2e8f0", paddingLeft: 20 }}>
+        <View style={{ width: 1, backgroundColor: "rgba(255,255,255,0.35)", marginVertical: 2, marginHorizontal: 18 }} />
+        <View style={{ width: 190 }}>
           {template.name ? (
-            <Text style={{ fontSize: 14, fontFamily: "Helvetica-Bold", color: DARK, marginBottom: 6, lineHeight: 1.2 }}>{template.name}</Text>
+            <Text style={{ fontSize: 17, fontFamily: "Helvetica-Bold", color: "#fff", marginBottom: 6, lineHeight: 1.2 }}>{template.name}</Text>
           ) : null}
-          <Text style={{ fontSize: 9, color: "#64748b" }}>{today}</Text>
+          <Text style={{ fontSize: 9.5, color: "rgba(255,255,255,0.85)" }}>{today}</Text>
         </View>
       </View>
 
