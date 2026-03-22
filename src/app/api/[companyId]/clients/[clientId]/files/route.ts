@@ -27,7 +27,7 @@ export async function POST(
     const blob = await put(
       `client-files/${params.clientId}/${Date.now()}-${file.name}`,
       file,
-      { access: "public" }
+      { access: "private" }
     );
 
     const record = await prisma.clientFile.create({
@@ -42,7 +42,11 @@ export async function POST(
       },
     });
 
-    return NextResponse.json(record);
+    // Return proxy URL instead of direct blob URL (store is private)
+    return NextResponse.json({
+      ...record,
+      fileUrl: `/api/${params.companyId}/clients/${params.clientId}/files/${record.id}`,
+    });
   } catch (err) {
     console.error("File upload failed:", err);
     return NextResponse.json({ error: String(err) }, { status: 500 });

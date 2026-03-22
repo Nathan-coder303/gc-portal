@@ -12,8 +12,10 @@ export async function insertClientPageIntoEstimate(
   if (!insertPdfUrl) return estimateBuffer;
 
   try {
-    // Fetch the source PDF
-    const sourceRes = await fetch(insertPdfUrl);
+    // Fetch the source PDF (private blob requires Bearer token)
+    const sourceRes = await fetch(insertPdfUrl, {
+      headers: { Authorization: `Bearer ${process.env.BLOB_READ_WRITE_TOKEN}` },
+    });
     if (!sourceRes.ok) {
       console.error("insertClientPageIntoEstimate: fetch failed", sourceRes.status, insertPdfUrl);
       return estimateBuffer;

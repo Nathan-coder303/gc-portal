@@ -307,7 +307,7 @@ export default async function ClientDetailPage({
           initialFiles={clientFiles.map(f => ({
             id: f.id,
             fileName: f.fileName,
-            fileUrl: f.fileUrl,
+            fileUrl: `/api/${params.companyId}/clients/${params.clientId}/files/${f.id}`,
             fileSize: f.fileSize,
             mimeType: f.mimeType,
             uploadedAt: f.uploadedAt.toISOString(),
