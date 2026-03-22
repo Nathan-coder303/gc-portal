@@ -23,25 +23,30 @@ export async function POST(
   });
   if (!client) return NextResponse.json({ error: "Not found" }, { status: 404 });
 
-  const blob = await put(
-    `client-files/${params.clientId}/${Date.now()}-${file.name}`,
-    file,
-    { access: "public" }
-  );
+  try {
+    const blob = await put(
+      `client-files/${params.clientId}/${Date.now()}-${file.name}`,
+      file,
+      { access: "public" }
+    );
 
-  const record = await prisma.clientFile.create({
-    data: {
-      clientId: params.clientId,
-      companyId: params.companyId,
-      fileName: file.name,
-      fileUrl: blob.url,
-      fileSize: file.size,
-      mimeType: file.type || null,
-      uploadedBy: session.user.id,
-    },
-  });
+    const record = await prisma.clientFile.create({
+      data: {
+        clientId: params.clientId,
+        companyId: params.companyId,
+        fileName: file.name,
+        fileUrl: blob.url,
+        fileSize: file.size,
+        mimeType: file.type || null,
+        uploadedBy: session.user.id,
+      },
+    });
 
-  return NextResponse.json(record);
+    return NextResponse.json(record);
+  } catch (err) {
+    console.error("File upload failed:", err);
+    return NextResponse.json({ error: String(err) }, { status: 500 });
+  }
 }
 
 // PATCH — toggle useInEstimate (only one file per client can be set)
