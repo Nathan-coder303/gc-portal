@@ -104,7 +104,7 @@ const styles = StyleSheet.create({
   sectionTitle: { fontSize: 12, fontFamily: "Helvetica-Bold", color: DARK, marginBottom: 8, paddingTop: 12 },
 
   // T&C
-  termsText: { fontSize: 8, color: "#475569", lineHeight: 1.6 },
+  termsText: { fontSize: 9.5, color: "#475569", lineHeight: 1.7 },
 
   // Payment schedule
   payTable: { marginTop: 4 },
@@ -187,7 +187,11 @@ function ItemRow({ item, index, lineNum }: { item: Item; index: number; lineNum?
     <View style={{ borderBottomWidth: 1, borderBottomColor: "#f1f5f9", backgroundColor: index % 2 === 0 ? undefined : "#fafafa" }}>
       <View style={[rowStyle, { borderBottomWidth: 0 }]}>
         {lineNum != null && <Text style={[styles.cellMuted, styles.colLineNum]}>{lineNum}</Text>}
-        <Text style={[styles.cellText, styles.colName]}>{item.name}</Text>
+        <View style={styles.colName}>
+          {(item.name ?? "").split(/\n| (?=[A-C]\. [A-Z])/).map((part, pi) => (
+            <Text key={pi} style={[styles.cellText, pi > 0 ? { marginTop: 3 } : {}]}>{part}</Text>
+          ))}
+        </View>
         <Text style={[{ fontSize: 7, color: detailColor, textAlign: "center" }, styles.colDetail]}>{item.detail?.toUpperCase() ?? ""}</Text>
         {isExcluded ? (
           <>
@@ -396,7 +400,7 @@ function TemplatePdfDocument({ companyName, template, client, divisions, showTer
           <Text style={styles.sectionTitle}>Terms &amp; Conditions</Text>
           {termsContent
             ? termsContent.split(/\r?\n\r?\n|\r?\n(?=\d+[\.\)]?\s)/).filter(Boolean).map((para, i) => (
-                <Text key={i} style={[styles.termsText, { marginBottom: 6 }]}>{para.trim()}</Text>
+                <Text key={i} style={[styles.termsText, { marginBottom: 10 }]}>{para.trim()}</Text>
               ))
             : null}
         </View>
