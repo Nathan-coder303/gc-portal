@@ -702,7 +702,7 @@ export default function ProjectEstimateEditor({
           const computedSgTotal = sgForm.qty !== null || sgForm.unitCost !== null
             ? (sgForm.qty ?? 0) * (sgForm.unitCost ?? 0) * (1 + (sgForm.markupPct ?? 0) / 100)
             : null;
-          const UNITS_E = ["LS", "EA", "SF", "LF", "SY", "CY", "CF", "SQ", "MO", "HR", "DAY", "TN", "GAL"];
+          const UNITS_E = ["_", "LS", "EA", "SF", "LF", "SY", "CY", "CF", "SQ", "MO", "HR", "DAY", "TN", "GAL"];
 
           return (
             <div key={gi}>

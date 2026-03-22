@@ -335,14 +335,15 @@ export async function upsertTemplateItem(
   // Auto-apply sqFt / durationMonths if the item matches criteria
   const division = await prisma.estimateTemplateDivision.findUnique({
     where: { id: divisionId },
-    select: { template: { select: { sqFt: true, durationMonths: true } } },
+    select: { template: { select: { sqFt: true, durationMonths: true, name: true } } },
   });
   const nameLower = data.name.toLowerCase();
   let autoDefaultQty = data.defaultQty ?? null;
   if (division?.template) {
-    const { sqFt, durationMonths } = division.template;
+    const { sqFt, durationMonths, name: templateName } = division.template;
+    const isRoof = templateName?.toLowerCase().includes("roof") ?? false;
     if (isSfItem(data.unit ?? null) && sqFt && Number(sqFt) > 0) {
-      autoDefaultQty = Number(sqFt);
+      autoDefaultQty = isRoof ? Math.ceil(Number(sqFt) / 100) : Number(sqFt);
     } else if (isDurationItem(nameLower, data.unit ?? null) && durationMonths && Number(durationMonths) > 0) {
       autoDefaultQty = Number(durationMonths);
     }
