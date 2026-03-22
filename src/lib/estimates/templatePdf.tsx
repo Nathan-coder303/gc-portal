@@ -104,7 +104,7 @@ const styles = StyleSheet.create({
   sectionTitle: { fontSize: 12, fontFamily: "Helvetica-Bold", color: DARK, marginBottom: 8, paddingTop: 12 },
 
   // T&C
-  termsText: { fontSize: 9.5, color: "#475569", lineHeight: 1.7 },
+  termsText: { fontSize: 12, color: "#475569", lineHeight: 1.7 },
 
   // Payment schedule
   payTable: { marginTop: 4 },
@@ -163,6 +163,7 @@ type TemplatePdfProps = {
   contractorSignedAt?: Date | null;
   includeRoofUpgradesPage?: boolean;
   includeCoverPage?: boolean;
+  insulationType?: string | null;
 };
 
 function ItemTableHeader({ showLineNum }: { showLineNum?: boolean }) {
@@ -300,7 +301,32 @@ function CoverPages({ template, client }: Pick<TemplatePdfProps, "template" | "c
   );
 }
 
-function TemplatePdfDocument({ companyName, template, client, divisions, showTerms, termsContent, paymentSchedule, gcFeePercent, summaryGroups, clientSignatureData, clientSignedByName, clientSignedAt, contractorSignatureData, contractorSignedAt, includeRoofUpgradesPage, includeCoverPage }: TemplatePdfProps) {
+// Apply insulation type filter to item name:
+// "ISO"     → keep Option A, strip " B. ..." suffix
+// "Tapered" → strip " A. ..." up to " B. ", keep from "B." onward
+// "None"    → return null (item should be hidden)
+function applyInsulationFilter(name: string, insulationType: string | null | undefined): string | null {
+  const isInsulationItem = name.includes("Select One System");
+  if (!isInsulationItem) return name;
+  const type = (insulationType ?? "ISO").toLowerCase();
+  if (type === "none") return null;
+  // Split on " A. " or " B. " boundaries
+  const aIdx = name.search(/ A\. [A-Z]/);
+  const bIdx = name.search(/ B\. [A-Z]/);
+  if (type === "iso") {
+    // Keep everything up to (but not including) " B. ..."
+    return bIdx >= 0 ? name.slice(0, bIdx).trimEnd() : name;
+  }
+  if (type === "tapered") {
+    // Keep from "B." onward, prepend the intro text before "A."
+    const intro = aIdx >= 0 ? name.slice(0, aIdx).trimEnd() : "";
+    const bPart = bIdx >= 0 ? name.slice(bIdx + 1) : name; // skip leading space
+    return intro ? `${intro} ${bPart}` : bPart;
+  }
+  return name;
+}
+
+function TemplatePdfDocument({ companyName, template, client, divisions, showTerms, termsContent, paymentSchedule, gcFeePercent, summaryGroups, clientSignatureData, clientSignedByName, clientSignedAt, contractorSignatureData, contractorSignedAt, includeRoofUpgradesPage, includeCoverPage, insulationType }: TemplatePdfProps) {
   const grouped = groupDivisions(divisions);
 
   // Compute raw totals per group label (or null for ungrouped)
@@ -344,12 +370,17 @@ function TemplatePdfDocument({ companyName, template, client, divisions, showTer
   // Pre-compute sequential line numbers for all visible items (roof estimates only)
   const lineNumMap = new Map<string, number>();
   if (isRoof) {
+    const applyInsFilter = (item: Item) => {
+      const filtered = applyInsulationFilter(item.name, insulationType);
+      if (filtered === null) return null;
+      return filtered === item.name ? item : { ...item, name: filtered };
+    };
     let counter = 1;
     for (const { divs } of grouped) {
       for (const div of divs) {
-        const filledItems = div.items.filter(i => isItemFilled(i) || !!i.detail);
+        const filledItems = div.items.map(applyInsFilter).filter((i): i is Item => i !== null && (isItemFilled(i) || !!i.detail));
         const filledGroups = div.groups
-          .map(g => ({ ...g, items: g.items.filter(i => isItemFilled(i) || !!i.detail) }))
+          .map(g => ({ ...g, items: g.items.map(applyInsFilter).filter((i): i is Item => i !== null && (isItemFilled(i) || !!i.detail)) }))
           .filter(g => g.items.length > 0);
         if (filledItems.length === 0 && filledGroups.length === 0) continue;
         for (const grp of filledGroups) {
@@ -504,11 +535,16 @@ function TemplatePdfDocument({ companyName, template, client, divisions, showTer
 
         {/* Divisions — grouped into super-sections (e.g. SHELL) */}
         {grouped.map(({ groupLabel, divs }, gi) => {
-          // Pre-filter each division's items
+          // Pre-filter each division's items (apply insulation type filter)
+          const applyInsF = (item: Item) => {
+            const filtered = applyInsulationFilter(item.name, insulationType);
+            if (filtered === null) return null;
+            return filtered === item.name ? item : { ...item, name: filtered };
+          };
           const filteredDivs = divs.map(div => ({
             div,
-            filledItems: div.items.filter(i => isItemFilled(i) || !!i.detail),
-            filledGroups: div.groups.map(g => ({ ...g, items: g.items.filter(i => isItemFilled(i) || !!i.detail) })).filter(g => g.items.length > 0),
+            filledItems: div.items.map(applyInsF).filter((i): i is Item => i !== null && (isItemFilled(i) || !!i.detail)),
+            filledGroups: div.groups.map(g => ({ ...g, items: g.items.map(applyInsF).filter((i): i is Item => i !== null && (isItemFilled(i) || !!i.detail)) })).filter(g => g.items.length > 0),
           })).filter(({ filledItems, filledGroups }) => filledItems.length > 0 || filledGroups.length > 0);
 
           if (filteredDivs.length === 0) return null;

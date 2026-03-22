@@ -101,6 +101,7 @@ export async function GET(
     }),
     includeRoofUpgradesPage: template.name.toLowerCase().includes("roof"),
     includeCoverPage: cover,
+    insulationType: template.insulationType ?? "ISO",
   });
 
   const clientSlug = template.client ? `-for-${template.client.name.replace(/[^a-z0-9]/gi, "-")}` : "";

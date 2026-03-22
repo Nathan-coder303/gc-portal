@@ -159,6 +159,7 @@ export async function PATCH(req: NextRequest) {
     contractorSignatureData: signatureData,
     contractorSignedAt: counterSignedAt,
     includeRoofUpgradesPage: template.name.toLowerCase().includes("roof"),
+    insulationType: template.insulationType ?? "ISO",
   });
 
   // Email to both parties

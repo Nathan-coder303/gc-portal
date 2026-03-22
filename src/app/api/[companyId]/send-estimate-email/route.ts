@@ -175,6 +175,7 @@ export async function POST(
         { qty: number | null; unit: string | null; unitCost: number | null; markupPct: number | null; manualTotal: number | null }
       > | null) ?? null,
     includeRoofUpgradesPage: template.name.toLowerCase().includes("roof"),
+    insulationType: template.insulationType ?? "ISO",
   });
 
   // Generate (or reuse) a signature token for this estimate

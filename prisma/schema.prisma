@@ -441,6 +441,7 @@ model EstimateTemplate {
   counterSignedAt        DateTime?
   hasSkylights           Boolean                    @default(true)
   hasRoofDrains          Boolean                    @default(true)
+  insulationType         String?                    @default("ISO")
   divisions       EstimateTemplateDivision[]
   estimates   ProjectEstimate[]
 
