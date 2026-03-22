@@ -439,11 +439,11 @@ function TemplatePdfDocument({ companyName, template, client, divisions, showTer
       {/* Signature Block */}
       <View style={[styles.sigSection, { marginTop: 14 }]} minPresenceAhead={220}>
         <View style={[styles.sectionDivider, { marginTop: 10 }]} />
-        <Text style={[styles.sectionTitle, { marginBottom: 4 }]}>Agreement &amp; Authorization</Text>
+        <Text style={[styles.sectionTitle, { marginBottom: 4, paddingTop: 6 }]}>Agreement &amp; Authorization</Text>
         <Text style={{ fontSize: 8, color: "#475569", marginBottom: 4 }}>
           By signing below, both parties agree to the scope of work, pricing, and terms described in this document.
         </Text>
-        <View style={styles.sigRow}>
+        <View style={[styles.sigRow, { marginTop: 12 }]}>
           {/* Customer */}
           <View style={styles.sigBlock}>
             <Text style={styles.sigPartyLabel}>Customer</Text>
@@ -452,17 +452,17 @@ function TemplatePdfDocument({ companyName, template, client, divisions, showTer
               ? <Image src={clientSignatureData} style={{ height: 40, marginBottom: 3, objectFit: "contain", objectPositionX: 0 }} />
               : <View style={[styles.sigLine, { marginBottom: 3, height: 40 }]} />}
             <Text style={styles.sigLineLabel}>Signature</Text>
-            <View style={{ height: 10 }} />
+            <View style={{ height: 6 }} />
             <View style={styles.sigLine} />
             {clientSignedByName
               ? <Text style={styles.sigPrefilled}>{clientSignedByName}</Text>
-              : <View style={{ height: 12 }} />}
+              : <View style={{ height: 10 }} />}
             <Text style={styles.sigLineLabel}>Name (Print)</Text>
-            <View style={{ height: 10 }} />
+            <View style={{ height: 6 }} />
             <View style={styles.sigLine} />
             {clientSignedAt
               ? <Text style={styles.sigPrefilled}>{clientSignedAt.toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" })}</Text>
-              : <View style={{ height: 12 }} />}
+              : <View style={{ height: 10 }} />}
             <Text style={styles.sigLineLabel}>Date</Text>
           </View>
           {/* Contractor */}
@@ -473,15 +473,15 @@ function TemplatePdfDocument({ companyName, template, client, divisions, showTer
               ? <Image src={contractorSignatureData} style={{ height: 40, marginBottom: 3, objectFit: "contain", objectPositionX: 0 }} />
               : <View style={[styles.sigLine, { marginBottom: 3, height: 40 }]} />}
             <Text style={styles.sigLineLabel}>Signature</Text>
-            <View style={{ height: 10 }} />
+            <View style={{ height: 6 }} />
             <View style={styles.sigLine} />
             <Text style={styles.sigPrefilled}>Mike Baruh</Text>
             <Text style={styles.sigLineLabel}>Name (Print)</Text>
-            <View style={{ height: 10 }} />
+            <View style={{ height: 6 }} />
             <View style={styles.sigLine} />
             {contractorSignedAt
               ? <Text style={styles.sigPrefilled}>{contractorSignedAt.toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" })}</Text>
-              : <View style={{ height: 12 }} />}
+              : <View style={{ height: 10 }} />}
             <Text style={styles.sigLineLabel}>Date</Text>
           </View>
         </View>
@@ -652,7 +652,7 @@ function TemplatePdfDocument({ companyName, template, client, divisions, showTer
 
       {/* Payment terms + signature: on their own page when extra page is present */}
       {includeRoofUpgradesPage && (
-        <Page size="LETTER" style={[styles.page, { paddingTop: 20 }]}>
+        <Page size="LETTER" style={[styles.page, { paddingTop: 14 }]}>
           {paymentTermsSignatureBlock}
           <Text style={styles.pageNumber} render={({ pageNumber, totalPages }) => `Page ${pageNumber} of ${totalPages}`} fixed />
         </Page>
