@@ -83,6 +83,7 @@ const styles = StyleSheet.create({
   tableHeader: { flexDirection: "row", backgroundColor: "#f8fafc", paddingHorizontal: 8, paddingVertical: 3, borderBottomWidth: 1, borderBottomColor: "#e2e8f0" },
   tableRow: { flexDirection: "row", paddingHorizontal: 8, paddingVertical: 3, borderBottomWidth: 1, borderBottomColor: "#f1f5f9" },
   tableRowAlt: { flexDirection: "row", paddingHorizontal: 8, paddingVertical: 3, borderBottomWidth: 1, borderBottomColor: "#f1f5f9", backgroundColor: "#fafafa" },
+  colLineNum: { width: 18, textAlign: "right", paddingRight: 4 },
   colName: { flex: 3 },
   colDetail: { width: 60, textAlign: "center" },
   colQty: { width: 40, textAlign: "right" },
@@ -163,9 +164,10 @@ type TemplatePdfProps = {
   includeRoofUpgradesPage?: boolean;
 };
 
-function ItemTableHeader() {
+function ItemTableHeader({ showLineNum }: { showLineNum?: boolean }) {
   return (
     <View style={styles.tableHeader}>
+      {showLineNum && <Text style={[styles.headerText, styles.colLineNum]}>#</Text>}
       <Text style={[styles.headerText, styles.colName]}>Item</Text>
       <Text style={[styles.headerText, styles.colDetail]}>Detail</Text>
       <Text style={[styles.headerText, styles.colQty]}>Qty</Text>
@@ -175,7 +177,7 @@ function ItemTableHeader() {
   );
 }
 
-function ItemRow({ item, index }: { item: Item; index: number }) {
+function ItemRow({ item, index, lineNum }: { item: Item; index: number; lineNum?: number }) {
   const isExcluded = item.detail === "Excluded";
   const total = calcTotal(item.defaultQty, item.defaultUnitCost, item.defaultMarkupPct);
   const rowStyle = index % 2 === 0 ? styles.tableRow : styles.tableRowAlt;
@@ -183,6 +185,7 @@ function ItemRow({ item, index }: { item: Item; index: number }) {
   return (
     <View style={{ borderBottomWidth: 1, borderBottomColor: "#f1f5f9", backgroundColor: index % 2 === 0 ? undefined : "#fafafa" }}>
       <View style={[rowStyle, { borderBottomWidth: 0 }]}>
+        {lineNum != null && <Text style={[styles.cellMuted, styles.colLineNum]}>{lineNum}</Text>}
         <Text style={[styles.cellText, styles.colName]}>{item.name}</Text>
         <Text style={[{ fontSize: 7, color: detailColor, textAlign: "center" }, styles.colDetail]}>{item.detail?.toUpperCase() ?? ""}</Text>
         {isExcluded ? (
@@ -245,6 +248,37 @@ function TemplatePdfDocument({ companyName, template, client, divisions, showTer
 
   const dateDisplay = fmtDate(template.estimateDate);
   const roofUpgradesPath = path.join(process.cwd(), "public", "roof-upgrades-page.png");
+  const isRoof = !!includeRoofUpgradesPage;
+
+  // Pre-compute sequential line numbers for all visible items (roof estimates only)
+  const lineNumMap = new Map<string, number>();
+  if (isRoof) {
+    let counter = 1;
+    for (const { divs } of grouped) {
+      for (const div of divs) {
+        const filledItems = div.items.filter(i => isItemFilled(i) || !!i.detail);
+        const filledGroups = div.groups
+          .map(g => ({ ...g, items: g.items.filter(i => isItemFilled(i) || !!i.detail) }))
+          .filter(g => g.items.length > 0);
+        if (filledItems.length === 0 && filledGroups.length === 0) continue;
+        for (const grp of filledGroups) {
+          for (const item of grp.items) { lineNumMap.set(item.id, counter++); }
+        }
+        for (const item of filledItems) { lineNumMap.set(item.id, counter++); }
+      }
+    }
+  }
+
+  const ROOF_INTRO_PARAS = [
+    "We appreciate your consideration and look forward to delivering the high-quality workmanship and customer service MIBH Construction is known for in South Florida. This proposal outlines the manpower, materials, equipment, and installation standards required to complete your roofing project in full compliance with Florida Building Code (FBC 2023), Miami-Dade standards, and manufacturer specifications.",
+    "1. MIBH Construction will handle the full permit application process by preparing all required documents, including permit forms, Notice of Commencement (if needed), product approvals/Miami-Dade NOAs, roof plans, scope of work, and all contractor credentials. Once the permit package is complete, we will submit it to the appropriate Building Department, pay or coordinate permitting fees, respond to any city comments or requested revisions, and track the application until full approval is issued.",
+    "2. Manpower Provided — MIBH Construction will supply: Certified roofing technicians · Project manager/supervisor · Safety-compliant crew (OSHA trained) · Cleanup team for daily and final site maintenance. Our team is experienced in commercial and residential roofing systems, including shingle, tile, metal, TPO, hot mop, and modified bitumen.",
+    "3. Equipment Provided — We will provide all required equipment, including: Tear-off machinery & power tools · Dump trailer or roll-off dumpster · Ladders, lifts, scaffolding (as needed) · Full safety gear and fall protection systems. All equipment is maintained to ensure safe, efficient operations.",
+    "4. Materials & Installation Standards — MIBH Construction uses only approved, high-quality roofing materials installed following: FBC 2023 and local code requirements · Miami-Dade NOA specifications · Manufacturer-approved installation practices · South Florida high-wind performance requirements. This ensures durability, waterproofing integrity, and warranty eligibility.",
+    "5. Tarps and coverings for landscaping & AC units. Clear job-site organization and debris control. OSHA fall-protection procedures. Daily cleanup and end-of-project magnetic sweep.",
+    "6. Remove all debris and materials. Conduct a full walkthrough. Prepare for city/county inspections. Provide warranty documentation as applicable.",
+    "We appreciate your consideration and look forward to working with you. Please reach out with any questions or adjustments you would like added to this proposal.",
+  ];
 
   const paymentTermsSignatureBlock = (
     <>
@@ -367,6 +401,15 @@ function TemplatePdfDocument({ companyName, template, client, divisions, showTer
           </View>
         </View>
 
+        {/* Roof intro text — page 1, before divisions */}
+        {isRoof && (
+          <View style={{ marginBottom: 10, paddingVertical: 8, paddingHorizontal: 10, borderRadius: 4, backgroundColor: "#f8fafc", borderWidth: 1, borderColor: "#e2e8f0" }}>
+            {ROOF_INTRO_PARAS.map((para, i) => (
+              <Text key={i} style={{ fontSize: 7.5, color: "#334155", lineHeight: 1.55, marginBottom: i < ROOF_INTRO_PARAS.length - 1 ? 5 : 0 }}>{para}</Text>
+            ))}
+          </View>
+        )}
+
         {/* Divisions — grouped into super-sections (e.g. SHELL) */}
         {grouped.map(({ groupLabel, divs }, gi) => {
           // Pre-filter each division's items
@@ -401,7 +444,7 @@ function TemplatePdfDocument({ companyName, template, client, divisions, showTer
                   <View key={div.id} minPresenceAhead={150}>
                     <View style={[styles.divisionHeader, groupLabel ? { marginTop: 6 } : {}]}>
                       <View style={styles.divisionLeft}>
-                        {div.csiCode ? <Text style={styles.divisionCsi}>{div.csiCode}</Text> : null}
+                        {!isRoof && div.csiCode ? <Text style={styles.divisionCsi}>{div.csiCode}</Text> : null}
                         <Text style={styles.divisionName}>{div.name}</Text>
                       </View>
                       {!groupLabel && <Text style={styles.divisionTotal}>${fmt(divTotal)}</Text>}
@@ -415,16 +458,16 @@ function TemplatePdfDocument({ companyName, template, client, divisions, showTer
                             <Text style={styles.groupName}>{grp.name}</Text>
                             <Text style={styles.groupTotal}>{grpTotal > 0 ? `$${fmt(grpTotal)}` : ""}</Text>
                           </View>
-                          <ItemTableHeader />
-                          {grp.items.map((item, idx) => <ItemRow key={item.id} item={item} index={idx} />)}
+                          <ItemTableHeader showLineNum={isRoof} />
+                          {grp.items.map((item, idx) => <ItemRow key={item.id} item={item} index={idx} lineNum={lineNumMap.get(item.id)} />)}
                         </View>
                       );
                     })}
 
                     {filledItems.length > 0 && (
                       <View>
-                        <ItemTableHeader />
-                        {filledItems.map((item, idx) => <ItemRow key={item.id} item={item} index={idx} />)}
+                        <ItemTableHeader showLineNum={isRoof} />
+                        {filledItems.map((item, idx) => <ItemRow key={item.id} item={item} index={idx} lineNum={lineNumMap.get(item.id)} />)}
                       </View>
                     )}
                   </View>
