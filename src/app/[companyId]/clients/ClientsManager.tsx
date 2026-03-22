@@ -2,7 +2,6 @@
 
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import Link from "next/link";
 import { upsertClient, deleteClient } from "@/app/[companyId]/estimates/actions";
 import { TrashIcon, PencilIcon } from "@/components/ui/icons";
 
@@ -14,6 +13,7 @@ function ClientRow({ client, companyId, isAdmin }: { client: Client; companyId: 
   const [editing, setEditing] = useState(false);
   const [isPending, startTransition] = useTransition();
   const [showDelete, setShowDelete] = useState(false);
+  const [hovered, setHovered] = useState(false);
   const router = useRouter();
   const [form, setForm] = useState({
     name: client.name,
@@ -84,8 +84,6 @@ function ClientRow({ client, companyId, isAdmin }: { client: Client; companyId: 
       </div>
     );
   }
-
-  const [hovered, setHovered] = useState(false);
 
   return (
     <div
