@@ -166,12 +166,18 @@ function ItemRow({ item, divisionId, groupId, canEdit }: { item: Item; divisionI
     data: { sourceDivisionId: divisionId, itemName: item.name },
     disabled: !canEdit,
   });
+  function roofSqQty(): string {
+    return (isRoof && isSfUnitT(item.unit ?? "") && sqFt && sqFt > 0)
+      ? String(Math.ceil(sqFt / 100))
+      : (item.defaultQty?.toString() ?? "");
+  }
+
   const [form, setForm] = useState({
     name: item.name,
     csiCode: item.csiCode ?? "",
     detail: item.detail ?? "",
     unit: item.unit ?? "",
-    defaultQty: item.defaultQty?.toString() ?? "",
+    defaultQty: roofSqQty(),
     defaultUnitCost: item.defaultUnitCost?.toString() ?? "",
     defaultMarkupPct: item.defaultMarkupPct?.toString() ?? "",
     notes: item.notes ?? "",
@@ -188,6 +194,10 @@ function ItemRow({ item, divisionId, groupId, canEdit }: { item: Item; divisionI
 
   function doSave(closeAfter: boolean) {
     startTransition(async () => {
+      // For roof estimates, always enforce Math.ceil(sqFt/100) for SQ/SF items
+      const effectiveQty = (isRoof && isSfUnitT(form.unit) && sqFt && sqFt > 0)
+        ? Math.ceil(sqFt / 100)
+        : (form.defaultQty ? Number(form.defaultQty) : null);
       await upsertTemplateItem(divisionId, {
         id: item.id,
         groupId: groupId ?? null,
@@ -195,7 +205,7 @@ function ItemRow({ item, divisionId, groupId, canEdit }: { item: Item; divisionI
         csiCode: form.csiCode || null,
         detail: form.detail || null,
         unit: form.unit || null,
-        defaultQty: form.defaultQty ? Number(form.defaultQty) : null,
+        defaultQty: effectiveQty,
         defaultUnitCost: form.defaultUnitCost ? Number(form.defaultUnitCost) : null,
         defaultLaborCost: item.defaultLaborCost,
         defaultMaterialCost: item.defaultMaterialCost,
@@ -314,13 +324,16 @@ function AddTemplateItemRow({ divisionId, groupId, canEdit }: { divisionId: stri
   function save() {
     if (!form.name.trim()) return;
     startTransition(async () => {
+      const effectiveQty = (isRoof && isSfUnitT(form.unit) && sqFt && sqFt > 0)
+        ? Math.ceil(sqFt / 100)
+        : (form.defaultQty ? Number(form.defaultQty) : null);
       await upsertTemplateItem(divisionId, {
         groupId: groupId ?? null,
         name: form.name,
         csiCode: form.csiCode || null,
         detail: form.detail || null,
         unit: form.unit || null,
-        defaultQty: form.defaultQty ? Number(form.defaultQty) : null,
+        defaultQty: effectiveQty,
         defaultUnitCost: form.defaultUnitCost ? Number(form.defaultUnitCost) : null,
         defaultMarkupPct: form.defaultMarkupPct ? Number(form.defaultMarkupPct) : null,
         notes: form.notes || null,
