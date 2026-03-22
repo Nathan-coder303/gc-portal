@@ -24,6 +24,7 @@ export async function GET(
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
   const countersigned = req.nextUrl.searchParams.get("countersigned") === "1";
+  const cover = req.nextUrl.searchParams.get("cover") === "1";
 
   const [template, company] = await Promise.all([
     prisma.estimateTemplate.findFirst({
@@ -84,7 +85,7 @@ export async function GET(
   const buffer = await renderTemplatePdf({
     companyName: company.name,
     template: { name: template.name, description: template.description, estimateNumber: template.estimateNumber, estimateDate: template.estimateDate },
-    client: template.client ? { name: template.client.name, address: template.client.address, city: template.client.city, state: template.client.state, zip: template.client.zip } : null,
+    client: template.client ? { name: template.client.name, address: template.client.address, city: template.client.city, state: template.client.state, zip: template.client.zip, phone: template.client.phone, email: template.client.email } : null,
     divisions,
     showTerms: true,
     termsContent: template.termsContent,
@@ -99,6 +100,7 @@ export async function GET(
       contractorSignedAt: template.counterSignedAt ?? null,
     }),
     includeRoofUpgradesPage: template.name.toLowerCase().includes("roof"),
+    includeCoverPage: cover,
   });
 
   const clientSlug = template.client ? `-for-${template.client.name.replace(/[^a-z0-9]/gi, "-")}` : "";

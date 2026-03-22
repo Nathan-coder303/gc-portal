@@ -149,7 +149,7 @@ function computeOverrideTotal(sg: SummaryGroupOverride): number | null {
 type TemplatePdfProps = {
   companyName: string;
   template: { name: string; description: string | null; estimateNumber: string | null; estimateDate: string | null };
-  client: { name: string; address: string | null; city: string | null; state: string | null; zip: string | null } | null;
+  client: { name: string; address: string | null; city: string | null; state: string | null; zip: string | null; phone?: string | null; email?: string | null } | null;
   divisions: Division[];
   showTerms?: boolean;
   termsContent?: string | null;
@@ -162,6 +162,7 @@ type TemplatePdfProps = {
   contractorSignatureData?: string | null;
   contractorSignedAt?: Date | null;
   includeRoofUpgradesPage?: boolean;
+  includeCoverPage?: boolean;
 };
 
 function ItemTableHeader({ showLineNum }: { showLineNum?: boolean }) {
@@ -209,7 +210,146 @@ function ItemRow({ item, index, lineNum }: { item: Item; index: number; lineNum?
   );
 }
 
-function TemplatePdfDocument({ companyName, template, client, divisions, showTerms, termsContent, paymentSchedule, gcFeePercent, summaryGroups, clientSignatureData, clientSignedByName, clientSignedAt, contractorSignatureData, contractorSignedAt, includeRoofUpgradesPage }: TemplatePdfProps) {
+// ─── Presentation Cover Pages ─────────────────────────────────────────────────
+function CoverPages({ template, client }: Pick<TemplatePdfProps, "template" | "client">) {
+  const logoPath = path.join(process.cwd(), "public", "logo.png");
+  const photosPath = path.join(process.cwd(), "public", "flat-roofs-cover.png");
+  const GOLD = "#C9A84C";
+  const DARK = "#1e293b";
+
+  const today = new Date().toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" });
+  const clientCity = [client?.city, client?.state, client?.zip].filter(Boolean).join(", ");
+
+  const infoRow = (label: string, value: string | null | undefined) =>
+    value ? (
+      <View key={label} style={{ flexDirection: "row", marginBottom: 3 }}>
+        <Text style={{ fontSize: 9, fontFamily: "Helvetica-Bold", color: DARK, width: 80 }}>{label}:</Text>
+        <Text style={{ fontSize: 9, color: "#334155", flex: 1 }}>{value}</Text>
+      </View>
+    ) : null;
+
+  return (
+    <>
+      {/* ── PAGE 1: COVER ── */}
+      <Page size="LETTER" style={{ fontFamily: "Helvetica", padding: 0 }}>
+        {/* Header */}
+        <View style={{ flexDirection: "row", alignItems: "center", backgroundColor: DARK, paddingHorizontal: 28, paddingVertical: 12, gap: 16 }}>
+          {/* eslint-disable-next-line jsx-a11y/alt-text */}
+          <Image src={logoPath} style={{ width: 60, height: 60 }} />
+          <View>
+            <Text style={{ fontSize: 22, fontFamily: "Helvetica-Bold", color: GOLD, letterSpacing: 2 }}>MIBH CONSTRUCTION</Text>
+            <Text style={{ fontSize: 9, color: "#94a3b8", marginTop: 2 }}>Licensed &amp; Insured  |  CGC1527069  |  CCC1336817</Text>
+            <Text style={{ fontSize: 9, color: "#94a3b8" }}>2950 N 28 Terr, Hollywood, FL 33020  |  (305) 746-7307</Text>
+          </View>
+        </View>
+        {/* Gold bar */}
+        <View style={{ height: 4, backgroundColor: GOLD }} />
+
+        {/* Photo collage */}
+        {/* eslint-disable-next-line jsx-a11y/alt-text */}
+        <Image src={photosPath} style={{ width: 612, height: 310, objectFit: "cover" }} />
+
+        {/* Gold bar below photos */}
+        <View style={{ height: 3, backgroundColor: GOLD }} />
+
+        {/* Info section */}
+        <View style={{ flexDirection: "row", paddingHorizontal: 28, paddingTop: 18, paddingBottom: 14, gap: 24, flex: 1 }}>
+          {/* Left: project + client details */}
+          <View style={{ flex: 1, borderRightWidth: 1, borderRightColor: "#e2e8f0", paddingRight: 20 }}>
+            <Text style={{ fontSize: 11, fontFamily: "Helvetica-Bold", color: GOLD, marginBottom: 10, textTransform: "uppercase", letterSpacing: 1 }}>Project Details</Text>
+            {infoRow("Address", client?.address)}
+            {clientCity ? infoRow("City", clientCity) : null}
+            {infoRow("Client", client?.name)}
+            {client?.phone ? infoRow("Tel", client.phone) : null}
+            {client?.email ? infoRow("Email", client.email) : null}
+          </View>
+          {/* Right: project name + date */}
+          <View style={{ width: 200 }}>
+            {template.name ? (
+              <>
+                <Text style={{ fontSize: 10, fontFamily: "Helvetica-Bold", color: "#94a3b8", textTransform: "uppercase", letterSpacing: 1, marginBottom: 6 }}>Project</Text>
+                <Text style={{ fontSize: 18, fontFamily: "Helvetica-Bold", color: DARK, marginBottom: 12, lineHeight: 1.2 }}>{template.name}</Text>
+              </>
+            ) : null}
+            <Text style={{ fontSize: 10, color: "#64748b" }}>{today}</Text>
+          </View>
+        </View>
+
+        {/* Footer */}
+        <View style={{ backgroundColor: DARK, paddingHorizontal: 28, paddingVertical: 10, flexDirection: "row", alignItems: "center", gap: 16 }}>
+          <Text style={{ fontSize: 9, color: GOLD, fontFamily: "Helvetica-Bold" }}>MIBH CONSTRUCTION</Text>
+          <Text style={{ fontSize: 8, color: "#94a3b8" }}>|</Text>
+          <Text style={{ fontSize: 9, color: "#94a3b8" }}>mike@mibhconstruction.com</Text>
+          <Text style={{ fontSize: 8, color: "#94a3b8" }}>|</Text>
+          <Text style={{ fontSize: 9, color: "#94a3b8" }}>Mike Baruh</Text>
+          <Text style={{ fontSize: 8, color: "#94a3b8" }}>|</Text>
+          <Text style={{ fontSize: 9, color: "#94a3b8" }}>(305) 746-7307</Text>
+        </View>
+      </Page>
+
+      {/* ── PAGE 2: ABOUT MIBH ── */}
+      <Page size="LETTER" style={{ fontFamily: "Helvetica", padding: 0 }}>
+        {/* Gold top band with logo */}
+        <View style={{ backgroundColor: GOLD, paddingVertical: 24, alignItems: "center" }}>
+          {/* eslint-disable-next-line jsx-a11y/alt-text */}
+          <Image src={logoPath} style={{ width: 80, height: 80, marginBottom: 8 }} />
+          <Text style={{ fontSize: 22, fontFamily: "Helvetica-Bold", color: "#0f172a", letterSpacing: 2 }}>MIBH CONSTRUCTION</Text>
+          <Text style={{ fontSize: 13, color: "#1e293b", marginTop: 4, fontFamily: "Helvetica-Bold" }}>YOUR PROFESSIONAL ROOFER</Text>
+        </View>
+
+        {/* Dark accent bar */}
+        <View style={{ height: 5, backgroundColor: DARK }} />
+
+        <View style={{ paddingHorizontal: 60, paddingTop: 36, flex: 1 }}>
+          {/* 20 years headline */}
+          <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "center", marginBottom: 28, gap: 12 }}>
+            <View style={{ flex: 1, height: 2, backgroundColor: GOLD }} />
+            <Text style={{ fontSize: 20, fontFamily: "Helvetica-Bold", color: DARK, letterSpacing: 2 }}>20 YEARS OF EXCELLENCE</Text>
+            <View style={{ flex: 1, height: 2, backgroundColor: GOLD }} />
+          </View>
+
+          {/* Why choose us */}
+          <Text style={{ fontSize: 13, fontFamily: "Helvetica-Bold", color: DARK, marginBottom: 14, textTransform: "uppercase", letterSpacing: 1 }}>Why Choose MIBH Construction?</Text>
+          {[
+            "Licensed & Insured — CGC1527069 | CCC1336817",
+            "Miami-Dade Approved Materials & NOA Certified",
+            "Florida Building Code 2023 Compliant",
+            "Expert Teams for All Roofing Systems: Shingle, Tile, Metal, TPO, Flat",
+            "Free Inspections & Emergency Repair Services",
+            "Dedicated Project Manager on Every Job",
+            "Serving South Florida Homeowners & Businesses for 20+ Years",
+          ].map((item, i) => (
+            <View key={i} style={{ flexDirection: "row", alignItems: "flex-start", marginBottom: 8, gap: 8 }}>
+              <Text style={{ fontSize: 11, color: GOLD, fontFamily: "Helvetica-Bold" }}>✔</Text>
+              <Text style={{ fontSize: 11, color: "#334155", flex: 1 }}>{item}</Text>
+            </View>
+          ))}
+
+          {/* Divider */}
+          <View style={{ height: 2, backgroundColor: GOLD, marginTop: 28, marginBottom: 20 }} />
+
+          {/* Contact info */}
+          <Text style={{ fontSize: 13, fontFamily: "Helvetica-Bold", color: DARK, marginBottom: 12, textTransform: "uppercase", letterSpacing: 1 }}>Contact Us</Text>
+          <View style={{ gap: 6 }}>
+            <Text style={{ fontSize: 11, color: "#334155" }}>📧  mike@mibhconstruction.com</Text>
+            <Text style={{ fontSize: 11, color: "#334155" }}>📞  (305) 746-7307</Text>
+            <Text style={{ fontSize: 11, color: "#334155" }}>📍  2950 N 28 Terr, Hollywood, FL 33020</Text>
+            <Text style={{ fontSize: 11, color: "#334155" }}>🌐  www.mibhconstruction.com</Text>
+          </View>
+        </View>
+
+        {/* Footer */}
+        <View style={{ backgroundColor: DARK, paddingHorizontal: 28, paddingVertical: 12, flexDirection: "row", justifyContent: "space-between", alignItems: "center" }}>
+          <Text style={{ fontSize: 9, color: GOLD, fontFamily: "Helvetica-Bold" }}>MIBH CONSTRUCTION, LLC</Text>
+          <Text style={{ fontSize: 9, color: "#94a3b8" }}>Fully Licensed &amp; Insured  |  South Florida</Text>
+          <Text style={{ fontSize: 9, color: "#94a3b8" }}>mike@mibhconstruction.com</Text>
+        </View>
+      </Page>
+    </>
+  );
+}
+
+function TemplatePdfDocument({ companyName, template, client, divisions, showTerms, termsContent, paymentSchedule, gcFeePercent, summaryGroups, clientSignatureData, clientSignedByName, clientSignedAt, contractorSignatureData, contractorSignedAt, includeRoofUpgradesPage, includeCoverPage }: TemplatePdfProps) {
   const grouped = groupDivisions(divisions);
 
   // Compute raw totals per group label (or null for ungrouped)
@@ -367,6 +507,7 @@ function TemplatePdfDocument({ companyName, template, client, divisions, showTer
 
   return (
     <Document title={`${template.name} — Estimate`} author={companyName}>
+      {includeCoverPage && <CoverPages template={template} client={client} />}
       <Page size="LETTER" style={styles.page}>
         {/* Header: 3 columns */}
         <View style={styles.header}>

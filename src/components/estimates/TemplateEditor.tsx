@@ -1398,6 +1398,19 @@ export default function TemplateEditor({
                 <div className="text-sm font-bold mb-1" style={{ color: "#C9A84C" }}>Export PDF</div>
                 <div className="text-xs leading-relaxed" style={{ color: "#8b949e" }}>Download a ready-to-send PDF of the current estimate</div>
               </a>
+
+              {/* Card 4 — Export PDF with Cover */}
+              <a
+                href={`/api/${template.companyId}/estimates/${template.id}/pdf?cover=1`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="block rounded-2xl p-5 transition-all"
+                style={{ background: "#0d1a1a", border: "2px solid #C9A84C66" }}
+              >
+                <div className="text-2xl mb-2">📋</div>
+                <div className="text-sm font-bold mb-1" style={{ color: "#C9A84C" }}>Export PDF + Cover</div>
+                <div className="text-xs leading-relaxed" style={{ color: "#8b949e" }}>Includes MIBH presentation cover pages before the estimate</div>
+              </a>
             </div>
 
             <ClientSelector

@@ -158,6 +158,8 @@ export async function POST(
           city: template.client.city,
           state: template.client.state,
           zip: template.client.zip,
+          phone: template.client.phone,
+          email: template.client.email,
         }
       : null,
     divisions,

@@ -145,7 +145,7 @@ export async function PATCH(req: NextRequest) {
       estimateDate: template.estimateDate,
     },
     client: template.client
-      ? { name: template.client.name, address: template.client.address, city: template.client.city, state: template.client.state, zip: template.client.zip }
+      ? { name: template.client.name, address: template.client.address, city: template.client.city, state: template.client.state, zip: template.client.zip, phone: template.client.phone, email: template.client.email }
       : null,
     divisions,
     showTerms: true,
