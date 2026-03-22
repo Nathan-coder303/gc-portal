@@ -236,34 +236,36 @@ function CoverPages({ template, client }: Pick<TemplatePdfProps, "template" | "c
       {/* Photo collage */}
       {/* eslint-disable-next-line jsx-a11y/alt-text */}
       <Image src={photosPath} style={{ width: 612, height: 285, objectFit: "cover" }} />
-      <View style={{ height: 3, backgroundColor: GOLD }} />
+
+      {/* White gap between photo and gold rectangle */}
+      <View style={{ height: 18, backgroundColor: "#fff" }} />
 
       {/* Gold info rectangle */}
-      <View style={{ flexDirection: "row", backgroundColor: GOLD, paddingHorizontal: 24, paddingVertical: 18 }}>
+      <View style={{ flexDirection: "row", backgroundColor: GOLD, paddingHorizontal: 28, paddingVertical: 20, marginHorizontal: 0 }}>
         <View style={{ flex: 1 }}>
-          {client?.address ? <Text style={{ fontSize: 9.5, color: "#fff", marginBottom: 4 }}>{client.address}</Text> : null}
-          {clientCity ? <Text style={{ fontSize: 9.5, color: "#fff", marginBottom: 4 }}>{clientCity}</Text> : null}
-          {client?.name ? <Text style={{ fontSize: 9.5, color: "#fff", marginBottom: 4 }}>{client.name}</Text> : null}
-          {client?.phone ? <Text style={{ fontSize: 9.5, color: "#fff", marginBottom: 4 }}>{client.phone}</Text> : null}
-          {client?.email ? <Text style={{ fontSize: 9.5, color: "#fff" }}>{client.email}</Text> : null}
+          {client?.address ? <Text style={{ fontSize: 11, color: "#fff", marginBottom: 5 }}>{client.address}</Text> : null}
+          {clientCity ? <Text style={{ fontSize: 11, color: "#fff", marginBottom: 5 }}>{clientCity}</Text> : null}
+          {client?.name ? <Text style={{ fontSize: 11, color: "#fff", marginBottom: 5 }}>{client.name}</Text> : null}
+          {client?.phone ? <Text style={{ fontSize: 11, color: "#fff", marginBottom: 5 }}>{client.phone}</Text> : null}
+          {client?.email ? <Text style={{ fontSize: 11, color: "#fff" }}>{client.email}</Text> : null}
         </View>
-        <View style={{ width: 1, backgroundColor: "rgba(255,255,255,0.35)", marginVertical: 2, marginHorizontal: 18 }} />
-        <View style={{ width: 190 }}>
+        <View style={{ width: 1, backgroundColor: "rgba(255,255,255,0.4)", marginVertical: 2, marginHorizontal: 20 }} />
+        <View style={{ width: 200 }}>
           {template.name ? (
-            <Text style={{ fontSize: 17, fontFamily: "Helvetica-Bold", color: "#fff", marginBottom: 6, lineHeight: 1.2 }}>{template.name}</Text>
+            <Text style={{ fontSize: 20, fontFamily: "Helvetica-Bold", color: "#fff", marginBottom: 8, lineHeight: 1.2 }}>{template.name}</Text>
           ) : null}
-          <Text style={{ fontSize: 9.5, color: "rgba(255,255,255,0.85)" }}>{today}</Text>
+          <Text style={{ fontSize: 11, color: "rgba(255,255,255,0.85)" }}>{today}</Text>
         </View>
       </View>
 
-      {/* 20 Years of Excellence section */}
-      <View style={{ paddingHorizontal: 24, paddingTop: 12, paddingBottom: 10, flex: 1 }}>
-        <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "center", marginBottom: 10, gap: 10 }}>
-          <View style={{ flex: 1, height: 1.5, backgroundColor: GOLD }} />
-          <Text style={{ fontSize: 13, fontFamily: "Helvetica-Bold", color: DARK, letterSpacing: 1.5 }}>20 YEARS OF EXCELLENCE</Text>
-          <View style={{ flex: 1, height: 1.5, backgroundColor: GOLD }} />
+      {/* 20 Years of Excellence section — flex:1 fills remaining page */}
+      <View style={{ paddingHorizontal: 28, paddingTop: 20, paddingBottom: 14, flex: 1 }}>
+        <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "center", marginBottom: 16, gap: 12 }}>
+          <View style={{ flex: 1, height: 2, backgroundColor: GOLD }} />
+          <Text style={{ fontSize: 16, fontFamily: "Helvetica-Bold", color: DARK, letterSpacing: 1.5 }}>20 YEARS OF EXCELLENCE</Text>
+          <View style={{ flex: 1, height: 2, backgroundColor: GOLD }} />
         </View>
-        <Text style={{ fontSize: 9, fontFamily: "Helvetica-Bold", color: DARK, marginBottom: 7, textTransform: "uppercase", letterSpacing: 0.5 }}>Why Choose MIBH Construction?</Text>
+        <Text style={{ fontSize: 12, fontFamily: "Helvetica-Bold", color: DARK, marginBottom: 12, textTransform: "uppercase", letterSpacing: 0.5 }}>Why Choose MIBH Construction?</Text>
         {[
           "Licensed & Insured — CGC1527069 | CCC1336817",
           "Miami-Dade Approved Materials & NOA Certified",
@@ -273,9 +275,9 @@ function CoverPages({ template, client }: Pick<TemplatePdfProps, "template" | "c
           "Dedicated Project Manager on Every Job",
           "Serving South Florida Homeowners & Businesses for 20+ Years",
         ].map((item, i) => (
-          <View key={i} style={{ flexDirection: "row", alignItems: "flex-start", marginBottom: 4, gap: 6 }}>
-            <Text style={{ fontSize: 8.5, color: GOLD, fontFamily: "Helvetica-Bold" }}>✔</Text>
-            <Text style={{ fontSize: 8.5, color: "#334155", flex: 1 }}>{item}</Text>
+          <View key={i} style={{ flexDirection: "row", alignItems: "flex-start", marginBottom: 10, gap: 8 }}>
+            <Text style={{ fontSize: 11, color: GOLD, fontFamily: "Helvetica-Bold" }}>✔</Text>
+            <Text style={{ fontSize: 11, color: "#334155", flex: 1 }}>{item}</Text>
           </View>
         ))}
       </View>
