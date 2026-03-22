@@ -14,21 +14,30 @@ export async function insertClientPageIntoEstimate(
   try {
     // Fetch the source PDF
     const sourceRes = await fetch(insertPdfUrl);
-    if (!sourceRes.ok) return estimateBuffer;
-    const sourceBytes = await sourceRes.arrayBuffer();
-    const sourcePdf = await PDFDocument.load(sourceBytes);
+    if (!sourceRes.ok) {
+      console.error("insertClientPageIntoEstimate: fetch failed", sourceRes.status, insertPdfUrl);
+      return estimateBuffer;
+    }
+    const sourceBytes = Buffer.from(await sourceRes.arrayBuffer());
+    const sourcePdf = await PDFDocument.load(sourceBytes, { ignoreEncryption: true });
 
-    // Need at least 2 pages
-    if (sourcePdf.getPageCount() < 2) return estimateBuffer;
+    const pageCount = sourcePdf.getPageCount();
+    console.log("insertClientPageIntoEstimate: source page count =", pageCount);
+
+    // Use page 2 if it exists, otherwise page 1
+    const sourcePageIndex = pageCount >= 2 ? 1 : 0;
 
     // Load the estimate PDF
-    const estimatePdf = await PDFDocument.load(estimateBuffer);
+    const estimatePdf = await PDFDocument.load(Buffer.from(estimateBuffer), { ignoreEncryption: true });
 
-    // Copy page 2 (index 1) from source
-    const [insertedPage] = await estimatePdf.copyPages(sourcePdf, [1]);
+    // Copy the chosen page from source
+    const [insertedPage] = await estimatePdf.copyPages(sourcePdf, [sourcePageIndex]);
 
-    // Insert as page 3 (index 2) — after the cover page (0) and first estimate page (1)
-    estimatePdf.insertPage(2, insertedPage);
+    // Insert as page 3 (index 2)
+    const insertAt = Math.min(2, estimatePdf.getPageCount());
+    estimatePdf.insertPage(insertAt, insertedPage);
+
+    console.log("insertClientPageIntoEstimate: inserted at index", insertAt, "total pages now", estimatePdf.getPageCount());
 
     const merged = await estimatePdf.save();
     return Buffer.from(merged);

@@ -42,6 +42,7 @@ export default function ClientFilesTab({
   const [uploading, setUploading] = useState<string[]>([]);
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [togglingId, setTogglingId] = useState<string | null>(null);
+  const [errors, setErrors] = useState<string[]>([]);
   const inputRef = useRef<HTMLInputElement>(null);
   const dragCounter = useRef(0);
 
@@ -58,8 +59,13 @@ export default function ClientFilesTab({
         });
         if (res.ok) {
           const record = await res.json();
-          setFiles(prev => [{ ...record, useInEstimate: false, uploadedAt: record.uploadedAt ?? new Date().toISOString() }, ...prev]);
+          setFiles(prev => [{ ...record, useInEstimate: record.useInEstimate ?? false, uploadedAt: record.uploadedAt ?? new Date().toISOString() }, ...prev]);
+        } else {
+          const body = await res.json().catch(() => ({}));
+          setErrors(prev => [...prev, `Failed to upload "${file.name}": ${body.error ?? res.statusText}`]);
         }
+      } catch (e) {
+        setErrors(prev => [...prev, `Failed to upload "${file.name}": network error`]);
       } finally {
         setUploading(prev => prev.filter(n => n !== file.name));
       }
@@ -139,6 +145,18 @@ export default function ClientFilesTab({
         </p>
         <p className="text-xs mt-1" style={{ color: "#8b949e" }}>Any file type · Max 50 MB each</p>
       </div>
+
+      {/* Errors */}
+      {errors.length > 0 && (
+        <div className="space-y-1">
+          {errors.map((err, i) => (
+            <div key={i} className="flex items-center justify-between gap-2 text-xs rounded px-3 py-2" style={{ background: "#2d1111", border: "1px solid #f8514944", color: "#f85149" }}>
+              <span>{err}</span>
+              <button onClick={() => setErrors(prev => prev.filter((_, j) => j !== i))} style={{ color: "#f85149" }}>✕</button>
+            </div>
+          ))}
+        </div>
+      )}
 
       {/* Upload progress */}
       {uploading.length > 0 && (
