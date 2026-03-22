@@ -142,12 +142,13 @@ model ClientFile {
   clientId   String
   client     Client   @relation(fields: [clientId], references: [id], onDelete: Cascade)
   companyId  String
-  fileName   String
-  fileUrl    String
-  fileSize   Int
-  mimeType   String?
-  uploadedAt DateTime @default(now())
-  uploadedBy String?
+  fileName       String
+  fileUrl        String
+  fileSize       Int
+  mimeType       String?
+  uploadedAt     DateTime @default(now())
+  uploadedBy     String?
+  useInEstimate  Boolean  @default(false)
 
   @@index([clientId])
 }

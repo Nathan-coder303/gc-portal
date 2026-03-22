@@ -311,6 +311,7 @@ export default async function ClientDetailPage({
             fileSize: f.fileSize,
             mimeType: f.mimeType,
             uploadedAt: f.uploadedAt.toISOString(),
+            useInEstimate: f.useInEstimate,
           }))}
         />
       )}

@@ -3,6 +3,7 @@ import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { can } from "@/lib/auth/permissions";
 import { renderTemplatePdf } from "@/lib/estimates/templatePdf";
+import { insertClientPageIntoEstimate } from "@/lib/estimates/insertClientPage";
 
 const DEFAULT_PAYMENT_SCHEDULE = [
   { payment: "Deposit", trigger: "Contract signing – permits, engineering, scheduling", pct: 25 },
@@ -104,11 +105,22 @@ export async function GET(
     insulationType: template.insulationType ?? "ISO",
   });
 
+  // Insert client's marked PDF page 2 as page 3 (roofing estimates only)
+  const isRoof = template.name.toLowerCase().includes("roof");
+  let finalBuffer = buffer;
+  if (isRoof && template.client) {
+    const insertFile = await prisma.clientFile.findFirst({
+      where: { clientId: template.client.id, useInEstimate: true },
+      select: { fileUrl: true },
+    });
+    finalBuffer = await insertClientPageIntoEstimate(buffer, insertFile?.fileUrl);
+  }
+
   const clientSlug = template.client ? `-for-${template.client.name.replace(/[^a-z0-9]/gi, "-")}` : "";
   const estimateSlug = template.estimateNumber ? `Estimate-${template.estimateNumber}` : template.name.replace(/[^a-z0-9]/gi, "-");
   const filename = `${estimateSlug}${clientSlug}${countersigned ? "-countersigned" : ""}.pdf`;
 
-  return new Response(buffer as unknown as BodyInit, {
+  return new Response(finalBuffer as unknown as BodyInit, {
     status: 200,
     headers: {
       "Content-Type": "application/pdf",

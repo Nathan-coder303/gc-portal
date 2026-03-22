@@ -3,6 +3,7 @@ import { google } from "googleapis";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { renderTemplatePdf } from "@/lib/estimates/templatePdf";
+import { insertClientPageIntoEstimate } from "@/lib/estimates/insertClientPage";
 import crypto from "crypto";
 
 export const runtime = "nodejs";
@@ -178,6 +179,16 @@ export async function POST(
     insulationType: template.insulationType ?? "ISO",
   });
 
+  // Insert client's marked PDF page 2 as page 3 (roofing only)
+  let finalBuffer = buffer;
+  if (template.name.toLowerCase().includes("roof") && template.client) {
+    const insertFile = await prisma.clientFile.findFirst({
+      where: { clientId: template.client.id, useInEstimate: true },
+      select: { fileUrl: true },
+    });
+    finalBuffer = await insertClientPageIntoEstimate(buffer, insertFile?.fileUrl);
+  }
+
   // Generate (or reuse) a signature token for this estimate
   let signToken = template.signatureToken;
   if (!signToken) {
@@ -201,7 +212,7 @@ export async function POST(
   const clientSlug = template.client ? `-for-${template.client.name.replace(/[^a-z0-9]/gi, "-")}` : "";
   const estimateSlug = template.estimateNumber ? `Estimate-${template.estimateNumber}` : template.name.replace(/[^a-z0-9]/gi, "-");
   const filename = `${estimateSlug}${clientSlug}.pdf`;
-  const pdfBase64 = buffer.toString("base64");
+  const pdfBase64 = finalBuffer.toString("base64");
 
   // RFC 2047 encode subject to handle non-ASCII characters (em dash, accents, etc.)
   const encodedSubject = /^[\x00-\x7F]*$/.test(subject)

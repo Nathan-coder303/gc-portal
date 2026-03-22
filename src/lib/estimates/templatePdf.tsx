@@ -104,7 +104,7 @@ const styles = StyleSheet.create({
   sectionTitle: { fontSize: 12, fontFamily: "Helvetica-Bold", color: DARK, marginBottom: 8, paddingTop: 12 },
 
   // T&C
-  termsText: { fontSize: 12, color: "#475569", lineHeight: 1.7 },
+  termsText: { fontSize: 8.5, color: "#475569", lineHeight: 1.6 },
 
   // Payment schedule
   payTable: { marginTop: 4 },
@@ -528,7 +528,7 @@ function TemplatePdfDocument({ companyName, template, client, divisions, showTer
         {isRoof && (
           <View style={{ marginBottom: 10, paddingVertical: 4 }}>
             {ROOF_INTRO_PARAS.map((para, i) => (
-              <Text key={i} style={{ fontSize: 9.5, color: "#334155", lineHeight: 1.6, marginBottom: i < ROOF_INTRO_PARAS.length - 1 ? 6 : 0 }}>{para}</Text>
+              <Text key={i} style={{ fontSize: 12, color: "#334155", lineHeight: 1.7, marginBottom: i < ROOF_INTRO_PARAS.length - 1 ? 10 : 0 }}>{para}</Text>
             ))}
           </View>
         )}

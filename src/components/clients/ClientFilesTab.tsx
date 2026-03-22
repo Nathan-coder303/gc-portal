@@ -10,6 +10,7 @@ type ClientFile = {
   fileSize: number;
   mimeType: string | null;
   uploadedAt: string;
+  useInEstimate: boolean;
 };
 
 function formatBytes(bytes: number): string {
@@ -40,6 +41,7 @@ export default function ClientFilesTab({
   const [dragging, setDragging] = useState(false);
   const [uploading, setUploading] = useState<string[]>([]);
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [togglingId, setTogglingId] = useState<string | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
   const uploadFiles = useCallback(async (fileList: FileList | File[]) => {
@@ -55,7 +57,7 @@ export default function ClientFilesTab({
         });
         if (res.ok) {
           const record = await res.json();
-          setFiles(prev => [{ ...record, uploadedAt: record.uploadedAt ?? new Date().toISOString() }, ...prev]);
+          setFiles(prev => [{ ...record, useInEstimate: false, uploadedAt: record.uploadedAt ?? new Date().toISOString() }, ...prev]);
         }
       } finally {
         setUploading(prev => prev.filter(n => n !== file.name));
@@ -76,6 +78,22 @@ export default function ClientFilesTab({
       setFiles(prev => prev.filter(f => f.id !== fileId));
     } finally {
       setDeletingId(null);
+    }
+  }
+
+  async function handleToggleEstimate(fileId: string, currentValue: boolean) {
+    setTogglingId(fileId);
+    const next = !currentValue;
+    try {
+      await fetch(`/api/${companyId}/clients/${clientId}/files`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ fileId, useInEstimate: next }),
+      });
+      // Clear all, then set the toggled one
+      setFiles(prev => prev.map(f => ({ ...f, useInEstimate: next && f.id === fileId })));
+    } finally {
+      setTogglingId(null);
     }
   }
 
@@ -112,7 +130,7 @@ export default function ClientFilesTab({
         <div className="space-y-1">
           {uploading.map(name => (
             <div key={name} className="flex items-center gap-2 text-xs rounded px-3 py-2" style={{ background: "#1e2736", color: "#8b949e" }}>
-              <span className="animate-spin">⏳</span>
+              <span>⏳</span>
               <span>Uploading {name}…</span>
             </div>
           ))}
@@ -124,50 +142,80 @@ export default function ClientFilesTab({
         <p className="text-sm text-center py-8" style={{ color: "#8b949e" }}>No files uploaded yet.</p>
       ) : (
         <div className="space-y-2">
-          {files.map(file => (
-            <div
-              key={file.id}
-              className="flex items-center gap-3 rounded-xl px-4 py-3"
-              style={{ background: "#1e2736", border: "1px solid #30373f" }}
-            >
-              <div className="w-10 h-10 rounded-lg flex items-center justify-center shrink-0 text-xs font-bold" style={{ background: "#0d1117", border: "1px solid #30373f" }}>
-                <FileIcon mimeType={file.mimeType} />
-              </div>
-              <div className="flex-1 min-w-0">
+          {files.map(file => {
+            const isPdf = file.mimeType?.includes("pdf") || file.fileName.toLowerCase().endsWith(".pdf");
+            return (
+              <div
+                key={file.id}
+                className="flex items-center gap-3 rounded-xl px-4 py-3"
+                style={{
+                  background: "#1e2736",
+                  border: `1px solid ${file.useInEstimate ? "#C9A84C66" : "#30373f"}`,
+                }}
+              >
+                <div className="w-10 h-10 rounded-lg flex items-center justify-center shrink-0 text-xs font-bold" style={{ background: "#0d1117", border: "1px solid #30373f" }}>
+                  <FileIcon mimeType={file.mimeType} />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <a
+                    href={file.fileUrl}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="text-sm font-medium hover:underline truncate block"
+                    style={{ color: "#e6edf3" }}
+                  >
+                    {file.fileName}
+                  </a>
+                  <div className="text-xs mt-0.5 flex items-center gap-2" style={{ color: "#8b949e" }}>
+                    <span>{formatBytes(file.fileSize)} · {new Date(file.uploadedAt).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}</span>
+                    {file.useInEstimate && (
+                      <span className="text-xs font-semibold px-1.5 py-0.5 rounded" style={{ background: "#C9A84C22", color: "#C9A84C", border: "1px solid #C9A84C44" }}>
+                        Page 2 → Estimate page 3
+                      </span>
+                    )}
+                  </div>
+                </div>
+
+                {/* Insert in estimate toggle — only for PDFs */}
+                {isPdf && (
+                  <button
+                    onClick={() => handleToggleEstimate(file.id, file.useInEstimate)}
+                    disabled={togglingId === file.id}
+                    title={file.useInEstimate ? "Remove from estimate PDF" : "Insert page 2 of this PDF as page 3 of the estimate"}
+                    className="flex items-center gap-1.5 text-xs px-2.5 py-1 rounded-full font-medium transition-all"
+                    style={
+                      file.useInEstimate
+                        ? { background: "#C9A84C", color: "#0d1117", border: "1px solid #C9A84C" }
+                        : { background: "#1e2736", color: "#8b949e", border: "1px solid #30373f" }
+                    }
+                  >
+                    <span>📋</span>
+                    <span>{file.useInEstimate ? "In estimate" : "Use in estimate"}</span>
+                  </button>
+                )}
+
                 <a
                   href={file.fileUrl}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="text-sm font-medium hover:underline truncate block"
-                  style={{ color: "#e6edf3" }}
+                  download={file.fileName}
+                  className="w-7 h-7 rounded flex items-center justify-center text-xs"
+                  style={{ background: "#C9A84C22", color: "#C9A84C", border: "1px solid #C9A84C44" }}
+                  title="Download"
+                  onClick={e => e.stopPropagation()}
                 >
-                  {file.fileName}
+                  ↓
                 </a>
-                <div className="text-xs mt-0.5" style={{ color: "#8b949e" }}>
-                  {formatBytes(file.fileSize)} · {new Date(file.uploadedAt).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
-                </div>
+                <button
+                  onClick={() => handleDelete(file.id)}
+                  disabled={deletingId === file.id}
+                  className="w-7 h-7 rounded flex items-center justify-center"
+                  style={{ background: "#f8514922", color: "#f85149", border: "1px solid #f8514933" }}
+                  title="Delete"
+                >
+                  <TrashIcon size={13} />
+                </button>
               </div>
-              <a
-                href={file.fileUrl}
-                download={file.fileName}
-                className="w-7 h-7 rounded flex items-center justify-center text-xs"
-                style={{ background: "#C9A84C22", color: "#C9A84C", border: "1px solid #C9A84C44" }}
-                title="Download"
-                onClick={e => e.stopPropagation()}
-              >
-                ↓
-              </a>
-              <button
-                onClick={() => handleDelete(file.id)}
-                disabled={deletingId === file.id}
-                className="w-7 h-7 rounded flex items-center justify-center"
-                style={{ background: "#f8514922", color: "#f85149", border: "1px solid #f8514933" }}
-                title="Delete"
-              >
-                <TrashIcon size={13} />
-              </button>
-            </div>
-          ))}
+            );
+          })}
         </div>
       )}
     </div>

@@ -44,6 +44,32 @@ export async function POST(
   return NextResponse.json(record);
 }
 
+// PATCH — toggle useInEstimate (only one file per client can be set)
+export async function PATCH(
+  req: NextRequest,
+  { params }: { params: { companyId: string; clientId: string } }
+) {
+  const session = await auth();
+  if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
+  const { fileId, useInEstimate } = await req.json() as { fileId: string; useInEstimate: boolean };
+  if (!fileId) return NextResponse.json({ error: "fileId required" }, { status: 400 });
+
+  // Clear all others for this client, then set the chosen one
+  await prisma.clientFile.updateMany({
+    where: { clientId: params.clientId },
+    data: { useInEstimate: false },
+  });
+  if (useInEstimate) {
+    await prisma.clientFile.update({
+      where: { id: fileId },
+      data: { useInEstimate: true },
+    });
+  }
+
+  return NextResponse.json({ success: true });
+}
+
 // DELETE — remove a file by id (passed as query param)
 export async function DELETE(
   req: NextRequest,

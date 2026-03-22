@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { google } from "googleapis";
 import { renderTemplatePdf } from "@/lib/estimates/templatePdf";
+import { insertClientPageIntoEstimate } from "@/lib/estimates/insertClientPage";
 
 export const runtime = "nodejs";
 export const maxDuration = 60;
@@ -162,6 +163,16 @@ export async function PATCH(req: NextRequest) {
     insulationType: template.insulationType ?? "ISO",
   });
 
+  // Insert client's marked PDF page 2 as page 3 (roofing only)
+  let finalBuffer = buffer;
+  if (template.name.toLowerCase().includes("roof") && template.client) {
+    const insertFile = await prisma.clientFile.findFirst({
+      where: { clientId: template.client.id, useInEstimate: true },
+      select: { fileUrl: true },
+    });
+    finalBuffer = await insertClientPageIntoEstimate(buffer, insertFile?.fileUrl);
+  }
+
   // Email to both parties
   try {
     const oauth2Client = getOAuthClient();
@@ -172,7 +183,7 @@ export async function PATCH(req: NextRequest) {
     const clientSlug = template.client ? `-for-${template.client.name.replace(/[^a-z0-9]/gi, "-")}` : "";
     const estimateSlug = template.estimateNumber ? `Estimate-${template.estimateNumber}` : template.name.replace(/[^a-z0-9]/gi, "-");
     const filename = `${estimateSlug}${clientSlug}-countersigned.pdf`;
-    const pdfBase64 = buffer.toString("base64");
+    const pdfBase64 = finalBuffer.toString("base64");
 
     const estimateLabel = template.estimateNumber
       ? `Estimate #${template.estimateNumber} — ${template.name}`
