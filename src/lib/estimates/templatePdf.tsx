@@ -448,7 +448,8 @@ function TemplatePdfDocument({ companyName, template, client, divisions, showTer
           <View style={styles.sigBlock}>
             <Text style={styles.sigPartyLabel}>Customer</Text>
             {clientSignatureData
-              ? <Image src={clientSignatureData} style={{ height: 40, marginBottom: 3, objectFit: "contain", objectPositionX: 0 }} alt="" />
+              // eslint-disable-next-line jsx-a11y/alt-text
+              ? <Image src={clientSignatureData} style={{ height: 40, marginBottom: 3, objectFit: "contain", objectPositionX: 0 }} />
               : <View style={[styles.sigLine, { marginBottom: 3, height: 40 }]} />}
             <Text style={styles.sigLineLabel}>Signature</Text>
             <View style={{ height: 10 }} />
@@ -468,7 +469,8 @@ function TemplatePdfDocument({ companyName, template, client, divisions, showTer
           <View style={styles.sigBlock}>
             <Text style={styles.sigPartyLabel}>Contractor</Text>
             {contractorSignatureData
-              ? <Image src={contractorSignatureData} style={{ height: 40, marginBottom: 3, objectFit: "contain", objectPositionX: 0 }} alt="" />
+              // eslint-disable-next-line jsx-a11y/alt-text
+              ? <Image src={contractorSignatureData} style={{ height: 40, marginBottom: 3, objectFit: "contain", objectPositionX: 0 }} />
               : <View style={[styles.sigLine, { marginBottom: 3, height: 40 }]} />}
             <Text style={styles.sigLineLabel}>Signature</Text>
             <View style={{ height: 10 }} />
