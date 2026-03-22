@@ -43,6 +43,7 @@ export default function ClientFilesTab({
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [togglingId, setTogglingId] = useState<string | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+  const dragCounter = useRef(0);
 
   const uploadFiles = useCallback(async (fileList: FileList | File[]) => {
     const arr = Array.from(fileList);
@@ -65,8 +66,21 @@ export default function ClientFilesTab({
     }
   }, [companyId, clientId]);
 
+  function handleDragEnter(e: React.DragEvent) {
+    e.preventDefault();
+    dragCounter.current++;
+    setDragging(true);
+  }
+
+  function handleDragLeave(e: React.DragEvent) {
+    e.preventDefault();
+    dragCounter.current--;
+    if (dragCounter.current === 0) setDragging(false);
+  }
+
   function handleDrop(e: React.DragEvent) {
     e.preventDefault();
+    dragCounter.current = 0;
     setDragging(false);
     if (e.dataTransfer.files.length) uploadFiles(e.dataTransfer.files);
   }
@@ -101,8 +115,9 @@ export default function ClientFilesTab({
     <div className="space-y-4">
       {/* Drop zone */}
       <div
-        onDragOver={e => { e.preventDefault(); setDragging(true); }}
-        onDragLeave={() => setDragging(false)}
+        onDragEnter={handleDragEnter}
+        onDragOver={e => e.preventDefault()}
+        onDragLeave={handleDragLeave}
         onDrop={handleDrop}
         onClick={() => inputRef.current?.click()}
         className="rounded-xl p-10 text-center cursor-pointer transition-all"
