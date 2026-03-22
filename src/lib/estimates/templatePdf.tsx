@@ -528,7 +528,7 @@ function TemplatePdfDocument({ companyName, template, client, divisions, showTer
         {isRoof && (
           <View style={{ marginBottom: 10, paddingVertical: 4 }}>
             {ROOF_INTRO_PARAS.map((para, i) => (
-              <Text key={i} style={{ fontSize: 12, color: "#334155", lineHeight: 1.7, marginBottom: i < ROOF_INTRO_PARAS.length - 1 ? 10 : 0 }}>{para}</Text>
+              <Text key={i} style={{ fontSize: 10.5, color: "#334155", lineHeight: 1.65, marginBottom: i < ROOF_INTRO_PARAS.length - 1 ? 8 : 0 }}>{para}</Text>
             ))}
           </View>
         )}
