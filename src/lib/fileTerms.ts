@@ -5,6 +5,7 @@ export type TermsPreset = { id: string; name: string; content: string };
 
 const PRESETS: { id: string; name: string; file: string }[] = [
   { id: "roof", name: "Roof", file: "roof.txt" },
+  { id: "roof2", name: "Roof 2", file: "roof2.txt" },
   { id: "addition", name: "Addition", file: "addition.txt" },
   { id: "bathroom", name: "Bathroom", file: "bathroom.txt" },
   { id: "kitchen", name: "Kitchen", file: "kitchen.txt" },
