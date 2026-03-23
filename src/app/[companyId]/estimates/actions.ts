@@ -950,11 +950,81 @@ export async function saveAsClientEstimate(sourceTemplateId: string, clientId: s
 
   if (!source) throw new Error("Template not found");
 
-  // If a CLIENT_ESTIMATE with the same name already exists for this client, return it
+  // If a CLIENT_ESTIMATE with the same name already exists for this client, re-sync it
   const existing = await prisma.estimateTemplate.findFirst({
     where: { companyId: session.user.companyId, clientId, type: "CLIENT_ESTIMATE", name: estimateName.trim(), archivedAt: null },
+    include: {
+      divisions: {
+        where: { archivedAt: null },
+        include: {
+          groups: { where: { archivedAt: null }, include: { items: { where: { archivedAt: null } } } },
+          items: { where: { archivedAt: null } },
+        },
+      },
+    },
   });
   if (existing) {
+    const now = new Date();
+    await prisma.$transaction(async (tx) => {
+      // Archive all existing divisions/groups/items
+      for (const div of existing.divisions) {
+        for (const grp of div.groups) {
+          await tx.estimateTemplateItem.updateMany({ where: { groupId: grp.id }, data: { archivedAt: now } });
+          await tx.estimateTemplateGroup.update({ where: { id: grp.id }, data: { archivedAt: now } });
+        }
+        await tx.estimateTemplateItem.updateMany({ where: { divisionId: div.id, groupId: null }, data: { archivedAt: now } });
+        await tx.estimateTemplateDivision.update({ where: { id: div.id }, data: { archivedAt: now } });
+      }
+      // Update template metadata from source
+      await tx.estimateTemplate.update({
+        where: { id: existing.id },
+        data: {
+          description: source.description,
+          gcFeePercent: source.gcFeePercent,
+          paymentSchedule: source.paymentSchedule ?? undefined,
+          summaryGroups: source.summaryGroups ?? undefined,
+          termsContent: source.termsContent,
+          showTerms: source.showTerms,
+          insulationType: source.insulationType,
+          updatedBy: session.user.id,
+        },
+      });
+      // Re-create divisions/groups/items from source
+      for (const div of source.divisions) {
+        const newDiv = await tx.estimateTemplateDivision.create({
+          data: { templateId: existing.id, csiCode: div.csiCode, name: div.name, sortOrder: div.sortOrder },
+        });
+        for (const grp of div.groups) {
+          const newGrp = await tx.estimateTemplateGroup.create({
+            data: { divisionId: newDiv.id, name: grp.name, sortOrder: grp.sortOrder },
+          });
+          for (const item of grp.items) {
+            await tx.estimateTemplateItem.create({
+              data: {
+                divisionId: newDiv.id, groupId: newGrp.id,
+                name: item.name, detail: item.detail, unit: item.unit,
+                defaultQty: item.defaultQty, defaultUnitCost: item.defaultUnitCost,
+                defaultLaborCost: item.defaultLaborCost, defaultMaterialCost: item.defaultMaterialCost,
+                defaultMarkupPct: item.defaultMarkupPct, notes: item.notes,
+                visibleInPdf: item.visibleInPdf, sortOrder: item.sortOrder,
+              },
+            });
+          }
+        }
+        for (const item of div.items) {
+          await tx.estimateTemplateItem.create({
+            data: {
+              divisionId: newDiv.id, groupId: null,
+              name: item.name, detail: item.detail, unit: item.unit,
+              defaultQty: item.defaultQty, defaultUnitCost: item.defaultUnitCost,
+              defaultLaborCost: item.defaultLaborCost, defaultMaterialCost: item.defaultMaterialCost,
+              defaultMarkupPct: item.defaultMarkupPct, notes: item.notes,
+              visibleInPdf: item.visibleInPdf, sortOrder: item.sortOrder,
+            },
+          });
+        }
+      }
+    });
     revalidatePath(`/${session.user.companyId}/clients/${clientId}`);
     return { success: true, id: existing.id, clientId };
   }
