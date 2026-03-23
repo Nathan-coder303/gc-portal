@@ -239,6 +239,16 @@ export default async function ClientDetailPage({
                       <span className="text-lg font-bold" style={{ color: "#C9A84C" }}>
                         ${fmt(total)}
                       </span>
+                      <a
+                        href={`/api/${params.companyId}/estimates/${est.id}/pdf?cover=1`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-xs px-2.5 py-1 rounded-lg font-medium"
+                        style={{ background: "#C9A84C22", color: "#C9A84C", border: "1px solid #C9A84C44", textDecoration: "none" }}
+                        title="Preview PDF"
+                      >
+                        ↓ PDF
+                      </a>
                       <SendEstimateEmailButton
                         templateId={est.id}
                         companyId={params.companyId}
