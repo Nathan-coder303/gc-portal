@@ -308,21 +308,21 @@ function CoverPages({ template, client }: Pick<TemplatePdfProps, "template" | "c
 // "Tapered" → strip " A. ..." up to " B. ", keep from "B." onward
 // "None"    → return null (item should be hidden)
 function applyInsulationFilter(name: string, insulationType: string | null | undefined): string | null {
-  const isInsulationItem = name.includes("Select One System");
+  const isInsulationItem = name.toLowerCase().includes("select one system");
   if (!isInsulationItem) return name;
   const type = (insulationType ?? "ISO").toLowerCase();
   if (type === "none") return null;
-  // Split on " A. " or " B. " boundaries
-  const aIdx = name.search(/ A\. [A-Z]/);
-  const bIdx = name.search(/ B\. [A-Z]/);
+  // Match " A. " or "\nA. " — handles both space and newline separators
+  const aIdx = name.search(/[ \n]A\. /);
+  const bIdx = name.search(/[ \n]B\. /);
   if (type === "iso") {
-    // Keep everything up to (but not including) " B. ..."
+    // Keep everything up to (but not including) the separator before "B. ..."
     return bIdx >= 0 ? name.slice(0, bIdx).trimEnd() : name;
   }
   if (type === "tapered") {
     // Keep from "B." onward, prepend the intro text before "A."
     const intro = aIdx >= 0 ? name.slice(0, aIdx).trimEnd() : "";
-    const bPart = bIdx >= 0 ? name.slice(bIdx + 1) : name; // skip leading space
+    const bPart = bIdx >= 0 ? name.slice(bIdx + 1) : name; // skip leading separator
     return intro ? `${intro} ${bPart}` : bPart;
   }
   return name;
