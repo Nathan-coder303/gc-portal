@@ -734,7 +734,7 @@ function TemplatePdfDocument({ companyName, template, client, divisions, showTer
 
   return (
     <Document title={`${template.name} — Estimate`} author={companyName}>
-      {includeCoverPage && <CoverPages template={template} client={client} />}
+      {includeCoverPage && !includeAdditionPages && <CoverPages template={template} client={client} />}
       {includeAdditionPages && <AdditionPage1 />}
       {includeAdditionPages && <AdditionPage2 template={template} client={client} />}
       <Page size="LETTER" style={styles.page}>
