@@ -101,6 +101,7 @@ export async function GET(
       contractorSignedAt: template.counterSignedAt ?? null,
     }),
     includeRoofUpgradesPage: template.name.toLowerCase().includes("roof"),
+    includeAdditionPages: template.name.toLowerCase().includes("addition"),
     includeCoverPage: cover,
     insulationType: template.insulationType ?? "ISO",
   });

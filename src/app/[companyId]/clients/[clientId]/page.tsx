@@ -91,10 +91,6 @@ export default async function ClientDetailPage({
     return raw + fee;
   }
 
-  function fmt(n: number) {
-    return n.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-  }
-
   const clientFiles = await prisma.clientFile.findMany({
     where: { clientId: params.clientId, companyId: params.companyId },
     orderBy: { uploadedAt: "desc" },
