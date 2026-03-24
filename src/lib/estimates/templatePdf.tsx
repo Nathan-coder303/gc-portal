@@ -371,7 +371,7 @@ function AdditionPage1() {
       </View>
 
       {/* Main content */}
-      <View style={{ paddingHorizontal: 36, paddingTop: 22, paddingBottom: 20, flex: 1, justifyContent: "space-between" }}>
+      <View style={{ paddingHorizontal: 36, paddingTop: 22, paddingBottom: 20 }}>
         {/* WHY CHOOSE (left) | gold divider | WHAT WE BUILD (right) */}
         <View style={{ flexDirection: "row", gap: 0 }}>
           {/* Left: WHY CHOOSE */}

@@ -4,7 +4,6 @@ import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { upsertClient, deleteClient } from "@/app/[companyId]/estimates/actions";
 import { TrashIcon, PencilIcon } from "@/components/ui/icons";
-import CollapsibleCard from "@/components/ui/CollapsibleCard";
 
 type Client = { id: string; name: string; address: string | null; city: string | null; state: string | null; zip: string | null; email: string | null; phone: string | null; estimateCount: number };
 
@@ -14,6 +13,7 @@ function ClientRow({ client, companyId, isAdmin }: { client: Client; companyId: 
   const [editing, setEditing] = useState(false);
   const [isPending, startTransition] = useTransition();
   const [showDelete, setShowDelete] = useState(false);
+  const [hovered, setHovered] = useState(false);
   const router = useRouter();
   const [form, setForm] = useState({
     name: client.name,
@@ -41,7 +41,6 @@ function ClientRow({ client, companyId, isAdmin }: { client: Client; companyId: 
   }
 
   const cityLine = [client.city, client.state, client.zip].filter(Boolean).join(", ");
-  const contactSummary = [client.address, cityLine, client.phone || client.email].filter(Boolean).join(" · ") || "No contact info";
 
   if (editing) {
     return (
@@ -86,71 +85,71 @@ function ClientRow({ client, companyId, isAdmin }: { client: Client; companyId: 
     );
   }
 
-  const summary = (
-    <div className="flex items-center gap-3">
-      <div className="w-9 h-9 rounded-full flex items-center justify-center shrink-0 font-bold text-sm" style={{ background: "#C9A84C1a", color: "#C9A84C" }}>
-        {client.name.slice(0, 2).toUpperCase()}
-      </div>
-      <div className="min-w-0 flex-1">
-        <div className="font-semibold text-sm" style={{ color: "#e6edf3" }}>{client.name}</div>
-        <div className="text-xs truncate mt-0.5" style={{ color: "#8b949e" }}>{contactSummary}</div>
-      </div>
-      <span className="text-xs px-2 py-0.5 rounded shrink-0" style={{ border: "1px solid #C9A84C55", color: "#C9A84C" }}>
-        {client.estimateCount} est
-      </span>
-    </div>
-  );
-
   return (
-    <CollapsibleCard summary={summary}>
-      <div className="pt-3 space-y-3">
+    <div
+      className="rounded-xl cursor-pointer transition-all flex flex-col"
+      style={{
+        background: "#1e2736",
+        border: `1px solid ${hovered ? "#C9A84C" : "#30373f"}`,
+        minHeight: 140,
+      }}
+      onClick={() => router.push(`/${companyId}/clients/${client.id}`)}
+      onMouseEnter={() => setHovered(true)}
+      onMouseLeave={() => setHovered(false)}
+    >
+      <div className="px-6 py-6 flex flex-col flex-1">
+        {/* Header: avatar + name + estimate count */}
+        <div className="flex items-center gap-3 mb-3">
+          <div className="w-11 h-11 rounded-full flex items-center justify-center shrink-0 font-bold text-base" style={{ background: "#C9A84C1a", color: "#C9A84C" }}>
+            {client.name.slice(0, 2).toUpperCase()}
+          </div>
+          <div className="min-w-0 flex-1">
+            <div className="font-bold text-lg leading-tight" style={{ color: "#e6edf3" }}>{client.name}</div>
+          </div>
+          <span className="text-xs px-2 py-0.5 rounded shrink-0" style={{ border: "1px solid #C9A84C55", color: "#C9A84C" }}>
+            {client.estimateCount} est
+          </span>
+        </div>
+
         {/* Contact details */}
-        <div className="space-y-1">
-          {client.address && <p className="text-xs" style={{ color: "#8b949e" }}>{client.address}</p>}
-          {cityLine && <p className="text-xs" style={{ color: "#8b949e" }}>{cityLine}</p>}
-          {client.email && <p className="text-xs" style={{ color: "#8b949e" }}>{client.email}</p>}
-          {client.phone && <p className="text-xs" style={{ color: "#8b949e" }}>{client.phone}</p>}
+        <div className="space-y-0.5 mb-4">
+          {client.address && <p className="text-sm" style={{ color: "#8b949e" }}>{client.address}</p>}
+          {cityLine && <p className="text-sm" style={{ color: "#8b949e" }}>{cityLine}</p>}
+          {client.email && <p className="text-sm" style={{ color: "#8b949e" }}>{client.email}</p>}
+          {client.phone && <p className="text-sm" style={{ color: "#8b949e" }}>{client.phone}</p>}
         </div>
-        {/* Actions */}
-        <div className="flex flex-wrap gap-2 pt-1">
-          <button
-            onClick={() => router.push(`/${companyId}/clients/${client.id}`)}
-            className="flex-1 px-3 py-1.5 rounded-lg text-xs font-semibold text-center"
-            style={{ background: "#C9A84C", color: "#0d1117" }}
-          >
-            Open Profile →
-          </button>
-          {isAdmin && (
-            <>
+
+        {/* Admin actions */}
+        {isAdmin && (
+          <div className="flex flex-wrap gap-2 mt-auto" onClick={(e) => e.stopPropagation()}>
+            <button
+              onClick={(e) => { e.stopPropagation(); setEditing(true); }}
+              className="w-8 h-8 rounded-lg flex items-center justify-center"
+              style={{ background: "#C9A84C22", color: "#C9A84C", border: "1px solid #C9A84C44" }}
+              title="Edit"
+            >
+              <PencilIcon size={13} />
+            </button>
+            {showDelete ? (
+              <div className="flex gap-2 items-center">
+                <span className="text-xs" style={{ color: "#8b949e" }}>Delete?</span>
+                <button onClick={(e) => { e.stopPropagation(); handleDelete(); }} disabled={isPending} className="text-xs font-medium px-2 py-1 rounded" style={{ background: "#f8514922", color: "#f85149" }}>Yes</button>
+                <button onClick={(e) => { e.stopPropagation(); setShowDelete(false); }} className="text-xs px-2 py-1 rounded" style={{ color: "#8b949e", border: "1px solid #30373f" }}>No</button>
+              </div>
+            ) : (
               <button
-                onClick={() => setEditing(true)}
+                onClick={(e) => { e.stopPropagation(); setShowDelete(true); }}
                 className="w-8 h-8 rounded-lg flex items-center justify-center"
-                style={{ background: "#C9A84C22", color: "#C9A84C", border: "1px solid #C9A84C44" }}
-                title="Edit"
+                style={{ background: "#f8514922", color: "#f85149", border: "1px solid #f8514933" }}
+                title="Delete"
               >
-                <PencilIcon size={13} />
+                <TrashIcon size={13} />
               </button>
-              {showDelete ? (
-                <div className="flex gap-2 items-center">
-                  <span className="text-xs" style={{ color: "#8b949e" }}>Delete?</span>
-                  <button onClick={handleDelete} disabled={isPending} className="text-xs font-medium px-2 py-1 rounded" style={{ background: "#f8514922", color: "#f85149" }}>Yes</button>
-                  <button onClick={() => setShowDelete(false)} className="text-xs px-2 py-1 rounded" style={{ color: "#8b949e", border: "1px solid #30373f" }}>No</button>
-                </div>
-              ) : (
-                <button
-                  onClick={() => setShowDelete(true)}
-                  className="w-8 h-8 rounded-lg flex items-center justify-center"
-                  style={{ background: "#f8514922", color: "#f85149", border: "1px solid #f8514933" }}
-                  title="Delete"
-                >
-                  <TrashIcon size={13} />
-                </button>
-              )}
-            </>
-          )}
-        </div>
+            )}
+          </div>
+        )}
       </div>
-    </CollapsibleCard>
+    </div>
   );
 }
 
@@ -232,7 +231,7 @@ export default function ClientsManager({ companyId, clients, isAdmin }: { compan
           {isAdmin && <button onClick={() => setAdding(true)} className="mt-3 text-sm hover:underline" style={{ color: "#C9A84C" }}>Add your first client</button>}
         </div>
       ) : (
-        <div className="space-y-2">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           {clients.map(c => <ClientRow key={c.id} client={c} companyId={companyId} isAdmin={isAdmin} />)}
         </div>
       )}
