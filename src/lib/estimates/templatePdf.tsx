@@ -427,7 +427,7 @@ function AdditionPage2({ client }: Pick<TemplatePdfProps, "client">) {
       items: [
         "Preparation of architectural and engineering plans",
         "Structural calculations and documentation",
-        "Notice of Commencement (if required)",
+        "Notice of Commencement",
         "Submission to city/building department",
         "Coordination of revisions and approvals",
         "Permit tracking through final approval",
@@ -532,8 +532,7 @@ function AdditionPage2({ client }: Pick<TemplatePdfProps, "client">) {
           </View>
         </View>
 
-        {/* Gold divider */}
-        <View style={{ height: 2, backgroundColor: GOLD, marginBottom: 14 }} />
+        <View style={{ marginBottom: 14 }} />
 
         {/* Scope of Work title */}
         <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "center", marginBottom: 10, gap: 12 }}>
