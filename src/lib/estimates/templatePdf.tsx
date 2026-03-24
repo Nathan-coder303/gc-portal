@@ -247,18 +247,20 @@ function CoverPages({ template, client }: Pick<TemplatePdfProps, "template" | "c
       <View style={{ height: 18, backgroundColor: "#fff" }} />
 
       {/* Gold info rectangle */}
-      <View style={{ flexDirection: "row", backgroundColor: GOLD, paddingHorizontal: 28, paddingVertical: 20, marginHorizontal: 0 }}>
-        <View style={{ flex: 1 }}>
-          {client?.address ? <Text style={{ fontSize: 11, color: "#fff", marginBottom: 5 }}>{client.address}</Text> : null}
-          {clientCity ? <Text style={{ fontSize: 11, color: "#fff", marginBottom: 5 }}>{clientCity}</Text> : null}
-          {client?.name ? <Text style={{ fontSize: 11, color: "#fff", marginBottom: 5 }}>{client.name}</Text> : null}
-          {client?.phone ? <Text style={{ fontSize: 11, color: "#fff", marginBottom: 5 }}>{client.phone}</Text> : null}
-          {client?.email ? <Text style={{ fontSize: 11, color: "#fff" }}>{client.email}</Text> : null}
+      <View style={{ flexDirection: "row", backgroundColor: GOLD, paddingHorizontal: 28, paddingVertical: 22 }}>
+        {/* Left: client name prominent, address below */}
+        <View style={{ flex: 1, justifyContent: "center" }}>
+          {client?.name ? <Text style={{ fontSize: 18, fontFamily: "Helvetica-Bold", color: "#fff", marginBottom: 6 }}>{client.name}</Text> : null}
+          {client?.address ? <Text style={{ fontSize: 10, color: "rgba(255,255,255,0.85)", marginBottom: 2 }}>{client.address}</Text> : null}
+          {clientCity ? <Text style={{ fontSize: 10, color: "rgba(255,255,255,0.85)", marginBottom: 2 }}>{clientCity}</Text> : null}
+          {client?.phone ? <Text style={{ fontSize: 10, color: "rgba(255,255,255,0.85)", marginBottom: 2 }}>{client.phone}</Text> : null}
+          {client?.email ? <Text style={{ fontSize: 10, color: "rgba(255,255,255,0.85)" }}>{client.email}</Text> : null}
         </View>
-        <View style={{ width: 1, backgroundColor: "rgba(255,255,255,0.4)", marginVertical: 2, marginHorizontal: 20 }} />
-        <View style={{ width: 200 }}>
+        <View style={{ width: 1, backgroundColor: "rgba(255,255,255,0.4)", marginVertical: 2, marginHorizontal: 24 }} />
+        {/* Right: estimate name + date — flex:1 prevents word hyphenation */}
+        <View style={{ flex: 1, justifyContent: "center" }}>
           {template.name ? (
-            <Text style={{ fontSize: 20, fontFamily: "Helvetica-Bold", color: "#fff", marginBottom: 8, lineHeight: 1.2 }}>{template.name}</Text>
+            <Text style={{ fontSize: 18, fontFamily: "Helvetica-Bold", color: "#fff", marginBottom: 8, lineHeight: 1.25 }}>{template.name}</Text>
           ) : null}
           <Text style={{ fontSize: 11, color: "rgba(255,255,255,0.85)" }}>{today}</Text>
         </View>
