@@ -334,23 +334,18 @@ function applyInsulationFilter(name: string, insulationType: string | null | und
 // ─── Addition Marketing Page (Page 1) ─────────────────────────────────────────
 function AdditionPage1() {
   const logoPath = path.join(process.cwd(), "public", "logo.png");
+  const additionsImgPath = path.join(process.cwd(), "public", "additions.jpg");
   const WHY_ITEMS = [
-    "Licensed & Insured — CGC1527069 | CCC1336817",
-    "Fully compliant with Florida Building Code (FBC 2023)",
-    "Experience with structural additions, second stories, and expansions",
-    "Turnkey service: Design, Engineering, Permits & Construction",
-    "Dedicated Project Manager from start to completion",
-    "High-end finishes and custom home expertise",
-    "Built specifically for South Florida weather (wind, moisture, heat)",
-    "Proven track record in residential and luxury construction",
-  ];
-  const WHAT_ITEMS = [
-    "Room Additions",
-    "Second Story Additions",
-    "Master Suite Expansions",
-    "Garage Conversions & Additions",
-    "Kitchen & Living Space Expansions",
-    "Structural Modifications & Open Layouts",
+    "Over 20 years of delivering high-quality workmanship across South Florida",
+    "Licensed & insured (CGC1527069 | CCC1336817) and fully compliant with Florida Building Code (FBC 2023)",
+    "Specialized expertise in additions, structural modifications, and custom home construction",
+    "Turnkey service: design, engineering, permitting, and construction handled in-house",
+    "Dedicated project manager from start to completion for clear communication and accountability",
+    "Highly skilled, experienced team delivering consistent, professional results",
+    "Built for Florida conditions: hurricanes, sun exposure, moisture, and high-wind resistance",
+    "Customized solutions with honest, transparent recommendations tailored to each project",
+    "Proven track record in both residential and high-end custom homes",
+    "Strong, long-term relationships with trusted suppliers and manufacturers ensuring quality materials",
   ];
   return (
     <Page size="LETTER" style={{ fontFamily: "Helvetica", padding: 0 }}>
@@ -365,48 +360,19 @@ function AdditionPage1() {
       </View>
       <View style={{ height: 3, backgroundColor: GOLD }} />
 
-      {/* 20+ Years banner */}
-      <View style={{ backgroundColor: GOLD, paddingVertical: 14, paddingHorizontal: 28 }}>
-        <Text style={{ fontSize: 22, fontFamily: "Helvetica-Bold", color: DARK, textAlign: "center", letterSpacing: 2 }}>20+ YEARS OF EXCELLENCE</Text>
-      </View>
+      {/* Additions photo */}
+      {/* eslint-disable-next-line jsx-a11y/alt-text */}
+      <Image src={additionsImgPath} style={{ width: "100%", height: 230 }} />
 
-      {/* Main content */}
-      <View style={{ paddingHorizontal: 36, paddingTop: 22, paddingBottom: 20 }}>
-        {/* WHY CHOOSE (left) | gold divider | WHAT WE BUILD (right) */}
-        <View style={{ flexDirection: "row", gap: 0 }}>
-          {/* Left: WHY CHOOSE */}
-          <View style={{ flex: 1, paddingRight: 20 }}>
-            <Text style={{ fontSize: 13, fontFamily: "Helvetica-Bold", color: DARK, letterSpacing: 0.5, marginBottom: 10 }}>WHY CHOOSE MIBH CONSTRUCTION?</Text>
-            {WHY_ITEMS.map((item, i) => (
-              <View key={i} style={{ flexDirection: "row", alignItems: "flex-start", marginBottom: 5, gap: 8 }}>
-                <Text style={{ fontSize: 10, color: GOLD, fontFamily: "Helvetica-Bold" }}>•</Text>
-                <Text style={{ fontSize: 10, color: "#334155", flex: 1 }}>{item}</Text>
-              </View>
-            ))}
+      {/* WHY CHOOSE section */}
+      <View style={{ paddingHorizontal: 36, paddingTop: 18, paddingBottom: 16 }}>
+        <Text style={{ fontSize: 13, fontFamily: "Helvetica-Bold", color: DARK, letterSpacing: 0.5, marginBottom: 10 }}>WHY CHOOSE MIBH CONSTRUCTION?</Text>
+        {WHY_ITEMS.map((item, i) => (
+          <View key={i} style={{ flexDirection: "row", alignItems: "flex-start", marginBottom: 5, gap: 8 }}>
+            <Text style={{ fontSize: 9.5, color: GOLD, fontFamily: "Helvetica-Bold" }}>•</Text>
+            <Text style={{ fontSize: 9.5, color: "#334155", flex: 1, lineHeight: 1.4 }}>{item}</Text>
           </View>
-
-          {/* Gold vertical divider */}
-          <View style={{ width: 2, backgroundColor: GOLD, marginVertical: 2 }} />
-
-          {/* Right: WHAT WE BUILD */}
-          <View style={{ flex: 1, paddingLeft: 20 }}>
-            <Text style={{ fontSize: 13, fontFamily: "Helvetica-Bold", color: DARK, letterSpacing: 0.5, marginBottom: 10 }}>WHAT WE BUILD</Text>
-            {WHAT_ITEMS.map((item, i) => (
-              <View key={i} style={{ flexDirection: "row", alignItems: "flex-start", marginBottom: 5, gap: 8 }}>
-                <Text style={{ fontSize: 10, color: GOLD, fontFamily: "Helvetica-Bold" }}>•</Text>
-                <Text style={{ fontSize: 10, color: "#334155", flex: 1 }}>{item}</Text>
-              </View>
-            ))}
-          </View>
-        </View>
-
-        {/* OUR APPROACH — full width */}
-        <View style={{ paddingTop: 14 }}>
-          <Text style={{ fontSize: 13, fontFamily: "Helvetica-Bold", color: DARK, letterSpacing: 0.5, marginBottom: 8 }}>OUR APPROACH</Text>
-          <Text style={{ fontSize: 10.5, color: "#334155", lineHeight: 1.6 }}>
-            We handle your project from concept to completion — including planning, engineering, permitting, and construction — ensuring a seamless process with one accountable team.
-          </Text>
-        </View>
+        ))}
       </View>
 
       {/* Footer */}
@@ -491,6 +457,14 @@ function AdditionPage2({ template, client }: Pick<TemplatePdfProps, "template" |
       ],
     },
   ];
+  const WHAT_ITEMS = [
+    "Room Additions",
+    "Second Story Additions",
+    "Master Suite Expansions",
+    "Garage Conversions & Additions",
+    "Kitchen & Living Space Expansions",
+    "Structural Modifications & Open Layouts",
+  ];
   const clientName = client?.name ?? "";
   return (
     <Page size="LETTER" style={{ fontFamily: "Helvetica", padding: 0 }}>
@@ -506,15 +480,37 @@ function AdditionPage2({ template, client }: Pick<TemplatePdfProps, "template" |
       </View>
       <View style={{ height: 3, backgroundColor: GOLD }} />
 
-      {/* Scope banner */}
-      <View style={{ backgroundColor: DARK, paddingVertical: 8, paddingHorizontal: 28 }}>
-        <Text style={{ fontSize: 14, fontFamily: "Helvetica-Bold", color: GOLD, textAlign: "center", letterSpacing: 1 }}>SCOPE OF WORK — {template.name.toUpperCase()}</Text>
-      </View>
-
       {/* Main content */}
-      <View style={{ paddingHorizontal: 28, paddingTop: 10, paddingBottom: 10, flex: 1 }}>
+      <View style={{ paddingHorizontal: 28, paddingTop: 10, paddingBottom: 10 }}>
+
+        {/* WHAT WE BUILD + OUR APPROACH side by side */}
+        <View style={{ flexDirection: "row", gap: 16, marginBottom: 12 }}>
+          <View style={{ flex: 1 }}>
+            <Text style={{ fontSize: 11, fontFamily: "Helvetica-Bold", color: DARK, letterSpacing: 0.5, marginBottom: 7 }}>WHAT WE BUILD</Text>
+            {WHAT_ITEMS.map((item, i) => (
+              <View key={i} style={{ flexDirection: "row", alignItems: "flex-start", marginBottom: 4, gap: 6 }}>
+                <Text style={{ fontSize: 9, color: GOLD, fontFamily: "Helvetica-Bold" }}>•</Text>
+                <Text style={{ fontSize: 9, color: "#334155", flex: 1 }}>{item}</Text>
+              </View>
+            ))}
+          </View>
+          <View style={{ width: 2, backgroundColor: GOLD, marginVertical: 2 }} />
+          <View style={{ flex: 1, paddingLeft: 4 }}>
+            <Text style={{ fontSize: 11, fontFamily: "Helvetica-Bold", color: DARK, letterSpacing: 0.5, marginBottom: 7 }}>OUR APPROACH</Text>
+            <Text style={{ fontSize: 9, color: "#334155", lineHeight: 1.5 }}>
+              We handle your project from concept to completion — including planning, engineering, permitting, and construction — ensuring a seamless process with one accountable team. You get a single point of contact, no subcontractor confusion, and full transparency from day one.
+            </Text>
+          </View>
+        </View>
+
+        {/* Gold divider */}
+        <View style={{ height: 2, backgroundColor: GOLD, marginBottom: 10 }} />
+
+        {/* Scope of Work title */}
+        <Text style={{ fontSize: 12, fontFamily: "Helvetica-Bold", color: DARK, textAlign: "center", letterSpacing: 1, marginBottom: 6 }}>SCOPE OF WORK — {template.name.toUpperCase()}</Text>
+
         {/* Intro */}
-        <Text style={{ fontSize: 8.5, color: "#334155", lineHeight: 1.45, marginBottom: 10 }}>
+        <Text style={{ fontSize: 8, color: "#334155", lineHeight: 1.4, marginBottom: 8 }}>
           We appreciate the opportunity to provide this proposal. MIBH Construction will deliver all labor, materials, equipment, and supervision required to complete your addition in full compliance with Florida Building Code (FBC 2023), local municipal requirements, and approved engineering plans.
         </Text>
 
@@ -522,12 +518,12 @@ function AdditionPage2({ template, client }: Pick<TemplatePdfProps, "template" |
         <View style={{ flexDirection: "row", gap: 16 }}>
           <View style={{ flex: 1 }}>
             {SECTIONS.slice(0, 3).map((sec, si) => (
-              <View key={si} style={{ marginBottom: 9 }}>
-                <Text style={{ fontSize: 8.5, fontFamily: "Helvetica-Bold", color: DARK, marginBottom: 4, textTransform: "uppercase" }}>{sec.title}</Text>
+              <View key={si} style={{ marginBottom: 8 }}>
+                <Text style={{ fontSize: 8, fontFamily: "Helvetica-Bold", color: DARK, marginBottom: 3, textTransform: "uppercase" }}>{sec.title}</Text>
                 {sec.items.map((item, ii) => (
                   <View key={ii} style={{ flexDirection: "row", alignItems: "flex-start", marginBottom: 2, gap: 5 }}>
-                    <Text style={{ fontSize: 8, color: GOLD, fontFamily: "Helvetica-Bold" }}>•</Text>
-                    <Text style={{ fontSize: 8, color: "#475569", flex: 1 }}>{item}</Text>
+                    <Text style={{ fontSize: 7.5, color: GOLD, fontFamily: "Helvetica-Bold" }}>•</Text>
+                    <Text style={{ fontSize: 7.5, color: "#475569", flex: 1 }}>{item}</Text>
                   </View>
                 ))}
               </View>
@@ -535,22 +531,16 @@ function AdditionPage2({ template, client }: Pick<TemplatePdfProps, "template" |
           </View>
           <View style={{ flex: 1 }}>
             {SECTIONS.slice(3).map((sec, si) => (
-              <View key={si} style={{ marginBottom: 9 }}>
-                <Text style={{ fontSize: 8.5, fontFamily: "Helvetica-Bold", color: DARK, marginBottom: 4, textTransform: "uppercase" }}>{sec.title}</Text>
+              <View key={si} style={{ marginBottom: 8 }}>
+                <Text style={{ fontSize: 8, fontFamily: "Helvetica-Bold", color: DARK, marginBottom: 3, textTransform: "uppercase" }}>{sec.title}</Text>
                 {sec.items.map((item, ii) => (
                   <View key={ii} style={{ flexDirection: "row", alignItems: "flex-start", marginBottom: 2, gap: 5 }}>
-                    <Text style={{ fontSize: 8, color: GOLD, fontFamily: "Helvetica-Bold" }}>•</Text>
-                    <Text style={{ fontSize: 8, color: "#475569", flex: 1 }}>{item}</Text>
+                    <Text style={{ fontSize: 7.5, color: GOLD, fontFamily: "Helvetica-Bold" }}>•</Text>
+                    <Text style={{ fontSize: 7.5, color: "#475569", flex: 1 }}>{item}</Text>
                   </View>
                 ))}
-                {si === 0 && (
-                  <Text style={{ fontSize: 7.5, color: "#64748b", fontFamily: "Helvetica-Oblique", marginTop: 3 }}>
-                    This ensures durability, structural integrity, and long-term performance.
-                  </Text>
-                )}
               </View>
             ))}
-
           </View>
         </View>
       </View>
