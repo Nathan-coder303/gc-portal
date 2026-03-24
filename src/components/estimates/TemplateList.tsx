@@ -2,8 +2,23 @@
 
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { createTemplate, createStandardTemplate, archiveTemplate, renameTemplate, duplicateTemplate } from "@/app/[companyId]/estimates/actions";
+import { createTemplate, createStandardTemplate, archiveTemplate, renameTemplate, duplicateTemplate, reorderTemplates } from "@/app/[companyId]/estimates/actions";
 import { TrashIcon, PencilIcon } from "@/components/ui/icons";
+import {
+  DndContext,
+  closestCenter,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  DragEndEvent,
+} from "@dnd-kit/core";
+import {
+  SortableContext,
+  rectSortingStrategy,
+  useSortable,
+  arrayMove,
+} from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
 
 type Template = {
   id: string;
@@ -28,6 +43,14 @@ function TemplateCard({
   const [duplicating, setDuplicating] = useState(false);
   const [hovered, setHovered] = useState(false);
 
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: tpl.id });
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.5 : 1,
+  };
+
   function saveName() {
     if (!nameVal.trim() || nameVal.trim() === tpl.name) { setEditingName(false); return; }
     startTransition(async () => {
@@ -37,80 +60,93 @@ function TemplateCard({
   }
 
   return (
-    <div
-      className="rounded-xl cursor-pointer transition-all flex flex-col"
-      style={{
-        background: "#1e2736",
-        border: `1px solid ${hovered ? "#C9A84C" : "#C9A84C55"}`,
-        minHeight: 140,
-      }}
-      onClick={() => router.push(`/${companyId}/estimates/${tpl.id}`)}
-      onMouseEnter={() => setHovered(true)}
-      onMouseLeave={() => setHovered(false)}
-    >
-      <div className="px-6 py-6 flex flex-col flex-1">
-        {editingName ? (
-          <input
-            autoFocus
-            value={nameVal}
-            onChange={(e) => setNameVal(e.target.value)}
-            onKeyDown={(e) => { if (e.key === "Enter") saveName(); if (e.key === "Escape") { setEditingName(false); setNameVal(tpl.name); } }}
-            onBlur={saveName}
-            className="rounded-lg px-3 py-2 text-base font-bold w-full mb-2"
-            style={{ background: "#0d1117", border: "1px solid #C9A84C", color: "#C9A84C" }}
-            onClick={(e) => e.stopPropagation()}
-          />
-        ) : (
-          <div className="text-xl font-bold mb-1" style={{ color: "#C9A84C" }}>{tpl.name}</div>
-        )}
-        <div className="text-sm mb-4" style={{ color: "#8b949e" }}>
-          {tpl.divisionCount} divisions · {tpl.itemCount} items
+    <div ref={setNodeRef} style={style} className="flex flex-col">
+      <div
+        className="rounded-xl cursor-pointer transition-all flex flex-col flex-1"
+        style={{
+          background: "#1e2736",
+          border: `1px solid ${hovered ? "#C9A84C" : "#C9A84C55"}`,
+          minHeight: 140,
+        }}
+        onClick={() => router.push(`/${companyId}/estimates/${tpl.id}`)}
+        onMouseEnter={() => setHovered(true)}
+        onMouseLeave={() => setHovered(false)}
+      >
+        {/* Drag handle — top strip */}
+        <div
+          {...attributes}
+          {...listeners}
+          className="w-full flex justify-center items-center py-1.5 rounded-t-xl"
+          style={{ cursor: "grab", background: "transparent", borderBottom: "1px solid #C9A84C22" }}
+          onClick={(e) => e.stopPropagation()}
+        >
+          <span style={{ color: "#C9A84C66", fontSize: 12, letterSpacing: 4 }}>⠿⠿⠿</span>
         </div>
 
-        {(canEdit || canArchive) && (
-          <div className="flex flex-wrap gap-2 mt-auto" onClick={(e) => e.stopPropagation()}>
-            {canEdit && (
-              <button
-                onClick={async (e) => {
-                  e.stopPropagation();
-                  setDuplicating(true);
-                  try {
-                    const result = await duplicateTemplate(tpl.id);
-                    router.push(`/${companyId}/estimates/${result.id}`);
-                  } finally {
-                    setDuplicating(false);
-                  }
-                }}
-                disabled={duplicating}
-                className="px-3 py-1.5 rounded-lg text-xs font-medium"
-                style={{ background: "#0d1117", color: "#8b949e", border: "1px solid #30373f" }}
-              >
-                {duplicating ? "…" : "⧉ Duplicate"}
-              </button>
-            )}
-            {canEdit && (
-              <button
-                onClick={(e) => { e.stopPropagation(); setEditingName(true); setNameVal(tpl.name); }}
-                className="w-8 h-8 rounded-lg flex items-center justify-center"
-                style={{ background: "#C9A84C22", color: "#C9A84C", border: "1px solid #C9A84C44" }}
-                title="Rename"
-              >
-                <PencilIcon size={13} />
-              </button>
-            )}
-            {canArchive && (
-              <button
-                onClick={(e) => { e.stopPropagation(); if (!confirm("Archive this template?")) return; startTransition(async () => { await archiveTemplate(tpl.id); }); }}
-                disabled={isPending}
-                className="w-8 h-8 rounded-lg flex items-center justify-center"
-                style={{ background: "#f8514922", color: "#f85149", border: "1px solid #f8514933" }}
-                title="Archive"
-              >
-                <TrashIcon size={13} />
-              </button>
-            )}
+        <div className="px-6 py-4 flex flex-col flex-1">
+          {editingName ? (
+            <input
+              autoFocus
+              value={nameVal}
+              onChange={(e) => setNameVal(e.target.value)}
+              onKeyDown={(e) => { if (e.key === "Enter") saveName(); if (e.key === "Escape") { setEditingName(false); setNameVal(tpl.name); } }}
+              onBlur={saveName}
+              className="rounded-lg px-3 py-2 text-base font-bold w-full mb-2"
+              style={{ background: "#0d1117", border: "1px solid #C9A84C", color: "#C9A84C" }}
+              onClick={(e) => e.stopPropagation()}
+            />
+          ) : (
+            <div className="text-xl font-bold mb-1" style={{ color: "#C9A84C" }}>{tpl.name}</div>
+          )}
+          <div className="text-sm mb-4" style={{ color: "#8b949e" }}>
+            {tpl.divisionCount} divisions · {tpl.itemCount} items
           </div>
-        )}
+
+          {(canEdit || canArchive) && (
+            <div className="flex flex-wrap gap-2 mt-auto" onClick={(e) => e.stopPropagation()}>
+              {canEdit && (
+                <button
+                  onClick={async (e) => {
+                    e.stopPropagation();
+                    setDuplicating(true);
+                    try {
+                      const result = await duplicateTemplate(tpl.id);
+                      router.push(`/${companyId}/estimates/${result.id}`);
+                    } finally {
+                      setDuplicating(false);
+                    }
+                  }}
+                  disabled={duplicating}
+                  className="px-3 py-1.5 rounded-lg text-xs font-medium"
+                  style={{ background: "#0d1117", color: "#8b949e", border: "1px solid #30373f" }}
+                >
+                  {duplicating ? "…" : "⧉ Duplicate"}
+                </button>
+              )}
+              {canEdit && (
+                <button
+                  onClick={(e) => { e.stopPropagation(); setEditingName(true); setNameVal(tpl.name); }}
+                  className="w-8 h-8 rounded-lg flex items-center justify-center"
+                  style={{ background: "#C9A84C22", color: "#C9A84C", border: "1px solid #C9A84C44" }}
+                  title="Rename"
+                >
+                  <PencilIcon size={13} />
+                </button>
+              )}
+              {canArchive && (
+                <button
+                  onClick={(e) => { e.stopPropagation(); if (!confirm("Archive this template?")) return; startTransition(async () => { await archiveTemplate(tpl.id); }); }}
+                  disabled={isPending}
+                  className="w-8 h-8 rounded-lg flex items-center justify-center"
+                  style={{ background: "#f8514922", color: "#f85149", border: "1px solid #f8514933" }}
+                  title="Archive"
+                >
+                  <TrashIcon size={13} />
+                </button>
+              )}
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );
@@ -118,7 +154,7 @@ function TemplateCard({
 
 export default function TemplateList({
   companyId,
-  templates,
+  templates: initialTemplates,
   canEdit,
   canArchive,
 }: {
@@ -129,11 +165,26 @@ export default function TemplateList({
 }) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
+  const [templates, setTemplates] = useState(initialTemplates);
   const [showCreate, setShowCreate] = useState(false);
   const [createMode, setCreateMode] = useState<"blank" | "standard">("blank");
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
   const [error, setError] = useState("");
+
+  const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 5 } }));
+
+  function handleDragEnd(event: DragEndEvent) {
+    const { active, over } = event;
+    if (!over || active.id === over.id) return;
+    const oldIdx = templates.findIndex(t => t.id === active.id);
+    const newIdx = templates.findIndex(t => t.id === over.id);
+    const reordered = arrayMove(templates, oldIdx, newIdx);
+    setTemplates(reordered);
+    startTransition(async () => {
+      await reorderTemplates(reordered.map(t => t.id));
+    });
+  }
 
   function handleCreate() {
     if (!name.trim()) { setError("Name is required"); return; }
@@ -206,11 +257,15 @@ export default function TemplateList({
           <p className="text-sm" style={{ color: "#8b949e" }}>No templates yet. Create one above.</p>
         </div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          {templates.map((tpl) => (
-            <TemplateCard key={tpl.id} tpl={tpl} companyId={companyId} canEdit={canEdit} canArchive={canArchive} isPending={isPending} startTransition={startTransition} />
-          ))}
-        </div>
+        <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+          <SortableContext items={templates.map(t => t.id)} strategy={rectSortingStrategy}>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              {templates.map((tpl) => (
+                <TemplateCard key={tpl.id} tpl={tpl} companyId={companyId} canEdit={canEdit} canArchive={canArchive} isPending={isPending} startTransition={startTransition} />
+              ))}
+            </div>
+          </SortableContext>
+        </DndContext>
       )}
     </div>
   );

@@ -1103,3 +1103,15 @@ export async function saveAsClientEstimate(sourceTemplateId: string, clientId: s
   revalidatePath(`/${session.user.companyId}/clients/${clientId}`);
   return { success: true, id: newEstimate.id, clientId };
 }
+
+export async function reorderTemplates(orderedIds: string[]) {
+  "use server";
+  const session = await auth();
+  if (!session) throw new Error("Unauthorized");
+  await Promise.all(
+    orderedIds.map((id, idx) =>
+      prisma.estimateTemplate.update({ where: { id }, data: { sortOrder: idx } })
+    )
+  );
+  revalidatePath(`/${session.user.companyId}/estimates`);
+}
