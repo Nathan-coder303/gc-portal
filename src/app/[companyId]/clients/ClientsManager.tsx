@@ -9,6 +9,14 @@ type Client = { id: string; name: string; address: string | null; city: string |
 
 const inputStyle = { background: "#0d1117", border: "1px solid #30373f", color: "#e6edf3", width: "100%" };
 
+function formatPhone(p: string | null): string {
+  if (!p) return "";
+  const digits = p.replace(/\D/g, "");
+  if (digits.length === 10) return `${digits.slice(0, 3)}-${digits.slice(3, 6)}-${digits.slice(6)}`;
+  if (digits.length === 11 && digits[0] === "1") return `${digits.slice(1, 4)}-${digits.slice(4, 7)}-${digits.slice(7)}`;
+  return p;
+}
+
 function ClientRow({ client, companyId, isAdmin }: { client: Client; companyId: string; isAdmin: boolean }) {
   const [editing, setEditing] = useState(false);
   const [isPending, startTransition] = useTransition();
@@ -106,9 +114,10 @@ function ClientRow({ client, companyId, isAdmin }: { client: Client; companyId: 
           <div className="min-w-0 flex-1">
             <div className="font-bold text-lg leading-tight" style={{ color: "#e6edf3" }}>{client.name}</div>
           </div>
-          <span className="text-xs px-2 py-0.5 rounded shrink-0" style={{ border: "1px solid #C9A84C55", color: "#C9A84C" }}>
-            {client.estimateCount} est
-          </span>
+          <div className="text-center shrink-0">
+            <div className="text-3xl font-bold leading-none" style={{ color: "#C9A84C" }}>{client.estimateCount}</div>
+            <div className="text-xs mt-0.5" style={{ color: "#8b949e" }}>estimate{client.estimateCount !== 1 ? "s" : ""}</div>
+          </div>
         </div>
 
         {/* Contact details */}
@@ -116,7 +125,7 @@ function ClientRow({ client, companyId, isAdmin }: { client: Client; companyId: 
           {client.address && <p className="text-sm" style={{ color: "#8b949e" }}>{client.address}</p>}
           {cityLine && <p className="text-sm" style={{ color: "#8b949e" }}>{cityLine}</p>}
           {client.email && <p className="text-sm" style={{ color: "#8b949e" }}>{client.email}</p>}
-          {client.phone && <p className="text-sm" style={{ color: "#8b949e" }}>{client.phone}</p>}
+          {client.phone && <p className="text-sm" style={{ color: "#8b949e" }}>{formatPhone(client.phone)}</p>}
         </div>
 
         {/* Admin actions */}
@@ -157,7 +166,7 @@ export default function ClientsManager({ companyId, clients, isAdmin }: { compan
   const [adding, setAdding] = useState(false);
   const [isPending, startTransition] = useTransition();
   const router = useRouter();
-  const [form, setForm] = useState({ name: "", address: "", city: "", state: "", zip: "", email: "", phone: "" });
+  const [form, setForm] = useState({ name: "", address: "", city: "", state: "FL", zip: "", email: "", phone: "" });
 
   function handleAdd() {
     if (!form.name.trim()) return;
