@@ -352,12 +352,11 @@ function AdditionPage1({ template, client }: Pick<TemplatePdfProps, "template" |
       </View>
       <View style={{ height: 3, backgroundColor: GOLD }} />
 
-      {/* Photo collage */}
-      {/* eslint-disable-next-line jsx-a11y/alt-text */}
-      <Image src={additionsImgPath} style={{ width: 612, height: 285, objectFit: "cover" }} />
-
-      {/* White gap */}
-      <View style={{ height: 18, backgroundColor: "#fff" }} />
+      {/* Photo collage — equal padding on all 4 sides */}
+      <View style={{ paddingHorizontal: 18, paddingTop: 18, paddingBottom: 18 }}>
+        {/* eslint-disable-next-line jsx-a11y/alt-text */}
+        <Image src={additionsImgPath} style={{ width: 576, height: 270, objectFit: "cover" }} />
+      </View>
 
       {/* Gold info rectangle */}
       <View style={{ flexDirection: "row", backgroundColor: GOLD, paddingHorizontal: 28, paddingVertical: 22 }}>
