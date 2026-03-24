@@ -346,6 +346,10 @@ function ItemRow({ item, divisionId, groupId, canEdit }: { item: Item; divisionI
       <td className="px-2 py-1">
         <div className="flex gap-1 justify-end items-center">
           {isPending && <span className="text-xs" style={{ color: "#8b949e" }}>Saving…</span>}
+          <button onClick={doReset} disabled={isPending}
+            className="w-6 h-6 rounded flex items-center justify-center disabled:opacity-50 text-xs font-bold"
+            style={{ background: "#1e40af22", color: "#60a5fa", border: "1px solid #60a5fa33" }}
+            title="Reset values">↺</button>
           <button onClick={save} disabled={isPending} className="text-xs px-2 py-1 rounded font-medium" style={{ background: "#C9A84C", color: "#0d1117" }}>Save</button>
           <button onClick={() => setEditing(false)} className="text-xs px-2" style={{ color: "#8b949e" }}>✕</button>
         </div>
