@@ -1012,7 +1012,7 @@ export async function saveAsClientEstimate(sourceTemplateId: string, clientId: s
             await tx.estimateTemplateItem.create({
               data: {
                 divisionId: newDiv.id, groupId: newGrp.id,
-                name: item.name, detail: item.detail, unit: item.unit,
+                name: item.name, csiCode: item.csiCode, detail: item.detail, unit: item.unit,
                 defaultQty: item.defaultQty, defaultUnitCost: item.defaultUnitCost,
                 defaultLaborCost: item.defaultLaborCost, defaultMaterialCost: item.defaultMaterialCost,
                 defaultMarkupPct: item.defaultMarkupPct, notes: item.notes,
@@ -1025,7 +1025,7 @@ export async function saveAsClientEstimate(sourceTemplateId: string, clientId: s
           await tx.estimateTemplateItem.create({
             data: {
               divisionId: newDiv.id, groupId: null,
-              name: item.name, detail: item.detail, unit: item.unit,
+              name: item.name, csiCode: item.csiCode, detail: item.detail, unit: item.unit,
               defaultQty: item.defaultQty, defaultUnitCost: item.defaultUnitCost,
               defaultLaborCost: item.defaultLaborCost, defaultMaterialCost: item.defaultMaterialCost,
               defaultMarkupPct: item.defaultMarkupPct, notes: item.notes,
@@ -1075,7 +1075,7 @@ export async function saveAsClientEstimate(sourceTemplateId: string, clientId: s
           await tx.estimateTemplateItem.create({
             data: {
               divisionId: newDiv.id, groupId: newGrp.id,
-              name: item.name, detail: item.detail, unit: item.unit,
+              name: item.name, csiCode: item.csiCode, detail: item.detail, unit: item.unit,
               defaultQty: item.defaultQty, defaultUnitCost: item.defaultUnitCost,
               defaultLaborCost: item.defaultLaborCost, defaultMaterialCost: item.defaultMaterialCost,
               defaultMarkupPct: item.defaultMarkupPct, notes: item.notes,
@@ -1088,7 +1088,7 @@ export async function saveAsClientEstimate(sourceTemplateId: string, clientId: s
         await tx.estimateTemplateItem.create({
           data: {
             divisionId: newDiv.id, groupId: null,
-            name: item.name, detail: item.detail, unit: item.unit,
+            name: item.name, csiCode: item.csiCode, detail: item.detail, unit: item.unit,
             defaultQty: item.defaultQty, defaultUnitCost: item.defaultUnitCost,
             defaultLaborCost: item.defaultLaborCost, defaultMaterialCost: item.defaultMaterialCost,
             defaultMarkupPct: item.defaultMarkupPct, notes: item.notes,
