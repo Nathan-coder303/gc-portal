@@ -4,6 +4,20 @@ import { redirect } from "next/navigation";
 import { can } from "@/lib/auth/permissions";
 import ClientsManager from "./ClientsManager";
 
+function calcEstimateTotal(divisions: { items: { defaultQty: unknown; defaultUnitCost: unknown; defaultMarkupPct: unknown }[]; groups: { items: { defaultQty: unknown; defaultUnitCost: unknown; defaultMarkupPct: unknown }[] }[] }[], gcFeePercent: unknown): number {
+  const raw = divisions.reduce((sum, div) => {
+    const allItems = [...div.items, ...div.groups.flatMap(g => g.items)];
+    return sum + allItems.reduce((s, i) => {
+      const qty = i.defaultQty ? Number(i.defaultQty) : 0;
+      const cost = i.defaultUnitCost ? Number(i.defaultUnitCost) : 0;
+      const markup = i.defaultMarkupPct ? Number(i.defaultMarkupPct) : 0;
+      return s + qty * cost * (1 + markup / 100);
+    }, 0);
+  }, 0);
+  const fee = gcFeePercent ? raw * Number(gcFeePercent) / 100 : 0;
+  return raw + fee;
+}
+
 export default async function ClientsPage({ params }: { params: { companyId: string } }) {
   const session = await auth();
   if (!session) redirect("/login");
@@ -14,6 +28,22 @@ export default async function ClientsPage({ params }: { params: { companyId: str
     orderBy: { name: "asc" },
     include: {
       _count: { select: { templates: { where: { type: "CLIENT_ESTIMATE", archivedAt: null } } } },
+      templates: {
+        where: { type: "CLIENT_ESTIMATE", archivedAt: null },
+        select: {
+          gcFeePercent: true,
+          divisions: {
+            where: { archivedAt: null },
+            select: {
+              items: { where: { archivedAt: null, groupId: null }, select: { defaultQty: true, defaultUnitCost: true, defaultMarkupPct: true } },
+              groups: {
+                where: { archivedAt: null },
+                select: { items: { where: { archivedAt: null }, select: { defaultQty: true, defaultUnitCost: true, defaultMarkupPct: true } } },
+              },
+            },
+          },
+        },
+      },
     },
   });
 
@@ -22,20 +52,21 @@ export default async function ClientsPage({ params }: { params: { companyId: str
   return (
     <div className="max-w-5xl mx-auto px-4 md:px-8 py-6 md:py-8">
       <ClientsManager
-          companyId={params.companyId}
-          clients={clients.map(c => ({
-            id: c.id,
-            name: c.name,
-            address: c.address,
-            city: c.city,
-            state: c.state,
-            zip: c.zip,
-            email: c.email,
-            phone: c.phone,
-            estimateCount: c._count.templates,
-          }))}
-          isAdmin={isAdmin}
-        />
+        companyId={params.companyId}
+        clients={clients.map(c => ({
+          id: c.id,
+          name: c.name,
+          address: c.address,
+          city: c.city,
+          state: c.state,
+          zip: c.zip,
+          email: c.email,
+          phone: c.phone,
+          estimateCount: c._count.templates,
+          estimateTotal: c.templates.reduce((sum, t) => sum + calcEstimateTotal(t.divisions, t.gcFeePercent), 0),
+        }))}
+        isAdmin={isAdmin}
+      />
     </div>
   );
 }

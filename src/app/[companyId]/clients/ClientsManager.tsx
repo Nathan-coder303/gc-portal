@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { upsertClient, deleteClient } from "@/app/[companyId]/estimates/actions";
 import { TrashIcon, PencilIcon } from "@/components/ui/icons";
 
-type Client = { id: string; name: string; address: string | null; city: string | null; state: string | null; zip: string | null; email: string | null; phone: string | null; estimateCount: number };
+type Client = { id: string; name: string; address: string | null; city: string | null; state: string | null; zip: string | null; email: string | null; phone: string | null; estimateCount: number; estimateTotal: number };
 
 const inputStyle = { background: "#0d1117", border: "1px solid #30373f", color: "#e6edf3", width: "100%" };
 
@@ -114,9 +114,11 @@ function ClientRow({ client, companyId, isAdmin }: { client: Client; companyId: 
           <div className="min-w-0 flex-1">
             <div className="font-bold text-lg leading-tight" style={{ color: "#e6edf3" }}>{client.name}</div>
           </div>
-          <div className="text-center shrink-0">
-            <div className="text-3xl font-bold leading-none" style={{ color: "#C9A84C" }}>{client.estimateCount}</div>
-            <div className="text-xs mt-0.5" style={{ color: "#8b949e" }}>estimate{client.estimateCount !== 1 ? "s" : ""}</div>
+          <div className="text-right shrink-0">
+            <div className="text-xl font-bold leading-none" style={{ color: "#C9A84C" }}>
+              ${client.estimateTotal > 0 ? client.estimateTotal.toLocaleString("en-US", { minimumFractionDigits: 0, maximumFractionDigits: 0 }) : "—"}
+            </div>
+            <div className="text-xs mt-0.5" style={{ color: "#8b949e" }}>{client.estimateCount} estimate{client.estimateCount !== 1 ? "s" : ""}</div>
           </div>
         </div>
 
