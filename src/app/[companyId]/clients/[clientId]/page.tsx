@@ -2,16 +2,13 @@ import { prisma } from "@/lib/prisma";
 import { auth } from "@/lib/auth";
 import { redirect } from "next/navigation";
 import Link from "next/link";
-import { format } from "date-fns";
 import { initClientSubBids } from "../actions";
 import SubsBidsTab, { SubBidRow } from "@/components/clients/SubsBidsTab";
 import ClientBidTab from "@/components/clients/ClientBidTab";
 import { can } from "@/lib/auth/permissions";
-import DeleteEstimateButton from "@/components/clients/DeleteEstimateButton";
-import EditEstimateModal from "@/components/clients/EditEstimateModal";
-import SendEstimateEmailButton from "@/components/clients/SendEstimateEmailButton";
 import SyncLabelBidsButton from "@/components/clients/SyncLabelBidsButton";
 import ClientFilesTab from "@/components/clients/ClientFilesTab";
+import CollapsibleEstimateList from "@/components/clients/CollapsibleEstimateList";
 
 export default async function ClientDetailPage({
   params,
@@ -159,136 +156,32 @@ export default async function ClientDetailPage({
 
       {/* Tab content */}
       {activeTab === "estimates" && (
-        <div>
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="text-base font-semibold" style={{ color: "#e6edf3" }}>
-              Estimates
-            </h2>
-            <span className="text-sm" style={{ color: "#8b949e" }}>
-              {safeClient.templates.length} estimate{safeClient.templates.length !== 1 ? "s" : ""}
-            </span>
-          </div>
-
-          {safeClient.templates.length === 0 ? (
-            <div
-              className="rounded-xl p-10 text-center"
-              style={{ background: "#1e2736", border: "1px solid #30373f" }}
-            >
-              <p className="text-sm" style={{ color: "#8b949e" }}>
-                No estimates yet.
-              </p>
-              <p className="text-xs mt-1" style={{ color: "#8b949e" }}>
-                Open a template and use &quot;Save to Client&quot; to create one.
-              </p>
-            </div>
-          ) : (
-            <div className="space-y-3">
-              {safeClient.templates.map((est) => {
-                const total = calcEstimateTotal(est.divisions, est.gcFeePercent);
-                return (
-                  <div
-                    key={est.id}
-                    className="rounded-xl p-4 flex items-center justify-between"
-                    style={{ background: "#1e2736", border: "1px solid #30373f" }}
-                  >
-                    <Link
-                      href={`/${params.companyId}/estimates/${est.id}`}
-                      className="flex-1 min-w-0 group"
-                    >
-                      <div className="flex items-baseline gap-2">
-                        <span
-                          className="font-semibold transition-colors group-hover:text-[#C9A84C]"
-                          style={{ color: "#e6edf3" }}
-                        >
-                          {est.name}
-                        </span>
-                        {est.estimateNumber && (
-                          <span className="font-semibold" style={{ color: "#8b949e" }}>#{est.estimateNumber}</span>
-                        )}
-                      </div>
-                      <div className="text-xs mt-0.5" style={{ color: "#8b949e" }}>
-                        Created {est.createdAt.toLocaleString("en-US", { timeZone: "America/New_York", month: "short", day: "numeric", year: "numeric", hour: "numeric", minute: "2-digit", hour12: true })} ET
-                      </div>
-                      {est.lastSentAt && (
-                        <div className="text-xs mt-0.5" style={{ color: "#4a9eff" }}>
-                          Sent {est.lastSentAt.toLocaleString("en-US", { timeZone: "America/New_York", month: "short", day: "numeric", year: "numeric", hour: "numeric", minute: "2-digit", hour12: true })} ET
-                        </div>
-                      )}
-                    </Link>
-                    <div className="flex items-center gap-3 shrink-0">
-                      {est.counterSignedAt ? (
-                        <a
-                          href={`/api/${params.companyId}/estimates/${est.id}/pdf?countersigned=1`}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="text-xs px-2 py-0.5 rounded-full font-semibold"
-                          style={{ background: "#0d2318", color: "#22c55e", border: "1px solid #22c55e", textDecoration: "none" }}
-                          title={`Countersigned on ${format(est.counterSignedAt, "MMM d, yyyy")}`}
-                        >
-                          ✓ Countersigned
-                        </a>
-                      ) : est.signedAt && (
-                        <span
-                          className="text-xs px-2 py-0.5 rounded-full font-semibold"
-                          style={{ background: "#0d2318", color: "#22c55e", border: "1px solid #22c55e" }}
-                          title={`Signed by ${est.signedByName ?? "client"} on ${format(est.signedAt, "MMM d, yyyy")}`}
-                        >
-                          ✓ Signed
-                        </span>
-                      )}
-                      <span className="text-lg font-bold" style={{ color: "#C9A84C" }}>
-                        ${fmt(total)}
-                      </span>
-                      <a
-                        href={`/api/${params.companyId}/estimates/${est.id}/pdf?cover=1`}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="text-xs px-2.5 py-1 rounded-lg font-medium"
-                        style={{ background: "#C9A84C22", color: "#C9A84C", border: "1px solid #C9A84C44", textDecoration: "none" }}
-                        title="Preview PDF"
-                      >
-                        ↓ PDF
-                      </a>
-                      <SendEstimateEmailButton
-                        templateId={est.id}
-                        companyId={params.companyId}
-                        templateName={est.name}
-                        clientName={safeClient.name}
-                        clientEmail={safeClient.email}
-                        estimateNumber={est.estimateNumber ?? null}
-                        description={est.description ?? null}
-                        clientAddress={safeClient.address ?? null}
-                      />
-                      <Link href={`/${params.companyId}/estimates/${est.id}`} className="text-lg" style={{ color: "#8b949e" }}>→</Link>
-                      {canEdit && (
-                        <EditEstimateModal
-                          estimateId={est.id}
-                          clientId={params.clientId}
-                          companyId={params.companyId}
-                          initialName={est.name}
-                          initialDescription={est.description ?? null}
-                          initialEstimateNumber={est.estimateNumber ?? null}
-                          initialEstimateDate={est.estimateDate ?? null}
-                          initialSqFt={est.sqFt ? Number(est.sqFt) : null}
-                          initialDurationMonths={est.durationMonths ? Number(est.durationMonths) : null}
-                          initialHasSkylights={est.hasSkylights}
-                          initialHasRoofDrains={est.hasRoofDrains}
-                        />
-                      )}
-                      {canDelete && (
-                        <DeleteEstimateButton
-                          estimateId={est.id}
-                          clientId={params.clientId}
-                          companyId={params.companyId}
-                        />
-                      )}
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          )}
-        </div>
+        <CollapsibleEstimateList
+          estimates={safeClient.templates.map(est => ({
+            id: est.id,
+            name: est.name,
+            estimateNumber: est.estimateNumber ?? null,
+            description: est.description ?? null,
+            estimateDate: est.estimateDate ?? null,
+            sqFt: est.sqFt ? Number(est.sqFt) : null,
+            durationMonths: est.durationMonths ? Number(est.durationMonths) : null,
+            hasSkylights: est.hasSkylights,
+            hasRoofDrains: est.hasRoofDrains,
+            createdAt: est.createdAt.toISOString(),
+            lastSentAt: est.lastSentAt?.toISOString() ?? null,
+            signedAt: est.signedAt?.toISOString() ?? null,
+            signedByName: est.signedByName ?? null,
+            counterSignedAt: est.counterSignedAt?.toISOString() ?? null,
+            total: calcEstimateTotal(est.divisions, est.gcFeePercent),
+          }))}
+          companyId={params.companyId}
+          clientId={params.clientId}
+          clientName={safeClient.name}
+          clientEmail={safeClient.email}
+          clientAddress={safeClient.address ?? null}
+          canEdit={canEdit}
+          canDelete={canDelete}
+        />
       )}
 
       {activeTab === "subs-bids" && (
