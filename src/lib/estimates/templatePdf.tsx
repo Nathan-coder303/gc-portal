@@ -509,8 +509,8 @@ function AdditionPage2({ client }: Pick<TemplatePdfProps, "client">) {
       </View>
       <View style={{ height: 3, backgroundColor: GOLD }} />
 
-      {/* Main content — flex:1 fills page, pushing footer to bottom */}
-      <View style={{ flex: 1, paddingHorizontal: 28, paddingTop: 16, paddingBottom: 16 }}>
+      {/* Main content */}
+      <View style={{ paddingHorizontal: 28, paddingTop: 16, paddingBottom: 16 }}>
 
         {/* WHAT WE BUILD + OUR APPROACH side by side */}
         <View style={{ flexDirection: "row", gap: 20, marginBottom: 16 }}>
