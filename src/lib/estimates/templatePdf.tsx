@@ -417,7 +417,7 @@ function AdditionPage1({ template, client }: Pick<TemplatePdfProps, "template" |
 }
 
 // ─── Addition Scope of Work Page (Page 2) ─────────────────────────────────────
-function AdditionPage2({ template, client }: Pick<TemplatePdfProps, "template" | "client">) {
+function AdditionPage2({ client }: Pick<TemplatePdfProps, "client">) {
   const logoPath = path.join(process.cwd(), "public", "logo.png");
   const SECTIONS: { title: string; items: string[] }[] = [
     {
@@ -757,7 +757,7 @@ function TemplatePdfDocument({ companyName, template, client, divisions, showTer
     <Document title={`${template.name} — Estimate`} author={companyName}>
       {includeCoverPage && !includeAdditionPages && <CoverPages template={template} client={client} />}
       {includeAdditionPages && <AdditionPage1 template={template} client={client} />}
-      {includeAdditionPages && <AdditionPage2 template={template} client={client} />}
+      {includeAdditionPages && <AdditionPage2 client={client} />}
       <Page size="LETTER" style={styles.page}>
         {/* Header: 3 columns */}
         <View style={styles.header}>
