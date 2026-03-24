@@ -56,7 +56,7 @@ function fmtDate(dateStr: string | null): string {
 }
 
 const styles = StyleSheet.create({
-  page: { fontFamily: "Helvetica", fontSize: 9, paddingTop: 36, paddingBottom: 60, paddingHorizontal: 40 },
+  page: { fontFamily: "Helvetica", fontSize: 9, paddingTop: 36, paddingBottom: 52, paddingHorizontal: 40 },
   header: { flexDirection: "row", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 20, paddingBottom: 12, borderBottomWidth: 2, borderBottomColor: GOLD },
 
   // Left column
@@ -498,7 +498,17 @@ function AdditionPage2({ client }: Pick<TemplatePdfProps, "client">) {
   ];
   const clientName = client?.name ?? "";
   return (
-    <Page size="LETTER" style={{ fontFamily: "Helvetica", padding: 0 }}>
+    <Page size="LETTER" style={{ fontFamily: "Helvetica", padding: 0, paddingBottom: 52 }}>
+      {/* Footer pinned to bottom */}
+      <View fixed style={{ position: "absolute", bottom: 0, left: 0, right: 0, backgroundColor: DARK, paddingHorizontal: 24, paddingVertical: 9, flexDirection: "row", alignItems: "center", gap: 12 }}>
+        <Text style={{ fontSize: 8.5, color: GOLD, fontFamily: "Helvetica-Bold" }}>MIBH CONSTRUCTION</Text>
+        <Text style={{ fontSize: 7, color: "#94a3b8" }}>|</Text>
+        <Text style={{ fontSize: 8.5, color: "#94a3b8" }}>mike@mibhconstruction.com</Text>
+        <Text style={{ fontSize: 7, color: "#94a3b8" }}>|</Text>
+        <Text style={{ fontSize: 8.5, color: "#94a3b8" }}>Mike Baruh</Text>
+        <Text style={{ fontSize: 7, color: "#94a3b8" }}>|</Text>
+        <Text style={{ fontSize: 8.5, color: "#94a3b8" }}>(305) 746-7307</Text>
+      </View>
       {/* Header */}
       <View style={{ flexDirection: "row", alignItems: "center", backgroundColor: DARK, paddingHorizontal: 24, paddingVertical: 10, gap: 14 }}>
         {/* eslint-disable-next-line jsx-a11y/alt-text */}
@@ -579,16 +589,6 @@ function AdditionPage2({ client }: Pick<TemplatePdfProps, "client">) {
         </View>
       </View>
 
-      {/* Footer — anchored at bottom by flex layout */}
-      <View style={{ backgroundColor: DARK, paddingHorizontal: 24, paddingVertical: 9, flexDirection: "row", alignItems: "center", gap: 12 }}>
-        <Text style={{ fontSize: 8.5, color: GOLD, fontFamily: "Helvetica-Bold" }}>MIBH CONSTRUCTION</Text>
-        <Text style={{ fontSize: 7, color: "#94a3b8" }}>|</Text>
-        <Text style={{ fontSize: 8.5, color: "#94a3b8" }}>mike@mibhconstruction.com</Text>
-        <Text style={{ fontSize: 7, color: "#94a3b8" }}>|</Text>
-        <Text style={{ fontSize: 8.5, color: "#94a3b8" }}>Mike Baruh</Text>
-        <Text style={{ fontSize: 7, color: "#94a3b8" }}>|</Text>
-        <Text style={{ fontSize: 8.5, color: "#94a3b8" }}>(305) 746-7307</Text>
-      </View>
     </Page>
   );
 }
@@ -771,6 +771,8 @@ function TemplatePdfDocument({ companyName, template, client, divisions, showTer
           <Text style={{ fontSize: 8.5, color: "#94a3b8" }}>Mike Baruh</Text>
           <Text style={{ fontSize: 7, color: "#94a3b8" }}>|</Text>
           <Text style={{ fontSize: 8.5, color: "#94a3b8" }}>(305) 746-7307</Text>
+          <View style={{ flex: 1 }} />
+          <Text style={{ fontSize: 8, color: "#94a3b8" }} render={({ pageNumber, totalPages }) => `Page ${pageNumber} of ${totalPages}`} />
         </View>
 
         {/* Header: 3 columns */}
@@ -851,7 +853,7 @@ function TemplatePdfDocument({ companyName, template, client, divisions, showTer
                   .reduce((s, i) => s + calcTotal(i.defaultQty, i.defaultUnitCost, i.defaultMarkupPct), 0);
 
                 return (
-                  <View key={div.id} minPresenceAhead={250} break={div.name.toLowerCase().includes("roofing system")}>
+                  <View key={div.id} minPresenceAhead={320} break={div.name.toLowerCase().includes("roofing system")}>
                     <View style={[styles.divisionHeader, groupLabel ? { marginTop: 6 } : {}]}>
                       <View style={styles.divisionLeft}>
                         {!isRoof && div.csiCode ? <Text style={styles.divisionCsi}>{div.csiCode}</Text> : null}
@@ -918,7 +920,6 @@ function TemplatePdfDocument({ companyName, template, client, divisions, showTer
         {/* Payment terms + signature: inline when no extra page */}
         {!includeRoofUpgradesPage && paymentTermsSignatureBlock}
 
-        <Text style={styles.pageNumber} render={({ pageNumber, totalPages }) => `Page ${pageNumber} of ${totalPages}`} fixed />
       </Page>
 
       {/* Roof Upgrades extra page — full bleed image */}
@@ -926,15 +927,25 @@ function TemplatePdfDocument({ companyName, template, client, divisions, showTer
         <Page size="LETTER" style={{ padding: 0, margin: 0 }}>
           {/* eslint-disable-next-line jsx-a11y/alt-text */}
           <Image src={roofUpgradesPath} style={{ width: "100%", height: "100%", objectFit: "contain" }} />
-          <Text style={styles.pageNumber} render={({ pageNumber, totalPages }) => `Page ${pageNumber} of ${totalPages}`} fixed />
         </Page>
       )}
 
       {/* Payment terms + signature: on their own page when extra page is present */}
       {includeRoofUpgradesPage && (
-        <Page size="LETTER" style={[styles.page, { paddingTop: 14 }]}>
+        <Page size="LETTER" style={[styles.page, { paddingTop: 14, paddingBottom: 52 }]}>
+          {/* Fixed footer */}
+          <View fixed style={{ position: "absolute", bottom: 0, left: 0, right: 0, backgroundColor: DARK, paddingHorizontal: 24, paddingVertical: 9, flexDirection: "row", alignItems: "center", gap: 12 }}>
+            <Text style={{ fontSize: 8.5, color: GOLD, fontFamily: "Helvetica-Bold" }}>MIBH CONSTRUCTION</Text>
+            <Text style={{ fontSize: 7, color: "#94a3b8" }}>|</Text>
+            <Text style={{ fontSize: 8.5, color: "#94a3b8" }}>mike@mibhconstruction.com</Text>
+            <Text style={{ fontSize: 7, color: "#94a3b8" }}>|</Text>
+            <Text style={{ fontSize: 8.5, color: "#94a3b8" }}>Mike Baruh</Text>
+            <Text style={{ fontSize: 7, color: "#94a3b8" }}>|</Text>
+            <Text style={{ fontSize: 8.5, color: "#94a3b8" }}>(305) 746-7307</Text>
+            <View style={{ flex: 1 }} />
+            <Text style={{ fontSize: 8, color: "#94a3b8" }} render={({ pageNumber, totalPages }) => `Page ${pageNumber} of ${totalPages}`} />
+          </View>
           {paymentTermsSignatureBlock}
-          <Text style={styles.pageNumber} render={({ pageNumber, totalPages }) => `Page ${pageNumber} of ${totalPages}`} fixed />
         </Page>
       )}
     </Document>
