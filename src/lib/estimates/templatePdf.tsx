@@ -332,21 +332,11 @@ function applyInsulationFilter(name: string, insulationType: string | null | und
 }
 
 // ─── Addition Marketing Page (Page 1) ─────────────────────────────────────────
-function AdditionPage1() {
+function AdditionPage1({ template, client }: Pick<TemplatePdfProps, "template" | "client">) {
   const logoPath = path.join(process.cwd(), "public", "logo.png");
   const additionsImgPath = path.join(process.cwd(), "public", "additions.jpg");
-  const WHY_ITEMS = [
-    "Over 20 years of delivering high-quality workmanship across South Florida",
-    "Licensed & insured (CGC1527069 | CCC1336817) and fully compliant with Florida Building Code (FBC 2023)",
-    "Specialized expertise in additions, structural modifications, and custom home construction",
-    "Turnkey service: design, engineering, permitting, and construction handled in-house",
-    "Dedicated project manager from start to completion for clear communication and accountability",
-    "Highly skilled, experienced team delivering consistent, professional results",
-    "Built for Florida conditions: hurricanes, sun exposure, moisture, and high-wind resistance",
-    "Customized solutions with honest, transparent recommendations tailored to each project",
-    "Proven track record in both residential and high-end custom homes",
-    "Strong, long-term relationships with trusted suppliers and manufacturers ensuring quality materials",
-  ];
+  const today = new Date().toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" });
+  const clientCity = [client?.city, client?.state, client?.zip].filter(Boolean).join(", ");
   return (
     <Page size="LETTER" style={{ fontFamily: "Helvetica", padding: 0 }}>
       {/* Header */}
@@ -360,17 +350,54 @@ function AdditionPage1() {
       </View>
       <View style={{ height: 3, backgroundColor: GOLD }} />
 
-      {/* Additions photo */}
+      {/* Photo collage */}
       {/* eslint-disable-next-line jsx-a11y/alt-text */}
-      <Image src={additionsImgPath} style={{ width: "100%", height: 230 }} />
+      <Image src={additionsImgPath} style={{ width: 612, height: 285, objectFit: "cover" }} />
 
-      {/* WHY CHOOSE section */}
-      <View style={{ paddingHorizontal: 36, paddingTop: 18, paddingBottom: 16 }}>
-        <Text style={{ fontSize: 13, fontFamily: "Helvetica-Bold", color: DARK, letterSpacing: 0.5, marginBottom: 10 }}>WHY CHOOSE MIBH CONSTRUCTION?</Text>
-        {WHY_ITEMS.map((item, i) => (
-          <View key={i} style={{ flexDirection: "row", alignItems: "flex-start", marginBottom: 5, gap: 8 }}>
-            <Text style={{ fontSize: 9.5, color: GOLD, fontFamily: "Helvetica-Bold" }}>•</Text>
-            <Text style={{ fontSize: 9.5, color: "#334155", flex: 1, lineHeight: 1.4 }}>{item}</Text>
+      {/* White gap */}
+      <View style={{ height: 18, backgroundColor: "#fff" }} />
+
+      {/* Gold info rectangle */}
+      <View style={{ flexDirection: "row", backgroundColor: GOLD, paddingHorizontal: 28, paddingVertical: 20 }}>
+        <View style={{ flex: 1 }}>
+          {client?.address ? <Text style={{ fontSize: 11, color: "#fff", marginBottom: 5 }}>{client.address}</Text> : null}
+          {clientCity ? <Text style={{ fontSize: 11, color: "#fff", marginBottom: 5 }}>{clientCity}</Text> : null}
+          {client?.name ? <Text style={{ fontSize: 11, color: "#fff", marginBottom: 5 }}>{client.name}</Text> : null}
+          {client?.phone ? <Text style={{ fontSize: 11, color: "#fff", marginBottom: 5 }}>{client.phone}</Text> : null}
+          {client?.email ? <Text style={{ fontSize: 11, color: "#fff" }}>{client.email}</Text> : null}
+        </View>
+        <View style={{ width: 1, backgroundColor: "rgba(255,255,255,0.4)", marginVertical: 2, marginHorizontal: 20 }} />
+        <View style={{ width: 200 }}>
+          {template.name ? (
+            <Text style={{ fontSize: 20, fontFamily: "Helvetica-Bold", color: "#fff", marginBottom: 8, lineHeight: 1.2 }}>{template.name}</Text>
+          ) : null}
+          <Text style={{ fontSize: 11, color: "rgba(255,255,255,0.85)" }}>{today}</Text>
+        </View>
+      </View>
+
+      {/* 20 Years + WHY CHOOSE */}
+      <View style={{ paddingHorizontal: 28, paddingTop: 20, paddingBottom: 14, flex: 1 }}>
+        <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "center", marginBottom: 16, gap: 12 }}>
+          <View style={{ flex: 1, height: 2, backgroundColor: GOLD }} />
+          <Text style={{ fontSize: 16, fontFamily: "Helvetica-Bold", color: DARK, letterSpacing: 1.5 }}>20 YEARS OF EXCELLENCE</Text>
+          <View style={{ flex: 1, height: 2, backgroundColor: GOLD }} />
+        </View>
+        <Text style={{ fontSize: 12, fontFamily: "Helvetica-Bold", color: DARK, marginBottom: 12, textTransform: "uppercase", letterSpacing: 0.5 }}>Why Choose Us</Text>
+        {[
+          "Over 20 years of delivering high-quality workmanship across South Florida",
+          "Licensed & insured (CGC1527069 | CCC1336817) and fully compliant with Florida Building Code (FBC 2023)",
+          "Specialized expertise in additions, structural modifications, and custom home construction",
+          "Turnkey service: design, engineering, permitting, and construction handled in-house",
+          "Dedicated project manager from start to completion for clear communication and accountability",
+          "Highly skilled, experienced team delivering consistent, professional results",
+          "Built for Florida conditions: hurricanes, sun exposure, moisture, and high-wind resistance",
+          "Customized solutions with honest, transparent recommendations tailored to each project",
+          "Proven track record in both residential and high-end custom homes",
+          "Strong, long-term relationships with trusted suppliers and manufacturers ensuring quality materials",
+        ].map((item, i) => (
+          <View key={i} style={{ flexDirection: "row", alignItems: "flex-start", marginBottom: 6, gap: 8 }}>
+            <Text style={{ fontSize: 10, color: GOLD, fontFamily: "Helvetica-Bold" }}>•</Text>
+            <Text style={{ fontSize: 10, color: "#334155", flex: 1 }}>{item}</Text>
           </View>
         ))}
       </View>
@@ -725,7 +752,7 @@ function TemplatePdfDocument({ companyName, template, client, divisions, showTer
   return (
     <Document title={`${template.name} — Estimate`} author={companyName}>
       {includeCoverPage && !includeAdditionPages && <CoverPages template={template} client={client} />}
-      {includeAdditionPages && <AdditionPage1 />}
+      {includeAdditionPages && <AdditionPage1 template={template} client={client} />}
       {includeAdditionPages && <AdditionPage2 template={template} client={client} />}
       <Page size="LETTER" style={styles.page}>
         {/* Header: 3 columns */}
