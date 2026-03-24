@@ -1,7 +1,7 @@
 "use client";
 
-import { format } from "date-fns";
-import CollapsibleCard from "@/components/ui/CollapsibleCard";
+import { useState } from "react";
+import { useRouter } from "next/navigation";
 import DeleteEstimateButton from "@/components/clients/DeleteEstimateButton";
 import EditEstimateModal from "@/components/clients/EditEstimateModal";
 import SendEstimateEmailButton from "@/components/clients/SendEstimateEmailButton";
@@ -40,6 +40,9 @@ function EstimateCard({
   canEdit: boolean;
   canDelete: boolean;
 }) {
+  const router = useRouter();
+  const [hovered, setHovered] = useState(false);
+
   const createdStr = new Date(est.createdAt).toLocaleString("en-US", {
     timeZone: "America/New_York", month: "short", day: "numeric", year: "numeric",
     hour: "numeric", minute: "2-digit", hour12: true,
@@ -50,56 +53,43 @@ function EstimateCard({
   }) : null;
 
   const statusBadge = est.counterSignedAt ? (
-    <span className="text-xs px-2 py-0.5 rounded-full font-semibold shrink-0" style={{ background: "#0d2318", color: "#22c55e", border: "1px solid #22c55e" }}>
+    <span className="text-xs px-2 py-0.5 rounded-full font-semibold" style={{ background: "#0d2318", color: "#22c55e", border: "1px solid #22c55e" }}>
       ✓ Countersigned
     </span>
   ) : est.signedAt ? (
-    <span className="text-xs px-2 py-0.5 rounded-full font-semibold shrink-0" style={{ background: "#0d2318", color: "#22c55e", border: "1px solid #22c55e" }}>
+    <span className="text-xs px-2 py-0.5 rounded-full font-semibold" style={{ background: "#0d2318", color: "#22c55e", border: "1px solid #22c55e" }}>
       ✓ Signed
     </span>
   ) : null;
 
-  const summary = (
-    <div className="flex items-center gap-2 min-w-0">
-      <div className="flex-1 min-w-0">
-        <div className="flex items-baseline gap-1.5 flex-wrap">
-          <span className="font-semibold text-sm" style={{ color: "#e6edf3" }}>{est.name}</span>
-          {est.estimateNumber && <span className="text-xs" style={{ color: "#8b949e" }}>#{est.estimateNumber}</span>}
-        </div>
-        <div className="text-xs mt-0.5" style={{ color: "#8b949e" }}>
-          {sentStr ? `Sent ${sentStr} ET` : `Created ${createdStr} ET`}
-        </div>
-      </div>
-      <div className="flex items-center gap-2 shrink-0">
-        {statusBadge}
-        <span className="font-bold text-sm" style={{ color: "#C9A84C" }}>${fmt(est.total)}</span>
-      </div>
-    </div>
-  );
-
   return (
-    <CollapsibleCard summary={summary}>
-      <div className="pt-3 space-y-3">
-        {/* Dates */}
-        <div className="space-y-0.5">
-          <p className="text-xs" style={{ color: "#8b949e" }}>Created: {createdStr} ET</p>
-          {sentStr && <p className="text-xs" style={{ color: "#4a9eff" }}>Sent: {sentStr} ET</p>}
-          {est.counterSignedAt && (
-            <p className="text-xs" style={{ color: "#22c55e" }}>
-              Countersigned: {format(new Date(est.counterSignedAt), "MMM d, yyyy")}
-            </p>
-          )}
+    <div
+      className="rounded-xl cursor-pointer transition-all"
+      style={{ background: "#1e2736", border: `1px solid ${hovered ? "#C9A84C" : "#30373f"}` }}
+      onClick={() => router.push(`/${companyId}/estimates/${est.id}`)}
+      onMouseEnter={() => setHovered(true)}
+      onMouseLeave={() => setHovered(false)}
+    >
+      <div className="px-5 py-4">
+        {/* Top row: name + total */}
+        <div className="flex items-start justify-between gap-3 mb-2">
+          <div className="min-w-0">
+            <div className="flex items-baseline gap-1.5 flex-wrap">
+              <span className="font-semibold text-sm" style={{ color: "#e6edf3" }}>{est.name}</span>
+              {est.estimateNumber && <span className="text-xs" style={{ color: "#8b949e" }}>#{est.estimateNumber}</span>}
+            </div>
+            <div className="text-xs mt-0.5" style={{ color: "#8b949e" }}>
+              {sentStr ? `Sent ${sentStr} ET` : `Created ${createdStr} ET`}
+            </div>
+          </div>
+          <div className="flex items-center gap-2 shrink-0">
+            {statusBadge}
+            <span className="font-bold text-sm" style={{ color: "#C9A84C" }}>${fmt(est.total)}</span>
+          </div>
         </div>
 
         {/* Action buttons */}
-        <div className="flex flex-wrap gap-2">
-          <a
-            href={`/${companyId}/estimates/${est.id}`}
-            className="flex-1 px-3 py-1.5 rounded-lg text-xs font-semibold text-center"
-            style={{ background: "#C9A84C", color: "#0d1117", textDecoration: "none" }}
-          >
-            Open →
-          </a>
+        <div className="flex flex-wrap gap-2 mt-3" onClick={(e) => e.stopPropagation()}>
           <a
             href={`/api/${companyId}/estimates/${est.id}/pdf?cover=1`}
             target="_blank"
@@ -120,8 +110,6 @@ function EstimateCard({
               ↓ Signed PDF
             </a>
           )}
-        </div>
-        <div className="flex flex-wrap gap-2">
           <SendEstimateEmailButton
             templateId={est.id}
             companyId={companyId}
@@ -152,7 +140,7 @@ function EstimateCard({
           )}
         </div>
       </div>
-    </CollapsibleCard>
+    </div>
   );
 }
 
