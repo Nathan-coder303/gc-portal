@@ -677,7 +677,7 @@ function TemplatePdfDocument({ companyName, template, client, divisions, showTer
     <>
       {/* Payment Schedule */}
       {(paymentSchedule ?? []).length > 0 && (
-        <View style={{ marginTop: 16 }} minPresenceAhead={100}>
+        <View style={{ marginTop: 16 }} break>
           <Text style={styles.sectionTitle}>Payment Schedule</Text>
           <View style={styles.payTable}>
             <View style={styles.payHeaderRow}>
