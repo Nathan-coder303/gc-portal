@@ -239,12 +239,11 @@ function CoverPages({ template, client }: Pick<TemplatePdfProps, "template" | "c
       </View>
       <View style={{ height: 3, backgroundColor: GOLD }} />
 
-      {/* Photo collage */}
-      {/* eslint-disable-next-line jsx-a11y/alt-text */}
-      <Image src={photosPath} style={{ width: 612, height: 285, objectFit: "cover" }} />
-
-      {/* White gap between photo and gold rectangle */}
-      <View style={{ height: 18, backgroundColor: "#fff" }} />
+      {/* Photo collage — equal padding on all 4 sides */}
+      <View style={{ paddingHorizontal: 18, paddingTop: 18, paddingBottom: 18 }}>
+        {/* eslint-disable-next-line jsx-a11y/alt-text */}
+        <Image src={photosPath} style={{ width: 576, height: 270, objectFit: "cover" }} />
+      </View>
 
       {/* Gold info rectangle */}
       <View style={{ flexDirection: "row", backgroundColor: GOLD, paddingHorizontal: 28, paddingVertical: 22 }}>
@@ -301,6 +300,8 @@ function CoverPages({ template, client }: Pick<TemplatePdfProps, "template" | "c
         <Text style={{ fontSize: 8.5, color: "#94a3b8" }}>Mike Baruh</Text>
         <Text style={{ fontSize: 7, color: "#94a3b8" }}>|</Text>
         <Text style={{ fontSize: 8.5, color: "#94a3b8" }}>(305) 746-7307</Text>
+        <View style={{ flex: 1 }} />
+        <Text style={{ fontSize: 8, color: "#94a3b8" }} render={({ pageNumber, totalPages }) => `Page ${pageNumber} of ${totalPages}`} />
       </View>
     </Page>
   );
