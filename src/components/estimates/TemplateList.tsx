@@ -204,7 +204,7 @@ export default function TemplateList({
           <p className="text-sm" style={{ color: "#8b949e" }}>No templates yet. Create one above.</p>
         </div>
       ) : (
-        <div className="space-y-2">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
           {templates.map((tpl) => (
             <TemplateCard key={tpl.id} tpl={tpl} companyId={companyId} canEdit={canEdit} canArchive={canArchive} isPending={isPending} startTransition={startTransition} />
           ))}
