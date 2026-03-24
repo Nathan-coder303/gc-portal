@@ -105,6 +105,7 @@ function isDurationUnitT(u: string) { return u.toUpperCase().trim() === "MO"; }
 function isDurationNameT(name: string) { const n = name.toLowerCase(); return DURATION_KW_T.some(k => n.includes(k)); }
 
 const TDimensionsCtx = createContext<{ sqFt: number | null; durationMonths: number | null; isRoof: boolean }>({ sqFt: null, durationMonths: null, isRoof: false });
+const DivisionEditCtx = createContext<{ editAllSignal: number; saveSignal: number }>({ editAllSignal: 0, saveSignal: 0 });
 
 function DetailSelect({ value, onChange }: { value: string; onChange: (v: string) => void }) {
   const [custom, setCustom] = useState(!!value && !DETAIL_OPTIONS.includes(value));
@@ -161,6 +162,7 @@ function grandTotal(divisions: Division[]): number {
 
 function ItemRow({ item, divisionId, groupId, canEdit }: { item: Item; divisionId: string; groupId?: string | null; canEdit: boolean }) {
   const { sqFt, durationMonths, isRoof } = useContext(TDimensionsCtx);
+  const { editAllSignal, saveSignal } = useContext(DivisionEditCtx);
   const [editing, setEditing] = useState(false);
   const [isPending, startTransition] = useTransition();
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
@@ -247,6 +249,37 @@ function ItemRow({ item, divisionId, groupId, canEdit }: { item: Item; divisionI
     return () => clearTimeout(timer);
   }, [form, editing]); // eslint-disable-line react-hooks/exhaustive-deps
 
+  // Enter edit mode when division "Edit All" is triggered
+  useEffect(() => {
+    if (editAllSignal > 0) setEditing(true);
+  }, [editAllSignal]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Save when division "Save All" is signaled
+  useEffect(() => {
+    if (saveSignal > 0) doSave(true);
+  }, [saveSignal]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  function doReset() {
+    if (!confirm("Clear qty, cost, markup, and detail for this item?")) return;
+    startTransition(async () => {
+      await upsertTemplateItem(divisionId, {
+        id: item.id,
+        groupId: groupId ?? null,
+        name: item.name,
+        csiCode: item.csiCode,
+        detail: null,
+        unit: item.unit,
+        defaultQty: null,
+        defaultUnitCost: null,
+        defaultLaborCost: null,
+        defaultMaterialCost: null,
+        defaultMarkupPct: null,
+        notes: item.notes,
+        visibleInPdf: item.visibleInPdf,
+      });
+    });
+  }
+
   const total = itemTotal(item);
 
   if (!editing) {
@@ -275,6 +308,12 @@ function ItemRow({ item, divisionId, groupId, canEdit }: { item: Item; divisionI
                   style={{ background: "#C9A84C22", color: "#C9A84C", border: "1px solid #C9A84C44" }}
                   title="Edit">
                   <PencilIcon size={12} />
+                </button>
+                <button onClick={doReset} disabled={isPending}
+                  className="w-6 h-6 rounded flex items-center justify-center disabled:opacity-50 text-xs font-bold"
+                  style={{ background: "#1e40af22", color: "#60a5fa", border: "1px solid #60a5fa33" }}
+                  title="Reset values">
+                  ↺
                 </button>
                 <button onClick={() => { if (confirm("Remove item?")) startTransition(async () => { await archiveTemplateItem(item.id); }); }} disabled={isPending}
                   className="w-6 h-6 rounded flex items-center justify-center disabled:opacity-50"
@@ -468,6 +507,8 @@ function TemplateDivisionSection({ division, otherDivisions, canEdit }: { divisi
   const [editCsi, setEditCsi] = useState(division.csiCode ?? "");
   const [editName, setEditName] = useState(division.name);
   const [movingTo, setMovingTo] = useState(false);
+  const [editAllSignal, setEditAllSignal] = useState(0);
+  const [saveSignal, setSaveSignal] = useState(0);
   const { setNodeRef: setDropRef, isOver } = useDroppable({ id: division.id });
   const { attributes: dragAttrs, listeners: dragListeners, setNodeRef: setDragRef, isDragging } = useDraggable({
     id: "div-" + division.id,
@@ -538,17 +579,32 @@ function TemplateDivisionSection({ division, otherDivisions, canEdit }: { divisi
         )}
 
         {canEdit && !editingHeader && (
-          <button
-            onClick={(e) => { e.stopPropagation(); setEditCsi(division.csiCode ?? ""); setEditName(division.name); setEditingHeader(true); }}
-            className="text-xs shrink-0 ml-auto"
-            style={{ color: "#8b949e" }}
-            title="Edit division"
-          >✎</button>
+          <div className="flex items-center gap-2 shrink-0 ml-auto">
+            <button
+              onClick={(e) => { e.stopPropagation(); setOpen(true); setEditAllSignal(s => s + 1); }}
+              className="text-xs px-2 py-0.5 rounded"
+              style={{ color: "#8b949e", border: "1px solid #30373f" }}
+              title="Edit all items"
+            >Edit All</button>
+            <button
+              onClick={(e) => { e.stopPropagation(); setSaveSignal(s => s + 1); }}
+              className="text-xs px-2 py-0.5 rounded"
+              style={{ color: "#C9A84C", border: "1px solid #C9A84C44" }}
+              title="Save all items"
+            >Save All</button>
+            <button
+              onClick={(e) => { e.stopPropagation(); setEditCsi(division.csiCode ?? ""); setEditName(division.name); setEditingHeader(true); }}
+              className="text-xs"
+              style={{ color: "#8b949e" }}
+              title="Edit division"
+            >✎</button>
+          </div>
         )}
         {total > 0 && !editingHeader && <span className="text-sm font-bold shrink-0" style={{ color: "#C9A84C" }}>${fmt(total)}</span>}
       </div>
 
       {open && (
+        <DivisionEditCtx.Provider value={{ editAllSignal, saveSignal }}>
         <div style={{ borderTop: "1px solid #30373f" }} className="pb-2">
           {division.groups.map((grp) => (
             <TemplateGroupSection key={grp.id} group={grp} divisionId={division.id} canEdit={canEdit} />
@@ -615,6 +671,7 @@ function TemplateDivisionSection({ division, otherDivisions, canEdit }: { divisi
             </div>
           )}
         </div>
+        </DivisionEditCtx.Provider>
       )}
     </div>
   );
