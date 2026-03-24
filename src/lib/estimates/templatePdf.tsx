@@ -56,7 +56,7 @@ function fmtDate(dateStr: string | null): string {
 }
 
 const styles = StyleSheet.create({
-  page: { fontFamily: "Helvetica", fontSize: 9, paddingTop: 36, paddingBottom: 52, paddingHorizontal: 40 },
+  page: { fontFamily: "Helvetica", fontSize: 9, paddingTop: 36, paddingBottom: 74, paddingHorizontal: 40 },
   header: { flexDirection: "row", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 20, paddingBottom: 12, borderBottomWidth: 2, borderBottomColor: GOLD },
 
   // Left column
@@ -415,6 +415,8 @@ function AdditionPage1({ template, client }: Pick<TemplatePdfProps, "template" |
         <Text style={{ fontSize: 8.5, color: "#94a3b8" }}>Mike Baruh</Text>
         <Text style={{ fontSize: 7, color: "#94a3b8" }}>|</Text>
         <Text style={{ fontSize: 8.5, color: "#94a3b8" }}>(305) 746-7307</Text>
+        <View style={{ flex: 1 }} />
+        <Text style={{ fontSize: 8, color: "#94a3b8" }} render={({ pageNumber, totalPages }) => `Page ${pageNumber} of ${totalPages}`} />
       </View>
     </Page>
   );
@@ -498,7 +500,7 @@ function AdditionPage2({ client }: Pick<TemplatePdfProps, "client">) {
   ];
   const clientName = client?.name ?? "";
   return (
-    <Page size="LETTER" style={{ fontFamily: "Helvetica", padding: 0, paddingBottom: 52 }}>
+    <Page size="LETTER" style={{ fontFamily: "Helvetica", padding: 0, paddingBottom: 74 }}>
       {/* Footer pinned to bottom */}
       <View fixed style={{ position: "absolute", bottom: 0, left: 0, right: 0, backgroundColor: DARK, paddingHorizontal: 24, paddingVertical: 9, flexDirection: "row", alignItems: "center", gap: 12 }}>
         <Text style={{ fontSize: 8.5, color: GOLD, fontFamily: "Helvetica-Bold" }}>MIBH CONSTRUCTION</Text>
@@ -508,6 +510,8 @@ function AdditionPage2({ client }: Pick<TemplatePdfProps, "client">) {
         <Text style={{ fontSize: 8.5, color: "#94a3b8" }}>Mike Baruh</Text>
         <Text style={{ fontSize: 7, color: "#94a3b8" }}>|</Text>
         <Text style={{ fontSize: 8.5, color: "#94a3b8" }}>(305) 746-7307</Text>
+        <View style={{ flex: 1 }} />
+        <Text style={{ fontSize: 8, color: "#94a3b8" }} render={({ pageNumber, totalPages }) => `Page ${pageNumber} of ${totalPages}`} />
       </View>
       {/* Header */}
       <View style={{ flexDirection: "row", alignItems: "center", backgroundColor: DARK, paddingHorizontal: 24, paddingVertical: 10, gap: 14 }}>
@@ -932,7 +936,7 @@ function TemplatePdfDocument({ companyName, template, client, divisions, showTer
 
       {/* Payment terms + signature: on their own page when extra page is present */}
       {includeRoofUpgradesPage && (
-        <Page size="LETTER" style={[styles.page, { paddingTop: 14, paddingBottom: 52 }]}>
+        <Page size="LETTER" style={[styles.page, { paddingTop: 14, paddingBottom: 74 }]}>
           {/* Fixed footer */}
           <View fixed style={{ position: "absolute", bottom: 0, left: 0, right: 0, backgroundColor: DARK, paddingHorizontal: 24, paddingVertical: 9, flexDirection: "row", alignItems: "center", gap: 12 }}>
             <Text style={{ fontSize: 8.5, color: GOLD, fontFamily: "Helvetica-Bold" }}>MIBH CONSTRUCTION</Text>
