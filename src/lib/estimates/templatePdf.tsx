@@ -371,9 +371,9 @@ function AdditionPage1() {
       </View>
 
       {/* Main content */}
-      <View style={{ paddingHorizontal: 36, paddingTop: 22, paddingBottom: 20, flex: 1 }}>
+      <View style={{ paddingHorizontal: 36, paddingTop: 22, paddingBottom: 20, flex: 1, justifyContent: "space-between" }}>
         {/* WHY CHOOSE (left) | gold divider | WHAT WE BUILD (right) */}
-        <View style={{ flexDirection: "row", gap: 0, marginBottom: 18 }}>
+        <View style={{ flexDirection: "row", gap: 0 }}>
           {/* Left: WHY CHOOSE */}
           <View style={{ flex: 1, paddingRight: 20 }}>
             <Text style={{ fontSize: 13, fontFamily: "Helvetica-Bold", color: DARK, letterSpacing: 0.5, marginBottom: 10 }}>WHY CHOOSE MIBH CONSTRUCTION?</Text>
@@ -401,7 +401,7 @@ function AdditionPage1() {
         </View>
 
         {/* OUR APPROACH — full width */}
-        <View style={{ borderTopWidth: 1, borderTopColor: "#e2e8f0", paddingTop: 14 }}>
+        <View style={{ paddingTop: 14 }}>
           <Text style={{ fontSize: 13, fontFamily: "Helvetica-Bold", color: DARK, letterSpacing: 0.5, marginBottom: 8 }}>OUR APPROACH</Text>
           <Text style={{ fontSize: 10.5, color: "#334155", lineHeight: 1.6 }}>
             We handle your project from concept to completion — including planning, engineering, permitting, and construction — ensuring a seamless process with one accountable team.
