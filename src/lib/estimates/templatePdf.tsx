@@ -507,50 +507,54 @@ function AdditionPage2({ template, client }: Pick<TemplatePdfProps, "template" |
       </View>
       <View style={{ height: 3, backgroundColor: GOLD }} />
 
-      {/* Main content */}
-      <View style={{ paddingHorizontal: 28, paddingTop: 10, paddingBottom: 10 }}>
+      {/* Main content — flex:1 fills page, pushing footer to bottom */}
+      <View style={{ flex: 1, paddingHorizontal: 28, paddingTop: 16, paddingBottom: 16 }}>
 
         {/* WHAT WE BUILD + OUR APPROACH side by side */}
-        <View style={{ flexDirection: "row", gap: 16, marginBottom: 12 }}>
+        <View style={{ flexDirection: "row", gap: 20, marginBottom: 16 }}>
           <View style={{ flex: 1 }}>
-            <Text style={{ fontSize: 11, fontFamily: "Helvetica-Bold", color: DARK, letterSpacing: 0.5, marginBottom: 7 }}>WHAT WE BUILD</Text>
+            <Text style={{ fontSize: 13, fontFamily: "Helvetica-Bold", color: DARK, letterSpacing: 0.5, marginBottom: 10 }}>WHAT WE BUILD</Text>
             {WHAT_ITEMS.map((item, i) => (
-              <View key={i} style={{ flexDirection: "row", alignItems: "flex-start", marginBottom: 4, gap: 6 }}>
-                <Text style={{ fontSize: 9, color: GOLD, fontFamily: "Helvetica-Bold" }}>•</Text>
-                <Text style={{ fontSize: 9, color: "#334155", flex: 1 }}>{item}</Text>
+              <View key={i} style={{ flexDirection: "row", alignItems: "flex-start", marginBottom: 6, gap: 8 }}>
+                <Text style={{ fontSize: 11, color: GOLD, fontFamily: "Helvetica-Bold" }}>•</Text>
+                <Text style={{ fontSize: 11, color: "#334155", flex: 1 }}>{item}</Text>
               </View>
             ))}
           </View>
           <View style={{ width: 2, backgroundColor: GOLD, marginVertical: 2 }} />
-          <View style={{ flex: 1, paddingLeft: 4 }}>
-            <Text style={{ fontSize: 11, fontFamily: "Helvetica-Bold", color: DARK, letterSpacing: 0.5, marginBottom: 7 }}>OUR APPROACH</Text>
-            <Text style={{ fontSize: 9, color: "#334155", lineHeight: 1.5 }}>
+          <View style={{ flex: 1, paddingLeft: 6 }}>
+            <Text style={{ fontSize: 13, fontFamily: "Helvetica-Bold", color: DARK, letterSpacing: 0.5, marginBottom: 10 }}>OUR APPROACH</Text>
+            <Text style={{ fontSize: 11, color: "#334155", lineHeight: 1.55 }}>
               We handle your project from concept to completion — including planning, engineering, permitting, and construction — ensuring a seamless process with one accountable team. You get a single point of contact, no subcontractor confusion, and full transparency from day one.
             </Text>
           </View>
         </View>
 
         {/* Gold divider */}
-        <View style={{ height: 2, backgroundColor: GOLD, marginBottom: 10 }} />
+        <View style={{ height: 2, backgroundColor: GOLD, marginBottom: 14 }} />
 
         {/* Scope of Work title */}
-        <Text style={{ fontSize: 12, fontFamily: "Helvetica-Bold", color: DARK, textAlign: "center", letterSpacing: 1, marginBottom: 6 }}>SCOPE OF WORK — {template.name.toUpperCase()}</Text>
+        <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "center", marginBottom: 10, gap: 12 }}>
+          <View style={{ flex: 1, height: 1, backgroundColor: GOLD }} />
+          <Text style={{ fontSize: 14, fontFamily: "Helvetica-Bold", color: DARK, letterSpacing: 1 }}>SCOPE OF WORK</Text>
+          <View style={{ flex: 1, height: 1, backgroundColor: GOLD }} />
+        </View>
 
         {/* Intro */}
-        <Text style={{ fontSize: 8, color: "#334155", lineHeight: 1.4, marginBottom: 8 }}>
+        <Text style={{ fontSize: 10, color: "#334155", lineHeight: 1.5, marginBottom: 14 }}>
           We appreciate the opportunity to provide this proposal. MIBH Construction will deliver all labor, materials, equipment, and supervision required to complete your addition in full compliance with Florida Building Code (FBC 2023), local municipal requirements, and approved engineering plans.
         </Text>
 
         {/* Two-column sections */}
-        <View style={{ flexDirection: "row", gap: 16 }}>
+        <View style={{ flexDirection: "row", gap: 20, flex: 1 }}>
           <View style={{ flex: 1 }}>
             {SECTIONS.slice(0, 3).map((sec, si) => (
-              <View key={si} style={{ marginBottom: 8 }}>
-                <Text style={{ fontSize: 8, fontFamily: "Helvetica-Bold", color: DARK, marginBottom: 3, textTransform: "uppercase" }}>{sec.title}</Text>
+              <View key={si} style={{ marginBottom: 14 }}>
+                <Text style={{ fontSize: 10, fontFamily: "Helvetica-Bold", color: DARK, marginBottom: 5, textTransform: "uppercase" }}>{sec.title}</Text>
                 {sec.items.map((item, ii) => (
-                  <View key={ii} style={{ flexDirection: "row", alignItems: "flex-start", marginBottom: 2, gap: 5 }}>
-                    <Text style={{ fontSize: 7.5, color: GOLD, fontFamily: "Helvetica-Bold" }}>•</Text>
-                    <Text style={{ fontSize: 7.5, color: "#475569", flex: 1 }}>{item}</Text>
+                  <View key={ii} style={{ flexDirection: "row", alignItems: "flex-start", marginBottom: 4, gap: 7 }}>
+                    <Text style={{ fontSize: 10, color: GOLD, fontFamily: "Helvetica-Bold" }}>•</Text>
+                    <Text style={{ fontSize: 10, color: "#475569", flex: 1 }}>{item}</Text>
                   </View>
                 ))}
               </View>
@@ -558,12 +562,12 @@ function AdditionPage2({ template, client }: Pick<TemplatePdfProps, "template" |
           </View>
           <View style={{ flex: 1 }}>
             {SECTIONS.slice(3).map((sec, si) => (
-              <View key={si} style={{ marginBottom: 8 }}>
-                <Text style={{ fontSize: 8, fontFamily: "Helvetica-Bold", color: DARK, marginBottom: 3, textTransform: "uppercase" }}>{sec.title}</Text>
+              <View key={si} style={{ marginBottom: 14 }}>
+                <Text style={{ fontSize: 10, fontFamily: "Helvetica-Bold", color: DARK, marginBottom: 5, textTransform: "uppercase" }}>{sec.title}</Text>
                 {sec.items.map((item, ii) => (
-                  <View key={ii} style={{ flexDirection: "row", alignItems: "flex-start", marginBottom: 2, gap: 5 }}>
-                    <Text style={{ fontSize: 7.5, color: GOLD, fontFamily: "Helvetica-Bold" }}>•</Text>
-                    <Text style={{ fontSize: 7.5, color: "#475569", flex: 1 }}>{item}</Text>
+                  <View key={ii} style={{ flexDirection: "row", alignItems: "flex-start", marginBottom: 4, gap: 7 }}>
+                    <Text style={{ fontSize: 10, color: GOLD, fontFamily: "Helvetica-Bold" }}>•</Text>
+                    <Text style={{ fontSize: 10, color: "#475569", flex: 1 }}>{item}</Text>
                   </View>
                 ))}
               </View>
@@ -572,7 +576,7 @@ function AdditionPage2({ template, client }: Pick<TemplatePdfProps, "template" |
         </View>
       </View>
 
-      {/* Footer */}
+      {/* Footer — anchored at bottom by flex layout */}
       <View style={{ backgroundColor: DARK, paddingHorizontal: 24, paddingVertical: 9, flexDirection: "row", alignItems: "center", gap: 12 }}>
         <Text style={{ fontSize: 8.5, color: GOLD, fontFamily: "Helvetica-Bold" }}>MIBH CONSTRUCTION</Text>
         <Text style={{ fontSize: 7, color: "#94a3b8" }}>|</Text>
