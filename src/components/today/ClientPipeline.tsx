@@ -35,7 +35,6 @@ const STAGES = [
   { id: "NOT_INTERESTED",      label: "Not Interested",      color: "#6b7280" },
 ];
 
-const STAGE_MAP = Object.fromEntries(STAGES.map((s) => [s.id, s]));
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
