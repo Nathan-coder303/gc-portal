@@ -132,6 +132,8 @@ model Client {
   phone     String?
   createdAt DateTime          @default(now())
   updatedAt DateTime          @updatedAt
+  coverPhotoType String?   // "FLAT_ROOFS" | "ADDITIONS" | "CUSTOM"
+  coverPhotoUrl  String?   // Vercel Blob URL for CUSTOM uploads
   templates  EstimateTemplate[]
   subBids    SubBid[]
   files      ClientFile[]

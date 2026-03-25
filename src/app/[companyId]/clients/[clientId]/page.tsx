@@ -11,6 +11,7 @@ import ClientFilesTab from "@/components/clients/ClientFilesTab";
 import CollapsibleEstimateList from "@/components/clients/CollapsibleEstimateList";
 import ClientDetailHeader from "@/components/clients/ClientDetailHeader";
 import ClientNotesTab from "@/components/clients/ClientNotesTab";
+import ClientCoverPhotoSelector from "@/components/clients/ClientCoverPhotoSelector";
 
 export default async function ClientDetailPage({
   params,
@@ -127,6 +128,12 @@ export default async function ClientDetailPage({
         estimateCount={safeClient.templates.length}
         estimateTotal={safeClient.templates.reduce((sum, est) => sum + calcEstimateTotal(est.divisions, est.gcFeePercent), 0)}
         canEdit={canEdit}
+      />
+
+      <ClientCoverPhotoSelector
+        clientId={safeClient.id}
+        initialType={safeClient.coverPhotoType ?? null}
+        initialUrl={safeClient.coverPhotoUrl ?? null}
       />
 
       {/* Tab bar */}

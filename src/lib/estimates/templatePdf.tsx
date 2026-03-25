@@ -165,6 +165,8 @@ type TemplatePdfProps = {
   includeCoverPage?: boolean;
   includeAdditionPages?: boolean;
   insulationType?: string | null;
+  clientCoverPhotoType?: string | null;
+  clientCoverPhotoUrl?: string | null;
 };
 
 function ItemTableHeader({ showLineNum }: { showLineNum?: boolean }) {
@@ -217,11 +219,22 @@ function ItemRow({ item, index, lineNum }: { item: Item; index: number; lineNum?
 }
 
 // ─── Presentation Cover Page (single page) ────────────────────────────────────
-function CoverPages({ template, client }: Pick<TemplatePdfProps, "template" | "client">) {
+function CoverPages({ template, client, clientCoverPhotoType, clientCoverPhotoUrl }: Pick<TemplatePdfProps, "template" | "client" | "clientCoverPhotoType" | "clientCoverPhotoUrl">) {
   const logoPath = path.join(process.cwd(), "public", "logo.png");
   const templateNameLower = template.name?.toLowerCase() ?? "";
   const isKitchenLaundry = templateNameLower.includes("kitchen") || templateNameLower.includes("laundry");
-  const photosPath = path.join(process.cwd(), "public", isKitchenLaundry ? "laundry-cover.jpg" : "flat-roofs-cover.jpg");
+
+  // Client cover photo takes priority; fall back to template-based defaults
+  let photoSrc: string;
+  if (clientCoverPhotoType === "CUSTOM" && clientCoverPhotoUrl) {
+    photoSrc = clientCoverPhotoUrl; // public URL — react-pdf can fetch directly
+  } else if (clientCoverPhotoType === "ADDITIONS") {
+    photoSrc = path.join(process.cwd(), "public", "additions.jpg");
+  } else if (clientCoverPhotoType === "FLAT_ROOFS") {
+    photoSrc = path.join(process.cwd(), "public", "flat-roofs-cover.jpg");
+  } else {
+    photoSrc = path.join(process.cwd(), "public", isKitchenLaundry ? "laundry-cover.jpg" : "flat-roofs-cover.jpg");
+  }
   const GOLD = "#C9A84C";
   const DARK = "#1e293b";
 
@@ -244,7 +257,7 @@ function CoverPages({ template, client }: Pick<TemplatePdfProps, "template" | "c
       {/* Photo collage — equal padding on all 4 sides */}
       <View style={{ paddingHorizontal: 18, paddingTop: 18, paddingBottom: 18 }}>
         {/* eslint-disable-next-line jsx-a11y/alt-text */}
-        <Image src={photosPath} style={{ width: 576, height: 270, objectFit: "cover" }} />
+        <Image src={photoSrc} style={{ width: 576, height: 270, objectFit: "cover" }} />
       </View>
 
       {/* Gold info rectangle */}
@@ -599,7 +612,7 @@ function AdditionPage2({ client }: Pick<TemplatePdfProps, "client">) {
   );
 }
 
-function TemplatePdfDocument({ companyName, template, client, divisions, showTerms, termsContent, paymentSchedule, gcFeePercent, summaryGroups, clientSignatureData, clientSignedByName, clientSignedAt, contractorSignatureData, contractorSignedAt, includeRoofUpgradesPage, includeCoverPage, includeAdditionPages, insulationType }: TemplatePdfProps) {
+function TemplatePdfDocument({ companyName, template, client, divisions, showTerms, termsContent, paymentSchedule, gcFeePercent, summaryGroups, clientSignatureData, clientSignedByName, clientSignedAt, contractorSignatureData, contractorSignedAt, includeRoofUpgradesPage, includeCoverPage, includeAdditionPages, insulationType, clientCoverPhotoType, clientCoverPhotoUrl }: TemplatePdfProps) {
   const grouped = groupDivisions(divisions);
 
   // Compute raw totals per group label (or null for ungrouped)
@@ -764,7 +777,7 @@ function TemplatePdfDocument({ companyName, template, client, divisions, showTer
 
   return (
     <Document title={`${template.name} — Estimate`} author={companyName}>
-      {includeCoverPage && !includeAdditionPages && <CoverPages template={template} client={client} />}
+      {(includeCoverPage || clientCoverPhotoType) && !includeAdditionPages && <CoverPages template={template} client={client} clientCoverPhotoType={clientCoverPhotoType} clientCoverPhotoUrl={clientCoverPhotoUrl} />}
       {includeAdditionPages && <AdditionPage1 template={template} client={client} />}
       {includeAdditionPages && <AdditionPage2 client={client} />}
       <Page size="LETTER" style={styles.page}>

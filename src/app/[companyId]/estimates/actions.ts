@@ -593,6 +593,18 @@ export async function upsertClient(data: { id?: string; name: string; address?: 
   return prisma.client.create({ data: { companyId: session.user.companyId, ...payload } });
 }
 
+export async function updateClientCoverPhoto(clientId: string, coverPhotoType: string | null, coverPhotoUrl?: string | null) {
+  const session = await auth();
+  if (!session) throw new Error("Unauthorized");
+  requirePermission(session, "estimateTemplate:edit");
+  await prisma.client.update({
+    where: { id: clientId },
+    data: { coverPhotoType, coverPhotoUrl: coverPhotoUrl ?? undefined },
+  });
+  revalidatePath(`/${session.user.companyId}/clients/${clientId}`);
+  return { success: true };
+}
+
 export async function setTemplateClient(templateId: string, clientId: string | null) {
   const session = await auth();
   if (!session) throw new Error("Unauthorized");

@@ -179,6 +179,8 @@ export async function POST(
     includeAdditionPages: template.name.toLowerCase().includes("addition"),
     includeCoverPage: true,
     insulationType: template.insulationType ?? "ISO",
+    clientCoverPhotoType: template.client?.coverPhotoType ?? null,
+    clientCoverPhotoUrl: template.client?.coverPhotoUrl ?? null,
   });
 
   // Insert client's marked PDF page 2 as page 3 (roofing only)
