@@ -500,6 +500,7 @@ model EstimateTemplate {
   hasSkylights           Boolean                    @default(true)
   hasRoofDrains          Boolean                    @default(true)
   insulationType         String?                    @default("ISO")
+  combinationType        String?
   divisions       EstimateTemplateDivision[]
   estimates   ProjectEstimate[]
 

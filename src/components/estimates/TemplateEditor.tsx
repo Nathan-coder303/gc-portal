@@ -34,6 +34,7 @@ import {
   updateTemplateHasSkylights,
   updateTemplateHasRoofDrains,
   updateTemplateInsulationType,
+  updateTemplateCombinationType,
   type SummaryGroupData,
 } from "@/app/[companyId]/estimates/actions";
 
@@ -54,7 +55,7 @@ type Item = {
 type Group = { id: string; name: string; items: Item[] };
 type Division = { id: string; csiCode: string | null; name: string; groups: Group[]; items: Item[] };
 type PaymentRow = { payment: string; trigger: string; pct: number };
-type Template = { id: string; name: string; description: string | null; companyId: string; estimateNumber: string | null; estimateDate: string | null; paymentSchedule: PaymentRow[] | null; showTerms: boolean; termsContent: string | null; type: string; gcFeePercent: number | null; sqFt: number | null; durationMonths: number | null; hasSkylights: boolean | null; hasRoofDrains: boolean | null; insulationType: string | null };
+type Template = { id: string; name: string; description: string | null; companyId: string; estimateNumber: string | null; estimateDate: string | null; paymentSchedule: PaymentRow[] | null; showTerms: boolean; termsContent: string | null; type: string; gcFeePercent: number | null; sqFt: number | null; durationMonths: number | null; hasSkylights: boolean | null; hasRoofDrains: boolean | null; insulationType: string | null; combinationType: string | null };
 
 const INPUT = "rounded px-2 py-1 text-xs" as const;
 const inputStyle = { background: "#0d1117", border: "1px solid #30373f", color: "#e6edf3" };
@@ -1086,6 +1087,7 @@ export default function TemplateEditor({
   const [hasSkylights, setHasSkylights] = useState<boolean>(template.hasSkylights ?? true);
   const [hasRoofDrains, setHasRoofDrains] = useState<boolean>(template.hasRoofDrains ?? true);
   const [insulationType, setInsulationType] = useState<string>(template.insulationType ?? "ISO");
+  const [combinationType, setCombinationType] = useState<string | null>(template.combinationType ?? null);
   const [summaryGroups, setSummaryGroups] = useState<Record<string, SummaryGroupData>>(initialSummaryGroups ?? {});
   const [editingSummaryGroup, setEditingSummaryGroup] = useState<string | null>(null);
   const [sgForm, setSgForm] = useState<SummaryGroupData>({ qty: null, unit: null, unitCost: null, markupPct: null, manualTotal: null });
@@ -1413,6 +1415,28 @@ export default function TemplateEditor({
                               }}
                             >
                               {opt}
+                            </button>
+                          ))}
+                        </div>
+                      </label>
+                      <label className="flex items-center justify-between gap-3">
+                        <span className="text-xs" style={{ color: "#8b949e" }}>Combination</span>
+                        <div className="flex gap-1 flex-wrap justify-end">
+                          {([null, "Shingles + Flat", "Flat + Tiles", "Flat + Metal"] as const).map((opt) => (
+                            <button
+                              key={opt ?? "none"}
+                              onClick={() => {
+                                setCombinationType(opt);
+                                startTransition(async () => { await updateTemplateCombinationType(template.id, opt); });
+                              }}
+                              className="text-xs px-2 py-0.5 rounded-full font-semibold"
+                              style={{
+                                background: combinationType === opt ? "#0d2318" : "#1e2736",
+                                color: combinationType === opt ? "#22c55e" : "#8b949e",
+                                border: `1px solid ${combinationType === opt ? "#22c55e" : "#30373f"}`,
+                              }}
+                            >
+                              {opt ?? "None"}
                             </button>
                           ))}
                         </div>
