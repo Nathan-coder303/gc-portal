@@ -135,6 +135,7 @@ model Client {
   templates EstimateTemplate[]
   subBids   SubBid[]
   files     ClientFile[]
+  notes     ClientNote[]
 }
 
 model ClientFile {
@@ -149,6 +150,20 @@ model ClientFile {
   uploadedAt     DateTime @default(now())
   uploadedBy     String?
   useInEstimate  Boolean  @default(false)
+
+  @@index([clientId])
+}
+
+model ClientNote {
+  id            String   @id @default(cuid())
+  clientId      String
+  client        Client   @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  companyId     String
+  transcription String?
+  audioUrl      String?
+  audioSize     Int?
+  createdAt     DateTime @default(now())
+  createdBy     String?
 
   @@index([clientId])
 }

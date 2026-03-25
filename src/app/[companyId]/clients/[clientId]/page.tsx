@@ -10,6 +10,7 @@ import SyncLabelBidsButton from "@/components/clients/SyncLabelBidsButton";
 import ClientFilesTab from "@/components/clients/ClientFilesTab";
 import CollapsibleEstimateList from "@/components/clients/CollapsibleEstimateList";
 import ClientDetailHeader from "@/components/clients/ClientDetailHeader";
+import ClientNotesTab from "@/components/clients/ClientNotesTab";
 
 export default async function ClientDetailPage({
   params,
@@ -97,8 +98,14 @@ export default async function ClientDetailPage({
     orderBy: { uploadedAt: "desc" },
   });
 
+  const clientNotes = await prisma.clientNote.findMany({
+    where: { clientId: params.clientId, companyId: params.companyId },
+    orderBy: { createdAt: "desc" },
+  });
+
   const tabs = [
     { key: "estimates", label: "Estimates" },
+    { key: "notes", label: `Notes${clientNotes.length > 0 ? ` (${clientNotes.length})` : ""}` },
     { key: "subs-bids", label: "Subs Bids" },
     { key: "client-bid", label: "Client Bid" },
     { key: "files", label: `Files${clientFiles.length > 0 ? ` (${clientFiles.length})` : ""}` },
@@ -170,6 +177,20 @@ export default async function ClientDetailPage({
           clientAddress={safeClient.address ?? null}
           canEdit={canEdit}
           canDelete={canDelete}
+        />
+      )}
+
+      {activeTab === "notes" && (
+        <ClientNotesTab
+          companyId={params.companyId}
+          clientId={params.clientId}
+          initialNotes={clientNotes.map(n => ({
+            id: n.id,
+            transcription: n.transcription,
+            audioUrl: n.audioUrl,
+            audioSize: n.audioSize,
+            createdAt: n.createdAt.toISOString(),
+          }))}
         />
       )}
 
