@@ -21,28 +21,46 @@ export const STAGE_COLORS = [
   "#14b8a6", "#8b5cf6", "#6b7280", "#f59e0b",
 ];
 
-const STORAGE_KEY = "gc_pipeline_custom_stages";
+const CUSTOM_KEY = "gc_pipeline_custom_stages";
+const ORDER_KEY  = "gc_pipeline_stage_order";
 
 export function loadStages(): PipelineStage[] {
   if (typeof window === "undefined") return BASE_STAGES;
   try {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    if (!raw) return BASE_STAGES;
-    const custom: PipelineStage[] = JSON.parse(raw);
-    // Insert custom stages before NOT_INTERESTED
-    const base = BASE_STAGES.filter((s) => s.id !== "NOT_INTERESTED");
+    const raw    = localStorage.getItem(CUSTOM_KEY);
+    const custom: PipelineStage[] = raw ? JSON.parse(raw) : [];
+
+    const base         = BASE_STAGES.filter((s) => s.id !== "NOT_INTERESTED");
     const notInterested = BASE_STAGES.find((s) => s.id === "NOT_INTERESTED")!;
-    return [...base, ...custom, notInterested];
+    const all          = [...base, ...custom, notInterested];
+
+    // Apply saved order if present
+    const orderRaw = localStorage.getItem(ORDER_KEY);
+    if (!orderRaw) return all;
+    const order: string[] = JSON.parse(orderRaw);
+    const byId = Object.fromEntries(all.map((s) => [s.id, s]));
+    const ordered = order.map((id) => byId[id]).filter(Boolean) as PipelineStage[];
+    // Append any stages not in saved order (newly added)
+    const orderedIds = new Set(order);
+    const extras = all.filter((s) => !orderedIds.has(s.id));
+    return [...ordered, ...extras];
   } catch {
     return BASE_STAGES;
   }
 }
 
+export function saveStageOrder(stages: PipelineStage[]): void {
+  if (typeof window === "undefined") return;
+  try {
+    localStorage.setItem(ORDER_KEY, JSON.stringify(stages.map((s) => s.id)));
+  } catch { /* non-fatal */ }
+}
+
 export function saveCustomStage(stage: PipelineStage): void {
   if (typeof window === "undefined") return;
   try {
-    const raw = localStorage.getItem(STORAGE_KEY);
+    const raw = localStorage.getItem(CUSTOM_KEY);
     const existing: PipelineStage[] = raw ? JSON.parse(raw) : [];
-    localStorage.setItem(STORAGE_KEY, JSON.stringify([...existing, stage]));
+    localStorage.setItem(CUSTOM_KEY, JSON.stringify([...existing, stage]));
   } catch { /* non-fatal */ }
 }

@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useRef, useCallback, useEffect } from "react";
-import { type PipelineStage, BASE_STAGES, loadStages, saveCustomStage, STAGE_COLORS } from "@/lib/pipelineStages";
+import { type PipelineStage, BASE_STAGES, loadStages, saveCustomStage, saveStageOrder, STAGE_COLORS } from "@/lib/pipelineStages";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -605,8 +605,42 @@ export default function ClientPipeline({ companyId, initialCards, clients }: Pro
   const [newStageName, setNewStageName] = useState("");
   const [newStageColor, setNewStageColor] = useState(STAGE_COLORS[0]);
   const draggingCardId = useRef<string | null>(null);
+  const draggingColId = useRef<string | null>(null);
+  const [dragOverCol, setDragOverCol] = useState<string | null>(null);
 
   useEffect(() => { setStages(loadStages()); }, []);
+
+  function handleColDragStart(e: React.DragEvent, stageId: string) {
+    draggingColId.current = stageId;
+    e.dataTransfer.setData("colId", stageId);
+    e.dataTransfer.effectAllowed = "move";
+  }
+
+  function handleColDragOver(e: React.DragEvent, stageId: string) {
+    if (!draggingColId.current || draggingColId.current === stageId) return;
+    e.preventDefault();
+    e.stopPropagation();
+    setDragOverCol(stageId);
+  }
+
+  function handleColDrop(e: React.DragEvent, targetId: string) {
+    e.preventDefault();
+    e.stopPropagation();
+    setDragOverCol(null);
+    const srcId = draggingColId.current;
+    if (!srcId || srcId === targetId) return;
+    draggingColId.current = null;
+    setStages((prev) => {
+      const next = [...prev];
+      const from = next.findIndex((s) => s.id === srcId);
+      const to   = next.findIndex((s) => s.id === targetId);
+      if (from < 0 || to < 0) return prev;
+      const [moved] = next.splice(from, 1);
+      next.splice(to, 0, moved);
+      saveStageOrder(next);
+      return next;
+    });
+  }
 
   function handleAddStage() {
     const name = newStageName.trim();
@@ -779,12 +813,15 @@ export default function ClientPipeline({ companyId, initialCards, clients }: Pro
           const total = getStageTotal(stage.id);
           const isOver = dragOverStage === stage.id;
 
+          const isColOver = dragOverCol === stage.id;
+
           return (
             <div
               key={stage.id}
-              onDragOver={(e) => handleDragOver(e, stage.id)}
+              onDragOver={(e) => { handleDragOver(e, stage.id); handleColDragOver(e, stage.id); }}
               onDragLeave={handleDragLeave}
-              onDrop={(e) => handleDrop(e, stage.id)}
+              onDrop={(e) => { handleDrop(e, stage.id); handleColDrop(e, stage.id); }}
+              onDragEnd={() => { draggingColId.current = null; setDragOverCol(null); }}
               style={{
                 minWidth: 280,
                 width: 280,
@@ -792,18 +829,24 @@ export default function ClientPipeline({ companyId, initialCards, clients }: Pro
                 background: isOver ? "#1a2030" : "#161b22",
                 borderRadius: 12,
                 overflow: "hidden",
-                border: isOver
-                  ? `2px solid ${stage.color}`
-                  : "2px solid transparent",
+                border: isColOver
+                  ? `2px dashed ${stage.color}`
+                  : isOver
+                    ? `2px solid ${stage.color}`
+                    : "2px solid transparent",
                 transition: "background 0.15s, border-color 0.15s",
+                opacity: draggingColId.current === stage.id ? 0.4 : 1,
               }}
             >
               {/* Column header */}
               <div
+                draggable
+                onDragStart={(e) => handleColDragStart(e, stage.id)}
                 style={{
                   padding: "16px 14px 12px",
                   background: "#1e2736",
                   borderTop: `3px solid ${stage.color}`,
+                  cursor: "grab",
                 }}
               >
                 <div
@@ -814,17 +857,25 @@ export default function ClientPipeline({ companyId, initialCards, clients }: Pro
                     marginBottom: total > 0 ? 4 : 0,
                   }}
                 >
-                  <span
-                    style={{
-                      color: "#e6edf3",
-                      fontWeight: 700,
-                      fontSize: 11,
-                      textTransform: "uppercase",
-                      letterSpacing: "0.06em",
-                    }}
-                  >
-                    {stage.label}
-                  </span>
+                  <div style={{ display: "flex", alignItems: "center", gap: 6, flex: 1, minWidth: 0 }}>
+                    <span style={{ color: "#484f58", fontSize: 10, cursor: "grab", lineHeight: 1, flexShrink: 0 }} title="Drag to reorder">⠿</span>
+                    <span
+                      style={{
+                        color: "#e6edf3",
+                        fontWeight: 700,
+                        fontSize: 11,
+                        textTransform: "uppercase",
+                        letterSpacing: "0.06em",
+                        flex: 1,
+                        minWidth: 0,
+                        overflow: "hidden",
+                        textOverflow: "ellipsis",
+                        whiteSpace: "nowrap",
+                      }}
+                    >
+                      {stage.label}
+                    </span>
+                  </div>
                   {/* Count badge */}
                   <span
                     style={{
@@ -835,6 +886,7 @@ export default function ClientPipeline({ companyId, initialCards, clients }: Pro
                       borderRadius: 20,
                       padding: "1px 8px",
                       border: `1px solid ${stage.color}55`,
+                      flexShrink: 0,
                     }}
                   >
                     {stageCards.length}
