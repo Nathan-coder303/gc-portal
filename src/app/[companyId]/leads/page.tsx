@@ -2,6 +2,7 @@ import { auth } from "@/lib/auth";
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import SyncLeadsButton from "@/components/today/SyncLeadsButton";
+import SyncFyrdButton from "@/components/leads/SyncFyrdButton";
 import LeadsPipeline from "@/components/leads/LeadsPipeline";
 
 export default async function LeadsPage({
@@ -67,7 +68,10 @@ export default async function LeadsPage({
             {leads.length} total · {triageLeads.length} need triaging
           </p>
         </div>
-        <SyncLeadsButton companyId={params.companyId} />
+        <div className="flex items-end gap-2">
+          <SyncFyrdButton companyId={params.companyId} />
+          <SyncLeadsButton companyId={params.companyId} />
+        </div>
       </div>
 
       <LeadsPipeline
