@@ -107,14 +107,21 @@ export default async function TemplateEditorPage({
     })),
   }));
 
+  const backHref = template.client
+    ? `/${params.companyId}/clients/${template.client.id}`
+    : `/${params.companyId}/estimates`;
+  const backLabel = template.client ? template.client.name : "Estimates";
+
   return (
     <div className="max-w-7xl mx-auto px-4 py-6">
       <Link
-        href={`/${params.companyId}/estimates`}
-        className="inline-flex items-center gap-1 text-sm mb-4 font-medium"
-        style={{ color: "#8b949e" }}
+        href={backHref}
+        className="inline-flex items-center gap-2 mb-5 px-4 py-2 rounded-xl text-sm font-semibold transition-all hover:scale-105"
+        style={{ background: "#1e2736", border: "1px solid #30373f", color: "#C9A84C" }}
       >
-        ← Estimates
+        <span style={{ fontSize: 16 }}>←</span>
+        {template.client && <span style={{ color: "#8b949e", fontSize: 12 }}>Client:</span>}
+        {backLabel}
       </Link>
       <TemplateEditor
           template={{ id: template.id, name: template.name, description: template.description, companyId: params.companyId, estimateNumber: template.estimateNumber, estimateDate: template.estimateDate, paymentSchedule: template.paymentSchedule as { payment: string; trigger: string; pct: number }[] | null, showTerms: template.showTerms, termsContent: template.termsContent, type: template.type, gcFeePercent: template.gcFeePercent ? Number(template.gcFeePercent) : null, sqFt: template.sqFt ? Number(template.sqFt) : null, durationMonths: template.durationMonths ? Number(template.durationMonths) : null, hasSkylights: template.hasSkylights, hasRoofDrains: template.hasRoofDrains, insulationType: template.insulationType ?? "ISO", combinationType: template.combinationType ?? null }}
