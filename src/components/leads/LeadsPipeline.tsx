@@ -1,6 +1,7 @@
 "use client";
 
-import { useState, useRef, useCallback } from "react";
+import { useState, useRef, useCallback, useEffect } from "react";
+import { type PipelineStage, loadStages, saveCustomStage, STAGE_COLORS } from "@/lib/pipelineStages";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -33,15 +34,6 @@ type Props = {
 };
 
 // ─── Constants ────────────────────────────────────────────────────────────────
-
-const STAGES = [
-  { id: "NEW_LEAD",            label: "New Lead",            color: "#3b82f6" },
-  { id: "CONSULTATION_BOOKED", label: "Consultation Booked", color: "#a855f7" },
-  { id: "ESTIMATE_SENT",       label: "Estimate Sent",       color: "#C9A84C" },
-  { id: "FOLLOW_UP",           label: "Follow Up",           color: "#f97316" },
-  { id: "CLOSED_WON",          label: "Closed Won",          color: "#22c55e" },
-  { id: "NOT_INTERESTED",      label: "Not Interested",      color: "#6b7280" },
-];
 
 const PRESET_SOURCES = ["Evolute", "ADU Elite", "NSA", "FYRD UP"];
 
@@ -307,9 +299,27 @@ function StageCard({
 export default function LeadsPipeline({ companyId, triageLeads, stagedCards }: Props) {
   const [triage, setTriage] = useState<TriageLead[]>(triageLeads);
   const [cards, setCards] = useState<StagedCard[]>(stagedCards);
+  const [stages, setStages] = useState<PipelineStage[]>([]);
   const [dragOver, setDragOver] = useState<string | null>(null); // stageId or "triage"
   const dragPayload = useRef<string | null>(null);
   const [search, setSearch] = useState("");
+  const [showAddStage, setShowAddStage] = useState(false);
+  const [newStageName, setNewStageName] = useState("");
+  const [newStageColor, setNewStageColor] = useState(STAGE_COLORS[0]);
+
+  useEffect(() => { setStages(loadStages()); }, []);
+
+  function handleAddStage() {
+    const name = newStageName.trim();
+    if (!name) return;
+    const id = "CUSTOM_" + name.toUpperCase().replace(/\s+/g, "_") + "_" + Date.now();
+    const stage: PipelineStage = { id, label: name, color: newStageColor, custom: true };
+    saveCustomStage(stage);
+    setStages(loadStages());
+    setNewStageName("");
+    setNewStageColor(STAGE_COLORS[0]);
+    setShowAddStage(false);
+  }
 
   const filteredTriage = search
     ? triage.filter((l) => l.name.toLowerCase().includes(search.toLowerCase()))
@@ -525,7 +535,7 @@ export default function LeadsPipeline({ companyId, triageLeads, stagedCards }: P
         </div>
 
         {/* Stage columns */}
-        {STAGES.map((stage) => {
+        {stages.map((stage) => {
           const stageCards = filteredCards.filter((c) => c.stage === stage.id);
           const isOver = dragOver === stage.id;
 
@@ -577,6 +587,69 @@ export default function LeadsPipeline({ companyId, triageLeads, stagedCards }: P
             </div>
           );
         })}
+
+        {/* Add Stage button */}
+        <div style={{ minWidth: 200, flexShrink: 0, alignSelf: "flex-start" }}>
+          {showAddStage ? (
+            <div style={{ background: "#161b22", border: "1px solid #30373f", borderRadius: 12, padding: 14 }}>
+              <p style={{ color: "#e6edf3", fontWeight: 700, fontSize: 12, marginBottom: 10, marginTop: 0 }}>New Stage</p>
+              <input
+                autoFocus
+                type="text"
+                placeholder="Stage name..."
+                value={newStageName}
+                onChange={(e) => setNewStageName(e.target.value)}
+                onKeyDown={(e) => { if (e.key === "Enter") handleAddStage(); if (e.key === "Escape") setShowAddStage(false); }}
+                style={{
+                  width: "100%", background: "#0d1117", color: "#e6edf3",
+                  border: "1px solid #484f58", borderRadius: 6,
+                  padding: "6px 8px", fontSize: 12, marginBottom: 10, boxSizing: "border-box",
+                }}
+              />
+              <p style={{ color: "#8b949e", fontSize: 11, marginBottom: 6, marginTop: 0 }}>Color</p>
+              <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginBottom: 12 }}>
+                {STAGE_COLORS.map((c) => (
+                  <button key={c} onClick={() => setNewStageColor(c)} style={{
+                    width: 22, height: 22, borderRadius: "50%", background: c,
+                    border: newStageColor === c ? "3px solid #fff" : "2px solid transparent",
+                    cursor: "pointer", padding: 0, outline: "none", boxSizing: "border-box",
+                  }} />
+                ))}
+              </div>
+              <div style={{ borderTop: `3px solid ${newStageColor}`, borderRadius: "6px 6px 0 0", padding: "6px 8px", background: "#1e2736", marginBottom: 10 }}>
+                <span style={{ color: "#e6edf3", fontWeight: 700, fontSize: 10, textTransform: "uppercase", letterSpacing: "0.06em" }}>
+                  {newStageName || "Preview"}
+                </span>
+              </div>
+              <div style={{ display: "flex", gap: 6 }}>
+                <button onClick={handleAddStage} disabled={!newStageName.trim()} style={{
+                  flex: 1, background: newStageColor, color: "#0d1117",
+                  border: "none", borderRadius: 6, padding: "6px 0",
+                  fontSize: 12, fontWeight: 700, cursor: "pointer",
+                  opacity: newStageName.trim() ? 1 : 0.5,
+                }}>Add Stage</button>
+                <button onClick={() => { setShowAddStage(false); setNewStageName(""); }} style={{
+                  flex: 1, background: "transparent", color: "#8b949e",
+                  border: "1px solid #30373f", borderRadius: 6, padding: "6px 0",
+                  fontSize: 12, cursor: "pointer",
+                }}>Cancel</button>
+              </div>
+            </div>
+          ) : (
+            <button
+              onClick={() => setShowAddStage(true)}
+              style={{
+                width: "100%", background: "transparent", color: "#8b949e",
+                border: "2px dashed #30373f", borderRadius: 12,
+                padding: "24px 0", fontSize: 22, cursor: "pointer",
+                transition: "color 0.15s, border-color 0.15s",
+              }}
+              onMouseEnter={(e) => { (e.currentTarget as HTMLButtonElement).style.color = "#C9A84C"; (e.currentTarget as HTMLButtonElement).style.borderColor = "#C9A84C66"; }}
+              onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.color = "#8b949e"; (e.currentTarget as HTMLButtonElement).style.borderColor = "#30373f"; }}
+              title="Add a new pipeline stage"
+            >+</button>
+          )}
+        </div>
       </div>
     </div>
   );
