@@ -6,6 +6,7 @@ type Note = {
   id: string;
   transcription: string | null;
   audioUrl: string | null;
+  audioMimeType: string | null;
   audioSize: number | null;
   createdAt: string;
 };
@@ -139,8 +140,15 @@ export default function ClientNotesTab({
       return;
     }
 
-    // MediaRecorder for audio file
-    const mr = new MediaRecorder(stream, { mimeType: "audio/webm" });
+    // Pick best supported mime type — iOS Safari needs mp4, Chrome uses webm
+    const preferredMime = [
+      "audio/webm;codecs=opus",
+      "audio/webm",
+      "audio/mp4",
+      "audio/aac",
+      "",
+    ].find(m => !m || MediaRecorder.isTypeSupported(m)) ?? "";
+    const mr = new MediaRecorder(stream, preferredMime ? { mimeType: preferredMime } : {});
     mediaRecorderRef.current = mr;
     mr.ondataavailable = e => { if (e.data.size > 0) chunksRef.current.push(e.data); };
     mr.start(250);
@@ -194,7 +202,8 @@ export default function ClientNotesTab({
     // Stop MediaRecorder and collect blob
     const audioBlob = await new Promise<Blob>((resolve) => {
       const mr = mediaRecorderRef.current!;
-      mr.onstop = () => resolve(new Blob(chunksRef.current, { type: "audio/webm" }));
+      const mimeType = mr.mimeType || "audio/webm";
+      mr.onstop = () => resolve(new Blob(chunksRef.current, { type: mimeType }));
       mr.stop();
       mr.stream.getTracks().forEach(t => t.stop());
     });
@@ -203,11 +212,12 @@ export default function ClientNotesTab({
     await new Promise(r => setTimeout(r, 600));
 
     const transcription = finalTextRef.current.trim() || liveText.trim();
+    const ext = audioBlob.type.includes("mp4") || audioBlob.type.includes("aac") ? "m4a" : "webm";
 
     // Upload
     const fd = new FormData();
     fd.append("transcription", transcription);
-    fd.append("audio", audioBlob, "note.webm");
+    fd.append("audio", audioBlob, `note.${ext}`);
 
     try {
       const res = await fetch(`/api/${companyId}/clients/${clientId}/notes`, { method: "POST", body: fd });

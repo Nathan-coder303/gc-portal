@@ -22,9 +22,11 @@ export async function GET(
   });
   if (!res.ok) return new NextResponse("Failed to fetch audio", { status: 502 });
 
+  const contentType = note.audioMimeType || res.headers.get("content-type") || "audio/webm";
+
   return new NextResponse(res.body, {
     headers: {
-      "Content-Type": "audio/webm",
+      "Content-Type": contentType,
       "Cache-Control": "private, max-age=3600",
     },
   });

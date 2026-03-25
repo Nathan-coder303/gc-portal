@@ -40,15 +40,19 @@ export async function POST(
 
   let audioUrl: string | null = null;
   let audioSize: number | null = null;
+  let audioMimeType: string | null = null;
 
   if (audio && audio.size > 0) {
+    const mime = audio.type || "audio/webm";
+    const ext = mime.includes("mp4") || mime.includes("aac") ? "m4a" : "webm";
     const blob = await put(
-      `client-notes/${params.clientId}/${Date.now()}.webm`,
+      `client-notes/${params.clientId}/${Date.now()}.${ext}`,
       audio,
-      { access: "private" }
+      { access: "private", contentType: mime }
     );
     audioUrl = blob.url;
     audioSize = audio.size;
+    audioMimeType = mime;
   }
 
   const note = await prisma.clientNote.create({
@@ -57,6 +61,7 @@ export async function POST(
       companyId: params.companyId,
       transcription: transcription || null,
       audioUrl,
+      audioMimeType,
       audioSize,
       createdBy: session.user.id,
     },

@@ -188,6 +188,7 @@ export default async function ClientDetailPage({
             id: n.id,
             transcription: n.transcription,
             audioUrl: n.audioUrl,
+            audioMimeType: n.audioMimeType,
             audioSize: n.audioSize,
             createdAt: n.createdAt.toISOString(),
           }))}
