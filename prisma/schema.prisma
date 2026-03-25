@@ -71,6 +71,7 @@ model Company {
   termsTemplates    TermsTemplate[]
   leads             Lead[]
   leadsLastSyncedAt DateTime?
+  pipelineCards     PipelineCard[]
 }
 
 model Lead {
@@ -134,11 +135,12 @@ model Client {
   updatedAt DateTime          @updatedAt
   coverPhotoType String?   // "FLAT_ROOFS" | "ADDITIONS" | "CUSTOM"
   coverPhotoUrl  String?   // Vercel Blob URL for CUSTOM uploads
-  templates  EstimateTemplate[]
-  subBids    SubBid[]
-  files      ClientFile[]
-  notes      ClientNote[]
-  followUps  FollowUp[]
+  templates      EstimateTemplate[]
+  subBids        SubBid[]
+  files          ClientFile[]
+  notes          ClientNote[]
+  followUps      FollowUp[]
+  pipelineCards  PipelineCard[]
 }
 
 model ClientFile {
@@ -667,4 +669,23 @@ model DailySummary {
 
   @@unique([companyId, date])
   @@index([companyId, date])
+}
+
+// ─── Pipeline ─────────────────────────────────────────────────────────────────
+
+model PipelineCard {
+  id             String   @id @default(cuid())
+  companyId      String
+  company        Company  @relation(fields: [companyId], references: [id])
+  clientId       String?
+  client         Client?  @relation(fields: [clientId], references: [id], onDelete: SetNull)
+  displayName    String   // name to show (fallback if no client linked)
+  stage          String   @default("NEW_LEAD")
+  estimateValue  Decimal? @db.Decimal(12, 2)
+  notes          String?
+  sortOrder      Int      @default(0)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  @@index([companyId, stage])
 }

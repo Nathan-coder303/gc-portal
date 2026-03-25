@@ -6,6 +6,7 @@ import SyncLeadsButton from "@/components/today/SyncLeadsButton";
 import SyncBidsButton from "@/components/today/SyncBidsButton";
 import TodayLeadCard from "@/components/leads/TodayLeadCard";
 import TodayTaskCard, { FollowUpItem } from "@/components/today/TodayTaskCard";
+import ClientPipeline from "@/components/today/ClientPipeline";
 
 export default async function TodayPage({
   params,
@@ -26,7 +27,7 @@ export default async function TodayPage({
   if (verifyHour !== 0) todayStart = new Date(Date.UTC(etY, etM - 1, etD, 5, 0, 0, 0)); // fall back to EST
   const todayEnd = new Date(todayStart.getTime() + 24 * 60 * 60 * 1000 - 1); // 23:59:59.999 ET
 
-  const [todayLeads, allLeadsCount, estimatesToSend, followUps, clients] = await Promise.all([
+  const [todayLeads, allLeadsCount, estimatesToSend, followUps, clients, pipelineCards] = await Promise.all([
     // Leads received today from email
     prisma.lead.findMany({
       where: {
@@ -74,6 +75,12 @@ export default async function TodayPage({
       where: { companyId: params.companyId },
       orderBy: { name: "asc" },
       select: { id: true, name: true },
+    }),
+    // Pipeline cards
+    prisma.pipelineCard.findMany({
+      where: { companyId: params.companyId },
+      orderBy: [{ stage: "asc" }, { sortOrder: "asc" }],
+      include: { client: { select: { id: true, name: true } } },
     }),
   ]);
 
@@ -209,6 +216,25 @@ export default async function TodayPage({
           category="ESTIMATE"
           label="Estimate Notes"
           initialItems={toItems("ESTIMATE")}
+          clients={clients}
+        />
+      </div>
+
+      {/* Pipeline board */}
+      <div className="mt-10">
+        <ClientPipeline
+          companyId={params.companyId}
+          initialCards={pipelineCards.map((c) => ({
+            id: c.id,
+            displayName: c.displayName,
+            stage: c.stage,
+            estimateValue: c.estimateValue ? Number(c.estimateValue) : null,
+            notes: c.notes,
+            clientId: c.clientId,
+            clientName: c.client?.name ?? null,
+            sortOrder: c.sortOrder,
+            createdAt: c.createdAt.toISOString(),
+          }))}
           clients={clients}
         />
       </div>
