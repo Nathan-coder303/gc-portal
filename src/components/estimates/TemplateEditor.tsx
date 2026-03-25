@@ -507,7 +507,7 @@ function TemplateGroupSection({ group, divisionId, canEdit }: { group: Group; di
   );
 }
 
-function TemplateDivisionSection({ division, otherDivisions, canEdit }: { division: Division; otherDivisions: Division[]; canEdit: boolean }) {
+function TemplateDivisionSection({ division, otherDivisions, canEdit, globalSaveSignal }: { division: Division; otherDivisions: Division[]; canEdit: boolean; globalSaveSignal?: number }) {
   const [open, setOpen] = useState(true);
   const [isPending, startTransition] = useTransition();
   const [addingGroup, setAddingGroup] = useState(false);
@@ -519,6 +519,8 @@ function TemplateDivisionSection({ division, otherDivisions, canEdit }: { divisi
   const [editAllSignal, setEditAllSignal] = useState(0);
   const [saveSignal, setSaveSignal] = useState(0);
   const [resetAllSignal, setResetAllSignal] = useState(0);
+  // Propagate global save from parent
+  useEffect(() => { if (globalSaveSignal && globalSaveSignal > 0) setSaveSignal(s => s + 1); }, [globalSaveSignal]); // eslint-disable-line react-hooks/exhaustive-deps
   const { setNodeRef: setDropRef, isOver } = useDroppable({ id: division.id });
   const { attributes: dragAttrs, listeners: dragListeners, setNodeRef: setDragRef, isDragging } = useDraggable({
     id: "div-" + division.id,
@@ -1076,6 +1078,8 @@ export default function TemplateEditor({
   const [saveError, setSaveError] = useState("");
   const [saveClientError, setSaveClientError] = useState("");
   const [savedToClient, setSavedToClient] = useState(false);
+  const [globalSaveSignal, setGlobalSaveSignal] = useState(0);
+  const [templateSaved, setTemplateSaved] = useState(false);
 
   const subtotal = grandTotal(divisions);
   const [gcFeePercent, setGcFeePercent] = useState<number | "">(template.gcFeePercent ?? "");
@@ -1476,8 +1480,28 @@ export default function TemplateEditor({
                 )}
               </div>
             </div>
-            {/* 3 Action Cards — full width row */}
-            <div className="grid grid-cols-3 gap-3 mt-4">
+            {/* Action Cards — full width row */}
+            <div className={`grid gap-3 mt-4 ${canEdit ? "grid-cols-4" : "grid-cols-3"}`}>
+              {/* Card 0 — Save Template */}
+              {canEdit && (
+                <button
+                  onClick={() => {
+                    setGlobalSaveSignal(s => s + 1);
+                    setTemplateSaved(true);
+                    setTimeout(() => setTemplateSaved(false), 2500);
+                  }}
+                  className="text-left rounded-2xl p-5 transition-all"
+                  style={{ background: templateSaved ? "#0a1f12" : "#0d1117", border: `2px solid ${templateSaved ? "#22c55e" : "#C9A84C"}` }}
+                >
+                  <div className="text-2xl mb-2">{templateSaved ? "✅" : "💾"}</div>
+                  <div className="text-sm font-bold mb-1" style={{ color: templateSaved ? "#22c55e" : "#C9A84C" }}>
+                    {templateSaved ? "Template Saved!" : "Save Template"}
+                  </div>
+                  <div className="text-xs leading-relaxed" style={{ color: "#8b949e" }}>
+                    {templateSaved ? "All changes saved to this template" : "Save all open edits to this template"}
+                  </div>
+                </button>
+              )}
               {/* Card 1 — Create Client Estimate */}
               <button
                 disabled={!canEdit || !currentClient || isPending || savedToClient || template.type !== "TEMPLATE"}
@@ -1678,7 +1702,7 @@ export default function TemplateEditor({
               )}
               <div className={groupLabel ? "space-y-2 pl-2" : "space-y-3"}>
                 {divs.map((div) => (
-                  <TemplateDivisionSection key={div.id} division={div} otherDivisions={divisions.filter(d => d.id !== div.id)} canEdit={canEdit} />
+                  <TemplateDivisionSection key={div.id} division={div} otherDivisions={divisions.filter(d => d.id !== div.id)} canEdit={canEdit} globalSaveSignal={globalSaveSignal} />
                 ))}
               </div>
             </div>
