@@ -5,6 +5,7 @@ import Link from "next/link";
 import SyncLeadsButton from "@/components/today/SyncLeadsButton";
 import SyncBidsButton from "@/components/today/SyncBidsButton";
 import TodayLeadCard from "@/components/leads/TodayLeadCard";
+import TodayTaskCard, { FollowUpItem } from "@/components/today/TodayTaskCard";
 
 export default async function TodayPage({
   params,
@@ -25,7 +26,7 @@ export default async function TodayPage({
   if (verifyHour !== 0) todayStart = new Date(Date.UTC(etY, etM - 1, etD, 5, 0, 0, 0)); // fall back to EST
   const todayEnd = new Date(todayStart.getTime() + 24 * 60 * 60 * 1000 - 1); // 23:59:59.999 ET
 
-  const [todayLeads, allLeadsCount, estimatesToSend] = await Promise.all([
+  const [todayLeads, allLeadsCount, estimatesToSend, followUps, clients] = await Promise.all([
     // Leads received today from email
     prisma.lead.findMany({
       where: {
@@ -62,6 +63,18 @@ export default async function TodayPage({
         project: { select: { id: true, name: true } },
       },
     }),
+    // All follow-ups for this company
+    prisma.followUp.findMany({
+      where: { companyId: params.companyId },
+      orderBy: { createdAt: "asc" },
+      include: { client: { select: { id: true, name: true } } },
+    }),
+    // Clients list for assignment
+    prisma.client.findMany({
+      where: { companyId: params.companyId },
+      orderBy: { name: "asc" },
+      select: { id: true, name: true },
+    }),
   ]);
 
   const today = new Date().toLocaleDateString("en-US", {
@@ -70,6 +83,23 @@ export default async function TodayPage({
     month: "long",
     day: "numeric",
   });
+
+  // Map follow-ups to FollowUpItem shape for each category
+  function toItems(category: "TASK" | "FOLLOW_UP" | "ESTIMATE"): FollowUpItem[] {
+    return followUps
+      .filter(f => f.category === category)
+      .map(f => ({
+        id: f.id,
+        text: f.text,
+        audioUrl: f.audioUrl,
+        audioMimeType: f.audioMimeType,
+        audioSize: f.audioSize,
+        clientId: f.clientId,
+        clientName: f.client?.name ?? null,
+        completedAt: f.completedAt ? f.completedAt.toISOString() : null,
+        createdAt: f.createdAt.toISOString(),
+      }));
+  }
 
   return (
     <div className="max-w-6xl mx-auto px-4 py-8">
@@ -154,17 +184,35 @@ export default async function TodayPage({
           )}
         </div>
 
-        {/* Card 3 — TBD */}
-        <TbdCard label="Follow-ups Due" />
+        {/* Card 3 — Today's Tasks (interactive) */}
+        <TodayTaskCard
+          companyId={params.companyId}
+          category="TASK"
+          label="Today's Tasks"
+          initialItems={toItems("TASK")}
+          clients={clients}
+        />
 
-        {/* Card 4 — TBD */}
-        <TbdCard label="Active Projects" />
+        {/* Card 4 — Follow-ups (interactive) */}
+        <TodayTaskCard
+          companyId={params.companyId}
+          category="FOLLOW_UP"
+          label="Follow-ups"
+          initialItems={toItems("FOLLOW_UP")}
+          clients={clients}
+        />
 
         {/* Card 5 — TBD */}
         <TbdCard label="Pending Invoices" />
 
-        {/* Card 6 — TBD */}
-        <TbdCard label="Open Tasks" />
+        {/* Card 6 — Estimate Notes (interactive) */}
+        <TodayTaskCard
+          companyId={params.companyId}
+          category="ESTIMATE"
+          label="Estimate Notes"
+          initialItems={toItems("ESTIMATE")}
+          clients={clients}
+        />
       </div>
     </div>
   );

@@ -132,10 +132,11 @@ model Client {
   phone     String?
   createdAt DateTime          @default(now())
   updatedAt DateTime          @updatedAt
-  templates EstimateTemplate[]
-  subBids   SubBid[]
-  files     ClientFile[]
-  notes     ClientNote[]
+  templates  EstimateTemplate[]
+  subBids    SubBid[]
+  files      ClientFile[]
+  notes      ClientNote[]
+  followUps  FollowUp[]
 }
 
 model ClientFile {
@@ -167,6 +168,30 @@ model ClientNote {
   createdBy      String?
 
   @@index([clientId])
+}
+
+model FollowUp {
+  id            String           @id @default(cuid())
+  companyId     String
+  category      FollowUpCategory @default(TASK)
+  text          String
+  audioUrl      String?
+  audioMimeType String?
+  audioSize     Int?
+  clientId      String?
+  client        Client?          @relation(fields: [clientId], references: [id], onDelete: SetNull)
+  dueDate       DateTime?        @db.Date
+  completedAt   DateTime?
+  createdAt     DateTime         @default(now())
+  createdBy     String?
+
+  @@index([companyId, category])
+}
+
+enum FollowUpCategory {
+  TASK
+  FOLLOW_UP
+  ESTIMATE
 }
 
 model SubBid {
