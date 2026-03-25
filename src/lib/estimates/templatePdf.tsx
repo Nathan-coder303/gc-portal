@@ -219,7 +219,9 @@ function ItemRow({ item, index, lineNum }: { item: Item; index: number; lineNum?
 // ─── Presentation Cover Page (single page) ────────────────────────────────────
 function CoverPages({ template, client }: Pick<TemplatePdfProps, "template" | "client">) {
   const logoPath = path.join(process.cwd(), "public", "logo.png");
-  const photosPath = path.join(process.cwd(), "public", "flat-roofs-cover.jpg");
+  const templateNameLower = template.name?.toLowerCase() ?? "";
+  const isKitchenLaundry = templateNameLower.includes("kitchen") || templateNameLower.includes("laundry");
+  const photosPath = path.join(process.cwd(), "public", isKitchenLaundry ? "laundry-cover.jpg" : "flat-roofs-cover.jpg");
   const GOLD = "#C9A84C";
   const DARK = "#1e293b";
 
