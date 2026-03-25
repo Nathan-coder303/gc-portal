@@ -860,7 +860,7 @@ function TemplatePdfDocument({ companyName, template, client, divisions, showTer
 
                 return (
                   <View key={div.id} minPresenceAhead={320} break={div.name.toLowerCase().includes("roofing system")}>
-                    <View style={[styles.divisionHeader, groupLabel ? { marginTop: 6 } : {}]}>
+                    <View wrap={false} style={[styles.divisionHeader, groupLabel ? { marginTop: 6 } : {}]}>
                       <View style={styles.divisionLeft}>
                         {!isRoof && div.csiCode ? <Text style={styles.divisionCsi}>{div.csiCode}</Text> : null}
                         <Text style={styles.divisionName}>{div.name}</Text>
