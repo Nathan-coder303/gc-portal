@@ -18,7 +18,7 @@ export async function PATCH(
   if (!card) return NextResponse.json({ error: "Not found" }, { status: 404 });
 
   const body = await req.json();
-  const { stage, displayName, estimateValue, notes, sortOrder, clientId } = body;
+  const { stage, displayName, estimateValue, notes, sortOrder, clientId, source } = body;
 
   const updated = await prisma.pipelineCard.update({
     where: { id: params.cardId },
@@ -29,8 +29,12 @@ export async function PATCH(
       ...(notes !== undefined ? { notes: notes || null } : {}),
       ...(sortOrder !== undefined ? { sortOrder } : {}),
       ...(clientId !== undefined ? { clientId: clientId || null } : {}),
+      ...(source !== undefined ? { source: source || null } : {}),
     },
-    include: { client: { select: { id: true, name: true } } },
+    include: {
+      client: { select: { id: true, name: true } },
+      lead: { select: { id: true, name: true, email: true, phone: true, projectType: true, receivedAt: true } },
+    },
   });
 
   return NextResponse.json(updated);

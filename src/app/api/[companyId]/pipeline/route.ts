@@ -22,7 +22,10 @@ export async function GET(
   const cards = await prisma.pipelineCard.findMany({
     where: { companyId: params.companyId },
     orderBy: [{ stage: "asc" }, { sortOrder: "asc" }],
-    include: { client: { select: { id: true, name: true } } },
+    include: {
+      client: { select: { id: true, name: true } },
+      lead: { select: { id: true, name: true, email: true, phone: true, projectType: true, receivedAt: true } },
+    },
   });
 
   return NextResponse.json(cards);
@@ -44,10 +47,26 @@ export async function POST(
   if (!company) return NextResponse.json({ error: "Not found" }, { status: 404 });
 
   const body = await req.json();
-  const { displayName, clientId, stage, estimateValue, notes } = body;
+  const { displayName, clientId, leadId, stage, estimateValue, notes, source } = body;
 
   if (!displayName) {
     return NextResponse.json({ error: "displayName is required" }, { status: 400 });
+  }
+
+  // If leadId provided and card already exists for it, update stage instead of creating
+  if (leadId) {
+    const existing = await prisma.pipelineCard.findUnique({ where: { leadId } });
+    if (existing) {
+      const updated = await prisma.pipelineCard.update({
+        where: { id: existing.id },
+        data: { stage: stage || existing.stage, source: source ?? existing.source },
+        include: {
+          client: { select: { id: true, name: true } },
+          lead: { select: { id: true, name: true, email: true, phone: true, projectType: true, receivedAt: true } },
+        },
+      });
+      return NextResponse.json(updated);
+    }
   }
 
   const card = await prisma.pipelineCard.create({
@@ -55,11 +74,16 @@ export async function POST(
       companyId: params.companyId,
       displayName,
       clientId: clientId || null,
+      leadId: leadId || null,
       stage: stage || "NEW_LEAD",
       estimateValue: estimateValue != null ? estimateValue : null,
       notes: notes || null,
+      source: source || null,
     },
-    include: { client: { select: { id: true, name: true } } },
+    include: {
+      client: { select: { id: true, name: true } },
+      lead: { select: { id: true, name: true, email: true, phone: true, projectType: true, receivedAt: true } },
+    },
   });
 
   return NextResponse.json(card);

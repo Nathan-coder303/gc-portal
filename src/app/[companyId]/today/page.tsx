@@ -27,7 +27,7 @@ export default async function TodayPage({
   if (verifyHour !== 0) todayStart = new Date(Date.UTC(etY, etM - 1, etD, 5, 0, 0, 0)); // fall back to EST
   const todayEnd = new Date(todayStart.getTime() + 24 * 60 * 60 * 1000 - 1); // 23:59:59.999 ET
 
-  const [todayLeads, allLeadsCount, estimatesToSend, followUps, clients, pipelineCards] = await Promise.all([
+  const [todayLeads, allLeadsCount, estimatesToSend, followUps, clients, pipelineCards, untriaged] = await Promise.all([
     // Leads received today from email
     prisma.lead.findMany({
       where: {
@@ -82,6 +82,13 @@ export default async function TodayPage({
       orderBy: [{ stage: "asc" }, { sortOrder: "asc" }],
       include: { client: { select: { id: true, name: true } } },
     }),
+    // Leads not yet in pipeline
+    prisma.lead.count({
+      where: {
+        companyId: params.companyId,
+        pipelineCard: null,
+      },
+    }),
   ]);
 
   const today = new Date().toLocaleDateString("en-US", {
@@ -125,6 +132,28 @@ export default async function TodayPage({
         </div>
       </div>
       <div className="mb-8" />
+
+      {/* Untriaged leads alert */}
+      {untriaged > 0 && (
+        <Link
+          href={`/${params.companyId}/leads`}
+          className="flex items-center justify-between gap-3 mb-5 px-4 py-3 rounded-xl transition-all hover:scale-[1.01]"
+          style={{ background: "#2d1a1a", border: "1px solid #ef444455" }}
+        >
+          <div className="flex items-center gap-3">
+            <span style={{ fontSize: 18 }}>🎯</span>
+            <div>
+              <span className="text-sm font-semibold" style={{ color: "#ef4444" }}>
+                {untriaged} lead{untriaged > 1 ? "s" : ""} need{untriaged === 1 ? "s" : ""} triaging
+              </span>
+              <span className="text-xs ml-2" style={{ color: "#8b949e" }}>
+                Drag them into the pipeline stages
+              </span>
+            </div>
+          </div>
+          <span className="text-xs font-semibold" style={{ color: "#ef4444" }}>Go to Leads →</span>
+        </Link>
+      )}
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
         {/* Card 1 — New Leads of the Day */}

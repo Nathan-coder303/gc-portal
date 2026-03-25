@@ -1,0 +1,583 @@
+"use client";
+
+import { useState, useRef, useCallback } from "react";
+
+// ─── Types ────────────────────────────────────────────────────────────────────
+
+type TriageLead = {
+  id: string;
+  name: string;
+  email: string | null;
+  phone: string | null;
+  projectType: string | null;
+  receivedAt: string;
+  status: string;
+};
+
+type StagedCard = {
+  id: string;
+  displayName: string;
+  stage: string;
+  source: string | null;
+  estimateValue: number | null;
+  notes: string | null;
+  leadId: string | null;
+  sortOrder: number;
+  createdAt: string;
+};
+
+type Props = {
+  companyId: string;
+  triageLeads: TriageLead[];
+  stagedCards: StagedCard[];
+};
+
+// ─── Constants ────────────────────────────────────────────────────────────────
+
+const STAGES = [
+  { id: "NEW_LEAD",            label: "New Lead",            color: "#3b82f6" },
+  { id: "CONSULTATION_BOOKED", label: "Consultation Booked", color: "#a855f7" },
+  { id: "ESTIMATE_SENT",       label: "Estimate Sent",       color: "#C9A84C" },
+  { id: "FOLLOW_UP",           label: "Follow Up",           color: "#f97316" },
+  { id: "CLOSED_WON",          label: "Closed Won",          color: "#22c55e" },
+  { id: "NOT_INTERESTED",      label: "Not Interested",      color: "#6b7280" },
+];
+
+const PRESET_SOURCES = ["Evolute", "ADU Elite", "NSA", "FYRD UP"];
+
+const AVATAR_COLORS = [
+  "#3b82f6", "#a855f7", "#C9A84C", "#f97316", "#22c55e",
+  "#ec4899", "#14b8a6", "#ef4444", "#8b5cf6", "#f59e0b",
+];
+
+// ─── Helpers ──────────────────────────────────────────────────────────────────
+
+function avatarColor(name: string) {
+  let h = 0;
+  for (let i = 0; i < name.length; i++) h = name.charCodeAt(i) + ((h << 5) - h);
+  return AVATAR_COLORS[Math.abs(h) % AVATAR_COLORS.length];
+}
+
+function initials(name: string) {
+  return name.split(/\s+/).filter(Boolean).slice(0, 2).map((w) => w[0].toUpperCase()).join("");
+}
+
+function relTime(iso: string) {
+  const d = Math.floor((Date.now() - new Date(iso).getTime()) / 86400000);
+  if (d === 0) return "today";
+  if (d === 1) return "1 day ago";
+  return `${d} days ago`;
+}
+
+// ─── Source Selector ──────────────────────────────────────────────────────────
+
+function SourceSelector({
+  value,
+  onChange,
+  stageColor,
+}: {
+  value: string | null;
+  onChange: (v: string | null) => void;
+  stageColor: string;
+}) {
+  const [customSources, setCustomSources] = useState<string[]>([]);
+  const [addingCustom, setAddingCustom] = useState(false);
+  const [customInput, setCustomInput] = useState("");
+
+  const all = [...PRESET_SOURCES, ...customSources];
+
+  function handleSelect(e: React.ChangeEvent<HTMLSelectElement>) {
+    const v = e.target.value;
+    if (v === "__add__") { setAddingCustom(true); return; }
+    onChange(v === "" ? null : v);
+  }
+
+  function handleAddCustom() {
+    const v = customInput.trim();
+    if (!v) return;
+    setCustomSources((prev) => [...prev, v]);
+    onChange(v);
+    setAddingCustom(false);
+    setCustomInput("");
+  }
+
+  return (
+    <div onClick={(e) => e.stopPropagation()}>
+      {addingCustom ? (
+        <div style={{ display: "flex", gap: 4, marginTop: 4 }}>
+          <input
+            autoFocus
+            value={customInput}
+            onChange={(e) => setCustomInput(e.target.value)}
+            onKeyDown={(e) => { if (e.key === "Enter") handleAddCustom(); if (e.key === "Escape") setAddingCustom(false); }}
+            placeholder="Source name..."
+            style={{
+              flex: 1, background: "#0d1117", color: "#e6edf3",
+              border: "1px solid #484f58", borderRadius: 4,
+              padding: "3px 6px", fontSize: 11,
+            }}
+          />
+          <button onClick={handleAddCustom} style={{ background: stageColor, color: "#0d1117", border: "none", borderRadius: 4, padding: "3px 8px", fontSize: 11, fontWeight: 700, cursor: "pointer" }}>✓</button>
+          <button onClick={() => setAddingCustom(false)} style={{ background: "transparent", color: "#8b949e", border: "1px solid #30373f", borderRadius: 4, padding: "3px 6px", fontSize: 11, cursor: "pointer" }}>✕</button>
+        </div>
+      ) : (
+        <select
+          value={value ?? ""}
+          onChange={handleSelect}
+          style={{
+            width: "100%",
+            background: "#0d1117",
+            color: value ? stageColor : "#484f58",
+            border: `1px solid ${value ? stageColor + "66" : "#30373f"}`,
+            borderRadius: 4,
+            padding: "3px 6px",
+            fontSize: 11,
+            marginTop: 4,
+            cursor: "pointer",
+          }}
+        >
+          <option value="">Source…</option>
+          {all.map((s) => (
+            <option key={s} value={s} style={{ color: "#e6edf3" }}>{s}</option>
+          ))}
+          <option value="__add__" style={{ color: "#C9A84C" }}>+ Add source…</option>
+        </select>
+      )}
+    </div>
+  );
+}
+
+// ─── Triage Lead Card ─────────────────────────────────────────────────────────
+
+function TriageCard({
+  lead,
+  onDragStart,
+}: {
+  lead: TriageLead;
+  onDragStart: (e: React.DragEvent, payload: string) => void;
+}) {
+  const [dragging, setDragging] = useState(false);
+  const [hovered, setHovered] = useState(false);
+
+  return (
+    <div
+      draggable
+      onDragStart={(e) => { setDragging(true); onDragStart(e, JSON.stringify({ type: "triage", leadId: lead.id })); }}
+      onDragEnd={() => setDragging(false)}
+      onMouseEnter={() => setHovered(true)}
+      onMouseLeave={() => setHovered(false)}
+      style={{
+        background: hovered && !dragging ? "#12181f" : "#0d1117",
+        border: "1px solid #30373f",
+        borderRadius: 8,
+        padding: "10px 12px",
+        margin: "0 8px 8px",
+        cursor: dragging ? "grabbing" : "grab",
+        opacity: dragging ? 0.4 : 1,
+        transform: hovered && !dragging ? "scale(1.02)" : "scale(1)",
+        transition: "transform 0.12s, background 0.12s",
+        userSelect: "none",
+      }}
+    >
+      <div style={{ display: "flex", alignItems: "center", gap: 9 }}>
+        <div style={{
+          width: 30, height: 30, borderRadius: "50%",
+          background: avatarColor(lead.name), flexShrink: 0,
+          display: "flex", alignItems: "center", justifyContent: "center",
+          fontSize: 11, fontWeight: 700, color: "#fff",
+        }}>
+          {initials(lead.name)}
+        </div>
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <div style={{ color: "#e6edf3", fontWeight: 600, fontSize: 13, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+            {lead.name}
+          </div>
+          {lead.projectType && (
+            <div style={{ color: "#C9A84C", fontSize: 10, marginTop: 1 }}>{lead.projectType}</div>
+          )}
+        </div>
+      </div>
+      {lead.email && (
+        <div style={{ color: "#8b949e", fontSize: 10, marginTop: 5, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+          ✉ {lead.email}
+        </div>
+      )}
+      {lead.phone && (
+        <div style={{ color: "#8b949e", fontSize: 10, marginTop: 2 }}>
+          📞 {lead.phone}
+        </div>
+      )}
+      <div style={{ color: "#484f58", fontSize: 10, marginTop: 5 }}>{relTime(lead.receivedAt)}</div>
+    </div>
+  );
+}
+
+// ─── Staged Card ──────────────────────────────────────────────────────────────
+
+function StageCard({
+  card,
+  stageColor,
+  onDragStart,
+  onDelete,
+  onSourceChange,
+}: {
+  card: StagedCard;
+  stageColor: string;
+  onDragStart: (e: React.DragEvent, payload: string) => void;
+  onDelete: (id: string) => void;
+  onSourceChange: (id: string, source: string | null) => void;
+}) {
+  const [dragging, setDragging] = useState(false);
+  const [hovered, setHovered] = useState(false);
+
+  return (
+    <div
+      draggable
+      onDragStart={(e) => { setDragging(true); onDragStart(e, JSON.stringify({ type: "staged", cardId: card.id })); }}
+      onDragEnd={() => setDragging(false)}
+      onMouseEnter={() => setHovered(true)}
+      onMouseLeave={() => setHovered(false)}
+      style={{
+        background: hovered && !dragging ? "#12181f" : "#0d1117",
+        border: "1px solid #30373f",
+        borderRadius: 8,
+        padding: "10px 12px",
+        margin: "0 8px 8px",
+        cursor: dragging ? "grabbing" : "grab",
+        opacity: dragging ? 0.4 : 1,
+        transform: hovered && !dragging ? "scale(1.02)" : "scale(1)",
+        transition: "transform 0.12s, background 0.12s",
+        userSelect: "none",
+        position: "relative",
+      }}
+    >
+      {/* Delete */}
+      <button
+        onClick={(e) => { e.stopPropagation(); onDelete(card.id); }}
+        style={{
+          position: "absolute", top: 6, right: 6,
+          background: "transparent", border: "none",
+          color: "#6b7280", fontSize: 14, cursor: "pointer",
+          lineHeight: 1, padding: "0 2px",
+          opacity: hovered ? 1 : 0, transition: "opacity 0.1s",
+        }}
+        title="Remove from pipeline"
+      >×</button>
+
+      <div style={{ display: "flex", alignItems: "center", gap: 9 }}>
+        <div style={{
+          width: 30, height: 30, borderRadius: "50%",
+          background: avatarColor(card.displayName), flexShrink: 0,
+          display: "flex", alignItems: "center", justifyContent: "center",
+          fontSize: 11, fontWeight: 700, color: "#fff",
+        }}>
+          {initials(card.displayName)}
+        </div>
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <div style={{ color: "#e6edf3", fontWeight: 600, fontSize: 13, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+            {card.displayName}
+          </div>
+          {card.estimateValue != null && (
+            <div style={{ color: "#C9A84C", fontSize: 11, fontWeight: 600 }}>
+              ${card.estimateValue.toLocaleString()}
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Source dropdown */}
+      <SourceSelector
+        value={card.source}
+        stageColor={stageColor}
+        onChange={(v) => onSourceChange(card.id, v)}
+      />
+
+      {card.notes && (
+        <div style={{ color: "#8b949e", fontSize: 10, marginTop: 6, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+          {card.notes}
+        </div>
+      )}
+      <div style={{ color: "#484f58", fontSize: 10, marginTop: 5 }}>{relTime(card.createdAt)}</div>
+    </div>
+  );
+}
+
+// ─── Main Component ───────────────────────────────────────────────────────────
+
+export default function LeadsPipeline({ companyId, triageLeads, stagedCards }: Props) {
+  const [triage, setTriage] = useState<TriageLead[]>(triageLeads);
+  const [cards, setCards] = useState<StagedCard[]>(stagedCards);
+  const [dragOver, setDragOver] = useState<string | null>(null); // stageId or "triage"
+  const dragPayload = useRef<string | null>(null);
+  const [search, setSearch] = useState("");
+
+  const filteredTriage = search
+    ? triage.filter((l) => l.name.toLowerCase().includes(search.toLowerCase()))
+    : triage;
+
+  const filteredCards = search
+    ? cards.filter((c) => c.displayName.toLowerCase().includes(search.toLowerCase()))
+    : cards;
+
+  const handleDragStart = useCallback((e: React.DragEvent, payload: string) => {
+    dragPayload.current = payload;
+    e.dataTransfer.setData("payload", payload);
+    e.dataTransfer.effectAllowed = "move";
+  }, []);
+
+  const handleDragOver = useCallback((e: React.DragEvent, zone: string) => {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = "move";
+    setDragOver(zone);
+  }, []);
+
+  const handleDragLeave = useCallback((e: React.DragEvent) => {
+    if (!e.currentTarget.contains(e.relatedTarget as Node)) setDragOver(null);
+  }, []);
+
+  const handleDrop = useCallback(async (e: React.DragEvent, targetStage: string | "triage") => {
+    e.preventDefault();
+    setDragOver(null);
+    const raw = e.dataTransfer.getData("payload") || dragPayload.current;
+    if (!raw) return;
+
+    let payload: { type: string; leadId?: string; cardId?: string };
+    try { payload = JSON.parse(raw); } catch { return; }
+
+    // Dropping a triage lead onto a stage column → create pipeline card
+    if (payload.type === "triage" && payload.leadId && targetStage !== "triage") {
+      const lead = triage.find((l) => l.id === payload.leadId);
+      if (!lead) return;
+
+      // Optimistic: remove from triage, add to staged
+      const tempCard: StagedCard = {
+        id: `temp-${Date.now()}`,
+        displayName: lead.name,
+        stage: targetStage,
+        source: null,
+        estimateValue: null,
+        notes: null,
+        leadId: lead.id,
+        sortOrder: 0,
+        createdAt: new Date().toISOString(),
+      };
+      setTriage((prev) => prev.filter((l) => l.id !== payload.leadId));
+      setCards((prev) => [...prev, tempCard]);
+
+      try {
+        const res = await fetch(`/api/${companyId}/pipeline`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            displayName: lead.name,
+            leadId: lead.id,
+            stage: targetStage,
+          }),
+        });
+        if (!res.ok) throw new Error();
+        const created = await res.json();
+        setCards((prev) => prev.map((c) => c.id === tempCard.id ? {
+          id: created.id,
+          displayName: created.displayName,
+          stage: created.stage,
+          source: created.source,
+          estimateValue: created.estimateValue != null ? Number(created.estimateValue) : null,
+          notes: created.notes,
+          leadId: created.leadId,
+          sortOrder: created.sortOrder,
+          createdAt: created.createdAt,
+        } : c));
+      } catch {
+        // Revert
+        setCards((prev) => prev.filter((c) => c.id !== tempCard.id));
+        setTriage((prev) => [...prev, lead]);
+      }
+    }
+
+    // Dropping a staged card back to triage → delete pipeline card
+    if (payload.type === "staged" && payload.cardId && targetStage === "triage") {
+      const card = cards.find((c) => c.id === payload.cardId);
+      if (!card) return;
+      const lead = triageLeads.find((l) => l.id === card.leadId) ?? triage.find((l) => l.id === card.leadId);
+
+      setCards((prev) => prev.filter((c) => c.id !== payload.cardId));
+      if (card.leadId) {
+        // Find the original lead data from triageLeads prop or reconstruct
+        const origLead = triageLeads.find((l) => l.id === card.leadId);
+        if (origLead) setTriage((prev) => [origLead, ...prev]);
+      }
+
+      try {
+        await fetch(`/api/${companyId}/pipeline/${payload.cardId}`, { method: "DELETE" });
+      } catch {
+        // Revert
+        setCards((prev) => [...prev, card]);
+        if (lead && card.leadId) setTriage((prev) => prev.filter((l) => l.id !== card.leadId));
+      }
+    }
+
+    // Moving staged card between stage columns
+    if (payload.type === "staged" && payload.cardId && targetStage !== "triage") {
+      const card = cards.find((c) => c.id === payload.cardId);
+      if (!card || card.stage === targetStage) return;
+
+      setCards((prev) => prev.map((c) => c.id === payload.cardId ? { ...c, stage: targetStage } : c));
+      try {
+        await fetch(`/api/${companyId}/pipeline/${payload.cardId}`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ stage: targetStage }),
+        });
+      } catch {
+        setCards((prev) => prev.map((c) => c.id === payload.cardId ? { ...c, stage: card.stage } : c));
+      }
+    }
+  }, [triage, cards, companyId, triageLeads]);
+
+  const handleDelete = useCallback(async (cardId: string) => {
+    const card = cards.find((c) => c.id === cardId);
+    if (!card) return;
+    setCards((prev) => prev.filter((c) => c.id !== cardId));
+    if (card.leadId) {
+      const origLead = triageLeads.find((l) => l.id === card.leadId);
+      if (origLead) setTriage((prev) => [origLead, ...prev]);
+    }
+    try {
+      await fetch(`/api/${companyId}/pipeline/${cardId}`, { method: "DELETE" });
+    } catch {
+      setCards((prev) => [...prev, card]);
+      if (card.leadId) setTriage((prev) => prev.filter((l) => l.id !== card.leadId));
+    }
+  }, [cards, companyId, triageLeads]);
+
+  const handleSourceChange = useCallback(async (cardId: string, source: string | null) => {
+    setCards((prev) => prev.map((c) => c.id === cardId ? { ...c, source } : c));
+    try {
+      await fetch(`/api/${companyId}/pipeline/${cardId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ source }),
+      });
+    } catch { /* non-fatal */ }
+  }, [companyId]);
+
+  const TRIAGE_COLOR = "#ef4444";
+
+  return (
+    <div>
+      {/* Search */}
+      <div style={{ marginBottom: 16 }}>
+        <input
+          type="text"
+          placeholder="Search leads..."
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          style={{
+            background: "#161b22", color: "#e6edf3",
+            border: "1px solid #30373f", borderRadius: 8,
+            padding: "7px 14px", fontSize: 13, width: 240, outline: "none",
+          }}
+        />
+      </div>
+
+      {/* Board — triage + stage columns */}
+      <div style={{ display: "flex", gap: 14, overflowX: "auto", paddingBottom: 16, alignItems: "flex-start" }}>
+
+        {/* Triage column */}
+        <div
+          onDragOver={(e) => handleDragOver(e, "triage")}
+          onDragLeave={handleDragLeave}
+          onDrop={(e) => handleDrop(e, "triage")}
+          style={{
+            minWidth: 260, width: 260, flexShrink: 0,
+            background: dragOver === "triage" ? "#1e1215" : "#161b22",
+            borderRadius: 12, overflow: "hidden",
+            border: dragOver === "triage" ? `2px solid ${TRIAGE_COLOR}` : "2px solid transparent",
+            transition: "background 0.15s, border-color 0.15s",
+          }}
+        >
+          <div style={{ padding: "14px 14px 10px", background: "#1e2736", borderTop: `3px solid ${TRIAGE_COLOR}` }}>
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+              <span style={{ color: "#e6edf3", fontWeight: 700, fontSize: 11, textTransform: "uppercase", letterSpacing: "0.06em" }}>
+                Needs Triaging
+              </span>
+              <span style={{
+                background: TRIAGE_COLOR + "33", color: TRIAGE_COLOR,
+                fontSize: 11, fontWeight: 700, borderRadius: 20,
+                padding: "1px 8px", border: `1px solid ${TRIAGE_COLOR}55`,
+              }}>
+                {filteredTriage.length}
+              </span>
+            </div>
+            <div style={{ color: "#8b949e", fontSize: 10, marginTop: 3 }}>Drag to a stage →</div>
+          </div>
+          <div style={{ minHeight: 80, paddingTop: 8 }}>
+            {filteredTriage.length === 0 ? (
+              <div style={{ color: "#484f58", fontSize: 12, textAlign: "center", padding: "20px 12px", fontStyle: "italic" }}>
+                All leads triaged ✓
+              </div>
+            ) : (
+              filteredTriage.map((lead) => (
+                <TriageCard key={lead.id} lead={lead} onDragStart={handleDragStart} />
+              ))
+            )}
+          </div>
+        </div>
+
+        {/* Stage columns */}
+        {STAGES.map((stage) => {
+          const stageCards = filteredCards.filter((c) => c.stage === stage.id);
+          const isOver = dragOver === stage.id;
+
+          return (
+            <div
+              key={stage.id}
+              onDragOver={(e) => handleDragOver(e, stage.id)}
+              onDragLeave={handleDragLeave}
+              onDrop={(e) => handleDrop(e, stage.id)}
+              style={{
+                minWidth: 260, width: 260, flexShrink: 0,
+                background: isOver ? "#1a2030" : "#161b22",
+                borderRadius: 12, overflow: "hidden",
+                border: isOver ? `2px solid ${stage.color}` : "2px solid transparent",
+                transition: "background 0.15s, border-color 0.15s",
+              }}
+            >
+              <div style={{ padding: "14px 14px 10px", background: "#1e2736", borderTop: `3px solid ${stage.color}` }}>
+                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                  <span style={{ color: "#e6edf3", fontWeight: 700, fontSize: 11, textTransform: "uppercase", letterSpacing: "0.06em" }}>
+                    {stage.label}
+                  </span>
+                  <span style={{
+                    background: stage.color + "33", color: stage.color,
+                    fontSize: 11, fontWeight: 700, borderRadius: 20,
+                    padding: "1px 8px", border: `1px solid ${stage.color}55`,
+                  }}>
+                    {stageCards.length}
+                  </span>
+                </div>
+              </div>
+              <div style={{ minHeight: 80, paddingTop: 8 }}>
+                {stageCards.map((card) => (
+                  <StageCard
+                    key={card.id}
+                    card={card}
+                    stageColor={stage.color}
+                    onDragStart={handleDragStart}
+                    onDelete={handleDelete}
+                    onSourceChange={handleSourceChange}
+                  />
+                ))}
+                {stageCards.length === 0 && (
+                  <div style={{ color: "#30373f", fontSize: 11, textAlign: "center", padding: "16px 12px", fontStyle: "italic" }}>
+                    Drop leads here
+                  </div>
+                )}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
