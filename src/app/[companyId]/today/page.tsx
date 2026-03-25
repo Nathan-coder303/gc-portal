@@ -103,18 +103,21 @@ export default async function TodayPage({
 
   return (
     <div className="max-w-6xl mx-auto px-4 py-8">
-      <div className="flex items-center justify-between mb-1">
-        <h1 className="text-2xl font-bold" style={{ color: "#e6edf3" }}>
-          Today&apos;s Overview
-        </h1>
-        <div className="flex items-center gap-3">
+      <div className="flex items-start justify-between mb-1">
+        <div>
+          <h1 className="text-2xl font-bold" style={{ color: "#e6edf3" }}>
+            Today&apos;s Overview
+          </h1>
+          <p className="text-sm mt-1" style={{ color: "#8b949e" }}>
+            {today}
+          </p>
+        </div>
+        <div className="flex items-start gap-3 shrink-0">
           <SyncBidsButton companyId={params.companyId} />
           <SyncLeadsButton companyId={params.companyId} />
         </div>
       </div>
-      <p className="text-sm mb-8" style={{ color: "#8b949e" }}>
-        {today}
-      </p>
+      <div className="mb-8" />
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
         {/* Card 1 — New Leads of the Day */}
@@ -149,8 +152,9 @@ export default async function TodayPage({
         </Link>
 
         {/* Card 2 — Estimates to be Sent Today */}
-        <div
-          className="rounded-xl p-5 flex flex-col gap-3"
+        <Link
+          href={`/${params.companyId}/estimates`}
+          className="rounded-xl p-5 flex flex-col gap-3 transition-all hover:border-[#C9A84C55] hover:scale-[1.01] block"
           style={{ background: "#161b22", border: "1px solid #30373f" }}
         >
           <div className="flex items-center justify-between">
@@ -170,19 +174,13 @@ export default async function TodayPage({
             <ul className="space-y-2">
               {estimatesToSend.map((est) => (
                 <li key={est.id}>
-                  <Link
-                    href={`/${params.companyId}/${est.project.id}/estimates/${est.id}`}
-                    className="text-sm font-medium hover:underline"
-                    style={{ color: "#58a6ff" }}
-                  >
-                    {est.name}
-                  </Link>
+                  <span className="text-sm font-medium" style={{ color: "#58a6ff" }}>{est.name}</span>
                   <div className="text-xs" style={{ color: "#8b949e" }}>{est.project.name}</div>
                 </li>
               ))}
             </ul>
           )}
-        </div>
+        </Link>
 
         {/* Card 3 — Today's Tasks (interactive) */}
         <TodayTaskCard
@@ -221,7 +219,7 @@ export default async function TodayPage({
 function TbdCard({ label }: { label: string }) {
   return (
     <div
-      className="rounded-xl p-5 flex flex-col gap-3"
+      className="rounded-xl p-5 flex flex-col gap-3 transition-all hover:border-[#C9A84C33] hover:scale-[1.01] cursor-default"
       style={{ background: "#161b22", border: "1px solid #30373f", opacity: 0.55 }}
     >
       <div className="flex items-center justify-between">

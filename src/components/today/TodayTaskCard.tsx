@@ -549,16 +549,18 @@ export default function TodayTaskCard({
 
   return (
     <div
-      className="rounded-xl p-5 flex flex-col gap-2 transition-all"
+      className="rounded-xl p-5 flex flex-col gap-2 transition-all cursor-pointer"
       style={{
         background: "#161b22",
         border: `1px solid ${hovered ? "#C9A84C55" : "#30373f"}`,
+        transform: hovered ? "scale(1.01)" : "scale(1)",
       }}
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}
+      onClick={() => !showAdd && setShowAdd(true)}
     >
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between" onClick={e => e.stopPropagation()}>
         <span className="text-xs font-semibold uppercase tracking-wider" style={{ color: "#8b949e" }}>
           {label}
         </span>
@@ -572,7 +574,7 @@ export default function TodayTaskCard({
             </span>
           )}
           <button
-            onClick={() => setShowAdd(v => !v)}
+            onClick={e => { e.stopPropagation(); setShowAdd(v => !v); }}
             className="text-xs px-2 py-0.5 rounded font-medium transition-colors"
             style={{
               border: `1px solid ${GOLD}66`,
@@ -587,13 +589,15 @@ export default function TodayTaskCard({
 
       {/* Add form */}
       {showAdd && (
-        <AddForm
-          companyId={companyId}
-          category={category}
-          clients={clients}
-          onSaved={handleSaved}
-          onCancel={() => setShowAdd(false)}
-        />
+        <div onClick={e => e.stopPropagation()}>
+          <AddForm
+            companyId={companyId}
+            category={category}
+            clients={clients}
+            onSaved={handleSaved}
+            onCancel={() => setShowAdd(false)}
+          />
+        </div>
       )}
 
       {/* Item list */}
@@ -602,7 +606,7 @@ export default function TodayTaskCard({
           No items yet. Click &quot;+ Add&quot; to get started.
         </p>
       ) : (
-        <div className="flex flex-col divide-y" style={{ borderColor: "#30373f" }}>
+        <div className="flex flex-col divide-y" style={{ borderColor: "#30373f" }} onClick={e => e.stopPropagation()}>
           {openItems.map(item => (
             <ItemRow
               key={item.id}

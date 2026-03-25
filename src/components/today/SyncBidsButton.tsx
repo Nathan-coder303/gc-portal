@@ -58,25 +58,25 @@ export default function SyncBidsButton({ companyId }: { companyId: string }) {
   }
 
   return (
-    <div className="flex items-center gap-2">
+    <div className="flex flex-col items-end gap-1">
+      <button
+        onClick={sync}
+        disabled={status === "syncing"}
+        className="text-xs px-3 py-1.5 rounded-lg font-medium transition-opacity disabled:opacity-50 whitespace-nowrap"
+        style={{ background: "#0d2318", border: "1px solid #22c55e", color: "#22c55e" }}
+        title={result || "Pulls bids from PlanHub notifications + starred emails in Gmail"}
+      >
+        {status === "syncing" ? "Syncing…" : "⭐ Sync All Bids"}
+      </button>
       {result && (
         <span
-          className="text-xs max-w-xs truncate"
+          className="text-xs max-w-[220px] truncate text-right"
           style={{ color: status === "error" ? "#f85149" : status === "done" && result.startsWith("0") ? "#f0a500" : "#22c55e" }}
           title={result}
         >
           {result}
         </span>
       )}
-      <button
-        onClick={sync}
-        disabled={status === "syncing"}
-        className="text-xs px-3 py-1.5 rounded-lg font-medium transition-opacity disabled:opacity-50"
-        style={{ background: "#0d2318", border: "1px solid #22c55e", color: "#22c55e" }}
-        title="Pulls bids from PlanHub notifications + starred emails in Gmail"
-      >
-        {status === "syncing" ? "Syncing…" : "⭐ Sync All Bids"}
-      </button>
     </div>
   );
 }
