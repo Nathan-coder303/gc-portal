@@ -56,7 +56,7 @@ function fmtDate(dateStr: string | null): string {
 }
 
 const styles = StyleSheet.create({
-  page: { fontFamily: "Helvetica", fontSize: 9, paddingTop: 36, paddingBottom: 74, paddingHorizontal: 40 },
+  page: { fontFamily: "Helvetica", fontSize: 9, paddingTop: 36, paddingBottom: 96, paddingHorizontal: 40 },
   header: { flexDirection: "row", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 20, paddingBottom: 12, borderBottomWidth: 2, borderBottomColor: GOLD },
 
   // Left column
@@ -502,7 +502,7 @@ function AdditionPage2({ client }: Pick<TemplatePdfProps, "client">) {
   ];
   const clientName = client?.name ?? "";
   return (
-    <Page size="LETTER" style={{ fontFamily: "Helvetica", padding: 0, paddingBottom: 74 }}>
+    <Page size="LETTER" style={{ fontFamily: "Helvetica", padding: 0, paddingBottom: 96 }}>
       {/* Footer pinned to bottom */}
       <View fixed style={{ position: "absolute", bottom: 0, left: 0, right: 0, backgroundColor: DARK, paddingHorizontal: 24, paddingVertical: 9, flexDirection: "row", alignItems: "center", gap: 12 }}>
         <Text style={{ fontSize: 8.5, color: GOLD, fontFamily: "Helvetica-Bold" }}>MIBH CONSTRUCTION</Text>
@@ -859,7 +859,7 @@ function TemplatePdfDocument({ companyName, template, client, divisions, showTer
                   .reduce((s, i) => s + calcTotal(i.defaultQty, i.defaultUnitCost, i.defaultMarkupPct), 0);
 
                 return (
-                  <View key={div.id} minPresenceAhead={320} break={div.name.toLowerCase().includes("roofing system")}>
+                  <View key={div.id} minPresenceAhead={340} break={div.name.toLowerCase().includes("roofing system")}>
                     <View wrap={false} style={[styles.divisionHeader, groupLabel ? { marginTop: 6 } : {}]}>
                       <View style={styles.divisionLeft}>
                         {!isRoof && div.csiCode ? <Text style={styles.divisionCsi}>{div.csiCode}</Text> : null}
@@ -938,7 +938,7 @@ function TemplatePdfDocument({ companyName, template, client, divisions, showTer
 
       {/* Payment terms + signature: on their own page when extra page is present */}
       {includeRoofUpgradesPage && (
-        <Page size="LETTER" style={[styles.page, { paddingTop: 14, paddingBottom: 74 }]}>
+        <Page size="LETTER" style={[styles.page, { paddingTop: 14, paddingBottom: 96 }]}>
           {/* Fixed footer */}
           <View fixed style={{ position: "absolute", bottom: 0, left: 0, right: 0, backgroundColor: DARK, paddingHorizontal: 24, paddingVertical: 9, flexDirection: "row", alignItems: "center", gap: 12 }}>
             <Text style={{ fontSize: 8.5, color: GOLD, fontFamily: "Helvetica-Bold" }}>MIBH CONSTRUCTION</Text>
