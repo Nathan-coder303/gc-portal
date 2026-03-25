@@ -22,7 +22,10 @@ export async function GET(
   });
   if (!res.ok) return new NextResponse("Failed to fetch audio", { status: 502 });
 
-  const contentType = note.audioMimeType || res.headers.get("content-type") || "audio/webm";
+  // Prefer stored mimeType → blob Content-Type header → sniff from URL extension
+  const urlExt = note.audioUrl?.split("?")[0].split(".").pop()?.toLowerCase();
+  const extMime = urlExt === "m4a" || urlExt === "mp4" ? "audio/mp4" : "audio/webm";
+  const contentType = note.audioMimeType || res.headers.get("content-type") || extMime;
 
   return new NextResponse(res.body, {
     headers: {

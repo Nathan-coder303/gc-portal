@@ -279,7 +279,8 @@ function AddForm({
 
     const audioBlob = await new Promise<Blob>((resolve) => {
       const mr = mediaRecorderRef.current!;
-      const mimeType = mr.mimeType || "audio/webm";
+      const isIOS = /iPhone|iPad|iPod/.test(navigator.userAgent);
+      const mimeType = mr.mimeType || (isIOS ? "audio/mp4" : "audio/webm");
       mr.onstop = () => resolve(new Blob(chunksRef.current, { type: mimeType }));
       mr.stop();
       mr.stream.getTracks().forEach(t => t.stop());

@@ -221,7 +221,8 @@ export default function ClientNotesTab({
     const audioBlob = await new Promise<Blob>((resolve) => {
       const mr = mediaRecorderRef.current!;
       // mr.mimeType is set by the browser — captures the actual format used
-      const mimeType = mr.mimeType || "audio/webm";
+      const isIOS = /iPhone|iPad|iPod/.test(navigator.userAgent);
+      const mimeType = mr.mimeType || (isIOS ? "audio/mp4" : "audio/webm");
       mr.onstop = () => resolve(new Blob(chunksRef.current, { type: mimeType }));
       mr.stop();
       mr.stream.getTracks().forEach(t => t.stop());
