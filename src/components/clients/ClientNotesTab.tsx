@@ -27,16 +27,44 @@ function fmtSize(bytes: number | null) {
   return `${(bytes / 1024 / 1024).toFixed(1)} MB`;
 }
 
+function AudioPlayer({ src, mimeType }: { src: string; mimeType: string | null }) {
+  const [canPlay, setCanPlay] = useState<boolean | null>(null);
+  const audioRef = useRef<HTMLAudioElement>(null);
+
+  useEffect(() => {
+    const audio = document.createElement("audio");
+    if (mimeType && mimeType !== "") {
+      // Check if browser can play this format
+      const support = audio.canPlayType(mimeType);
+      setCanPlay(support !== "");
+    } else {
+      setCanPlay(true); // unknown format, let browser try
+    }
+  }, [mimeType]);
+
+  if (canPlay === false) {
+    return (
+      <p className="text-xs italic py-2" style={{ color: "#8b949e" }}>
+        ⚠ Audio format not supported on this device. Play on desktop or re-record.
+      </p>
+    );
+  }
+
+  return (
+    <audio
+      ref={audioRef}
+      controls
+      src={src}
+      className="w-full"
+      onError={() => setCanPlay(false)}
+    />
+  );
+}
+
 function NoteCard({
-  note,
-  companyId,
-  clientId,
-  onDelete,
+  note, companyId, clientId, onDelete,
 }: {
-  note: Note;
-  companyId: string;
-  clientId: string;
-  onDelete: (id: string) => void;
+  note: Note; companyId: string; clientId: string; onDelete: (id: string) => void;
 }) {
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [deleting, setDeleting] = useState(false);
@@ -72,22 +100,15 @@ function NoteCard({
         )}
       </div>
 
-      {/* Audio player */}
       {audioSrc && (
         <div className="mb-3">
-          <audio
-            controls
-            src={audioSrc}
-            className="w-full"
-            style={{ height: 36, accentColor: GOLD }}
-          />
+          <AudioPlayer src={audioSrc} mimeType={note.audioMimeType} />
           {note.audioSize && (
             <p className="text-xs mt-1" style={{ color: "#8b949e" }}>🎙 {fmtSize(note.audioSize)}</p>
           )}
         </div>
       )}
 
-      {/* Transcription */}
       {note.transcription ? (
         <p className="text-sm leading-relaxed whitespace-pre-wrap" style={{ color: "#e6edf3" }}>
           {note.transcription}
@@ -100,13 +121,9 @@ function NoteCard({
 }
 
 export default function ClientNotesTab({
-  companyId,
-  clientId,
-  initialNotes,
+  companyId, clientId, initialNotes,
 }: {
-  companyId: string;
-  clientId: string;
-  initialNotes: Note[];
+  companyId: string; clientId: string; initialNotes: Note[];
 }) {
   const [notes, setNotes] = useState<Note[]>(initialNotes);
   const [recording, setRecording] = useState(false);
@@ -132,60 +149,63 @@ export default function ClientNotesTab({
     finalTextRef.current = "";
     chunksRef.current = [];
 
+    if (!navigator.mediaDevices?.getUserMedia) {
+      setError("Audio recording is not supported on this browser.");
+      return;
+    }
+
     let stream: MediaStream;
     try {
       stream = await navigator.mediaDevices.getUserMedia({ audio: true });
     } catch {
-      setError("Microphone access denied. Please allow microphone permission.");
+      setError("Microphone access denied. Please allow microphone permission in your browser settings.");
       return;
     }
 
-    // Pick best supported mime type — iOS Safari needs mp4, Chrome uses webm
-    const preferredMime = [
-      "audio/webm;codecs=opus",
-      "audio/webm",
-      "audio/mp4",
-      "audio/aac",
-      "",
-    ].find(m => !m || MediaRecorder.isTypeSupported(m)) ?? "";
-    const mr = new MediaRecorder(stream, preferredMime ? { mimeType: preferredMime } : {});
+    // Don't specify mimeType — let the browser pick its native format.
+    // On Chrome: audio/webm;codecs=opus. On iOS Safari: audio/mp4.
+    // Using mr.mimeType after construction gives us the actual format chosen.
+    let mr: MediaRecorder;
+    try {
+      mr = new MediaRecorder(stream);
+    } catch {
+      stream.getTracks().forEach(t => t.stop());
+      setError("Audio recording is not supported on this browser. Try Chrome or Safari on iOS 14.3+.");
+      return;
+    }
+
     mediaRecorderRef.current = mr;
     mr.ondataavailable = e => { if (e.data.size > 0) chunksRef.current.push(e.data); };
     mr.start(250);
 
-    // Web Speech API for live transcription
+    // Web Speech API — Chrome/Edge only, silent fail on iOS Safari
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
-
-    if (SpeechRecognition) {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const rec = new (SpeechRecognition as any)();
-      rec.continuous = true;
-      rec.interimResults = true;
-      rec.lang = "en-US";
-
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      rec.onresult = (event: any) => {
-        let interim = "";
-        let final = "";
-        for (let i = event.resultIndex; i < event.results.length; i++) {
-          const t = event.results[i][0].transcript;
-          if (event.results[i].isFinal) {
-            final += t + " ";
-          } else {
-            interim += t;
+    const SR = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+    if (SR) {
+      try {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const rec = new (SR as any)();
+        rec.continuous = true;
+        rec.interimResults = true;
+        rec.lang = "en-US";
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        rec.onresult = (event: any) => {
+          let interim = "";
+          let final = "";
+          for (let i = event.resultIndex; i < event.results.length; i++) {
+            const t = event.results[i][0].transcript;
+            if (event.results[i].isFinal) final += t + " ";
+            else interim += t;
           }
-        }
-        if (final) finalTextRef.current += final;
-        setLiveText(finalTextRef.current + interim);
-      };
-
-      rec.onerror = () => { /* non-fatal */ };
-      rec.start();
-      recognitionRef.current = rec;
+          if (final) finalTextRef.current += final;
+          setLiveText(finalTextRef.current + interim);
+        };
+        rec.onerror = () => { /* non-fatal — audio still records */ };
+        rec.start();
+        recognitionRef.current = rec;
+      } catch { /* speech API unavailable, still record audio */ }
     }
 
-    // Elapsed timer
     setElapsed(0);
     timerRef.current = setInterval(() => setElapsed(s => s + 1), 1000);
     setRecording(true);
@@ -196,25 +216,23 @@ export default function ClientNotesTab({
     setProcessing(true);
     stopTimer();
 
-    // Stop speech recognition
     recognitionRef.current?.stop();
 
-    // Stop MediaRecorder and collect blob
     const audioBlob = await new Promise<Blob>((resolve) => {
       const mr = mediaRecorderRef.current!;
+      // mr.mimeType is set by the browser — captures the actual format used
       const mimeType = mr.mimeType || "audio/webm";
       mr.onstop = () => resolve(new Blob(chunksRef.current, { type: mimeType }));
       mr.stop();
       mr.stream.getTracks().forEach(t => t.stop());
     });
 
-    // Small delay so speech recognition fires final results
+    // Small delay for speech recognition to fire final results
     await new Promise(r => setTimeout(r, 600));
 
     const transcription = finalTextRef.current.trim() || liveText.trim();
-    const ext = audioBlob.type.includes("mp4") || audioBlob.type.includes("aac") ? "m4a" : "webm";
+    const ext = audioBlob.type.includes("mp4") || audioBlob.type.includes("aac") || audioBlob.type.includes("m4a") ? "m4a" : "webm";
 
-    // Upload
     const fd = new FormData();
     fd.append("transcription", transcription);
     fd.append("audio", audioBlob, `note.${ext}`);
@@ -238,7 +256,6 @@ export default function ClientNotesTab({
 
   return (
     <div>
-      {/* Recorder card */}
       <div className="rounded-2xl p-5 mb-6" style={{ background: "#1e2736", border: `1px solid ${recording ? GOLD + "88" : "#30373f"}` }}>
         <div className="flex items-center justify-between mb-4">
           <h3 className="text-sm font-semibold" style={{ color: "#e6edf3" }}>Voice Note</h3>
@@ -249,12 +266,11 @@ export default function ClientNotesTab({
           )}
         </div>
 
-        {/* Live transcription area */}
         <div
           className="rounded-xl p-4 mb-4 min-h-[80px] text-sm leading-relaxed"
           style={{ background: "#0d1117", border: "1px solid #30373f", color: recording ? "#e6edf3" : "#8b949e" }}
         >
-          {liveText || (recording ? "Listening…" : "Press record and start speaking. Your words will appear here in real time.")}
+          {liveText || (recording ? "Listening… (transcription available on Chrome/desktop)" : "Press record and start speaking. Transcription works in Chrome; audio is saved on all devices.")}
         </div>
 
         {error && <p className="text-xs mb-3" style={{ color: "#f85149" }}>{error}</p>}
@@ -279,12 +295,11 @@ export default function ClientNotesTab({
             </button>
           )}
           <span className="text-xs" style={{ color: "#8b949e" }}>
-            {recording ? "Speak clearly — transcription is live" : `${notes.length} note${notes.length !== 1 ? "s" : ""} saved`}
+            {recording ? "Speak clearly" : `${notes.length} note${notes.length !== 1 ? "s" : ""} saved`}
           </span>
         </div>
       </div>
 
-      {/* Notes list */}
       {notes.length === 0 ? (
         <div className="rounded-xl p-10 text-center" style={{ background: "#1e2736", border: "1px solid #30373f" }}>
           <p className="text-sm" style={{ color: "#8b949e" }}>No notes yet. Record your first voice note above.</p>
