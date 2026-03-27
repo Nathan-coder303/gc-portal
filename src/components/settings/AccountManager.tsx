@@ -29,7 +29,7 @@ export default function AccountManager({ accounts }: { accounts: Account[] }) {
     }
   }
 
-  async function handleArchive(id: string, projectId: string, name: string) {
+  async function handleArchive(id: string, projectId: string) {
     setArchiving(id);
     try {
       await archiveAccount(id, projectId);
@@ -85,7 +85,7 @@ export default function AccountManager({ accounts }: { accounts: Account[] }) {
                       title="Edit">
                       <PencilIcon size={13} />
                     </button>
-                    <button onClick={() => handleArchive(a.id, a.projectId, a.name)}
+                    <button onClick={() => handleArchive(a.id, a.projectId)}
                       disabled={archiving === a.id}
                       className="w-7 h-7 rounded flex items-center justify-center disabled:opacity-50"
                       style={{ background: "#f8514922", color: "#f85149", border: "1px solid #f8514933" }}

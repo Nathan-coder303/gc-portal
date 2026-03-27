@@ -82,7 +82,7 @@ export default function PartnerManager({
     }
   }
 
-  async function handleArchive(id: string, name: string) {
+  async function handleArchive(id: string) {
     setArchiving(id);
     try {
       await archivePartner(id);
@@ -244,7 +244,7 @@ export default function PartnerManager({
                         title="Edit">
                         <PencilIcon size={13} />
                       </button>
-                      <button onClick={() => handleArchive(p.id, p.name)}
+                      <button onClick={() => handleArchive(p.id)}
                         disabled={archiving === p.id}
                         className="w-7 h-7 rounded-lg flex items-center justify-center disabled:opacity-50"
                         style={{ background: "#f8514922", color: "#f85149", border: "1px solid #f8514933" }}
