@@ -249,7 +249,10 @@ export default function SubsBidsTab({ clientId, companyId, clientName, clientAdd
       setTogglingCommercial(false);
       return;
     }
-    window.location.reload();
+    // Force a fresh server fetch by navigating with a cache-bust param
+    const url = new URL(window.location.href);
+    url.searchParams.set("_t", Date.now().toString());
+    window.location.href = url.toString();
   }
 
   const allDivisions = isCommercial
@@ -358,11 +361,9 @@ export default function SubsBidsTab({ clientId, companyId, clientName, clientAdd
                     ))}
                   </select>
                 </div>
-                {offer.createdAt && (
-                  <div className="text-[10px] mt-2" style={{ color: "#C9A84C" }}>
-                    📅 Date received: {fmtDate(offer.createdAt)}
-                  </div>
-                )}
+                <div className="text-[10px] mt-2" style={{ color: "#8b949e" }}>
+                  📅 {offer.createdAt ? fmtDate(offer.createdAt) : "—"}
+                </div>
               </div>
             ))}
           </div>
@@ -414,19 +415,21 @@ export default function SubsBidsTab({ clientId, companyId, clientName, clientAdd
               <div className="flex items-start justify-between gap-2 mb-3">
                 <div>
                   <div className="font-semibold text-xs" style={{ color: "#C9A84C" }}>Division {bid.divisionCode}</div>
-                  <div className="font-semibold text-sm mt-0.5" style={{ color: "#C9A84C" }}>
+                  <div className="font-semibold text-sm mt-0.5" style={{ color: "#e6edf3" }}>
                     {bid.divisionName}
                   </div>
+                </div>
+                <div className="flex flex-col items-end gap-1 shrink-0">
                   {displayBest !== null && (
-                    <div className="text-base font-bold mt-1" style={{ color: "#e6edf3" }}>
+                    <div className="text-lg font-bold leading-none" style={{ color: "#C9A84C" }}>
                       ${fmt(displayBest)}
                     </div>
                   )}
+                  <span className="text-[10px] font-bold px-2 py-0.5 rounded-full"
+                    style={{ background: (hasOffers ? "#C9A84C" : "#ef4444") + "22", color: hasOffers ? "#C9A84C" : "#ef4444", border: `1px solid ${hasOffers ? "#C9A84C" : "#ef4444"}55` }}>
+                    {hasOffers ? "RECEIVED" : "MISSING"}
+                  </span>
                 </div>
-                <span className="text-[10px] font-bold px-2 py-0.5 rounded-full shrink-0"
-                  style={{ background: (hasOffers ? "#C9A84C" : "#ef4444") + "22", color: hasOffers ? "#C9A84C" : "#ef4444", border: `1px solid ${hasOffers ? "#C9A84C" : "#ef4444"}55` }}>
-                  {hasOffers ? "RECEIVED" : "MISSING"}
-                </span>
               </div>
 
               {/* All offers */}
@@ -505,11 +508,9 @@ export default function SubsBidsTab({ clientId, companyId, clientName, clientAdd
                             )}
                           </div>
                         </div>
-                        {offer.createdAt && (
-                          <div className="text-[10px] mt-2" style={{ color: "#C9A84C" }}>
-                            📅 Date received: {fmtDate(offer.createdAt)}
-                          </div>
-                        )}
+                        <div className="text-[10px] mt-2" style={{ color: "#8b949e" }}>
+                          📅 {offer.createdAt ? fmtDate(offer.createdAt) : "—"}
+                        </div>
                       </div>
                     )}
                   </div>
