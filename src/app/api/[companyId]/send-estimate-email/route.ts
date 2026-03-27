@@ -2,12 +2,20 @@ import { NextRequest, NextResponse } from "next/server";
 import { google } from "googleapis";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { renderTemplatePdf } from "@/lib/estimates/templatePdf";
+import { insertClientPageIntoEstimate } from "@/lib/estimates/insertClientPage";
 import crypto from "crypto";
 
 export const runtime = "nodejs";
 export const maxDuration = 30;
 
-
+const DEFAULT_PAYMENT_SCHEDULE = [
+  { payment: "Deposit", trigger: "Contract signing – permits, engineering, scheduling", pct: 25 },
+  { payment: "Structure Start", trigger: "Foundation completed / framing start", pct: 25 },
+  { payment: "Dry-In", trigger: "Framing, roof, windows installed", pct: 20 },
+  { payment: "Rough-Ins", trigger: "Electrical, plumbing, HVAC rough inspections passed", pct: 20 },
+  { payment: "Completion", trigger: "Final inspection / punchlist", pct: 10 },
+];
 
 function getOAuthClient() {
   const oauth2Client = new google.auth.OAuth2(
@@ -61,38 +69,133 @@ export async function POST(
   const session = await auth();
   if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-  // PDF is pre-rendered by the browser and sent as binary FormData.
-  // This endpoint only handles Gmail send (~1-2s), safely within Vercel Hobby's 10s limit.
-  const formData = await req.formData().catch(() => null);
-  if (!formData) return NextResponse.json({ error: "Invalid request" }, { status: 400 });
+  const body = await req.json().catch(() => ({}));
+  const { templateId, to, cc, bcc, subject, body: emailBody } = body as {
+    templateId?: string;
+    to?: string;
+    cc?: string;
+    bcc?: string;
+    subject?: string;
+    body?: string;
+  };
 
-  const templateId = formData.get("templateId") as string | null;
-  const to = formData.get("to") as string | null;
-  const cc = formData.get("cc") as string | null;
-  const bcc = formData.get("bcc") as string | null;
-  const subject = formData.get("subject") as string | null;
-  const emailBody = formData.get("body") as string | null;
-  const pdfFile = formData.get("pdf") as File | null;
-
-  if (!templateId || !to || !subject || !emailBody || !pdfFile) {
-    return NextResponse.json({ error: "templateId, to, subject, body, and pdf are required" }, { status: 400 });
+  if (!templateId || !to || !subject || !emailBody) {
+    return NextResponse.json(
+      { error: "templateId, to, subject, and body are required" },
+      { status: 400 }
+    );
   }
 
-  const [template, finalBuffer] = await Promise.all([
+  const [template, company] = await Promise.all([
     prisma.estimateTemplate.findFirst({
       where: { id: templateId, companyId: params.companyId, archivedAt: null },
-      select: { id: true, name: true, estimateNumber: true, signatureToken: true, client: { select: { name: true } } },
+      include: {
+        client: true,
+        divisions: {
+          where: { archivedAt: null },
+          orderBy: { sortOrder: "asc" },
+          include: {
+            groups: {
+              where: { archivedAt: null },
+              orderBy: { sortOrder: "asc" },
+              include: { items: { where: { archivedAt: null }, orderBy: { sortOrder: "asc" } } },
+            },
+            items: { where: { archivedAt: null, groupId: null }, orderBy: { sortOrder: "asc" } },
+          },
+        },
+      },
     }),
-    pdfFile.arrayBuffer().then(buf => Buffer.from(buf)),
+    prisma.company.findFirst({ where: { id: params.companyId } }),
   ]);
 
-  if (!template) return NextResponse.json({ error: "Not found" }, { status: 404 });
+  if (!template || !company) {
+    return NextResponse.json({ error: "Not found" }, { status: 404 });
+  }
 
-  // Gmail profile + token generation in parallel
-  const oauth2Client = getOAuthClient();
-  const gmail = google.gmail({ version: "v1", auth: oauth2Client });
-  const profileRes = await gmail.users.getProfile({ userId: "me" });
-  const fromEmail = profileRes.data.emailAddress ?? "me";
+  const divisions = template.divisions.map((d) => ({
+    id: d.id,
+    csiCode: d.csiCode,
+    name: d.name,
+    groups: d.groups.map((g) => ({
+      id: g.id,
+      name: g.name,
+      items: g.items.map((i) => ({
+        id: i.id,
+        name: i.name,
+        detail: i.detail,
+        unit: i.unit,
+        defaultQty: i.defaultQty ? Number(i.defaultQty) : null,
+        defaultUnitCost: i.defaultUnitCost ? Number(i.defaultUnitCost) : null,
+        defaultMarkupPct: i.defaultMarkupPct ? Number(i.defaultMarkupPct) : null,
+        visibleInPdf: i.visibleInPdf,
+        notes: i.notes,
+      })),
+    })),
+    items: d.items.map((i) => ({
+      id: i.id,
+      name: i.name,
+      detail: i.detail,
+      unit: i.unit,
+      defaultQty: i.defaultQty ? Number(i.defaultQty) : null,
+      defaultUnitCost: i.defaultUnitCost ? Number(i.defaultUnitCost) : null,
+      defaultMarkupPct: i.defaultMarkupPct ? Number(i.defaultMarkupPct) : null,
+      visibleInPdf: i.visibleInPdf,
+      notes: i.notes,
+    })),
+  }));
+
+  const buffer = await renderTemplatePdf({
+    companyName: company.name,
+    template: {
+      name: template.name,
+      description: template.description,
+      estimateNumber: template.estimateNumber,
+      estimateDate: template.estimateDate,
+    },
+    client: template.client
+      ? {
+          name: template.client.name,
+          address: template.client.address,
+          city: template.client.city,
+          state: template.client.state,
+          zip: template.client.zip,
+          phone: template.client.phone,
+          email: template.client.email,
+        }
+      : null,
+    divisions,
+    showTerms: true,
+    termsContent: template.termsContent,
+    paymentSchedule:
+      (template.paymentSchedule as { payment: string; trigger: string; pct: number }[] | null) ??
+      DEFAULT_PAYMENT_SCHEDULE,
+    gcFeePercent: template.gcFeePercent ? Number(template.gcFeePercent) : null,
+    summaryGroups:
+      (template.summaryGroups as Record<
+        string,
+        { qty: number | null; unit: string | null; unitCost: number | null; markupPct: number | null; manualTotal: number | null }
+      > | null) ?? null,
+    includeRoofUpgradesPage: template.name.toLowerCase().includes("roof"),
+    includeAdditionPages: template.name.toLowerCase().includes("addition"),
+    includeCoverPage: true,
+    insulationType: template.insulationType ?? "ISO",
+    clientCoverPhotoType: template.client?.coverPhotoType ?? null,
+    clientCoverPhotoUrl: template.client?.coverPhotoUrl ?? null,
+  });
+
+  // Insert client's marked PDF page 2 as page 3 (roofing only)
+  // Only attempt when a real file URL exists — skip entirely if none.
+  let finalBuffer = buffer;
+  if (template.name.toLowerCase().includes("roof") && template.client) {
+    const insertFile = await prisma.clientFile.findFirst({
+      where: { clientId: template.client.id, useInEstimate: true },
+      select: { fileUrl: true },
+    });
+    const fileUrl = insertFile?.fileUrl?.trim() || null;
+    if (fileUrl) {
+      finalBuffer = await insertClientPageIntoEstimate(buffer, fileUrl);
+    }
+  }
 
   // Generate (or reuse) a signature token for this estimate
   let signToken = template.signatureToken;
@@ -106,11 +209,18 @@ export async function POST(
   const signUrl = `https://portal.mibhconstruction.com/sign/${signToken}`;
   const fullEmailBody = `${emailBody}\n\n---\nSign your estimate here: ${signUrl}`;
 
+  const oauth2Client = getOAuthClient();
+  const gmail = google.gmail({ version: "v1", auth: oauth2Client });
+
+  // Use the actual authenticated Gmail address as From
+  const profile = await gmail.users.getProfile({ userId: "me" });
+  const fromEmail = profile.data.emailAddress ?? "me";
+
   const boundary = `----=_Part_${Date.now()}`;
   const clientSlug = template.client ? `-for-${template.client.name.replace(/[^a-z0-9]/gi, "-")}` : "";
   const estimateSlug = template.estimateNumber ? `Estimate-${template.estimateNumber}` : template.name.replace(/[^a-z0-9]/gi, "-");
   const filename = `${estimateSlug}${clientSlug}.pdf`;
-  const encodedPdf = finalBuffer.toString("base64");
+  const pdfBase64 = finalBuffer.toString("base64");
 
   // RFC 2047 encode subject to handle non-ASCII characters (em dash, accents, etc.)
   const encodedSubject = /^[\x00-\x7F]*$/.test(subject)
@@ -136,7 +246,7 @@ export async function POST(
     `Content-Transfer-Encoding: base64`,
     `Content-Disposition: attachment; filename="${filename}"`,
     ``,
-    encodedPdf,
+    pdfBase64,
     `--${boundary}--`,
   ];
   const raw = Buffer.from(mimeLines.join("\r\n")).toString("base64url");
