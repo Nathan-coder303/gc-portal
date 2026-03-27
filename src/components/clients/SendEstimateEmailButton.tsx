@@ -68,7 +68,7 @@ export default function SendEstimateEmailButton({ templateId, companyId, templat
       // Convert to base64 in chunks to avoid stack overflow on large PDFs
       let binary = "";
       for (let i = 0; i < pdfBytes.length; i += 8192) {
-        binary += String.fromCharCode(...pdfBytes.subarray(i, i + 8192));
+        binary += String.fromCharCode(...Array.from(pdfBytes.subarray(i, i + 8192)));
       }
       const pdfBase64 = btoa(binary);
 
