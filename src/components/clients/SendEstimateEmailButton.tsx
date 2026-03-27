@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import CoverPagePickerModal, { CoverType, COVER_OPTIONS } from "@/components/clients/CoverPagePickerModal";
 
 const MIKE_SIGNATURE = `Mike Baruh
 Founder/CEO | MIBH Construction
@@ -22,9 +23,11 @@ type Props = {
   estimateNumber?: string | null;
   description?: string | null;
   clientAddress?: string | null;
+  isCommercial?: boolean;
+  clientCoverPhotoUrl?: string | null;
 };
 
-export default function SendEstimateEmailButton({ templateId, companyId, templateName, clientName, clientEmail, estimateNumber, description, clientAddress }: Props) {
+export default function SendEstimateEmailButton({ templateId, companyId, templateName, clientName, clientEmail, estimateNumber, description, clientAddress, isCommercial, clientCoverPhotoUrl }: Props) {
   const firstName = clientName.split(" ")[0];
   const defaultBody = `Dear ${firstName},\n\nPlease find attached your estimate for the project.\n\nDo not hesitate to contact us with any questions.\n\n${MIKE_SIGNATURE}`;
 
@@ -36,7 +39,10 @@ export default function SendEstimateEmailButton({ templateId, companyId, templat
   if (clientAddress) subjectParts.push(`at ${clientAddress}`);
   const defaultSubject = subjectParts.join(" ");
 
-  const [open, setOpen] = useState(false);
+  const defaultCover: CoverType = isCommercial ? "COMMERCIAL" : "RESIDENTIAL";
+
+  const [step, setStep] = useState<"cover" | "email" | null>(null);
+  const [coverType, setCoverType] = useState<CoverType>(defaultCover);
   const [to, setTo] = useState(clientEmail ?? "");
   const [cc, setCc] = useState("mikebaruh@gmail.com");
   const [bcc, setBcc] = useState("");
@@ -45,9 +51,15 @@ export default function SendEstimateEmailButton({ templateId, companyId, templat
   const [sending, setSending] = useState(false);
   const [result, setResult] = useState<{ ok: boolean; msg: string } | null>(null);
 
-  function openModal() {
-    setOpen(true);
+  function openCoverPicker() {
+    setCoverType(defaultCover);
     setResult(null);
+    setStep("cover");
+  }
+
+  function handleCoverConfirm(type: CoverType) {
+    setCoverType(type);
+    setStep("email");
   }
 
   async function send() {
@@ -58,14 +70,14 @@ export default function SendEstimateEmailButton({ templateId, companyId, templat
       const res = await fetch(`/api/${companyId}/send-estimate-email`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ templateId, to, cc: cc.trim() || undefined, bcc: bcc.trim() || undefined, subject, body }),
+        body: JSON.stringify({ templateId, to, cc: cc.trim() || undefined, bcc: bcc.trim() || undefined, subject, body, coverType }),
       });
       const text = await res.text();
       let data: { error?: string; detail?: string } = {};
       try { data = JSON.parse(text); } catch { /* non-JSON response */ }
       if (res.ok) {
         setResult({ ok: true, msg: "Email sent successfully!" });
-        setTimeout(() => { setOpen(false); setResult(null); }, 2000);
+        setTimeout(() => { setStep(null); setResult(null); }, 2000);
       } else {
         const msg = data.detail ? `${data.error}: ${data.detail}` : (data.error ?? `Server error ${res.status}`);
         setResult({ ok: false, msg });
@@ -78,10 +90,12 @@ export default function SendEstimateEmailButton({ templateId, companyId, templat
     }
   }
 
+  const selectedOption = COVER_OPTIONS.find(o => o.type === coverType);
+
   return (
     <>
       <button
-        onClick={openModal}
+        onClick={openCoverPicker}
         className="text-xs px-2 py-1 rounded-lg font-medium transition-colors"
         style={{ background: "#1a2436", border: "1px solid #30373f", color: "#8b949e" }}
         title="Send estimate via email"
@@ -89,17 +103,36 @@ export default function SendEstimateEmailButton({ templateId, companyId, templat
         ✉ Send
       </button>
 
-      {open && (
+      {step === "cover" && (
+        <CoverPagePickerModal
+          isCommercial={isCommercial}
+          customCoverUrl={clientCoverPhotoUrl}
+          confirmLabel="Next: Write Email →"
+          onConfirm={handleCoverConfirm}
+          onClose={() => setStep(null)}
+        />
+      )}
+
+      {step === "email" && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ background: "rgba(0,0,0,0.7)" }}>
           <div className="w-full max-w-lg rounded-2xl p-6 space-y-4" style={{ background: "#161b22", border: "1px solid #30373f" }}>
             <div className="flex items-center justify-between">
               <h2 className="text-base font-bold" style={{ color: "#e6edf3" }}>Send Estimate via Gmail</h2>
-              <button onClick={() => setOpen(false)} style={{ color: "#8b949e" }} className="text-xl leading-none">×</button>
+              <button onClick={() => setStep(null)} style={{ color: "#8b949e" }} className="text-xl leading-none">×</button>
             </div>
 
-            <p className="text-xs" style={{ color: "#8b949e" }}>
-              Sending: <span style={{ color: "#C9A84C" }}>{templateName}</span>
-            </p>
+            <div className="flex items-center gap-3">
+              <p className="text-xs flex-1" style={{ color: "#8b949e" }}>
+                Sending: <span style={{ color: "#C9A84C" }}>{templateName}</span>
+              </p>
+              <button
+                onClick={() => setStep("cover")}
+                className="text-xs px-2 py-1 rounded-lg"
+                style={{ background: "#1e2736", border: "1px solid #30373f", color: "#8b949e" }}
+              >
+                Cover: {selectedOption?.label ?? coverType}
+              </button>
+            </div>
 
             <div className="space-y-3">
               <div>
@@ -175,7 +208,7 @@ export default function SendEstimateEmailButton({ templateId, companyId, templat
                 {sending ? "Sending…" : "Send Email + PDF"}
               </button>
               <button
-                onClick={() => setOpen(false)}
+                onClick={() => setStep(null)}
                 className="px-5 rounded-xl py-2.5 text-sm font-medium"
                 style={{ background: "#30373f", color: "#e6edf3" }}
               >

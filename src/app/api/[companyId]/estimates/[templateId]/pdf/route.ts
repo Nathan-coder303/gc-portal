@@ -26,6 +26,7 @@ export async function GET(
 
   const countersigned = req.nextUrl.searchParams.get("countersigned") === "1";
   const cover = req.nextUrl.searchParams.get("cover") === "1";
+  const coverTypeParam = req.nextUrl.searchParams.get("coverType");
 
   const [template, company] = await Promise.all([
     prisma.estimateTemplate.findFirst({
@@ -104,7 +105,7 @@ export async function GET(
     includeAdditionPages: template.name.toLowerCase().includes("addition"),
     includeCoverPage: cover,
     insulationType: template.insulationType ?? "ISO",
-    clientCoverPhotoType: template.client?.coverPhotoType ?? null,
+    clientCoverPhotoType: coverTypeParam ?? template.client?.coverPhotoType ?? null,
     clientCoverPhotoUrl: template.client?.coverPhotoUrl ?? null,
   });
 

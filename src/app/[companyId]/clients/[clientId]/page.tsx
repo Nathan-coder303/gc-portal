@@ -187,6 +187,8 @@ export default async function ClientDetailPage({
           clientAddress={safeClient.address ?? null}
           canEdit={canEdit}
           canDelete={canDelete}
+          isCommercial={safeClient.isCommercial}
+          clientCoverPhotoUrl={safeClient.coverPhotoUrl ?? null}
         />
       )}
 

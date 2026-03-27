@@ -228,10 +228,12 @@ function CoverPages({ template, client, clientCoverPhotoType, clientCoverPhotoUr
   let photoSrc: string;
   if (clientCoverPhotoType === "CUSTOM" && clientCoverPhotoUrl) {
     photoSrc = clientCoverPhotoUrl; // public URL — react-pdf can fetch directly
-  } else if (clientCoverPhotoType === "ADDITIONS") {
+  } else if (clientCoverPhotoType === "ADDITIONS" || clientCoverPhotoType === "COMMERCIAL") {
     photoSrc = path.join(process.cwd(), "public", "additions.jpg");
-  } else if (clientCoverPhotoType === "FLAT_ROOFS") {
+  } else if (clientCoverPhotoType === "FLAT_ROOFS" || clientCoverPhotoType === "RESIDENTIAL") {
     photoSrc = path.join(process.cwd(), "public", "flat-roofs-cover.jpg");
+  } else if (clientCoverPhotoType === "LAUNDRY") {
+    photoSrc = path.join(process.cwd(), "public", "laundry-cover.jpg");
   } else {
     photoSrc = path.join(process.cwd(), "public", isKitchenLaundry ? "laundry-cover.jpg" : "flat-roofs-cover.jpg");
   }

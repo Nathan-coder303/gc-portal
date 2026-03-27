@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import DeleteEstimateButton from "@/components/clients/DeleteEstimateButton";
 import EditEstimateModal from "@/components/clients/EditEstimateModal";
 import SendEstimateEmailButton from "@/components/clients/SendEstimateEmailButton";
+import CoverPagePickerModal, { CoverType } from "@/components/clients/CoverPagePickerModal";
 
 type EstimateRow = {
   id: string;
@@ -30,6 +31,7 @@ function fmt(n: number) {
 
 function EstimateCard({
   est, companyId, clientId, clientName, clientEmail, clientAddress, canEdit, canDelete,
+  isCommercial, clientCoverPhotoUrl,
 }: {
   est: EstimateRow;
   companyId: string;
@@ -39,9 +41,12 @@ function EstimateCard({
   clientAddress: string | null;
   canEdit: boolean;
   canDelete: boolean;
+  isCommercial?: boolean;
+  clientCoverPhotoUrl?: string | null;
 }) {
   const router = useRouter();
   const [hovered, setHovered] = useState(false);
+  const [showCoverPicker, setShowCoverPicker] = useState(false);
 
   const createdStr = new Date(est.createdAt).toLocaleString("en-US", {
     timeZone: "America/New_York", month: "short", day: "numeric", year: "numeric",
@@ -62,90 +67,108 @@ function EstimateCard({
     </span>
   ) : null;
 
-  return (
-    <div
-      className="rounded-xl cursor-pointer transition-all"
-      style={{ background: "#1e2736", border: `1px solid ${hovered ? "#C9A84C" : "#30373f"}` }}
-      onClick={() => router.push(`/${companyId}/estimates/${est.id}`)}
-      onMouseEnter={() => setHovered(true)}
-      onMouseLeave={() => setHovered(false)}
-    >
-      <div className="px-5 py-4">
-        {/* Top row: name + total */}
-        <div className="flex items-start justify-between gap-3 mb-2">
-          <div className="min-w-0">
-            <div className="flex items-baseline gap-1.5 flex-wrap">
-              <span className="font-semibold text-sm" style={{ color: "#e6edf3" }}>{est.name}</span>
-              {est.estimateNumber && <span className="text-xs" style={{ color: "#8b949e" }}>#{est.estimateNumber}</span>}
-            </div>
-            <div className="text-xs mt-0.5" style={{ color: "#8b949e" }}>
-              {sentStr ? `Sent ${sentStr} ET` : `Created ${createdStr} ET`}
-            </div>
-          </div>
-          <div className="flex items-center gap-2 shrink-0">
-            {statusBadge}
-            <span className="font-bold text-sm" style={{ color: "#C9A84C" }}>${fmt(est.total)}</span>
-          </div>
-        </div>
+  function handlePdfConfirm(coverType: CoverType) {
+    setShowCoverPicker(false);
+    window.open(`/api/${companyId}/estimates/${est.id}/pdf?cover=1&coverType=${coverType}`, "_blank");
+  }
 
-        {/* Action buttons */}
-        <div className="flex flex-wrap gap-2 mt-3" onClick={(e) => e.stopPropagation()}>
-          <a
-            href={`/api/${companyId}/estimates/${est.id}/pdf?cover=1`}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="px-3 py-1.5 rounded-lg text-xs font-semibold"
-            style={{ background: "#C9A84C22", color: "#C9A84C", border: "1px solid #C9A84C44", textDecoration: "none" }}
-          >
-            ↓ PDF
-          </a>
-          {est.counterSignedAt && (
-            <a
-              href={`/api/${companyId}/estimates/${est.id}/pdf?countersigned=1`}
-              target="_blank"
-              rel="noopener noreferrer"
+  return (
+    <>
+      <div
+        className="rounded-xl cursor-pointer transition-all"
+        style={{ background: "#1e2736", border: `1px solid ${hovered ? "#C9A84C" : "#30373f"}` }}
+        onClick={() => router.push(`/${companyId}/estimates/${est.id}`)}
+        onMouseEnter={() => setHovered(true)}
+        onMouseLeave={() => setHovered(false)}
+      >
+        <div className="px-5 py-4">
+          {/* Top row: name + total */}
+          <div className="flex items-start justify-between gap-3 mb-2">
+            <div className="min-w-0">
+              <div className="flex items-baseline gap-1.5 flex-wrap">
+                <span className="font-semibold text-sm" style={{ color: "#e6edf3" }}>{est.name}</span>
+                {est.estimateNumber && <span className="text-xs" style={{ color: "#8b949e" }}>#{est.estimateNumber}</span>}
+              </div>
+              <div className="text-xs mt-0.5" style={{ color: "#8b949e" }}>
+                {sentStr ? `Sent ${sentStr} ET` : `Created ${createdStr} ET`}
+              </div>
+            </div>
+            <div className="flex items-center gap-2 shrink-0">
+              {statusBadge}
+              <span className="font-bold text-sm" style={{ color: "#C9A84C" }}>${fmt(est.total)}</span>
+            </div>
+          </div>
+
+          {/* Action buttons */}
+          <div className="flex flex-wrap gap-2 mt-3" onClick={(e) => e.stopPropagation()}>
+            <button
+              onClick={() => setShowCoverPicker(true)}
               className="px-3 py-1.5 rounded-lg text-xs font-semibold"
-              style={{ background: "#0d231822", color: "#22c55e", border: "1px solid #22c55e55", textDecoration: "none" }}
+              style={{ background: "#C9A84C22", color: "#C9A84C", border: "1px solid #C9A84C44" }}
             >
-              ↓ Signed PDF
-            </a>
-          )}
-          <SendEstimateEmailButton
-            templateId={est.id}
-            companyId={companyId}
-            templateName={est.name}
-            clientName={clientName}
-            clientEmail={clientEmail}
-            estimateNumber={est.estimateNumber}
-            description={est.description}
-            clientAddress={clientAddress}
-          />
-          {canEdit && (
-            <EditEstimateModal
-              estimateId={est.id}
-              clientId={clientId}
+              ↓ PDF
+            </button>
+            {est.counterSignedAt && (
+              <a
+                href={`/api/${companyId}/estimates/${est.id}/pdf?countersigned=1`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="px-3 py-1.5 rounded-lg text-xs font-semibold"
+                style={{ background: "#0d231822", color: "#22c55e", border: "1px solid #22c55e55", textDecoration: "none" }}
+              >
+                ↓ Signed PDF
+              </a>
+            )}
+            <SendEstimateEmailButton
+              templateId={est.id}
               companyId={companyId}
-              initialName={est.name}
-              initialDescription={est.description}
-              initialEstimateNumber={est.estimateNumber}
-              initialEstimateDate={est.estimateDate}
-              initialSqFt={est.sqFt}
-              initialDurationMonths={est.durationMonths}
-              initialHasSkylights={est.hasSkylights}
-              initialHasRoofDrains={est.hasRoofDrains}
+              templateName={est.name}
+              clientName={clientName}
+              clientEmail={clientEmail}
+              estimateNumber={est.estimateNumber}
+              description={est.description}
+              clientAddress={clientAddress}
+              isCommercial={isCommercial}
+              clientCoverPhotoUrl={clientCoverPhotoUrl}
             />
-          )}
-          {canDelete && (
-            <DeleteEstimateButton estimateId={est.id} clientId={clientId} companyId={companyId} />
-          )}
+            {canEdit && (
+              <EditEstimateModal
+                estimateId={est.id}
+                clientId={clientId}
+                companyId={companyId}
+                initialName={est.name}
+                initialDescription={est.description}
+                initialEstimateNumber={est.estimateNumber}
+                initialEstimateDate={est.estimateDate}
+                initialSqFt={est.sqFt}
+                initialDurationMonths={est.durationMonths}
+                initialHasSkylights={est.hasSkylights}
+                initialHasRoofDrains={est.hasRoofDrains}
+              />
+            )}
+            {canDelete && (
+              <DeleteEstimateButton estimateId={est.id} clientId={clientId} companyId={companyId} />
+            )}
+          </div>
         </div>
       </div>
-    </div>
+
+      {showCoverPicker && (
+        <CoverPagePickerModal
+          isCommercial={isCommercial}
+          customCoverUrl={clientCoverPhotoUrl}
+          confirmLabel="Download PDF"
+          onConfirm={handlePdfConfirm}
+          onClose={() => setShowCoverPicker(false)}
+        />
+      )}
+    </>
   );
 }
 
 export default function CollapsibleEstimateList({
   estimates, companyId, clientId, clientName, clientEmail, clientAddress, canEdit, canDelete,
+  isCommercial, clientCoverPhotoUrl,
 }: {
   estimates: EstimateRow[];
   companyId: string;
@@ -155,6 +178,8 @@ export default function CollapsibleEstimateList({
   clientAddress: string | null;
   canEdit: boolean;
   canDelete: boolean;
+  isCommercial?: boolean;
+  clientCoverPhotoUrl?: string | null;
 }) {
   if (estimates.length === 0) {
     return (
@@ -183,6 +208,8 @@ export default function CollapsibleEstimateList({
             clientAddress={clientAddress}
             canEdit={canEdit}
             canDelete={canDelete}
+            isCommercial={isCommercial}
+            clientCoverPhotoUrl={clientCoverPhotoUrl}
           />
         ))}
       </div>
