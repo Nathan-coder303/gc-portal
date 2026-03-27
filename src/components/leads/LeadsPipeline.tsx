@@ -144,9 +144,11 @@ function SourceSelector({
 function TriageCard({
   lead,
   onDragStart,
+  onEdit,
 }: {
   lead: TriageLead;
   onDragStart: (e: React.DragEvent, payload: string) => void;
+  onEdit: (leadId: string) => void;
 }) {
   const [dragging, setDragging] = useState(false);
   const [hovered, setHovered] = useState(false);
@@ -169,8 +171,22 @@ function TriageCard({
         transform: hovered && !dragging ? "scale(1.02)" : "scale(1)",
         transition: "transform 0.12s, background 0.12s",
         userSelect: "none",
+        position: "relative",
       }}
     >
+      {/* Edit button */}
+      <button
+        onClick={(e) => { e.stopPropagation(); onEdit(lead.id); }}
+        style={{
+          position: "absolute", top: 6, right: 6,
+          background: "transparent", border: "none",
+          color: "#6b7280", fontSize: 12, cursor: "pointer",
+          lineHeight: 1, padding: "1px 3px",
+          opacity: hovered ? 1 : 0, transition: "opacity 0.1s",
+        }}
+        title="Edit lead"
+      >✎</button>
+
       <div style={{ display: "flex", alignItems: "center", gap: 9 }}>
         <div style={{
           width: 30, height: 30, borderRadius: "50%",
@@ -180,7 +196,7 @@ function TriageCard({
         }}>
           {initials(lead.name)}
         </div>
-        <div style={{ flex: 1, minWidth: 0 }}>
+        <div style={{ flex: 1, minWidth: 0, paddingRight: 16 }}>
           <div style={{ color: "#e6edf3", fontWeight: 600, fontSize: 13, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
             {lead.name}
           </div>
@@ -212,12 +228,14 @@ function StageCard({
   onDragStart,
   onDelete,
   onSourceChange,
+  onEdit,
 }: {
   card: StagedCard;
   stageColor: string;
   onDragStart: (e: React.DragEvent, payload: string) => void;
   onDelete: (id: string) => void;
   onSourceChange: (id: string, source: string | null) => void;
+  onEdit: (leadId: string) => void;
 }) {
   const [dragging, setDragging] = useState(false);
   const [hovered, setHovered] = useState(false);
@@ -243,18 +261,21 @@ function StageCard({
         position: "relative",
       }}
     >
-      {/* Delete */}
-      <button
-        onClick={(e) => { e.stopPropagation(); onDelete(card.id); }}
-        style={{
-          position: "absolute", top: 6, right: 6,
-          background: "transparent", border: "none",
-          color: "#6b7280", fontSize: 14, cursor: "pointer",
-          lineHeight: 1, padding: "0 2px",
-          opacity: hovered ? 1 : 0, transition: "opacity 0.1s",
-        }}
-        title="Remove from pipeline"
-      >×</button>
+      {/* Edit + Remove buttons */}
+      <div style={{ position: "absolute", top: 6, right: 6, display: "flex", gap: 2, opacity: hovered ? 1 : 0, transition: "opacity 0.1s" }}>
+        {card.leadId && (
+          <button
+            onClick={(e) => { e.stopPropagation(); onEdit(card.leadId!); }}
+            style={{ background: "transparent", border: "none", color: "#6b7280", fontSize: 12, cursor: "pointer", lineHeight: 1, padding: "1px 3px" }}
+            title="Edit lead"
+          >✎</button>
+        )}
+        <button
+          onClick={(e) => { e.stopPropagation(); onDelete(card.id); }}
+          style={{ background: "transparent", border: "none", color: "#6b7280", fontSize: 14, cursor: "pointer", lineHeight: 1, padding: "0 2px" }}
+          title="Remove from pipeline"
+        >×</button>
+      </div>
 
       <div style={{ display: "flex", alignItems: "center", gap: 9 }}>
         <div style={{
@@ -303,6 +324,59 @@ export default function LeadsPipeline({ companyId, triageLeads, stagedCards }: P
   const [dragOver, setDragOver] = useState<string | null>(null); // stageId or "triage"
   const dragPayload = useRef<string | null>(null);
   const [search, setSearch] = useState("");
+
+  // ── Edit lead modal ──────────────────────────────────────────────────────
+  type EditForm = { name: string; email: string; phone: string; address: string; city: string; state: string; projectType: string; message: string };
+  const [editLeadId, setEditLeadId] = useState<string | null>(null);
+  const [editForm, setEditForm] = useState<EditForm>({ name: "", email: "", phone: "", address: "", city: "", state: "", projectType: "", message: "" });
+  const [editSaving, setEditSaving] = useState(false);
+  const [editDeleting, setEditDeleting] = useState(false);
+
+  async function openEdit(leadId: string) {
+    setEditLeadId(leadId);
+    setEditForm({ name: "", email: "", phone: "", address: "", city: "", state: "", projectType: "", message: "" });
+    try {
+      const res = await fetch(`/api/${companyId}/leads/${leadId}`);
+      if (res.ok) {
+        const d = await res.json();
+        setEditForm({ name: d.name ?? "", email: d.email ?? "", phone: d.phone ?? "", address: d.address ?? "", city: d.city ?? "", state: d.state ?? "", projectType: d.projectType ?? "", message: d.message ?? "" });
+      }
+    } catch { /* ignore */ }
+  }
+
+  async function saveEdit() {
+    if (!editLeadId) return;
+    setEditSaving(true);
+    try {
+      await fetch(`/api/${companyId}/leads/${editLeadId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(editForm),
+      });
+      // Update local state
+      const name = editForm.name || "Unknown";
+      setTriage((prev) => prev.map((l) => l.id === editLeadId ? { ...l, name, email: editForm.email || null, phone: editForm.phone || null, projectType: editForm.projectType || null } : l));
+      setCards((prev) => prev.map((c) => c.leadId === editLeadId ? { ...c, displayName: name } : c));
+      setEditLeadId(null);
+    } finally {
+      setEditSaving(false);
+    }
+  }
+
+  async function deleteLead(leadId: string) {
+    if (!confirm("Permanently delete this lead?")) return;
+    setEditDeleting(true);
+    try {
+      await fetch(`/api/${companyId}/leads/${leadId}`, { method: "DELETE" });
+      setTriage((prev) => prev.filter((l) => l.id !== leadId));
+      setCards((prev) => prev.filter((c) => c.leadId !== leadId));
+      setEditLeadId(null);
+    } finally {
+      setEditDeleting(false);
+    }
+  }
+  // ─────────────────────────────────────────────────────────────────────────
+
   const [showAddStage, setShowAddStage] = useState(false);
   const [newStageName, setNewStageName] = useState("");
   const [newStageColor, setNewStageColor] = useState(STAGE_COLORS[0]);
@@ -562,7 +636,7 @@ export default function LeadsPipeline({ companyId, triageLeads, stagedCards }: P
               </div>
             ) : (
               filteredTriage.map((lead) => (
-                <TriageCard key={lead.id} lead={lead} onDragStart={handleDragStart} />
+                <TriageCard key={lead.id} lead={lead} onDragStart={handleDragStart} onEdit={openEdit} />
               ))
             )}
           </div>
@@ -620,6 +694,7 @@ export default function LeadsPipeline({ companyId, triageLeads, stagedCards }: P
                     onDragStart={handleDragStart}
                     onDelete={handleDelete}
                     onSourceChange={handleSourceChange}
+                    onEdit={openEdit}
                   />
                 ))}
                 {stageCards.length === 0 && (
@@ -695,6 +770,70 @@ export default function LeadsPipeline({ companyId, triageLeads, stagedCards }: P
           )}
         </div>
       </div>
+
+      {/* ── Edit Lead Modal ─────────────────────────────────────────────── */}
+      {editLeadId && (
+        <div
+          style={{ position: "fixed", inset: 0, zIndex: 50, background: "rgba(0,0,0,0.7)", display: "flex", alignItems: "center", justifyContent: "center", padding: 16 }}
+          onClick={() => setEditLeadId(null)}
+        >
+          <div
+            style={{ background: "#161b22", border: "1px solid #30373f", borderRadius: 16, padding: 24, width: "100%", maxWidth: 480, maxHeight: "90vh", overflowY: "auto" }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 20 }}>
+              <h2 style={{ color: "#e6edf3", fontSize: 15, fontWeight: 700, margin: 0 }}>Edit Lead</h2>
+              <button onClick={() => setEditLeadId(null)} style={{ background: "transparent", border: "none", color: "#8b949e", fontSize: 20, cursor: "pointer", lineHeight: 1 }}>×</button>
+            </div>
+
+            <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+              {(["name", "email", "phone", "projectType", "address", "city", "state"] as const).map((field) => (
+                <div key={field}>
+                  <label style={{ color: "#8b949e", fontSize: 11, fontWeight: 600, display: "block", marginBottom: 4, textTransform: "capitalize" }}>{field === "projectType" ? "Project Type" : field}</label>
+                  <input
+                    type="text"
+                    value={editForm[field]}
+                    onChange={(e) => setEditForm((f) => ({ ...f, [field]: e.target.value }))}
+                    style={{ width: "100%", background: "#0d1117", color: "#e6edf3", border: "1px solid #30373f", borderRadius: 6, padding: "7px 10px", fontSize: 13, boxSizing: "border-box" }}
+                  />
+                </div>
+              ))}
+              <div>
+                <label style={{ color: "#8b949e", fontSize: 11, fontWeight: 600, display: "block", marginBottom: 4 }}>Message</label>
+                <textarea
+                  rows={3}
+                  value={editForm.message}
+                  onChange={(e) => setEditForm((f) => ({ ...f, message: e.target.value }))}
+                  style={{ width: "100%", background: "#0d1117", color: "#e6edf3", border: "1px solid #30373f", borderRadius: 6, padding: "7px 10px", fontSize: 13, resize: "vertical", boxSizing: "border-box" }}
+                />
+              </div>
+            </div>
+
+            <div style={{ display: "flex", gap: 8, marginTop: 20 }}>
+              <button
+                onClick={saveEdit}
+                disabled={editSaving}
+                style={{ flex: 1, background: "#C9A84C", color: "#0d1117", border: "none", borderRadius: 8, padding: "9px 0", fontSize: 13, fontWeight: 700, cursor: "pointer", opacity: editSaving ? 0.6 : 1 }}
+              >
+                {editSaving ? "Saving…" : "Save"}
+              </button>
+              <button
+                onClick={() => deleteLead(editLeadId)}
+                disabled={editDeleting}
+                style={{ background: "#f8514922", color: "#f85149", border: "1px solid #f8514933", borderRadius: 8, padding: "9px 16px", fontSize: 13, fontWeight: 600, cursor: "pointer", opacity: editDeleting ? 0.6 : 1 }}
+              >
+                {editDeleting ? "Deleting…" : "Delete"}
+              </button>
+              <button
+                onClick={() => setEditLeadId(null)}
+                style={{ background: "transparent", color: "#8b949e", border: "1px solid #30373f", borderRadius: 8, padding: "9px 16px", fontSize: 13, cursor: "pointer" }}
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
