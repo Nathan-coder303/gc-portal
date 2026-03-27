@@ -37,7 +37,6 @@ export default function CostCodeManager({
   }
 
   async function handleDelete(id: string) {
-    if (!confirm("Delete this cost code? Expenses linked to it will become uncategorized.")) return;
     await deleteCostCode(id);
   }
 

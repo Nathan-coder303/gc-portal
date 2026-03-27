@@ -61,7 +61,6 @@ export default function ProjectEstimateList({
   }
 
   async function handleArchive(estimateId: string) {
-    if (!confirm("Archive this estimate?")) return;
     startTransition(async () => {
       await archiveEstimate(estimateId, projectId);
     });

@@ -135,7 +135,7 @@ function TemplateCard({
               )}
               {canArchive && (
                 <button
-                  onClick={(e) => { e.stopPropagation(); if (!confirm("Archive this template?")) return; startTransition(async () => { await archiveTemplate(tpl.id); }); }}
+                  onClick={(e) => { e.stopPropagation(); startTransition(async () => { await archiveTemplate(tpl.id); }); }}
                   disabled={isPending}
                   className="w-8 h-8 rounded-lg flex items-center justify-center"
                   style={{ background: "#f8514922", color: "#f85149", border: "1px solid #f8514933" }}

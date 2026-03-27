@@ -61,7 +61,6 @@ export default function UserManager({
   }
 
   async function handleArchive(userId: string) {
-    if (!confirm("Archive this user? They will no longer be able to log in.")) return;
     setLoadingId(userId);
     setError("");
     try {

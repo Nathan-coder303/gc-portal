@@ -357,7 +357,7 @@ function GroupSection({
           <span className="text-xs font-semibold text-slate-700">${fmt(total)}</span>
           {canArchive && (
             <button
-              onClick={() => { if (confirm("Remove group?")) startTransition(async () => { await archiveEstimateGroup(group.id); }); }}
+              onClick={() => { startTransition(async () => { await archiveEstimateGroup(group.id); }); }}
               disabled={isPending}
               className="w-6 h-6 rounded flex items-center justify-center disabled:opacity-50"
               style={{ background: "#f8514922", color: "#f85149", border: "1px solid #f8514933" }}
@@ -457,7 +457,7 @@ function DivisionSection({
           {canArchive && (
             <div className="px-3 pt-1">
               <button
-                onClick={() => { if (confirm("Remove division?")) startTransition(async () => { await archiveEstimateDivision(division.id); }); }}
+                onClick={() => { startTransition(async () => { await archiveEstimateDivision(division.id); }); }}
                 disabled={isPending}
                 className="w-6 h-6 rounded flex items-center justify-center disabled:opacity-50"
                 style={{ background: "#f8514922", color: "#f85149", border: "1px solid #f8514933" }}

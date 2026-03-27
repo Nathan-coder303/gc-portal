@@ -66,7 +66,6 @@ export default function ExpenseLogTable({
   }
 
   async function handleArchive(id: string) {
-    if (!confirm("Archive this expense? It will be hidden but not permanently deleted.")) return;
     setArchiving(id);
     try {
       await deleteExpense(id);
@@ -76,7 +75,6 @@ export default function ExpenseLogTable({
   }
 
   async function handleBulkArchive() {
-    if (!confirm(`Archive ${selected.size} selected expense(s)?`)) return;
     setBulkWorking(true);
     try {
       await bulkArchiveExpenses(Array.from(selected));

@@ -30,7 +30,6 @@ export default function AccountManager({ accounts }: { accounts: Account[] }) {
   }
 
   async function handleArchive(id: string, projectId: string, name: string) {
-    if (!confirm(`Archive account "${name}"? Historical journal entries referencing it will be preserved.`)) return;
     setArchiving(id);
     try {
       await archiveAccount(id, projectId);

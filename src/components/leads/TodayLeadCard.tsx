@@ -30,7 +30,6 @@ export default function TodayLeadCard({
 
   function handleDelete(e: React.MouseEvent) {
     e.stopPropagation();
-    if (!confirm(`Delete lead for ${lead.name ?? "Unknown"}?`)) return;
     startTransition(async () => {
       await deleteLead(lead.id);
       router.refresh();

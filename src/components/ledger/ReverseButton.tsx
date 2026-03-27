@@ -30,7 +30,6 @@ export default function ReverseButton({
     <span>
       <button
         onClick={async () => {
-          if (!confirm("Reverse this entry? A new reversing entry will be created.")) return;
           setLoading(true);
           setError("");
           try {

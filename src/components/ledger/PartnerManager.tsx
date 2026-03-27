@@ -83,7 +83,6 @@ export default function PartnerManager({
   }
 
   async function handleArchive(id: string, name: string) {
-    if (!confirm(`Archive partner "${name}"? Their historical ledger entries will be preserved.`)) return;
     setArchiving(id);
     try {
       await archivePartner(id);

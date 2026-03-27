@@ -112,16 +112,14 @@ export default function SubsBidsTab({ clientId, companyId, clientName, clientAdd
 
   const missingDivisions = subBids.filter((b) => b.offers.every((o) => o.status === "MISSING" || (!o.amount && !o.contractorName)));
 
-  async function handleDelete(bid: SubBidRow, offer: SubBidOffer) {
-    if (!confirm(`Delete bid from "${offer.contractorName ?? "unknown"}"? This cannot be undone.`)) return;
+  async function handleDelete(divisionCode: string, offer: SubBidOffer) {
     setDeleting(offer.id);
     try {
       await deleteSubBid(offer.id, clientId, companyId);
-      setSubBids((prev) => prev.map((b) =>
-        b.divisionCode === bid.divisionCode
-          ? { ...b, offers: b.offers.filter((o) => o.id !== offer.id) }
-          : b
-      ));
+      setSubBids((prev) => prev
+        .map((b) => b.divisionCode === divisionCode ? { ...b, offers: b.offers.filter((o) => o.id !== offer.id) } : b)
+        .filter((b) => b.offers.length > 0)
+      );
     } finally {
       setDeleting(null);
     }
@@ -277,10 +275,20 @@ export default function SubsBidsTab({ clientId, companyId, clientName, clientAdd
                 draggable
                 onDragStart={() => setTriageDragId(offer.id)}
                 onDragEnd={() => setTriageDragId(null)}
-                className="rounded-xl p-3 cursor-grab"
-                style={{ background: "#1a1200", border: "1px solid #f9731666", minWidth: 180, maxWidth: 280, opacity: triageDragId === offer.id ? 0.5 : 1 }}
+                className="rounded-xl p-3 cursor-grab relative"
+                style={{ background: "#1a1200", border: "1px solid #f9731666", minWidth: 200, maxWidth: 280, opacity: triageDragId === offer.id ? 0.5 : 1 }}
               >
-                <div className="text-xs font-bold mb-1" style={{ color: "#f97316" }}>Unassigned Bid</div>
+                {canDelete && (
+                  <button
+                    onClick={() => handleDelete("00", offer)}
+                    disabled={deleting === offer.id}
+                    className="absolute top-2 right-2 w-5 h-5 rounded flex items-center justify-center disabled:opacity-50"
+                    style={{ background: "#f8514922", color: "#f85149", border: "1px solid #f8514933" }}
+                    title="Delete">
+                    <TrashIcon size={10} />
+                  </button>
+                )}
+                <div className="text-xs font-bold mb-1 pr-6" style={{ color: "#f97316" }}>Unassigned Bid</div>
                 {offer.contractorName && <div className="text-sm font-medium" style={{ color: "#e6edf3" }}>{offer.contractorName}</div>}
                 {offer.amount !== null && <div className="text-sm font-bold" style={{ color: "#C9A84C" }}>${fmt(offer.amount)}</div>}
                 {offer.notes && <div className="text-xs mt-1" style={{ color: "#8b949e" }}>{offer.notes}</div>}
@@ -288,8 +296,10 @@ export default function SubsBidsTab({ clientId, companyId, clientName, clientAdd
                   const href = getPdfHref(offer.fileUrl, companyId);
                   return href ? <a href={href} target="_blank" rel="noopener noreferrer" className="text-xs underline" style={{ color: "#C9A84C" }}>📄 {offer.fileName ?? "View PDF"}</a> : null;
                 })()}
-                {offer.createdAt && <div className="text-[10px] mt-1" style={{ color: "#484f58" }}>Added {fmtDate(offer.createdAt)}</div>}
-                <div className="text-[10px] mt-1" style={{ color: "#f97316", opacity: 0.7 }}>↕ drag to a division below</div>
+                <div className="text-[10px] mt-2" style={{ color: "#484f58" }}>
+                  {offer.createdAt ? `Added ${fmtDate(offer.createdAt)}` : ""}
+                </div>
+                <div className="text-[10px] mt-0.5" style={{ color: "#f97316", opacity: 0.7 }}>↕ drag to a division below</div>
               </div>
             ))}
           </div>
@@ -400,7 +410,7 @@ export default function SubsBidsTab({ clientId, companyId, clientName, clientAdd
                             </button>
                           )}
                           {canDelete && !offer.isPlaceholder && (
-                            <button onClick={() => handleDelete(bid, offer)} disabled={deleting === offer.id}
+                            <button onClick={() => handleDelete(bid.divisionCode, offer)} disabled={deleting === offer.id}
                               className="w-6 h-6 rounded flex items-center justify-center disabled:opacity-50"
                               style={{ background: "#f8514922", color: "#f85149", border: "1px solid #f8514933" }}
                               title="Delete">
