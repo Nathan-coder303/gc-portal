@@ -66,6 +66,7 @@ export async function POST(
   req: NextRequest,
   { params }: { params: { companyId: string } }
 ) {
+  try {
   const session = await auth();
   if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
@@ -267,4 +268,8 @@ export async function POST(
   });
 
   return NextResponse.json({ success: true });
+  } catch (err) {
+    console.error("send-estimate-email unhandled error:", err);
+    return NextResponse.json({ error: "Internal error", detail: String(err) }, { status: 500 });
+  }
 }
