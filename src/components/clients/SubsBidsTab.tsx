@@ -242,16 +242,11 @@ export default function SubsBidsTab({ clientId, companyId, clientName, clientAdd
   async function handleToggleCommercial(val: boolean) {
     if (!setCommercialAction) return;
     setTogglingCommercial(true);
-    try {
-      await setCommercialAction(clientId, companyId, val);
-    } catch (e) {
-      alert("Failed to update project type: " + String(e));
-      setTogglingCommercial(false);
-      return;
-    }
-    // Force a fresh server fetch by navigating with a cache-bust param
+    // Navigate immediately with URL param — page re-renders without DB round-trip
     const url = new URL(window.location.href);
-    url.searchParams.set("_t", Date.now().toString());
+    url.searchParams.set("commercial", val ? "1" : "0");
+    // Save to DB in background (non-blocking)
+    setCommercialAction(clientId, companyId, val).catch(() => {});
     window.location.href = url.toString();
   }
 
@@ -361,7 +356,7 @@ export default function SubsBidsTab({ clientId, companyId, clientName, clientAdd
                     ))}
                   </select>
                 </div>
-                <div className="text-[10px] mt-2" style={{ color: "#8b949e" }}>
+                <div className="text-xs mt-2" style={{ color: "#8b949e" }}>
                   📅 {offer.createdAt ? fmtDate(offer.createdAt) : "—"}
                 </div>
               </div>
@@ -420,11 +415,9 @@ export default function SubsBidsTab({ clientId, companyId, clientName, clientAdd
                   </div>
                 </div>
                 <div className="flex flex-col items-end gap-1 shrink-0">
-                  {displayBest !== null && (
-                    <div className="text-lg font-bold leading-none" style={{ color: "#C9A84C" }}>
-                      ${fmt(displayBest)}
-                    </div>
-                  )}
+                  <div className="text-lg font-bold leading-none" style={{ color: displayBest !== null ? "#C9A84C" : "#484f58" }}>
+                    {displayBest !== null ? `$${fmt(displayBest)}` : hasOffers ? "$ —" : ""}
+                  </div>
                   <span className="text-[10px] font-bold px-2 py-0.5 rounded-full"
                     style={{ background: (hasOffers ? "#C9A84C" : "#ef4444") + "22", color: hasOffers ? "#C9A84C" : "#ef4444", border: `1px solid ${hasOffers ? "#C9A84C" : "#ef4444"}55` }}>
                     {hasOffers ? "RECEIVED" : "MISSING"}
@@ -508,7 +501,7 @@ export default function SubsBidsTab({ clientId, companyId, clientName, clientAdd
                             )}
                           </div>
                         </div>
-                        <div className="text-[10px] mt-2" style={{ color: "#8b949e" }}>
+                        <div className="text-xs mt-2" style={{ color: "#8b949e" }}>
                           📅 {offer.createdAt ? fmtDate(offer.createdAt) : "—"}
                         </div>
                       </div>

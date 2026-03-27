@@ -20,7 +20,7 @@ export default async function ClientDetailPage({
   searchParams,
 }: {
   params: { companyId: string; clientId: string };
-  searchParams: { tab?: string };
+  searchParams: { tab?: string; commercial?: string };
 }) {
   const session = await auth();
   if (!session) redirect("/login");
@@ -52,10 +52,16 @@ export default async function ClientDetailPage({
   const canEdit = can(session.user.role, "estimate:create");
   const canDelete = session.user.role === "ADMIN";
 
+  // URL param overrides DB value for instant toggle response
+  const isCommercial =
+    searchParams.commercial === "1" ? true :
+    searchParams.commercial === "0" ? false :
+    safeClient.isCommercial;
+
   // Load sub bids for subs-bids and client-bid tabs
   let subBids: SubBidRow[] = [];
   if (activeTab === "subs-bids" || activeTab === "client-bid") {
-    await initClientSubBids(params.clientId, params.companyId, safeClient.isCommercial);
+    await initClientSubBids(params.clientId, params.companyId, isCommercial);
     const raw = await prisma.subBid.findMany({
       where: { clientId: params.clientId, status: { not: "EXCLUDED" } },
       orderBy: { createdAt: "asc" },
@@ -188,7 +194,7 @@ export default async function ClientDetailPage({
           clientAddress={safeClient.address ?? null}
           canEdit={canEdit}
           canDelete={canDelete}
-          isCommercial={safeClient.isCommercial}
+          isCommercial={isCommercial}
           clientCoverPhotoUrl={safeClient.coverPhotoType === "CUSTOM" ? `/api/${params.companyId}/clients/${params.clientId}/cover` : null}
         />
       )}
@@ -217,13 +223,13 @@ export default async function ClientDetailPage({
             <SyncLabelBidsButton companyId={params.companyId} clientId={params.clientId} />
           </div>
           <SubsBidsTab
-            key={safeClient.isCommercial ? "commercial" : "residential"}
+            key={isCommercial ? "commercial" : "residential"}
             clientId={params.clientId}
             companyId={params.companyId}
             subBids={subBids}
             canEdit={canEdit}
             canDelete={canDelete}
-            isCommercial={safeClient.isCommercial}
+            isCommercial={isCommercial}
             setCommercialAction={setClientCommercial}
           />
         </div>
