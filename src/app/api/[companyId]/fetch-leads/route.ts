@@ -126,19 +126,14 @@ export async function POST(
   const authClient = getOAuthClient();
   const gmail = google.gmail({ version: "v1", auth: authClient });
 
-  // List all matching messages
-  const allMessages: { id?: string | null }[] = [];
-  let pageToken: string | undefined;
-  do {
-    const listRes = await gmail.users.messages.list({
-      userId: "me",
-      q: GMAIL_QUERY,
-      maxResults: 500,
-      pageToken,
-    });
-    allMessages.push(...(listRes.data.messages ?? []));
-    pageToken = listRes.data.nextPageToken ?? undefined;
-  } while (pageToken);
+  // Fetch one page of message IDs only (no pagination) to stay within
+  // Vercel Hobby's 10-second function timeout.
+  const listRes = await gmail.users.messages.list({
+    userId: "me",
+    q: GMAIL_QUERY,
+    maxResults: 200,
+  });
+  const allMessages = listRes.data.messages ?? [];
 
   // Bulk dedup — collect all processed msg IDs (primary + linked)
   const existingLeads = await prisma.lead.findMany({
@@ -153,9 +148,8 @@ export async function POST(
   const byName = new Map(existingLeads.filter(l => l.name).map(l => [l.name!.toLowerCase().trim(), l]));
 
   const newMessages = allMessages.filter(m => m.id && !importedIds.has(m.id));
-  // Always cap at 50 per call to stay well within the 60s timeout.
-  // The UI shows "remaining" so the user (or cron) can call again.
-  const toProcess = newMessages.slice(0, 50);
+  // Process 10 per call — each full-message fetch ~200ms, 10 = ~2s, safe on Hobby plan.
+  const toProcess = newMessages.slice(0, 10);
 
   let added = 0;
   let merged = 0;

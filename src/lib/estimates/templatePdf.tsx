@@ -94,8 +94,8 @@ const styles = StyleSheet.create({
   cellMuted: { fontSize: 8, color: "#94a3b8" },
   cellBold: { fontSize: 8, color: "#0f172a", fontFamily: "Helvetica-Bold" },
 
-  grandTotalBar: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", backgroundColor: DARK, padding: 10, marginTop: 14, borderRadius: 3 },
-  grandTotalLabel: { fontSize: 12, fontFamily: "Helvetica-Bold", color: "#C9A84C" },
+  grandTotalBar: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", backgroundColor: DARK, paddingHorizontal: 10, paddingVertical: 6, marginTop: 6, borderRadius: 3 },
+  grandTotalLabel: { fontSize: 11, fontFamily: "Helvetica-Bold", color: "#C9A84C" },
 
   groupSuperHeader: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", backgroundColor: DARK, paddingHorizontal: 8, paddingVertical: 5, marginTop: 12, borderRadius: 3 },
   groupSuperLabel: { fontSize: 10, fontFamily: "Helvetica-Bold", color: "#ffffff" },
@@ -128,7 +128,7 @@ const styles = StyleSheet.create({
 });
 
 // Defined outside StyleSheet.create to avoid any style inheritance/override issues
-const GRAND_TOTAL_VALUE_STYLE = { fontSize: 16 as const, fontFamily: "Helvetica-Bold" as const, color: "#C9A84C" as const };
+const GRAND_TOTAL_VALUE_STYLE = { fontSize: 13 as const, fontFamily: "Helvetica-Bold" as const, color: "#C9A84C" as const };
 
 type Item = { id: string; name: string; detail: string | null; unit: string | null; defaultQty: number | null; defaultUnitCost: number | null; defaultMarkupPct: number | null; visibleInPdf: boolean; notes: string | null };
 type Group = { id: string; name: string; items: Item[] };
@@ -930,8 +930,9 @@ function TemplatePdfDocument({ companyName, template, client, divisions, showTer
           </>
         )}
 
-        {/* Grand total */}
-        <View style={[styles.grandTotalBar, { marginTop: gcFeeAmount > 0 ? 4 : (allowancesTotal > 0 ? 4 : 14) }]}>
+        {/* Grand total — wrap=false keeps it whole; minPresenceAhead ensures it
+            fits on the current page rather than being orphaned on a new one */}
+        <View wrap={false} minPresenceAhead={36} style={[styles.grandTotalBar, { marginTop: gcFeeAmount > 0 ? 4 : (allowancesTotal > 0 ? 4 : 6) }]}>
           <Text style={styles.grandTotalLabel}>ESTIMATE TOTAL</Text>
           <Text style={GRAND_TOTAL_VALUE_STYLE}>${fmt(grandTotalWithGc)}</Text>
         </View>
