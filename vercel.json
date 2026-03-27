@@ -10,7 +10,7 @@
     },
     {
       "path": "/api/cron/fetch-leads",
-      "schedule": "0 8 * * *"
+      "schedule": "*/15 * * * *"
     }
   ]
 }

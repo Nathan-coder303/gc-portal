@@ -872,8 +872,8 @@ function TemplatePdfDocument({ companyName, template, client, divisions, showTer
                   .reduce((s, i) => s + calcTotal(i.defaultQty, i.defaultUnitCost, i.defaultMarkupPct), 0);
 
                 return (
-                  <View key={div.id} minPresenceAhead={340} break={div.name.toLowerCase().includes("roofing system")}>
-                    <View wrap={false} style={[styles.divisionHeader, groupLabel ? { marginTop: 6 } : {}]}>
+                  <View key={div.id} break={div.name.toLowerCase().includes("roofing system")}>
+                    <View wrap={false} minPresenceAhead={80} style={[styles.divisionHeader, groupLabel ? { marginTop: 6 } : {}]}>
                       <View style={styles.divisionLeft}>
                         {!isRoof && div.csiCode ? <Text style={styles.divisionCsi}>{div.csiCode}</Text> : null}
                         <Text style={styles.divisionName}>{div.name}</Text>
