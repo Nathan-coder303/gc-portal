@@ -123,9 +123,6 @@ export async function POST(
     return NextResponse.json({ error: "Gmail credentials not configured" }, { status: 500 });
   }
 
-  const body = await req.json().catch(() => ({}));
-  const backfill = !!(body as { backfill?: boolean }).backfill;
-
   const authClient = getOAuthClient();
   const gmail = google.gmail({ version: "v1", auth: authClient });
 
