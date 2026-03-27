@@ -28,16 +28,22 @@ export async function POST(
     try { await del(client.coverPhotoUrl); } catch { /* non-fatal */ }
   }
 
-  const blob = await put(
-    `client-covers/${params.clientId}/${Date.now()}-${file.name}`,
-    file,
-    { access: "public" } // public so PDF renderer can fetch it directly
-  );
+  try {
+    const safeName = file.name.replace(/[^a-z0-9.\-_]/gi, "_");
+    const blob = await put(
+      `client-covers/${params.clientId}/${Date.now()}-${safeName}`,
+      file,
+      { access: "public" }
+    );
 
-  await prisma.client.update({
-    where: { id: params.clientId },
-    data: { coverPhotoType: "CUSTOM", coverPhotoUrl: blob.url },
-  });
+    await prisma.client.update({
+      where: { id: params.clientId },
+      data: { coverPhotoType: "CUSTOM", coverPhotoUrl: blob.url },
+    });
 
-  return NextResponse.json({ url: blob.url });
+    return NextResponse.json({ url: blob.url });
+  } catch (err) {
+    console.error("Cover upload failed:", err);
+    return NextResponse.json({ error: String(err) }, { status: 500 });
+  }
 }
