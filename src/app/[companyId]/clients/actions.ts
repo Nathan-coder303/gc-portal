@@ -62,6 +62,8 @@ export async function upsertSubBid(data: {
     record = await prisma.subBid.update({
       where: { id: data.id },
       data: {
+        divisionCode: data.divisionCode,
+        divisionName: data.divisionName,
         contractorName: data.contractorName || null,
         amount: data.amount ?? null,
         notes: data.notes || null,
