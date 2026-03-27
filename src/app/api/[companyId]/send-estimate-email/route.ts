@@ -2,20 +2,11 @@ import { NextRequest, NextResponse } from "next/server";
 import { google } from "googleapis";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { renderTemplatePdf } from "@/lib/estimates/templatePdf";
-import { insertClientPageIntoEstimate } from "@/lib/estimates/insertClientPage";
 import crypto from "crypto";
 
 export const runtime = "nodejs";
 export const maxDuration = 30;
 
-const DEFAULT_PAYMENT_SCHEDULE = [
-  { payment: "Deposit", trigger: "Contract signing – permits, engineering, scheduling", pct: 25 },
-  { payment: "Structure Start", trigger: "Foundation completed / framing start", pct: 25 },
-  { payment: "Dry-In", trigger: "Framing, roof, windows installed", pct: 20 },
-  { payment: "Rough-Ins", trigger: "Electrical, plumbing, HVAC rough inspections passed", pct: 20 },
-  { payment: "Completion", trigger: "Final inspection / punchlist", pct: 10 },
-];
 
 
 function getOAuthClient() {
@@ -87,127 +78,38 @@ export async function POST(
     );
   }
 
-  // Set up OAuth client immediately (sync) so Gmail calls can start ASAP
-  const oauth2Client = getOAuthClient();
-  const gmail = google.gmail({ version: "v1", auth: oauth2Client });
+  // Fetch only the minimal fields needed for token + filename
+  const template = await prisma.estimateTemplate.findFirst({
+    where: { id: templateId, companyId: params.companyId, archivedAt: null },
+    select: { id: true, name: true, estimateNumber: true, signatureToken: true, client: { select: { name: true } } },
+  });
 
-  // Parallel: DB query for full template + Gmail profile fetch — neither depends on the other
-  const [[template, company], profileRes] = await Promise.all([
-    Promise.all([
-      prisma.estimateTemplate.findFirst({
-        where: { id: templateId, companyId: params.companyId, archivedAt: null },
-        include: {
-          client: true,
-          divisions: {
-            where: { archivedAt: null },
-            orderBy: { sortOrder: "asc" },
-            include: {
-              groups: {
-                where: { archivedAt: null },
-                orderBy: { sortOrder: "asc" },
-                include: { items: { where: { archivedAt: null }, orderBy: { sortOrder: "asc" } } },
-              },
-              items: { where: { archivedAt: null, groupId: null }, orderBy: { sortOrder: "asc" } },
-            },
-          },
-        },
-      }),
-      prisma.company.findFirst({ where: { id: params.companyId } }),
-    ]),
-    gmail.users.getProfile({ userId: "me" }),
-  ]);
-
-  if (!template || !company) {
+  if (!template) {
     return NextResponse.json({ error: "Not found" }, { status: 404 });
   }
 
-  const fromEmail = profileRes.data.emailAddress ?? "me";
+  // Call the PDF route as a separate Vercel function invocation — it gets its own 10s timer
+  // so PDF rendering (~5-8s) + Gmail send (~1s) each fit within the limit independently.
+  // Forward the session cookie so the PDF route authenticates the same user.
+  const host = req.headers.get("host") ?? "";
+  const protocol = host.startsWith("localhost") ? "http" : "https";
+  const pdfUrl = `${protocol}://${host}/api/${params.companyId}/estimates/${templateId}/pdf`;
 
-  const isRoof = template.name.toLowerCase().includes("roof");
+  // Parallel: PDF generation (separate function invocation) + Gmail profile
+  const oauth2Client = getOAuthClient();
+  const gmail = google.gmail({ version: "v1", auth: oauth2Client });
 
-  const divisions = template.divisions.map((d) => ({
-    id: d.id,
-    csiCode: d.csiCode,
-    name: d.name,
-    groups: d.groups.map((g) => ({
-      id: g.id,
-      name: g.name,
-      items: g.items.map((i) => ({
-        id: i.id,
-        name: i.name,
-        detail: i.detail,
-        unit: i.unit,
-        defaultQty: i.defaultQty ? Number(i.defaultQty) : null,
-        defaultUnitCost: i.defaultUnitCost ? Number(i.defaultUnitCost) : null,
-        defaultMarkupPct: i.defaultMarkupPct ? Number(i.defaultMarkupPct) : null,
-        visibleInPdf: i.visibleInPdf,
-        notes: i.notes,
-      })),
-    })),
-    items: d.items.map((i) => ({
-      id: i.id,
-      name: i.name,
-      detail: i.detail,
-      unit: i.unit,
-      defaultQty: i.defaultQty ? Number(i.defaultQty) : null,
-      defaultUnitCost: i.defaultUnitCost ? Number(i.defaultUnitCost) : null,
-      defaultMarkupPct: i.defaultMarkupPct ? Number(i.defaultMarkupPct) : null,
-      visibleInPdf: i.visibleInPdf,
-      notes: i.notes,
-    })),
-  }));
-
-  // Parallel: render PDF + look up client insert file (roof only) — both can run simultaneously
-  const [buffer, insertFile] = await Promise.all([
-    renderTemplatePdf({
-      companyName: company.name,
-      template: {
-        name: template.name,
-        description: template.description,
-        estimateNumber: template.estimateNumber,
-        estimateDate: template.estimateDate,
-      },
-      client: template.client
-        ? {
-            name: template.client.name,
-            address: template.client.address,
-            city: template.client.city,
-            state: template.client.state,
-            zip: template.client.zip,
-            phone: template.client.phone,
-            email: template.client.email,
-          }
-        : null,
-      divisions,
-      showTerms: true,
-      termsContent: template.termsContent,
-      paymentSchedule:
-        (template.paymentSchedule as { payment: string; trigger: string; pct: number }[] | null) ??
-        DEFAULT_PAYMENT_SCHEDULE,
-      gcFeePercent: template.gcFeePercent ? Number(template.gcFeePercent) : null,
-      summaryGroups:
-        (template.summaryGroups as Record<
-          string,
-          { qty: number | null; unit: string | null; unitCost: number | null; markupPct: number | null; manualTotal: number | null }
-        > | null) ?? null,
-      includeRoofUpgradesPage: isRoof,
-      includeAdditionPages: template.name.toLowerCase().includes("addition"),
-      includeCoverPage: true,
-      insulationType: template.insulationType ?? "ISO",
-      clientCoverPhotoType: template.client?.coverPhotoType ?? null,
-      clientCoverPhotoUrl: template.client?.coverPhotoUrl ?? null,
-    }),
-    isRoof && template.client
-      ? prisma.clientFile.findFirst({
-          where: { clientId: template.client.id, useInEstimate: true },
-          select: { fileUrl: true },
-        })
-      : Promise.resolve(null),
+  const [pdfRes, profileRes] = await Promise.all([
+    fetch(pdfUrl, { headers: { cookie: req.headers.get("cookie") ?? "" } }),
+    gmail.users.getProfile({ userId: "me" }),
   ]);
 
-  // Insert client page if applicable (sequential — needs the rendered buffer)
-  const fileUrl = insertFile?.fileUrl?.trim() || null;
-  const finalBuffer = fileUrl ? await insertClientPageIntoEstimate(buffer, fileUrl) : buffer;
+  if (!pdfRes.ok) {
+    return NextResponse.json({ error: "Failed to generate PDF" }, { status: 500 });
+  }
+
+  const finalBuffer = Buffer.from(await pdfRes.arrayBuffer());
+  const fromEmail = profileRes.data.emailAddress ?? "me";
 
   // Generate (or reuse) a signature token for this estimate
   let signToken = template.signatureToken;
