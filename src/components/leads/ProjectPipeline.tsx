@@ -22,7 +22,6 @@ type Props = {
   initialCards: ProjectCard[];
 };
 
-const PRESET_SOURCES = ["Evolute", "ADU Elite", "NSA", "FYRD UP"];
 
 const AVATAR_COLORS = [
   "#3b82f6", "#a855f7", "#C9A84C", "#f97316", "#22c55e",

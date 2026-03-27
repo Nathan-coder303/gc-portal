@@ -37,8 +37,7 @@ async function sendNoteEmail(toEmail: string, clientName: string, scope: string,
     const subject = `Progress on your ${scope} - ${stageLabel}`;
     const body = `Dear ${firstName},\n\nWe wanted to let you know that today ${note} happened.\n\n${MIKE_SIGNATURE}`;
 
-    const boundary = `----=_Part_${Date.now()}`;
-    const mimeLines = [
+      const mimeLines = [
       `From: ${fromEmail}`,
       `To: ${toEmail}`,
       `Cc: mikebaruh@gmail.com`,
