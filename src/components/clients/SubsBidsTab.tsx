@@ -337,7 +337,7 @@ export default function SubsBidsTab({ clientId, companyId, clientName, clientAdd
                   const href = getPdfHref(offer.fileUrl, companyId);
                   return href ? <a href={href} target="_blank" rel="noopener noreferrer" className="text-xs underline" style={{ color: "#C9A84C" }}>📄 {offer.fileName ?? "View PDF"}</a> : null;
                 })()}
-                <div className="text-[10px] mt-2" style={{ color: "#484f58" }}>
+                <div className="text-[10px] mt-2" style={{ color: "#8b949e" }}>
                   {offer.createdAt ? `Added ${fmtDate(offer.createdAt)}` : ""}
                 </div>
                 <div className="flex items-center gap-2 mt-2">
@@ -471,7 +471,7 @@ export default function SubsBidsTab({ clientId, companyId, clientName, clientAdd
                             </button>
                           )}
                           {offer.createdAt && (
-                            <div className="text-[9px] text-right mt-1 whitespace-nowrap" style={{ color: "#484f58" }}>
+                            <div className="text-[10px] text-right mt-1 whitespace-nowrap" style={{ color: "#8b949e" }}>
                               {fmtDate(offer.createdAt)}
                             </div>
                           )}

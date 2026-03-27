@@ -15,7 +15,7 @@ export default function ClientCoverPhotoSelector({
   clientId,
   companyId,
   initialType,
-  initialUrl: _initialUrl,
+  initialUrl: _initialUrl, // eslint-disable-line @typescript-eslint/no-unused-vars
 }: {
   clientId: string;
   companyId: string;

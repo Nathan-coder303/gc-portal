@@ -217,6 +217,7 @@ export default async function ClientDetailPage({
             <SyncLabelBidsButton companyId={params.companyId} clientId={params.clientId} />
           </div>
           <SubsBidsTab
+            key={safeClient.isCommercial ? "commercial" : "residential"}
             clientId={params.clientId}
             companyId={params.companyId}
             subBids={subBids}
