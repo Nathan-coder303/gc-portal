@@ -61,54 +61,37 @@ export async function POST(
   const session = await auth();
   if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-  const body = await req.json().catch(() => ({}));
-  const { templateId, to, cc, bcc, subject, body: emailBody } = body as {
-    templateId?: string;
-    to?: string;
-    cc?: string;
-    bcc?: string;
-    subject?: string;
-    body?: string;
-  };
+  // PDF is pre-rendered by the browser and sent as binary FormData.
+  // This endpoint only handles Gmail send (~1-2s), safely within Vercel Hobby's 10s limit.
+  const formData = await req.formData().catch(() => null);
+  if (!formData) return NextResponse.json({ error: "Invalid request" }, { status: 400 });
 
-  if (!templateId || !to || !subject || !emailBody) {
-    return NextResponse.json(
-      { error: "templateId, to, subject, and body are required" },
-      { status: 400 }
-    );
+  const templateId = formData.get("templateId") as string | null;
+  const to = formData.get("to") as string | null;
+  const cc = formData.get("cc") as string | null;
+  const bcc = formData.get("bcc") as string | null;
+  const subject = formData.get("subject") as string | null;
+  const emailBody = formData.get("body") as string | null;
+  const pdfFile = formData.get("pdf") as File | null;
+
+  if (!templateId || !to || !subject || !emailBody || !pdfFile) {
+    return NextResponse.json({ error: "templateId, to, subject, body, and pdf are required" }, { status: 400 });
   }
 
-  // Fetch only the minimal fields needed for token + filename
-  const template = await prisma.estimateTemplate.findFirst({
-    where: { id: templateId, companyId: params.companyId, archivedAt: null },
-    select: { id: true, name: true, estimateNumber: true, signatureToken: true, client: { select: { name: true } } },
-  });
-
-  if (!template) {
-    return NextResponse.json({ error: "Not found" }, { status: 404 });
-  }
-
-  // Call the PDF route as a separate Vercel function invocation — it gets its own 10s timer
-  // so PDF rendering (~5-8s) + Gmail send (~1s) each fit within the limit independently.
-  // Forward the session cookie so the PDF route authenticates the same user.
-  const host = req.headers.get("host") ?? "";
-  const protocol = host.startsWith("localhost") ? "http" : "https";
-  const pdfUrl = `${protocol}://${host}/api/${params.companyId}/estimates/${templateId}/pdf`;
-
-  // Parallel: PDF generation (separate function invocation) + Gmail profile
-  const oauth2Client = getOAuthClient();
-  const gmail = google.gmail({ version: "v1", auth: oauth2Client });
-
-  const [pdfRes, profileRes] = await Promise.all([
-    fetch(pdfUrl, { headers: { cookie: req.headers.get("cookie") ?? "" } }),
-    gmail.users.getProfile({ userId: "me" }),
+  const [template, finalBuffer] = await Promise.all([
+    prisma.estimateTemplate.findFirst({
+      where: { id: templateId, companyId: params.companyId, archivedAt: null },
+      select: { id: true, name: true, estimateNumber: true, signatureToken: true, client: { select: { name: true } } },
+    }),
+    pdfFile.arrayBuffer().then(buf => Buffer.from(buf)),
   ]);
 
-  if (!pdfRes.ok) {
-    return NextResponse.json({ error: "Failed to generate PDF" }, { status: 500 });
-  }
+  if (!template) return NextResponse.json({ error: "Not found" }, { status: 404 });
 
-  const finalBuffer = Buffer.from(await pdfRes.arrayBuffer());
+  // Gmail profile + token generation in parallel
+  const oauth2Client = getOAuthClient();
+  const gmail = google.gmail({ version: "v1", auth: oauth2Client });
+  const profileRes = await gmail.users.getProfile({ userId: "me" });
   const fromEmail = profileRes.data.emailAddress ?? "me";
 
   // Generate (or reuse) a signature token for this estimate

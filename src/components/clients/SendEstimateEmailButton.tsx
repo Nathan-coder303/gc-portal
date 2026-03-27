@@ -43,11 +43,21 @@ export default function SendEstimateEmailButton({ templateId, companyId, templat
   const [subject, setSubject] = useState(defaultSubject);
   const [body, setBody] = useState(defaultBody);
   const [sending, setSending] = useState(false);
+  const [pdfBlob, setPdfBlob] = useState<Blob | null>(null);
+  const [pdfLoading, setPdfLoading] = useState(false);
   const [result, setResult] = useState<{ ok: boolean; msg: string } | null>(null);
 
   function openModal() {
     setOpen(true);
     setResult(null);
+    // Start fetching the PDF immediately so it's ready before the user clicks Send
+    setPdfBlob(null);
+    setPdfLoading(true);
+    fetch(`/api/${companyId}/estimates/${templateId}/pdf`)
+      .then(r => r.ok ? r.blob() : Promise.reject(r.status))
+      .then(blob => setPdfBlob(blob))
+      .catch(() => setPdfBlob(null))
+      .finally(() => setPdfLoading(false));
   }
 
   async function send() {
@@ -55,11 +65,30 @@ export default function SendEstimateEmailButton({ templateId, companyId, templat
     setSending(true);
     setResult(null);
     try {
-      const res = await fetch(`/api/${companyId}/send-estimate-email`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ templateId, to, cc: cc.trim() || undefined, bcc: bcc.trim() || undefined, subject, body }),
-      });
+      // If PDF isn't ready yet (still loading), wait for it
+      let pdf = pdfBlob;
+      if (!pdf && pdfLoading) {
+        setResult({ ok: false, msg: "PDF still loading, please wait a moment and try again." });
+        setSending(false);
+        return;
+      }
+      if (!pdf) {
+        // Fallback: try one more time
+        const r = await fetch(`/api/${companyId}/estimates/${templateId}/pdf`);
+        if (!r.ok) { setResult({ ok: false, msg: "Failed to generate PDF." }); setSending(false); return; }
+        pdf = await r.blob();
+      }
+
+      const fd = new FormData();
+      fd.append("templateId", templateId);
+      fd.append("to", to);
+      if (cc.trim()) fd.append("cc", cc.trim());
+      if (bcc.trim()) fd.append("bcc", bcc.trim());
+      fd.append("subject", subject);
+      fd.append("body", body);
+      fd.append("pdf", pdf, "estimate.pdf");
+
+      const res = await fetch(`/api/${companyId}/send-estimate-email`, { method: "POST", body: fd });
       const data = await res.json();
       if (res.ok) {
         setResult({ ok: true, msg: "Email sent successfully!" });
@@ -164,11 +193,11 @@ export default function SendEstimateEmailButton({ templateId, companyId, templat
             <div className="flex gap-3 pt-1">
               <button
                 onClick={send}
-                disabled={sending || !to}
+                disabled={sending || pdfLoading || !to}
                 className="flex-1 rounded-xl py-2.5 text-sm font-bold disabled:opacity-50 transition-opacity"
                 style={{ background: "#C9A84C", color: "#0d1117" }}
               >
-                {sending ? "Sending…" : "Send Email + PDF"}
+                {sending ? "Sending…" : pdfLoading ? "Preparing PDF…" : "Send Email + PDF"}
               </button>
               <button
                 onClick={() => setOpen(false)}
