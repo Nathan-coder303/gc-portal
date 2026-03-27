@@ -3,7 +3,7 @@ import { useState, useRef, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { upsertSubBid, deleteSubBid } from "@/app/[companyId]/clients/actions";
 import { TrashIcon, PencilIcon } from "@/components/ui/icons";
-import { STANDARD_DIVISIONS } from "@/lib/divisions";
+import { STANDARD_DIVISIONS, COMMERCIAL_ONLY_DIVISIONS } from "@/lib/divisions";
 
 export type SubBidOffer = {
   id: string;
@@ -31,6 +31,8 @@ type Props = {
   subBids: SubBidRow[];
   canEdit: boolean;
   canDelete?: boolean;
+  isCommercial?: boolean;
+  setCommercialAction?: (clientId: string, companyId: string, isCommercial: boolean) => Promise<void>;
 };
 
 
@@ -64,9 +66,11 @@ type EditForm = {
   status: string;
 };
 
-export default function SubsBidsTab({ clientId, companyId, clientName, clientAddress, subBids: initialSubBids, canEdit, canDelete }: Props) {
+export default function SubsBidsTab({ clientId, companyId, clientName, clientAddress, subBids: initialSubBids, canEdit, canDelete, isCommercial: initialIsCommercial = false, setCommercialAction }: Props) {
   const router = useRouter();
   const [subBids, setSubBids] = useState<SubBidRow[]>(initialSubBids);
+  const [isCommercial, setIsCommercial] = useState(initialIsCommercial);
+  const [togglingCommercial, setTogglingCommercial] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [deleting, setDeleting] = useState<string | null>(null);
@@ -231,11 +235,47 @@ export default function SubsBidsTab({ clientId, companyId, clientName, clientAdd
     }
   }, [clientId, companyId]);
 
+  async function handleToggleCommercial(val: boolean) {
+    if (!setCommercialAction) return;
+    setTogglingCommercial(true);
+    setIsCommercial(val);
+    await setCommercialAction(clientId, companyId, val);
+    setTogglingCommercial(false);
+  }
+
+  const allDivisions = isCommercial
+    ? [...STANDARD_DIVISIONS, ...COMMERCIAL_ONLY_DIVISIONS].sort((a, b) => a.code.localeCompare(b.code))
+    : [...STANDARD_DIVISIONS];
+
   const triageRow = subBids.find(b => b.divisionCode === "00");
   const regularBids = subBids.filter(b => b.divisionCode !== "00");
 
   return (
     <div>
+      {/* Commercial / Residential toggle */}
+      <div className="flex items-center gap-3 mb-4">
+        <span className="text-xs font-semibold" style={{ color: "#8b949e" }}>Project type:</span>
+        <div className="flex rounded-lg overflow-hidden" style={{ border: "1px solid #30373f" }}>
+          <button
+            onClick={() => handleToggleCommercial(false)}
+            disabled={togglingCommercial}
+            className="px-3 py-1.5 text-xs font-semibold transition-all"
+            style={{ background: !isCommercial ? "#C9A84C" : "transparent", color: !isCommercial ? "#0d1117" : "#8b949e" }}
+          >
+            Residential
+          </button>
+          <button
+            onClick={() => handleToggleCommercial(true)}
+            disabled={togglingCommercial}
+            className="px-3 py-1.5 text-xs font-semibold transition-all"
+            style={{ background: isCommercial ? "#C9A84C" : "transparent", color: isCommercial ? "#0d1117" : "#8b949e", borderLeft: "1px solid #30373f" }}
+          >
+            Commercial
+          </button>
+        </div>
+        {isCommercial && <span className="text-xs" style={{ color: "#C9A84C" }}>+ Div 21 Fire Suppression included</span>}
+      </div>
+
       {/* Gmail sync button */}
       {canEdit && (
         <div className="flex items-center gap-3 mb-4">
@@ -307,7 +347,7 @@ export default function SubsBidsTab({ clientId, companyId, clientName, clientAdd
                     style={{ flex: 1, background: "#0d1117", color: "#e6edf3", border: "1px solid #f9731666", borderRadius: 6, padding: "4px 6px", fontSize: 11, cursor: "pointer" }}
                   >
                     <option value="">Move to…</option>
-                    {STANDARD_DIVISIONS.map(d => (
+                    {allDivisions.map(d => (
                       <option key={d.code} value={d.code}>{d.code} — {d.name}</option>
                     ))}
                   </select>

@@ -137,6 +137,7 @@ model Client {
   updatedAt DateTime          @updatedAt
   coverPhotoType String?   // "FLAT_ROOFS" | "ADDITIONS" | "CUSTOM"
   coverPhotoUrl  String?   // Vercel Blob URL for CUSTOM uploads
+  isCommercial   Boolean   @default(false)
   templates      EstimateTemplate[]
   subBids        SubBid[]
   files          ClientFile[]

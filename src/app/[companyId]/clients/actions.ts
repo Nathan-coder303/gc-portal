@@ -2,11 +2,11 @@
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { revalidatePath } from "next/cache";
-import { STANDARD_DIVISIONS } from "@/lib/divisions";
+import { STANDARD_DIVISIONS, COMMERCIAL_ONLY_DIVISIONS } from "@/lib/divisions";
 import { can } from "@/lib/auth/permissions";
 
 // Ensure one placeholder row per division exists (idempotent)
-export async function initClientSubBids(clientId: string, companyId: string) {
+export async function initClientSubBids(clientId: string, companyId: string, isCommercial = false) {
   const session = await auth();
   if (!session) throw new Error("Unauthorized");
 
@@ -16,13 +16,24 @@ export async function initClientSubBids(clientId: string, companyId: string) {
   });
   const existingCodes = new Set(existing.map((b) => b.divisionCode));
 
-  for (const div of STANDARD_DIVISIONS) {
+  const allDivs = isCommercial
+    ? [...STANDARD_DIVISIONS, ...COMMERCIAL_ONLY_DIVISIONS].sort((a, b) => a.code.localeCompare(b.code))
+    : STANDARD_DIVISIONS;
+
+  for (const div of allDivs) {
     if (!existingCodes.has(div.code)) {
       await prisma.subBid.create({
         data: { clientId, companyId, divisionCode: div.code, divisionName: div.name, status: "MISSING", isPlaceholder: true },
       });
     }
   }
+  revalidatePath(`/${companyId}/clients/${clientId}`);
+}
+
+export async function setClientCommercial(clientId: string, companyId: string, isCommercial: boolean) {
+  const session = await auth();
+  if (!session) throw new Error("Unauthorized");
+  await prisma.client.update({ where: { id: clientId, companyId }, data: { isCommercial } });
   revalidatePath(`/${companyId}/clients/${clientId}`);
 }
 

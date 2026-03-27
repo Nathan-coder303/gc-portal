@@ -13,6 +13,7 @@ import ClientDetailHeader from "@/components/clients/ClientDetailHeader";
 import ClientNotesTab from "@/components/clients/ClientNotesTab";
 import ClientTextNotes from "@/components/clients/ClientTextNotes";
 import ClientCoverPhotoSelector from "@/components/clients/ClientCoverPhotoSelector";
+import { setClientCommercial } from "../actions";
 
 export default async function ClientDetailPage({
   params,
@@ -54,7 +55,7 @@ export default async function ClientDetailPage({
   // Load sub bids for subs-bids and client-bid tabs
   let subBids: SubBidRow[] = [];
   if (activeTab === "subs-bids" || activeTab === "client-bid") {
-    await initClientSubBids(params.clientId, params.companyId);
+    await initClientSubBids(params.clientId, params.companyId, safeClient.isCommercial);
     const raw = await prisma.subBid.findMany({
       where: { clientId: params.clientId, status: { not: "EXCLUDED" } },
       orderBy: { createdAt: "asc" },
@@ -218,6 +219,8 @@ export default async function ClientDetailPage({
             subBids={subBids}
             canEdit={canEdit}
             canDelete={canDelete}
+            isCommercial={safeClient.isCommercial}
+            setCommercialAction={setClientCommercial}
           />
         </div>
       )}

@@ -1,3 +1,7 @@
+export const COMMERCIAL_ONLY_DIVISIONS = [
+  { code: "21", name: "Fire Suppression" },
+] as const;
+
 export const STANDARD_DIVISIONS = [
   { code: "01", name: "General Conditions" },
   { code: "02", name: "Existing Conditions" },
