@@ -242,7 +242,13 @@ export default function SubsBidsTab({ clientId, companyId, clientName, clientAdd
   async function handleToggleCommercial(val: boolean) {
     if (!setCommercialAction) return;
     setTogglingCommercial(true);
-    await setCommercialAction(clientId, companyId, val);
+    try {
+      await setCommercialAction(clientId, companyId, val);
+    } catch (e) {
+      alert("Failed to update project type: " + String(e));
+      setTogglingCommercial(false);
+      return;
+    }
     window.location.reload();
   }
 
@@ -367,6 +373,10 @@ export default function SubsBidsTab({ clientId, companyId, clientName, clientAdd
         {regularBids.map((bid) => {
           const realOffers = bid.offers.filter((o) => !o.isPlaceholder || o.contractorName || o.amount);
           const hasOffers = realOffers.length > 0;
+          const bestAmount = realOffers
+            .filter((o) => o.amount !== null)
+            .reduce((min, o) => (o.amount! < min ? o.amount! : min), Infinity);
+          const displayBest = isFinite(bestAmount) ? bestAmount : null;
           const isTriageDrop = dragOver === bid.divisionCode && triageDragId !== null;
           const isDivisionDrop = dragOver === bid.divisionCode && divisionDrag !== null && divisionDrag.fromCode !== bid.divisionCode;
           const isDragging = dragOver === bid.divisionCode;
@@ -407,6 +417,11 @@ export default function SubsBidsTab({ clientId, companyId, clientName, clientAdd
                   <div className="font-semibold text-sm mt-0.5" style={{ color: "#C9A84C" }}>
                     {bid.divisionName}
                   </div>
+                  {displayBest !== null && (
+                    <div className="text-base font-bold mt-1" style={{ color: "#e6edf3" }}>
+                      ${fmt(displayBest)}
+                    </div>
+                  )}
                 </div>
                 <span className="text-[10px] font-bold px-2 py-0.5 rounded-full shrink-0"
                   style={{ background: (hasOffers ? "#C9A84C" : "#ef4444") + "22", color: hasOffers ? "#C9A84C" : "#ef4444", border: `1px solid ${hasOffers ? "#C9A84C" : "#ef4444"}55` }}>
