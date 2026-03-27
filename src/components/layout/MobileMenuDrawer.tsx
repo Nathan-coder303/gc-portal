@@ -6,10 +6,11 @@ import { usePathname, useSearchParams } from "next/navigation";
 
 const NAV = [
   { label: "Today's Tasks", icon: "✅", href: (c: string) => `/${c}/today` },
-  { label: "Projects",  icon: "📋", href: (c: string) => `/${c}/projects` },
+  { label: "Bids",      icon: "📋", href: (c: string) => `/${c}/projects` },
+  { label: "Projects",  icon: "🏗️", href: (c: string) => `/${c}/project-pipeline` },
   { label: "Estimates", icon: "📊", href: (c: string) => `/${c}/estimates` },
   { label: "Clients",   icon: "👤", href: (c: string) => `/${c}/clients` },
-  { label: "Leads",     icon: "🎯", href: (c: string) => `/${c}/leads` },
+  { label: "Sales",     icon: "🎯", href: (c: string) => `/${c}/leads` },
   { label: "Marketing", icon: "📣", href: (c: string) => `/${c}/marketing` },
   { label: "Calendar",  icon: "📅", href: (c: string) => `/${c}?tab=calendar` },
   { label: "Memory",    icon: "🧠", href: (c: string) => `/${c}?tab=memory` },
@@ -17,10 +18,11 @@ const NAV = [
 
 function isActive(label: string, pathname: string, companyId: string, tab: string | null) {
   if (label === "Today's Tasks") return pathname.startsWith(`/${companyId}/today`);
-  if (label === "Projects") return pathname.startsWith(`/${companyId}/projects`) || (pathname === `/${companyId}` && (!tab || tab === "projects"));
+  if (label === "Bids") return pathname.startsWith(`/${companyId}/projects`) || (pathname === `/${companyId}` && (!tab || tab === "projects"));
+  if (label === "Projects") return pathname.startsWith(`/${companyId}/project-pipeline`);
   if (label === "Estimates") return pathname.startsWith(`/${companyId}/estimates`);
   if (label === "Clients") return pathname.startsWith(`/${companyId}/clients`);
-  if (label === "Leads") return pathname.startsWith(`/${companyId}/leads`);
+  if (label === "Sales") return pathname.startsWith(`/${companyId}/leads`);
   if (label === "Marketing") return pathname.startsWith(`/${companyId}/marketing`);
   if (label === "Calendar") return pathname === `/${companyId}` && tab === "calendar";
   if (label === "Memory") return pathname === `/${companyId}` && tab === "memory";
