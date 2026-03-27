@@ -299,7 +299,19 @@ export default function SubsBidsTab({ clientId, companyId, clientName, clientAdd
                 <div className="text-[10px] mt-2" style={{ color: "#484f58" }}>
                   {offer.createdAt ? `Added ${fmtDate(offer.createdAt)}` : ""}
                 </div>
-                <div className="text-[10px] mt-0.5" style={{ color: "#f97316", opacity: 0.7 }}>↕ drag to a division below</div>
+                <div className="flex items-center gap-2 mt-2">
+                  <select
+                    defaultValue=""
+                    onChange={(e) => { if (e.target.value) assignTriageBid(offer.id, e.target.value); }}
+                    onClick={(e) => e.stopPropagation()}
+                    style={{ flex: 1, background: "#0d1117", color: "#e6edf3", border: "1px solid #f9731666", borderRadius: 6, padding: "4px 6px", fontSize: 11, cursor: "pointer" }}
+                  >
+                    <option value="">Move to…</option>
+                    {STANDARD_DIVISIONS.map(d => (
+                      <option key={d.code} value={d.code}>{d.code} — {d.name}</option>
+                    ))}
+                  </select>
+                </div>
               </div>
             ))}
           </div>
