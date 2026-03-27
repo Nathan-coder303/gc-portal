@@ -60,15 +60,18 @@ export default function SendEstimateEmailButton({ templateId, companyId, templat
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ templateId, to, cc: cc.trim() || undefined, bcc: bcc.trim() || undefined, subject, body }),
       });
-      const data = await res.json();
+      const text = await res.text();
+      let data: { error?: string; detail?: string } = {};
+      try { data = JSON.parse(text); } catch { /* non-JSON response */ }
       if (res.ok) {
         setResult({ ok: true, msg: "Email sent successfully!" });
         setTimeout(() => { setOpen(false); setResult(null); }, 2000);
       } else {
-        setResult({ ok: false, msg: data.error ?? "Failed to send." });
+        setResult({ ok: false, msg: data.error ?? `Server error ${res.status}` });
+        console.error("send-estimate-email error:", res.status, text.slice(0, 500));
       }
-    } catch {
-      setResult({ ok: false, msg: "Network error." });
+    } catch (err) {
+      setResult({ ok: false, msg: `Request failed: ${String(err)}` });
     } finally {
       setSending(false);
     }
