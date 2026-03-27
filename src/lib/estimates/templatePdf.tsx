@@ -871,7 +871,7 @@ function TemplatePdfDocument({ companyName, template, client, divisions, showTer
 
                 return (
                   <View key={div.id} break={div.name.toLowerCase().includes("roofing system")}>
-                    <View wrap={false} minPresenceAhead={80} style={[styles.divisionHeader, groupLabel ? { marginTop: 6 } : {}]}>
+                    <View wrap={false} minPresenceAhead={120} style={[styles.divisionHeader, groupLabel ? { marginTop: 6 } : {}]}>
                       <View style={styles.divisionLeft}>
                         {!isRoof && div.csiCode ? <Text style={styles.divisionCsi}>{div.csiCode}</Text> : null}
                         <Text style={styles.divisionName}>{div.name}</Text>
@@ -901,37 +901,37 @@ function TemplatePdfDocument({ companyName, template, client, divisions, showTer
           );
         })}
 
-        {/* Allowances total */}
-        {hasAllowances && (
-          <View style={[styles.grandTotalBar, { marginTop: 6, backgroundColor: "#2d2410" }]}>
-            <Text style={[styles.grandTotalLabel, { fontSize: 10 }]}>TOTAL ALLOWANCES</Text>
-            <Text style={[GRAND_TOTAL_VALUE_STYLE, { fontSize: 13 }]}>{allowancesTotal > 0 ? `$${fmt(allowancesTotal)}` : "TBD"}</Text>
+        {/* Totals block — all kept together so ESTIMATE TOTAL never lands alone on a new page */}
+        <View wrap={false}>
+          {hasAllowances && (
+            <View style={[styles.grandTotalBar, { marginTop: 6, backgroundColor: "#2d2410" }]}>
+              <Text style={[styles.grandTotalLabel, { fontSize: 10 }]}>TOTAL ALLOWANCES</Text>
+              <Text style={[GRAND_TOTAL_VALUE_STYLE, { fontSize: 13 }]}>{allowancesTotal > 0 ? `$${fmt(allowancesTotal)}` : "TBD"}</Text>
+            </View>
+          )}
+
+          {gcFeeAmount > 0 && (
+            <>
+              {/* Subtotal row */}
+              <View style={{ flexDirection: "row", justifyContent: "space-between", paddingHorizontal: 8, paddingVertical: 4, marginTop: 8, borderTopWidth: 1, borderTopColor: "#e2e8f0" }}>
+                <Text style={[styles.headerText, { fontSize: 8, color: "#475569" }]}>SUBTOTAL</Text>
+                <Text style={[styles.cellBold, { fontSize: 9 }]}>${fmt(grandTotal)}</Text>
+              </View>
+              {/* GC line item row */}
+              <View style={[styles.tableRow, { marginTop: 0 }]}>
+                <Text style={[styles.cellText, styles.colName]}>01 10 00 – GC Overhead &amp; Profit</Text>
+                <Text style={[{ fontSize: 7, color: "#475569", textAlign: "center" }, styles.colDetail]}>%</Text>
+                <Text style={[styles.cellText, styles.colQty]}>{fmt(gcFee)}</Text>
+                <Text style={[styles.cellMuted, styles.colUnit]}>%</Text>
+                <Text style={[styles.cellBold, styles.colTotal]}>${fmt(gcFeeAmount)}</Text>
+              </View>
+            </>
+          )}
+
+          <View style={[styles.grandTotalBar, { marginTop: gcFeeAmount > 0 ? 4 : (allowancesTotal > 0 ? 4 : 6) }]}>
+            <Text style={styles.grandTotalLabel}>ESTIMATE TOTAL</Text>
+            <Text style={GRAND_TOTAL_VALUE_STYLE}>${fmt(grandTotalWithGc)}</Text>
           </View>
-        )}
-
-        {/* GC Overhead & Profit row */}
-        {gcFeeAmount > 0 && (
-          <>
-            {/* Subtotal row */}
-            <View style={{ flexDirection: "row", justifyContent: "space-between", paddingHorizontal: 8, paddingVertical: 4, marginTop: 8, borderTopWidth: 1, borderTopColor: "#e2e8f0" }}>
-              <Text style={[styles.headerText, { fontSize: 8, color: "#475569" }]}>SUBTOTAL</Text>
-              <Text style={[styles.cellBold, { fontSize: 9 }]}>${fmt(grandTotal)}</Text>
-            </View>
-            {/* GC line item row */}
-            <View style={[styles.tableRow, { marginTop: 0 }]}>
-              <Text style={[styles.cellText, styles.colName]}>01 10 00 – GC Overhead &amp; Profit</Text>
-              <Text style={[{ fontSize: 7, color: "#475569", textAlign: "center" }, styles.colDetail]}>%</Text>
-              <Text style={[styles.cellText, styles.colQty]}>{fmt(gcFee)}</Text>
-              <Text style={[styles.cellMuted, styles.colUnit]}>%</Text>
-              <Text style={[styles.cellBold, styles.colTotal]}>${fmt(gcFeeAmount)}</Text>
-            </View>
-          </>
-        )}
-
-        {/* Grand total — wrap=false keeps it whole */}
-        <View wrap={false} style={[styles.grandTotalBar, { marginTop: gcFeeAmount > 0 ? 4 : (allowancesTotal > 0 ? 4 : 6) }]}>
-          <Text style={styles.grandTotalLabel}>ESTIMATE TOTAL</Text>
-          <Text style={GRAND_TOTAL_VALUE_STYLE}>${fmt(grandTotalWithGc)}</Text>
         </View>
 
         {/* Payment terms + signature: inline when no extra page */}
