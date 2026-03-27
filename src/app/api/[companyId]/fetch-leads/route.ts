@@ -156,7 +156,9 @@ export async function POST(
   const byName = new Map(existingLeads.filter(l => l.name).map(l => [l.name!.toLowerCase().trim(), l]));
 
   const newMessages = allMessages.filter(m => m.id && !importedIds.has(m.id));
-  const toProcess = backfill ? newMessages : newMessages.slice(0, 100);
+  // Always cap at 50 per call to stay well within the 60s timeout.
+  // The UI shows "remaining" so the user (or cron) can call again.
+  const toProcess = newMessages.slice(0, 50);
 
   let added = 0;
   let merged = 0;
@@ -243,7 +245,7 @@ export async function POST(
     processed: toProcess.length,
     added,
     merged,
-    remaining: backfill ? 0 : Math.max(0, newMessages.length - toProcess.length),
+    remaining: Math.max(0, newMessages.length - toProcess.length),
     errors: errors.slice(0, 10),
   });
 }
