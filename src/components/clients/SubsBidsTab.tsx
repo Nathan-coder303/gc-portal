@@ -130,7 +130,7 @@ export default function SubsBidsTab({ clientId, companyId, clientName, clientAdd
   }
 
   async function assignTriageBid(offerId: string, targetDivCode: string) {
-    const division = STANDARD_DIVISIONS.find(d => d.code === targetDivCode);
+    const division = [...STANDARD_DIVISIONS, ...COMMERCIAL_ONLY_DIVISIONS].find(d => d.code === targetDivCode);
     if (!division) return;
     const triageRow = subBids.find(b => b.divisionCode === "00");
     const offer = triageRow?.offers.find(o => o.id === offerId);
@@ -240,6 +240,7 @@ export default function SubsBidsTab({ clientId, companyId, clientName, clientAdd
     setTogglingCommercial(true);
     setIsCommercial(val);
     await setCommercialAction(clientId, companyId, val);
+    router.refresh();
     setTogglingCommercial(false);
   }
 
@@ -273,7 +274,7 @@ export default function SubsBidsTab({ clientId, companyId, clientName, clientAdd
             Commercial
           </button>
         </div>
-        {isCommercial && <span className="text-xs" style={{ color: "#C9A84C" }}>+ Div 21 Fire Suppression included</span>}
+        {isCommercial && <span className="text-xs" style={{ color: "#C9A84C" }}>+ Div 11 Equipment · 13 Special Construction · 14 Conveying · 21 Fire Suppression · 27 Communications · 28 Electronic Safety · 33 Utilities</span>}
       </div>
 
       {/* Gmail sync button */}
