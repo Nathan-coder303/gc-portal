@@ -307,15 +307,15 @@ export default function SubsBidsTab({ clientId, companyId, clientName, clientAdd
           <div className="text-xs font-bold uppercase tracking-wider mb-2" style={{ color: "#f97316" }}>
             ⚠ Triage — drag to assign division
           </div>
-          <div className="flex flex-wrap gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             {triageRow.offers.map(offer => (
               <div
                 key={offer.id}
                 draggable
                 onDragStart={() => setTriageDragId(offer.id)}
                 onDragEnd={() => setTriageDragId(null)}
-                className="rounded-xl p-3 cursor-grab relative"
-                style={{ background: "#1a1200", border: "1px solid #f9731666", minWidth: 200, maxWidth: 280, opacity: triageDragId === offer.id ? 0.5 : 1 }}
+                className="rounded-xl p-4 cursor-grab relative"
+                style={{ background: "#1a1200", border: "1px solid #f9731666", opacity: triageDragId === offer.id ? 0.5 : 1 }}
               >
                 {canDelete && (
                   <button
@@ -327,7 +327,7 @@ export default function SubsBidsTab({ clientId, companyId, clientName, clientAdd
                     <TrashIcon size={10} />
                   </button>
                 )}
-                <div className="text-xs font-bold mb-1 pr-6" style={{ color: "#f97316" }}>Unassigned Bid</div>
+                <div className="text-xs font-bold mb-2 pr-6" style={{ color: "#f97316" }}>Unassigned Bid</div>
                 {offer.contractorName && <div className="text-sm font-medium" style={{ color: "#e6edf3" }}>{offer.contractorName}</div>}
                 {offer.amount !== null && <div className="text-sm font-bold" style={{ color: "#C9A84C" }}>${fmt(offer.amount)}</div>}
                 {offer.notes && <div className="text-xs mt-1" style={{ color: "#8b949e" }}>{offer.notes}</div>}
@@ -335,12 +335,7 @@ export default function SubsBidsTab({ clientId, companyId, clientName, clientAdd
                   const href = getPdfHref(offer.fileUrl, companyId);
                   return href ? <a href={href} target="_blank" rel="noopener noreferrer" className="text-xs underline" style={{ color: "#C9A84C" }}>📄 {offer.fileName ?? "View PDF"}</a> : null;
                 })()}
-                {offer.createdAt && (
-                  <div className="text-[10px] mt-2" style={{ color: "#C9A84C" }}>
-                    📅 {fmtDate(offer.createdAt)}
-                  </div>
-                )}
-                <div className="flex items-center gap-2 mt-2">
+                <div className="flex items-center gap-2 mt-3">
                   <select
                     defaultValue=""
                     onChange={(e) => { if (e.target.value) assignTriageBid(offer.id, e.target.value); }}
@@ -353,6 +348,11 @@ export default function SubsBidsTab({ clientId, companyId, clientName, clientAdd
                     ))}
                   </select>
                 </div>
+                {offer.createdAt && (
+                  <div className="text-[10px] mt-2" style={{ color: "#C9A84C" }}>
+                    📅 Date received: {fmtDate(offer.createdAt)}
+                  </div>
+                )}
               </div>
             ))}
           </div>
@@ -438,44 +438,46 @@ export default function SubsBidsTab({ clientId, companyId, clientName, clientAdd
                         </div>
                       </div>
                     ) : (
-                      <div className="flex items-start justify-between gap-2">
-                        <div className="space-y-0.5 min-w-0">
-                          {offer.contractorName && <div className="text-sm font-medium" style={{ color: "#e6edf3" }}>{offer.contractorName}</div>}
-                          {offer.amount !== null && <div className="text-sm font-bold" style={{ color: "#C9A84C" }}>${fmt(offer.amount)}</div>}
-                          {offer.notes && <div className="text-xs" style={{ color: "#8b949e" }}>{offer.notes}</div>}
-                          {offer.fileUrl && (() => {
-                            const href = getPdfHref(offer.fileUrl, companyId);
-                            return href ? (
-                              <a href={href} target="_blank" rel="noopener noreferrer"
-                                className="text-xs underline" style={{ color: "#C9A84C" }}>
-                                📄 {offer.fileName ?? "View PDF"}
-                              </a>
-                            ) : null;
-                          })()}
+                      <div>
+                        <div className="flex items-start justify-between gap-2">
+                          <div className="space-y-0.5 min-w-0">
+                            {offer.contractorName && <div className="text-sm font-medium" style={{ color: "#e6edf3" }}>{offer.contractorName}</div>}
+                            {offer.amount !== null && <div className="text-sm font-bold" style={{ color: "#C9A84C" }}>${fmt(offer.amount)}</div>}
+                            {offer.notes && <div className="text-xs" style={{ color: "#8b949e" }}>{offer.notes}</div>}
+                            {offer.fileUrl && (() => {
+                              const href = getPdfHref(offer.fileUrl, companyId);
+                              return href ? (
+                                <a href={href} target="_blank" rel="noopener noreferrer"
+                                  className="text-xs underline" style={{ color: "#C9A84C" }}>
+                                  📄 {offer.fileName ?? "View PDF"}
+                                </a>
+                              ) : null;
+                            })()}
+                          </div>
+                          <div className="flex gap-1 shrink-0">
+                            {canEdit && (
+                              <button onClick={() => openEdit(offer)}
+                                className="w-6 h-6 rounded flex items-center justify-center"
+                                style={{ background: "#C9A84C22", color: "#C9A84C", border: "1px solid #C9A84C44" }}
+                                title="Edit">
+                                <PencilIcon size={12} />
+                              </button>
+                            )}
+                            {canDelete && !offer.isPlaceholder && (
+                              <button onClick={() => handleDelete(bid.divisionCode, offer)} disabled={deleting === offer.id}
+                                className="w-6 h-6 rounded flex items-center justify-center disabled:opacity-50"
+                                style={{ background: "#f8514922", color: "#f85149", border: "1px solid #f8514933" }}
+                                title="Delete">
+                                <TrashIcon size={12} />
+                              </button>
+                            )}
+                          </div>
                         </div>
-                        <div className="flex flex-col gap-1 shrink-0 items-end">
-                          {canEdit && (
-                            <button onClick={() => openEdit(offer)}
-                              className="w-6 h-6 rounded flex items-center justify-center"
-                              style={{ background: "#C9A84C22", color: "#C9A84C", border: "1px solid #C9A84C44" }}
-                              title="Edit">
-                              <PencilIcon size={12} />
-                            </button>
-                          )}
-                          {canDelete && !offer.isPlaceholder && (
-                            <button onClick={() => handleDelete(bid.divisionCode, offer)} disabled={deleting === offer.id}
-                              className="w-6 h-6 rounded flex items-center justify-center disabled:opacity-50"
-                              style={{ background: "#f8514922", color: "#f85149", border: "1px solid #f8514933" }}
-                              title="Delete">
-                              <TrashIcon size={12} />
-                            </button>
-                          )}
-                          {offer.createdAt && (
-                            <div className="text-[10px] text-right mt-1 whitespace-nowrap" style={{ color: "#C9A84C" }}>
-                              📅 {fmtDate(offer.createdAt)}
-                            </div>
-                          )}
-                        </div>
+                        {offer.createdAt && (
+                          <div className="text-[10px] mt-2" style={{ color: "#C9A84C" }}>
+                            📅 Date received: {fmtDate(offer.createdAt)}
+                          </div>
+                        )}
                       </div>
                     )}
                   </div>
