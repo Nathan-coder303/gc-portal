@@ -91,19 +91,33 @@ export async function POST(
       return NextResponse.json({ error: "Gmail label '7729 bids' not found", gmailEmail, allLabels: allLabelNames }, { status: 400 });
     }
 
-    // Fetch all emails with the 7729 bids label
+    // Fetch emails: labeled "7729 bids" OR keyword-matched (7729 / Carlyle)
     const allMessages: { id?: string | null }[] = [];
-    let pageToken: string | undefined;
-    do {
-      const listRes = await gmail.users.messages.list({
-        userId: "me",
-        labelIds: [label.id],
-        maxResults: 100,
-        pageToken,
-      });
-      allMessages.push(...(listRes.data.messages ?? []));
-      pageToken = listRes.data.nextPageToken ?? undefined;
-    } while (pageToken && allMessages.length < 500);
+    const seenIds = new Set<string>();
+
+    const queries = [
+      { labelIds: [label.id] },
+      { q: "(7729 OR Carlyle) has:attachment filename:pdf" },
+    ];
+
+    for (const queryOpts of queries) {
+      let pageToken: string | undefined;
+      do {
+        const listRes = await gmail.users.messages.list({
+          userId: "me",
+          maxResults: 100,
+          pageToken,
+          ...queryOpts,
+        });
+        for (const m of listRes.data.messages ?? []) {
+          if (m.id && !seenIds.has(m.id)) {
+            seenIds.add(m.id);
+            allMessages.push(m);
+          }
+        }
+        pageToken = listRes.data.nextPageToken ?? undefined;
+      } while (pageToken && allMessages.length < 500);
+    }
 
     const newMessages = allMessages.filter(m => m.id && !processedMsgIds.has(m.id));
     const toProcess = newMessages.slice(0, 40);
