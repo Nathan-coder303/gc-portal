@@ -148,8 +148,9 @@ export async function POST(
   const byName = new Map(existingLeads.filter(l => l.name).map(l => [l.name!.toLowerCase().trim(), l]));
 
   const newMessages = allMessages.filter(m => m.id && !importedIds.has(m.id));
-  // Process 10 per call — each full-message fetch ~200ms, 10 = ~2s, safe on Hobby plan.
-  const toProcess = newMessages.slice(0, 10);
+  // Process 5 per call — Vercel Hobby has a hard 10s timeout.
+  // Each Gmail full-message fetch ~300-500ms; 5 = ~2-3s, safely within limit.
+  const toProcess = newMessages.slice(0, 5);
 
   let added = 0;
   let merged = 0;

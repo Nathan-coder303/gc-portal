@@ -42,16 +42,25 @@ export async function insertClientPageIntoEstimate(
       return estimateBuffer;
     }
     const sourceBytes = Buffer.from(await sourceRes.arrayBuffer());
+
+    // Skip files that are clearly not a real PDF (< 1 KB)
+    if (sourceBytes.length < 1000) {
+      console.log("insertClientPageIntoEstimate: source file too small (%d bytes), skipping", sourceBytes.length);
+      return estimateBuffer;
+    }
+
     const sourcePdf = await PDFDocument.load(sourceBytes, { ignoreEncryption: true });
 
     const pageCount = sourcePdf.getPageCount();
     const sourcePageIndex = pageCount >= 2 ? 1 : 0;
 
-    // Skip blank pages: resolve all content streams and check total size
+    // Skip blank pages: resolve all content streams and check total size.
+    // Blank pages from PDF generators typically have < 50 bytes of operators.
+    // Real content pages have thousands.
     const sourcePage = sourcePdf.getPages()[sourcePageIndex];
     const contents = sourcePage.node.get(PDFName.of("Contents"));
     const contentSize = contents ? resolveContentSize(contents, sourcePdf.context) : 0;
-    if (contentSize < 20) {
+    if (contentSize < 200) {
       console.log("insertClientPageIntoEstimate: source page appears blank (contentSize=%d), skipping", contentSize);
       return estimateBuffer;
     }

@@ -184,13 +184,17 @@ export async function POST(
   });
 
   // Insert client's marked PDF page 2 as page 3 (roofing only)
+  // Only attempt when a real file URL exists — skip entirely if none.
   let finalBuffer = buffer;
   if (template.name.toLowerCase().includes("roof") && template.client) {
     const insertFile = await prisma.clientFile.findFirst({
       where: { clientId: template.client.id, useInEstimate: true },
       select: { fileUrl: true },
     });
-    finalBuffer = await insertClientPageIntoEstimate(buffer, insertFile?.fileUrl);
+    const fileUrl = insertFile?.fileUrl?.trim() || null;
+    if (fileUrl) {
+      finalBuffer = await insertClientPageIntoEstimate(buffer, fileUrl);
+    }
   }
 
   // Generate (or reuse) a signature token for this estimate

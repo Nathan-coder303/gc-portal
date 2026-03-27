@@ -109,6 +109,7 @@ export async function GET(
   });
 
   // Insert client's marked PDF page 2 as page 3 (roofing estimates only)
+  // Only attempt insertion when a real file URL exists — skip entirely if none.
   const isRoof = template.name.toLowerCase().includes("roof");
   let finalBuffer = buffer;
   if (isRoof && template.client) {
@@ -116,7 +117,10 @@ export async function GET(
       where: { clientId: template.client.id, useInEstimate: true },
       select: { fileUrl: true },
     });
-    finalBuffer = await insertClientPageIntoEstimate(buffer, insertFile?.fileUrl);
+    const fileUrl = insertFile?.fileUrl?.trim() || null;
+    if (fileUrl) {
+      finalBuffer = await insertClientPageIntoEstimate(buffer, fileUrl);
+    }
   }
 
   const clientSlug = template.client ? `-for-${template.client.name.replace(/[^a-z0-9]/gi, "-")}` : "";
