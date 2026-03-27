@@ -541,10 +541,10 @@ function AdditionPage2({ client }: Pick<TemplatePdfProps, "client">) {
       <View style={{ height: 3, backgroundColor: GOLD }} />
 
       {/* Main content */}
-      <View style={{ paddingHorizontal: 28, paddingTop: 16, paddingBottom: 16 }}>
+      <View style={{ paddingHorizontal: 28, paddingTop: 10, paddingBottom: 10 }}>
 
         {/* WHAT WE BUILD + OUR APPROACH side by side */}
-        <View style={{ flexDirection: "row", gap: 20, marginBottom: 16 }}>
+        <View style={{ flexDirection: "row", gap: 20, marginBottom: 10 }}>
           <View style={{ flex: 1 }}>
             <Text style={{ fontSize: 13, fontFamily: "Helvetica-Bold", color: DARK, letterSpacing: 0.5, marginBottom: 10 }}>WHAT WE BUILD</Text>
             {WHAT_ITEMS.map((item, i) => (
@@ -563,8 +563,6 @@ function AdditionPage2({ client }: Pick<TemplatePdfProps, "client">) {
           </View>
         </View>
 
-        <View style={{ marginBottom: 14 }} />
-
         {/* Scope of Work title */}
         <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "center", marginBottom: 10, gap: 12 }}>
           <View style={{ flex: 1, height: 1, backgroundColor: GOLD }} />
@@ -573,7 +571,7 @@ function AdditionPage2({ client }: Pick<TemplatePdfProps, "client">) {
         </View>
 
         {/* Intro */}
-        <Text style={{ fontSize: 10, color: "#334155", lineHeight: 1.5, marginBottom: 14 }}>
+        <Text style={{ fontSize: 10, color: "#334155", lineHeight: 1.5, marginBottom: 10 }}>
           We appreciate the opportunity to provide this proposal. MIBH Construction will deliver all labor, materials, equipment, and supervision required to complete your addition in full compliance with Florida Building Code (FBC 2023), local municipal requirements, and approved engineering plans.
         </Text>
 
@@ -581,10 +579,10 @@ function AdditionPage2({ client }: Pick<TemplatePdfProps, "client">) {
         <View style={{ flexDirection: "row", gap: 20 }}>
           <View style={{ flex: 1 }}>
             {SECTIONS.slice(0, 3).map((sec, si) => (
-              <View key={si} style={{ marginBottom: 14 }}>
+              <View key={si} style={{ marginBottom: 10 }}>
                 <Text style={{ fontSize: 10, fontFamily: "Helvetica-Bold", color: DARK, marginBottom: 5, textTransform: "uppercase" }}>{sec.title}</Text>
                 {sec.items.map((item, ii) => (
-                  <View key={ii} style={{ flexDirection: "row", alignItems: "flex-start", marginBottom: 4, gap: 7 }}>
+                  <View key={ii} style={{ flexDirection: "row", alignItems: "flex-start", marginBottom: 3, gap: 7 }}>
                     <Text style={{ fontSize: 10, color: GOLD, fontFamily: "Helvetica-Bold" }}>•</Text>
                     <Text style={{ fontSize: 10, color: "#475569", flex: 1 }}>{item}</Text>
                   </View>
@@ -594,10 +592,10 @@ function AdditionPage2({ client }: Pick<TemplatePdfProps, "client">) {
           </View>
           <View style={{ flex: 1 }}>
             {SECTIONS.slice(3).map((sec, si) => (
-              <View key={si} style={{ marginBottom: 14 }}>
+              <View key={si} style={{ marginBottom: 10 }}>
                 <Text style={{ fontSize: 10, fontFamily: "Helvetica-Bold", color: DARK, marginBottom: 5, textTransform: "uppercase" }}>{sec.title}</Text>
                 {sec.items.map((item, ii) => (
-                  <View key={ii} style={{ flexDirection: "row", alignItems: "flex-start", marginBottom: 4, gap: 7 }}>
+                  <View key={ii} style={{ flexDirection: "row", alignItems: "flex-start", marginBottom: 3, gap: 7 }}>
                     <Text style={{ fontSize: 10, color: GOLD, fontFamily: "Helvetica-Bold" }}>•</Text>
                     <Text style={{ fontSize: 10, color: "#475569", flex: 1 }}>{item}</Text>
                   </View>
@@ -930,9 +928,8 @@ function TemplatePdfDocument({ companyName, template, client, divisions, showTer
           </>
         )}
 
-        {/* Grand total — wrap=false keeps it whole; minPresenceAhead ensures it
-            fits on the current page rather than being orphaned on a new one */}
-        <View wrap={false} minPresenceAhead={36} style={[styles.grandTotalBar, { marginTop: gcFeeAmount > 0 ? 4 : (allowancesTotal > 0 ? 4 : 6) }]}>
+        {/* Grand total — wrap=false keeps it whole */}
+        <View wrap={false} style={[styles.grandTotalBar, { marginTop: gcFeeAmount > 0 ? 4 : (allowancesTotal > 0 ? 4 : 6) }]}>
           <Text style={styles.grandTotalLabel}>ESTIMATE TOTAL</Text>
           <Text style={GRAND_TOTAL_VALUE_STYLE}>${fmt(grandTotalWithGc)}</Text>
         </View>
