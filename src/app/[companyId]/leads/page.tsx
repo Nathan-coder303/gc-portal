@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import SyncLeadsButton from "@/components/today/SyncLeadsButton";
 import SyncFyrdButton from "@/components/leads/SyncFyrdButton";
+import NsaCallReviewButton from "@/components/leads/NsaCallReviewButton";
 import LeadsPipeline from "@/components/leads/LeadsPipeline";
 
 export default async function LeadsPage({
@@ -69,6 +70,7 @@ export default async function LeadsPage({
           </p>
         </div>
         <div className="flex items-center gap-2 flex-wrap justify-end">
+          <NsaCallReviewButton companyId={params.companyId} />
           <SyncFyrdButton companyId={params.companyId} />
           <SyncLeadsButton companyId={params.companyId} />
         </div>

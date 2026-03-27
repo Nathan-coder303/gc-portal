@@ -226,6 +226,31 @@ export async function POST(
             },
           });
         }
+        // Auto-stage NSA "call" emails into To Call ASAP
+        const isNsa = from.includes("emailings.mibhconstruction") || subject.toUpperCase().includes("NSA");
+        const hasCall = /\bcall\b/i.test(subject + " " + bodyText);
+        if (isNsa && hasCall) {
+          const receivedLabel = receivedAt.toLocaleString("en-US", { month: "short", day: "numeric", year: "numeric", hour: "numeric", minute: "2-digit", hour12: true });
+          await prisma.pipelineCard.create({
+            data: {
+              companyId: params.companyId,
+              displayName: parsed.name ?? "NSA Lead",
+              leadId: newLead.id,
+              stage: "TO_CALL_ASAP",
+              source: "NSA",
+              notes: `📞 Call requested via NSA — received ${receivedLabel}`,
+              pipelineType: "sales",
+            },
+          });
+          await prisma.note.create({
+            data: {
+              companyId: params.companyId,
+              leadId: newLead.id,
+              content: `📞 Call requested via NSA email — received ${receivedLabel}`,
+              noteDate: receivedAt,
+            },
+          });
+        }
         // Add to local map for subsequent dedup in same run
         if (nameKey && parsed.name) {
           byName.set(nameKey, { id: "", gmailMsgId: msg.id!, linkedMsgIds: null, name: parsed.name, email: parsed.email, phone: parsed.phone, address: parsed.address, city: parsed.city, state: parsed.state, projectType: parsed.projectType, message: parsed.message });

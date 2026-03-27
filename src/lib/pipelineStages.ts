@@ -6,6 +6,7 @@ export type PipelineStage = {
 };
 
 export const BASE_STAGES: PipelineStage[] = [
+  { id: "TO_CALL_ASAP",        label: "To Call ASAP",        color: "#ef4444" },
   { id: "NEW_LEAD",            label: "New Lead",            color: "#3b82f6" },
   { id: "CONSULTATION_BOOKED", label: "Consultation Booked", color: "#a855f7" },
   { id: "APPOINTMENT_DONE",    label: "Appointment Done",    color: "#06b6d4" },

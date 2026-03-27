@@ -33,7 +33,23 @@ export async function initClientSubBids(clientId: string, companyId: string, isC
 export async function setClientCommercial(clientId: string, companyId: string, isCommercial: boolean) {
   const session = await auth();
   if (!session) throw new Error("Unauthorized");
-  await prisma.client.update({ where: { id: clientId, companyId }, data: { isCommercial } });
+  await prisma.client.update({ where: { id: clientId }, data: { isCommercial } });
+  // Immediately create division placeholders so they're ready on reload
+  const allDivs = isCommercial
+    ? [...STANDARD_DIVISIONS, ...COMMERCIAL_ONLY_DIVISIONS].sort((a, b) => a.code.localeCompare(b.code))
+    : STANDARD_DIVISIONS;
+  const existing = await prisma.subBid.findMany({
+    where: { clientId, isPlaceholder: true },
+    select: { divisionCode: true },
+  });
+  const existingCodes = new Set(existing.map((b) => b.divisionCode));
+  for (const div of allDivs) {
+    if (!existingCodes.has(div.code)) {
+      await prisma.subBid.create({
+        data: { clientId, companyId, divisionCode: div.code, divisionName: div.name, status: "MISSING", isPlaceholder: true },
+      });
+    }
+  }
   revalidatePath(`/${companyId}/clients/${clientId}`);
 }
 
