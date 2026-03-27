@@ -77,6 +77,7 @@ export default function SubsBidsTab({ clientId, companyId, clientName, clientAdd
   const [uploading, setUploading] = useState<string | null>(null); // divisionCode
   const [dragOver, setDragOver] = useState<string | null>(null);
   const [triageDragId, setTriageDragId] = useState<string | null>(null);
+  const [divisionDrag, setDivisionDrag] = useState<{ offerId: string; fromCode: string } | null>(null);
   const [syncing, setSyncing] = useState(false);
   const [syncResult, setSyncResult] = useState<string | null>(null);
   const [formData, setFormData] = useState<EditForm>({ contractorName: "", amount: "", notes: "", status: "RECEIVED" });
@@ -129,11 +130,12 @@ export default function SubsBidsTab({ clientId, companyId, clientName, clientAdd
     }
   }
 
-  async function assignTriageBid(offerId: string, targetDivCode: string) {
+  async function moveBid(offerId: string, fromCode: string, targetDivCode: string) {
+    if (fromCode === targetDivCode) return;
     const division = [...STANDARD_DIVISIONS, ...COMMERCIAL_ONLY_DIVISIONS].find(d => d.code === targetDivCode);
     if (!division) return;
-    const triageRow = subBids.find(b => b.divisionCode === "00");
-    const offer = triageRow?.offers.find(o => o.id === offerId);
+    const fromRow = subBids.find(b => b.divisionCode === fromCode);
+    const offer = fromRow?.offers.find(o => o.id === offerId);
     if (!offer) return;
 
     await upsertSubBid({
@@ -150,14 +152,12 @@ export default function SubsBidsTab({ clientId, companyId, clientName, clientAdd
     });
 
     setSubBids(prev => {
-      // Remove from triage
       const next = prev.map(b =>
-        b.divisionCode === "00"
+        b.divisionCode === fromCode
           ? { ...b, offers: b.offers.filter(o => o.id !== offerId) }
           : b
-      ).filter(b => b.divisionCode !== "00" || b.offers.length > 0);
+      ).filter(b => b.divisionCode !== fromCode || b.offers.length > 0);
 
-      // Add to target division (create row if needed)
       const updatedOffer = { ...offer };
       const existing = next.find(b => b.divisionCode === division.code);
       if (existing) {
@@ -166,6 +166,10 @@ export default function SubsBidsTab({ clientId, companyId, clientName, clientAdd
       return [...next, { divisionCode: division.code, divisionName: division.name, offers: [updatedOffer] }]
         .sort((a, b) => a.divisionCode.localeCompare(b.divisionCode));
     });
+  }
+
+  function assignTriageBid(offerId: string, targetDivCode: string) {
+    return moveBid(offerId, "00", targetDivCode);
   }
 
   function openEdit(offer: SubBidOffer) {
@@ -272,7 +276,7 @@ export default function SubsBidsTab({ clientId, companyId, clientName, clientAdd
             Commercial
           </button>
         </div>
-        {isCommercial && <span className="text-xs" style={{ color: "#C9A84C" }}>+ Div 11 Equipment · 13 Special Construction · 14 Conveying · 21 Fire Suppression · 27 Communications · 28 Electronic Safety · 33 Utilities</span>}
+        {isCommercial && <span className="text-xs" style={{ color: "#C9A84C" }}>+ Div 11 Equipment · 13 Special Construction · 14 Conveying · 21 Fire Suppression · 27 Communications · 28 Electronic Safety · 31 Earthwork (Adv) · 32 Exterior Improvements · 33 Utilities</span>}
       </div>
 
       {/* Gmail sync button */}
@@ -364,6 +368,7 @@ export default function SubsBidsTab({ clientId, companyId, clientName, clientAdd
           const realOffers = bid.offers.filter((o) => !o.isPlaceholder || o.contractorName || o.amount);
           const hasOffers = realOffers.length > 0;
           const isTriageDrop = dragOver === bid.divisionCode && triageDragId !== null;
+          const isDivisionDrop = dragOver === bid.divisionCode && divisionDrag !== null && divisionDrag.fromCode !== bid.divisionCode;
           const isDragging = dragOver === bid.divisionCode;
           const isUploading = uploading === bid.divisionCode;
           const placeholder = bid.offers.find((o) => o.isPlaceholder);
@@ -374,7 +379,7 @@ export default function SubsBidsTab({ clientId, companyId, clientName, clientAdd
               className="rounded-xl p-4 transition-all"
               style={{
                 background: isDragging ? "#1e2736" : "#0d1117",
-                border: isTriageDrop ? "2px dashed #f97316" : isDragging ? "2px dashed #C9A84C" : hasOffers ? "1px solid #C9A84C44" : "1px solid #30373f",
+                border: isTriageDrop ? "2px dashed #f97316" : isDivisionDrop ? "2px dashed #C9A84C" : isDragging ? "2px dashed #C9A84C55" : hasOffers ? "1px solid #C9A84C44" : "1px solid #30373f",
               }}
               onDragOver={(e) => { e.preventDefault(); setDragOver(bid.divisionCode); }}
               onDragLeave={() => setDragOver(null)}
@@ -384,6 +389,11 @@ export default function SubsBidsTab({ clientId, companyId, clientName, clientAdd
                 if (triageDragId) {
                   assignTriageBid(triageDragId, bid.divisionCode);
                   setTriageDragId(null);
+                  return;
+                }
+                if (divisionDrag && divisionDrag.fromCode !== bid.divisionCode) {
+                  moveBid(divisionDrag.offerId, divisionDrag.fromCode, bid.divisionCode);
+                  setDivisionDrag(null);
                   return;
                 }
                 const file = e.dataTransfer.files[0];
@@ -407,7 +417,14 @@ export default function SubsBidsTab({ clientId, companyId, clientName, clientAdd
               {/* All offers */}
               <div className="space-y-2">
                 {realOffers.map((offer) => (
-                  <div key={offer.id} className="rounded-lg p-2.5" style={{ background: "#161b22", border: "1px solid #30373f" }}>
+                  <div
+                    key={offer.id}
+                    draggable
+                    onDragStart={() => setDivisionDrag({ offerId: offer.id, fromCode: bid.divisionCode })}
+                    onDragEnd={() => setDivisionDrag(null)}
+                    className="rounded-lg p-2.5 cursor-grab"
+                    style={{ background: "#161b22", border: "1px solid #30373f", opacity: divisionDrag?.offerId === offer.id ? 0.5 : 1 }}
+                  >
                     {editingId === offer.id ? (
                       <div className="space-y-2">
                         {(["contractorName", "amount", "notes"] as const).map((field) => (
