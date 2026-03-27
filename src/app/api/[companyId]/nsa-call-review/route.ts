@@ -40,7 +40,7 @@ export async function POST(
     // Already has a TO_CALL_ASAP card
     if (lead.pipelineCard?.stage === "TO_CALL_ASAP") { skipped++; continue; }
 
-    const receivedAt = lead.receivedAt ?? lead.createdAt;
+    const receivedAt = lead.receivedAt ?? new Date();
     const receivedLabel = receivedAt.toLocaleString("en-US", {
       month: "short", day: "numeric", year: "numeric",
       hour: "numeric", minute: "2-digit", hour12: true,
