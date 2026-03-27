@@ -7,16 +7,8 @@ import { updateClientCoverPhoto } from "@/app/[companyId]/estimates/actions";
 const GOLD = "#C9A84C";
 
 const PRESETS = [
-  {
-    key: "FLAT_ROOFS",
-    label: "Flat Roofs",
-    thumb: "/flat-roofs-cover.jpg",
-  },
-  {
-    key: "ADDITIONS",
-    label: "Additions",
-    thumb: "/additions.jpg",
-  },
+  { key: "FLAT_ROOFS", label: "Flat Roofs", thumb: "/flat-roofs-cover.jpg" },
+  { key: "ADDITIONS", label: "Additions", thumb: "/additions.jpg" },
 ] as const;
 
 export default function ClientCoverPhotoSelector({
@@ -31,6 +23,7 @@ export default function ClientCoverPhotoSelector({
   const [selected, setSelected] = useState<string | null>(initialType);
   const [customUrl, setCustomUrl] = useState<string | null>(initialType === "CUSTOM" ? initialUrl : null);
   const [uploading, setUploading] = useState(false);
+  const [dragOver, setDragOver] = useState(false);
   const [isPending, startTransition] = useTransition();
   const fileRef = useRef<HTMLInputElement>(null);
   const router = useRouter();
@@ -52,15 +45,11 @@ export default function ClientCoverPhotoSelector({
     });
   }
 
-  async function handleUpload(e: React.ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0];
-    if (!file) return;
+  async function uploadFile(file: File) {
     setUploading(true);
     try {
       const fd = new FormData();
       fd.append("file", file);
-      // Extract companyId from the clientId URL context via the API path
-      // We'll need the companyId — get it from the page URL
       const pathParts = window.location.pathname.split("/");
       const companyId = pathParts[1];
       const res = await fetch(`/api/${companyId}/clients/${clientId}/cover`, { method: "POST", body: fd });
@@ -74,6 +63,27 @@ export default function ClientCoverPhotoSelector({
       setUploading(false);
       if (fileRef.current) fileRef.current.value = "";
     }
+  }
+
+  function handleUpload(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (file) uploadFile(file);
+  }
+
+  function handleDragOver(e: React.DragEvent) {
+    e.preventDefault();
+    setDragOver(true);
+  }
+
+  function handleDragLeave() {
+    setDragOver(false);
+  }
+
+  function handleDrop(e: React.DragEvent) {
+    e.preventDefault();
+    setDragOver(false);
+    const file = e.dataTransfer.files?.[0];
+    if (file && file.type.startsWith("image/")) uploadFile(file);
   }
 
   return (
@@ -110,23 +120,22 @@ export default function ClientCoverPhotoSelector({
               alt={preset.label}
               style={{ width: "100%", height: 68, objectFit: "cover", display: "block" }}
             />
-            <span
-              className="text-xs font-semibold pb-2"
-              style={{ color: selected === preset.key ? GOLD : "#8b949e" }}
-            >
+            <span className="text-xs font-semibold pb-2" style={{ color: selected === preset.key ? GOLD : "#8b949e" }}>
               {selected === preset.key ? "✓ " : ""}{preset.label}
             </span>
           </button>
         ))}
 
-        {/* Upload custom */}
-        <button
-          onClick={() => fileRef.current?.click()}
-          disabled={uploading || isPending}
-          className="flex flex-col items-center justify-center gap-2 rounded-xl transition-all hover:scale-105"
+        {/* Upload / drag-and-drop custom */}
+        <div
+          onDragOver={handleDragOver}
+          onDragLeave={handleDragLeave}
+          onDrop={handleDrop}
+          onClick={() => !uploading && !isPending && fileRef.current?.click()}
+          className="flex flex-col items-center justify-center gap-2 rounded-xl transition-all cursor-pointer"
           style={{
-            border: `2px solid ${selected === "CUSTOM" ? GOLD : "#30373f"}`,
-            background: "#0d1117",
+            border: `2px ${dragOver ? "solid" : "dashed"} ${selected === "CUSTOM" ? GOLD : dragOver ? GOLD : "#30373f"}`,
+            background: dragOver ? "#1a2a1a" : "#0d1117",
             width: 120,
             height: 108,
           }}
@@ -143,13 +152,13 @@ export default function ClientCoverPhotoSelector({
             </>
           ) : (
             <>
-              <span style={{ fontSize: 24 }}>{uploading ? "⏳" : "📷"}</span>
-              <span className="text-xs font-semibold" style={{ color: "#8b949e" }}>
-                {uploading ? "Uploading…" : "Upload Photo"}
+              <span style={{ fontSize: 24 }}>{uploading ? "⏳" : dragOver ? "📂" : "📷"}</span>
+              <span className="text-xs font-semibold text-center px-2" style={{ color: dragOver ? GOLD : "#8b949e" }}>
+                {uploading ? "Uploading…" : dragOver ? "Drop image" : "Upload or drag"}
               </span>
             </>
           )}
-        </button>
+        </div>
 
         <input
           ref={fileRef}
