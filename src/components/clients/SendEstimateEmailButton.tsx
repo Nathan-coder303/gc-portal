@@ -67,7 +67,8 @@ export default function SendEstimateEmailButton({ templateId, companyId, templat
         setResult({ ok: true, msg: "Email sent successfully!" });
         setTimeout(() => { setOpen(false); setResult(null); }, 2000);
       } else {
-        setResult({ ok: false, msg: data.error ?? `Server error ${res.status}` });
+        const msg = data.detail ? `${data.error}: ${data.detail}` : (data.error ?? `Server error ${res.status}`);
+        setResult({ ok: false, msg });
         console.error("send-estimate-email error:", res.status, text.slice(0, 500));
       }
     } catch (err) {
