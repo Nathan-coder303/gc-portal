@@ -2,6 +2,7 @@
 
 import { useState, useRef, useCallback, useEffect } from "react";
 import { type PipelineStage, loadStages, saveCustomStage, saveStageOrder, STAGE_COLORS } from "@/lib/pipelineStages";
+import NotesPanel from "@/components/notes/NotesPanel";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -148,11 +149,13 @@ function TriageCard({
   onDragStart,
   onEdit,
   onDelete,
+  onNotes,
 }: {
   lead: TriageLead;
   onDragStart: (e: React.DragEvent, payload: string) => void;
   onEdit: (leadId: string) => void;
   onDelete: (leadId: string) => void;
+  onNotes: (leadId: string, name: string) => void;
 }) {
   const [dragging, setDragging] = useState(false);
   const [hovered, setHovered] = useState(false);
@@ -179,10 +182,12 @@ function TriageCard({
         position: "relative",
       }}
     >
-      {/* Edit + Delete buttons */}
+      {/* Edit + Notes + Delete buttons */}
       <div style={{ position: "absolute", top: 6, right: 6, display: "flex", gap: 2, opacity: hovered ? 1 : 0, transition: "opacity 0.1s" }}>
         <button onClick={(e) => { e.stopPropagation(); onEdit(lead.id); }}
           style={{ background: "transparent", border: "none", color: "#6b7280", fontSize: 12, cursor: "pointer", lineHeight: 1, padding: "1px 3px" }} title="Edit">✎</button>
+        <button onClick={(e) => { e.stopPropagation(); onNotes(lead.id, lead.name); }}
+          style={{ background: "transparent", border: "none", color: "#6b7280", fontSize: 12, cursor: "pointer", lineHeight: 1, padding: "1px 3px" }} title="Notes">📝</button>
         <button onClick={(e) => { e.stopPropagation(); onDelete(lead.id); }}
           style={{ background: "transparent", border: "none", color: "#6b7280", fontSize: 14, cursor: "pointer", lineHeight: 1, padding: "0 2px" }} title="Delete">×</button>
       </div>
@@ -221,6 +226,7 @@ function StageCard({
   onDelete,
   onSourceChange,
   onEdit,
+  onNotes,
 }: {
   card: StagedCard;
   stageColor: string;
@@ -228,6 +234,7 @@ function StageCard({
   onDelete: (id: string) => void;
   onSourceChange: (id: string, source: string | null) => void;
   onEdit: (leadId: string) => void;
+  onNotes: (leadId: string, name: string) => void;
 }) {
   const [dragging, setDragging] = useState(false);
   const [hovered, setHovered] = useState(false);
@@ -253,7 +260,7 @@ function StageCard({
         position: "relative",
       }}
     >
-      {/* Edit + Remove buttons */}
+      {/* Edit + Notes + Remove buttons */}
       <div style={{ position: "absolute", top: 6, right: 6, display: "flex", gap: 2, opacity: hovered ? 1 : 0, transition: "opacity 0.1s" }}>
         {card.leadId && (
           <button
@@ -261,6 +268,13 @@ function StageCard({
             style={{ background: "transparent", border: "none", color: "#6b7280", fontSize: 12, cursor: "pointer", lineHeight: 1, padding: "1px 3px" }}
             title="Edit lead"
           >✎</button>
+        )}
+        {card.leadId && (
+          <button
+            onClick={(e) => { e.stopPropagation(); onNotes(card.leadId!, card.displayName); }}
+            style={{ background: "transparent", border: "none", color: "#6b7280", fontSize: 12, cursor: "pointer", lineHeight: 1, padding: "1px 3px" }}
+            title="Notes"
+          >📝</button>
         )}
         <button
           onClick={(e) => { e.stopPropagation(); onDelete(card.id); }}
@@ -316,6 +330,10 @@ export default function LeadsPipeline({ companyId, triageLeads, stagedCards }: P
   const [dragOver, setDragOver] = useState<string | null>(null); // stageId or "triage"
   const dragPayload = useRef<string | null>(null);
   const [search, setSearch] = useState("");
+
+  // ── Notes panel ──────────────────────────────────────────────────────────
+  const [notesLeadId, setNotesLeadId] = useState<string | null>(null);
+  const [notesTitle, setNotesTitle] = useState("");
 
   // ── Edit lead modal ──────────────────────────────────────────────────────
   type EditForm = { name: string; email: string; phone: string; address: string; city: string; state: string; projectType: string; message: string };
@@ -669,7 +687,7 @@ export default function LeadsPipeline({ companyId, triageLeads, stagedCards }: P
               </div>
             ) : (
               filteredTriage.map((lead) => (
-                <TriageCard key={lead.id} lead={lead} onDragStart={handleDragStart} onEdit={openEdit} onDelete={handleDeleteTriageLead} />
+                <TriageCard key={lead.id} lead={lead} onDragStart={handleDragStart} onEdit={openEdit} onDelete={handleDeleteTriageLead} onNotes={(id, name) => { setNotesLeadId(id); setNotesTitle(name); }} />
               ))
             )}
           </div>
@@ -746,6 +764,7 @@ export default function LeadsPipeline({ companyId, triageLeads, stagedCards }: P
                     onDelete={handleDelete}
                     onSourceChange={handleSourceChange}
                     onEdit={openEdit}
+                    onNotes={(leadId, name) => { setNotesLeadId(leadId); setNotesTitle(name); }}
                   />
                 ))}
                 {stageCards.length === 0 && (
@@ -884,6 +903,16 @@ export default function LeadsPipeline({ companyId, triageLeads, stagedCards }: P
             </div>
           </div>
         </div>
+      )}
+
+      {/* ── Notes Panel ─────────────────────────────────────────────────── */}
+      {notesLeadId && (
+        <NotesPanel
+          companyId={companyId}
+          leadId={notesLeadId}
+          title={notesTitle}
+          onClose={() => setNotesLeadId(null)}
+        />
       )}
     </div>
   );

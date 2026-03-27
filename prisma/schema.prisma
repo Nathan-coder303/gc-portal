@@ -94,6 +94,7 @@ model Lead {
   receivedAt    DateTime @default(now())
   status        String   @default("NEW")
   pipelineCard  PipelineCard?
+  notes         Note[]
 
   @@index([companyId])
   @@index([receivedAt])
@@ -140,6 +141,7 @@ model Client {
   subBids        SubBid[]
   files          ClientFile[]
   notes          ClientNote[]
+  leadNotes      Note[]
   followUps      FollowUp[]
   pipelineCards  PipelineCard[]
 }
@@ -694,4 +696,21 @@ model PipelineCard {
 
   @@index([companyId, stage])
   @@index([companyId, pipelineType])
+}
+
+model Note {
+  id        String   @id @default(cuid())
+  companyId String
+  leadId    String?
+  lead      Lead?    @relation(fields: [leadId], references: [id], onDelete: Cascade)
+  clientId  String?
+  client    Client?  @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  content   String
+  noteDate  DateTime @default(now())
+  createdAt DateTime @default(now())
+  createdBy String?
+
+  @@index([leadId])
+  @@index([clientId])
+  @@index([companyId])
 }

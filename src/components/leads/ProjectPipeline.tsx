@@ -2,6 +2,7 @@
 
 import { useState, useRef, useCallback, useEffect } from "react";
 import { type PipelineStage, loadProjectStages, saveProjectCustomStage, saveProjectStageOrder, STAGE_COLORS } from "@/lib/pipelineStages";
+import NotesPanel from "@/components/notes/NotesPanel";
 
 type ProjectCard = {
   id: string;
@@ -164,7 +165,7 @@ function AddCardModal({
 
 // ─── Project Card ──────────────────────────────────────────────────────────────
 
-function ProjectCard({
+function ProjectCardComponent({
   card,
   stageColor,
   stageLabel,
@@ -172,6 +173,7 @@ function ProjectCard({
   onDragStart,
   onDelete,
   onUpdate,
+  onNotes,
 }: {
   card: ProjectCard;
   stageColor: string;
@@ -180,6 +182,7 @@ function ProjectCard({
   onDragStart: (e: React.DragEvent, payload: string) => void;
   onDelete: (id: string) => void;
   onUpdate: (id: string, patch: Partial<ProjectCard>) => void;
+  onNotes: (id: string, name: string) => void;
 }) {
   const [dragging, setDragging] = useState(false);
   const [hovered, setHovered] = useState(false);
@@ -230,10 +233,15 @@ function ProjectCard({
         position: "relative",
       }}
     >
-      {/* Delete button */}
-      <button onClick={(e) => { e.stopPropagation(); onDelete(card.id); }}
-        style={{ position: "absolute", top: 6, right: 6, background: "transparent", border: "none", color: "#6b7280", fontSize: 14, cursor: "pointer", lineHeight: 1, padding: "0 2px", opacity: hovered ? 1 : 0, transition: "opacity 0.1s" }}
-        title="Remove">×</button>
+      {/* Notes + Delete buttons */}
+      <div style={{ position: "absolute", top: 6, right: 6, display: "flex", gap: 2, opacity: hovered ? 1 : 0, transition: "opacity 0.1s" }}>
+        <button onClick={(e) => { e.stopPropagation(); onNotes(card.id, card.displayName); }}
+          style={{ background: "transparent", border: "none", color: "#6b7280", fontSize: 12, cursor: "pointer", lineHeight: 1, padding: "1px 3px" }}
+          title="Notes">📝</button>
+        <button onClick={(e) => { e.stopPropagation(); onDelete(card.id); }}
+          style={{ background: "transparent", border: "none", color: "#6b7280", fontSize: 14, cursor: "pointer", lineHeight: 1, padding: "0 2px" }}
+          title="Remove">×</button>
+      </div>
 
       {/* Header */}
       <div style={{ display: "flex", alignItems: "center", gap: 9, paddingRight: 16 }}>
@@ -302,6 +310,8 @@ function ProjectCard({
 export default function ProjectPipeline({ companyId, initialCards }: Props) {
   const [cards, setCards] = useState<ProjectCard[]>(initialCards);
   const [stages, setStages] = useState<PipelineStage[]>([]);
+  const [notesClientId, setNotesClientId] = useState<string | null>(null);
+  const [notesTitle, setNotesTitle] = useState("");
   const [dragOver, setDragOver] = useState<string | null>(null);
   const dragPayload = useRef<string | null>(null);
   const [search, setSearch] = useState("");
@@ -477,8 +487,9 @@ export default function ProjectPipeline({ companyId, initialCards }: Props) {
               </div>
               <div style={{ minHeight: 80, paddingTop: 8 }}>
                 {stageCards.map((card) => (
-                  <ProjectCard key={card.id} card={card} stageColor={stage.color} stageLabel={stage.label} companyId={companyId}
-                    onDragStart={handleDragStart} onDelete={handleDelete} onUpdate={handleUpdate} />
+                  <ProjectCardComponent key={card.id} card={card} stageColor={stage.color} stageLabel={stage.label} companyId={companyId}
+                    onDragStart={handleDragStart} onDelete={handleDelete} onUpdate={handleUpdate}
+                    onNotes={(_, name) => { setNotesClientId(card.clientId); setNotesTitle(name); }} />
                 ))}
                 {stageCards.length === 0 && (
                   <div style={{ color: "#30373f", fontSize: 11, textAlign: "center", padding: "16px 12px", fontStyle: "italic" }}>Drop projects here</div>
@@ -526,6 +537,15 @@ export default function ProjectPipeline({ companyId, initialCards }: Props) {
         <AddCardModal companyId={companyId} defaultStage={addCardStage}
           onAdd={(card) => setCards((prev) => [...prev, card])}
           onClose={() => setAddCardStage(null)} />
+      )}
+
+      {notesClientId && (
+        <NotesPanel
+          companyId={companyId}
+          clientId={notesClientId}
+          title={notesTitle}
+          onClose={() => setNotesClientId(null)}
+        />
       )}
     </div>
   );

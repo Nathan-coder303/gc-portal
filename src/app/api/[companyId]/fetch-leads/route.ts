@@ -196,7 +196,7 @@ export async function POST(
         existingByName.linkedMsgIds = linked;
         merged++;
       } else {
-        await prisma.lead.create({
+        const newLead = await prisma.lead.create({
           data: {
             companyId: params.companyId,
             gmailMsgId: msg.id!,
@@ -215,6 +215,17 @@ export async function POST(
             message: parsed.message,
           },
         });
+        // Store email message as first note
+        if (parsed.message) {
+          await prisma.note.create({
+            data: {
+              companyId: params.companyId,
+              leadId: newLead.id,
+              content: parsed.message,
+              noteDate: receivedAt,
+            },
+          });
+        }
         // Add to local map for subsequent dedup in same run
         if (nameKey && parsed.name) {
           byName.set(nameKey, { id: "", gmailMsgId: msg.id!, linkedMsgIds: null, name: parsed.name, email: parsed.email, phone: parsed.phone, address: parsed.address, city: parsed.city, state: parsed.state, projectType: parsed.projectType, message: parsed.message });

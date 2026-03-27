@@ -11,6 +11,7 @@ import ClientFilesTab from "@/components/clients/ClientFilesTab";
 import CollapsibleEstimateList from "@/components/clients/CollapsibleEstimateList";
 import ClientDetailHeader from "@/components/clients/ClientDetailHeader";
 import ClientNotesTab from "@/components/clients/ClientNotesTab";
+import ClientTextNotes from "@/components/clients/ClientTextNotes";
 import ClientCoverPhotoSelector from "@/components/clients/ClientCoverPhotoSelector";
 
 export default async function ClientDetailPage({
@@ -188,6 +189,8 @@ export default async function ClientDetailPage({
       )}
 
       {activeTab === "notes" && (
+        <>
+        <ClientTextNotes companyId={params.companyId} clientId={params.clientId} />
         <ClientNotesTab
           companyId={params.companyId}
           clientId={params.clientId}
@@ -200,6 +203,7 @@ export default async function ClientDetailPage({
             createdAt: n.createdAt.toISOString(),
           }))}
         />
+        </>
       )}
 
       {activeTab === "subs-bids" && (
