@@ -43,13 +43,11 @@ export default function SendEstimateEmailButton({ templateId, companyId, templat
   const [subject, setSubject] = useState(defaultSubject);
   const [body, setBody] = useState(defaultBody);
   const [sending, setSending] = useState(false);
-  const [status, setStatus] = useState<string | null>(null);
   const [result, setResult] = useState<{ ok: boolean; msg: string } | null>(null);
 
   function openModal() {
     setOpen(true);
     setResult(null);
-    setStatus(null);
   }
 
   async function send() {
@@ -57,40 +55,22 @@ export default function SendEstimateEmailButton({ templateId, companyId, templat
     setSending(true);
     setResult(null);
     try {
-      // Step 1: fetch the pre-rendered PDF (PDF generation happens here, separately from email send)
-      setStatus("Preparing PDF…");
-      const pdfRes = await fetch(`/api/${companyId}/estimates/${templateId}/pdf`);
-      if (!pdfRes.ok) {
-        setResult({ ok: false, msg: "Failed to generate PDF." });
-        return;
-      }
-      const pdfBytes = new Uint8Array(await pdfRes.arrayBuffer());
-      // Convert to base64 in chunks to avoid stack overflow on large PDFs
-      let binary = "";
-      for (let i = 0; i < pdfBytes.length; i += 8192) {
-        binary += String.fromCharCode(...Array.from(pdfBytes.subarray(i, i + 8192)));
-      }
-      const pdfBase64 = btoa(binary);
-
-      // Step 2: send the email with the pre-rendered PDF (fast — no PDF generation on server)
-      setStatus("Sending…");
       const res = await fetch(`/api/${companyId}/send-estimate-email`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ templateId, to, cc: cc.trim() || undefined, bcc: bcc.trim() || undefined, subject, body, pdfBase64 }),
+        body: JSON.stringify({ templateId, to, cc: cc.trim() || undefined, bcc: bcc.trim() || undefined, subject, body }),
       });
       const data = await res.json();
       if (res.ok) {
         setResult({ ok: true, msg: "Email sent successfully!" });
-        setTimeout(() => { setOpen(false); setResult(null); setStatus(null); }, 2000);
+        setTimeout(() => { setOpen(false); setResult(null); }, 2000);
       } else {
         setResult({ ok: false, msg: data.error ?? "Failed to send." });
       }
     } catch {
-      setResult({ ok: false, msg: "Network error." });
+      setResult({ ok: false, msg: "Network error — try again." });
     } finally {
       setSending(false);
-      setStatus(null);
     }
   }
 
@@ -188,7 +168,7 @@ export default function SendEstimateEmailButton({ templateId, companyId, templat
                 className="flex-1 rounded-xl py-2.5 text-sm font-bold disabled:opacity-50 transition-opacity"
                 style={{ background: "#C9A84C", color: "#0d1117" }}
               >
-                {sending ? (status ?? "Sending…") : "Send Email + PDF"}
+                {sending ? "Sending…" : "Send Email + PDF"}
               </button>
               <button
                 onClick={() => setOpen(false)}
