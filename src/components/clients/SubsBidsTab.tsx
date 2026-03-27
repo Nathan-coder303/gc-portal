@@ -3,6 +3,7 @@ import { useState, useRef, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { upsertSubBid, deleteSubBid } from "@/app/[companyId]/clients/actions";
 import { TrashIcon, PencilIcon } from "@/components/ui/icons";
+import { STANDARD_DIVISIONS } from "@/lib/divisions";
 
 export type SubBidOffer = {
   id: string;
@@ -13,6 +14,7 @@ export type SubBidOffer = {
   fileName: string | null;
   status: string;
   isPlaceholder: boolean;
+  createdAt?: string;
 };
 
 export type SubBidRow = {
@@ -34,6 +36,10 @@ type Props = {
 
 function fmt(n: number) {
   return n.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+}
+
+function fmtDate(iso: string) {
+  return new Date(iso).toLocaleString("en-US", { month: "short", day: "numeric", year: "numeric", hour: "numeric", minute: "2-digit", hour12: true });
 }
 
 function getPdfHref(fileUrl: string, companyId: string): string {
@@ -66,6 +72,7 @@ export default function SubsBidsTab({ clientId, companyId, clientName, clientAdd
   const [deleting, setDeleting] = useState<string | null>(null);
   const [uploading, setUploading] = useState<string | null>(null); // divisionCode
   const [dragOver, setDragOver] = useState<string | null>(null);
+  const [triageDragId, setTriageDragId] = useState<string | null>(null);
   const [syncing, setSyncing] = useState(false);
   const [syncResult, setSyncResult] = useState<string | null>(null);
   const [formData, setFormData] = useState<EditForm>({ contractorName: "", amount: "", notes: "", status: "RECEIVED" });
@@ -118,6 +125,45 @@ export default function SubsBidsTab({ clientId, companyId, clientName, clientAdd
     } finally {
       setDeleting(null);
     }
+  }
+
+  async function assignTriageBid(offerId: string, targetDivCode: string) {
+    const division = STANDARD_DIVISIONS.find(d => d.code === targetDivCode);
+    if (!division) return;
+    const triageRow = subBids.find(b => b.divisionCode === "00");
+    const offer = triageRow?.offers.find(o => o.id === offerId);
+    if (!offer) return;
+
+    await upsertSubBid({
+      id: offerId,
+      clientId, companyId,
+      divisionCode: division.code,
+      divisionName: division.name,
+      contractorName: offer.contractorName ?? undefined,
+      amount: offer.amount,
+      notes: offer.notes ?? undefined,
+      fileUrl: offer.fileUrl ?? undefined,
+      fileName: offer.fileName ?? undefined,
+      status: offer.status,
+    });
+
+    setSubBids(prev => {
+      // Remove from triage
+      const next = prev.map(b =>
+        b.divisionCode === "00"
+          ? { ...b, offers: b.offers.filter(o => o.id !== offerId) }
+          : b
+      ).filter(b => b.divisionCode !== "00" || b.offers.length > 0);
+
+      // Add to target division (create row if needed)
+      const updatedOffer = { ...offer };
+      const existing = next.find(b => b.divisionCode === division.code);
+      if (existing) {
+        return next.map(b => b.divisionCode === division.code ? { ...b, offers: [...b.offers, updatedOffer] } : b);
+      }
+      return [...next, { divisionCode: division.code, divisionName: division.name, offers: [updatedOffer] }]
+        .sort((a, b) => a.divisionCode.localeCompare(b.divisionCode));
+    });
   }
 
   function openEdit(offer: SubBidOffer) {
@@ -187,6 +233,9 @@ export default function SubsBidsTab({ clientId, companyId, clientName, clientAdd
     }
   }, [clientId, companyId]);
 
+  const triageRow = subBids.find(b => b.divisionCode === "00");
+  const regularBids = subBids.filter(b => b.divisionCode !== "00");
+
   return (
     <div>
       {/* Gmail sync button */}
@@ -215,10 +264,43 @@ export default function SubsBidsTab({ clientId, companyId, clientName, clientAdd
         </div>
       )}
 
+      {/* Triage section */}
+      {triageRow && triageRow.offers.length > 0 && (
+        <div className="mb-6">
+          <div className="text-xs font-bold uppercase tracking-wider mb-2" style={{ color: "#f97316" }}>
+            ⚠ Triage — drag to assign division
+          </div>
+          <div className="flex flex-wrap gap-3">
+            {triageRow.offers.map(offer => (
+              <div
+                key={offer.id}
+                draggable
+                onDragStart={() => setTriageDragId(offer.id)}
+                onDragEnd={() => setTriageDragId(null)}
+                className="rounded-xl p-3 cursor-grab"
+                style={{ background: "#1a1200", border: "1px solid #f9731666", minWidth: 180, maxWidth: 280, opacity: triageDragId === offer.id ? 0.5 : 1 }}
+              >
+                <div className="text-xs font-bold mb-1" style={{ color: "#f97316" }}>Unassigned Bid</div>
+                {offer.contractorName && <div className="text-sm font-medium" style={{ color: "#e6edf3" }}>{offer.contractorName}</div>}
+                {offer.amount !== null && <div className="text-sm font-bold" style={{ color: "#C9A84C" }}>${fmt(offer.amount)}</div>}
+                {offer.notes && <div className="text-xs mt-1" style={{ color: "#8b949e" }}>{offer.notes}</div>}
+                {offer.fileUrl && (() => {
+                  const href = getPdfHref(offer.fileUrl, companyId);
+                  return href ? <a href={href} target="_blank" rel="noopener noreferrer" className="text-xs underline" style={{ color: "#C9A84C" }}>📄 {offer.fileName ?? "View PDF"}</a> : null;
+                })()}
+                {offer.createdAt && <div className="text-[10px] mt-1" style={{ color: "#484f58" }}>Added {fmtDate(offer.createdAt)}</div>}
+                <div className="text-[10px] mt-1" style={{ color: "#f97316", opacity: 0.7 }}>↕ drag to a division below</div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-        {subBids.map((bid) => {
+        {regularBids.map((bid) => {
           const realOffers = bid.offers.filter((o) => !o.isPlaceholder || o.contractorName || o.amount);
           const hasOffers = realOffers.length > 0;
+          const isTriageDrop = dragOver === bid.divisionCode && triageDragId !== null;
           const isDragging = dragOver === bid.divisionCode;
           const isUploading = uploading === bid.divisionCode;
           const placeholder = bid.offers.find((o) => o.isPlaceholder);
@@ -229,13 +311,18 @@ export default function SubsBidsTab({ clientId, companyId, clientName, clientAdd
               className="rounded-xl p-4 transition-all"
               style={{
                 background: isDragging ? "#1e2736" : "#0d1117",
-                border: isDragging ? "2px dashed #C9A84C" : hasOffers ? "1px solid #C9A84C44" : "1px solid #30373f",
+                border: isTriageDrop ? "2px dashed #f97316" : isDragging ? "2px dashed #C9A84C" : hasOffers ? "1px solid #C9A84C44" : "1px solid #30373f",
               }}
               onDragOver={(e) => { e.preventDefault(); setDragOver(bid.divisionCode); }}
               onDragLeave={() => setDragOver(null)}
               onDrop={(e) => {
                 e.preventDefault();
                 setDragOver(null);
+                if (triageDragId) {
+                  assignTriageBid(triageDragId, bid.divisionCode);
+                  setTriageDragId(null);
+                  return;
+                }
                 const file = e.dataTransfer.files[0];
                 if (file && placeholder) uploadFile(file, bid, placeholder.id);
               }}
@@ -303,7 +390,7 @@ export default function SubsBidsTab({ clientId, companyId, clientName, clientAdd
                             ) : null;
                           })()}
                         </div>
-                        <div className="flex flex-col gap-1 shrink-0">
+                        <div className="flex flex-col gap-1 shrink-0 items-end">
                           {canEdit && (
                             <button onClick={() => openEdit(offer)}
                               className="w-6 h-6 rounded flex items-center justify-center"
@@ -319,6 +406,11 @@ export default function SubsBidsTab({ clientId, companyId, clientName, clientAdd
                               title="Delete">
                               <TrashIcon size={12} />
                             </button>
+                          )}
+                          {offer.createdAt && (
+                            <div className="text-[9px] text-right mt-1 whitespace-nowrap" style={{ color: "#484f58" }}>
+                              {fmtDate(offer.createdAt)}
+                            </div>
                           )}
                         </div>
                       </div>

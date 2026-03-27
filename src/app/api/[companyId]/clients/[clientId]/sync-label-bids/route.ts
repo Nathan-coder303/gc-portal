@@ -243,8 +243,12 @@ Respond ONLY with valid JSON, no markdown:
           errors.push(`[ai] ${String(e).slice(0, 80)}`);
         }
 
-        const divCode = parsed.divisionCode ?? "01";
-        const division = STANDARD_DIVISIONS.find(d => d.code === divCode) ?? STANDARD_DIVISIONS[0];
+        const divCode = parsed.divisionCode && STANDARD_DIVISIONS.find(d => d.code === parsed.divisionCode)
+          ? parsed.divisionCode
+          : null;
+        const division = divCode
+          ? STANDARD_DIVISIONS.find(d => d.code === divCode)!
+          : { code: "00", name: "Triage" };
 
         const fileUrl = `gmail:${msg.id}:${pdfPart.body?.attachmentId ?? ""}`;
         const fileName = pdfPart.filename ?? null;
