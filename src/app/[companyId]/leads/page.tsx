@@ -62,7 +62,7 @@ export default async function LeadsPage({
       <div className="flex items-start justify-between mb-6">
         <div>
           <h1 className="text-2xl font-bold" style={{ color: "#e6edf3" }}>
-            Leads Pipeline
+            Sales Pipeline
           </h1>
           <p className="text-sm mt-1" style={{ color: "#8b949e" }}>
             {leads.length} total · {triageLeads.length} need triaging

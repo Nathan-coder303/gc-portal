@@ -19,11 +19,14 @@ export async function GET(
   });
   if (!company) return NextResponse.json({ error: "Not found" }, { status: 404 });
 
+  const url = new URL(_req.url);
+  const pipelineType = url.searchParams.get("type") ?? "sales";
+
   const cards = await prisma.pipelineCard.findMany({
-    where: { companyId: params.companyId },
+    where: { companyId: params.companyId, pipelineType },
     orderBy: [{ stage: "asc" }, { sortOrder: "asc" }],
     include: {
-      client: { select: { id: true, name: true } },
+      client: { select: { id: true, name: true, email: true } },
       lead: { select: { id: true, name: true, email: true, phone: true, projectType: true, receivedAt: true } },
     },
   });
@@ -47,7 +50,7 @@ export async function POST(
   if (!company) return NextResponse.json({ error: "Not found" }, { status: 404 });
 
   const body = await req.json();
-  const { displayName, clientId, leadId, stage, estimateValue, notes, source } = body;
+  const { displayName, clientId, leadId, stage, estimateValue, notes, source, pipelineType } = body;
 
   if (!displayName) {
     return NextResponse.json({ error: "displayName is required" }, { status: 400 });
@@ -79,6 +82,7 @@ export async function POST(
       estimateValue: estimateValue != null ? estimateValue : null,
       notes: notes || null,
       source: source || null,
+      pipelineType: pipelineType || "sales",
     },
     include: {
       client: { select: { id: true, name: true } },

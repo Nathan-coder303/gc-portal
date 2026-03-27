@@ -139,19 +139,24 @@ function SourceSelector({
   );
 }
 
+const TRIAGE_COLOR = "#ef4444";
+
 // ─── Triage Lead Card ─────────────────────────────────────────────────────────
 
 function TriageCard({
   lead,
   onDragStart,
   onEdit,
+  onDelete,
 }: {
   lead: TriageLead;
   onDragStart: (e: React.DragEvent, payload: string) => void;
   onEdit: (leadId: string) => void;
+  onDelete: (leadId: string) => void;
 }) {
   const [dragging, setDragging] = useState(false);
   const [hovered, setHovered] = useState(false);
+  const [source, setSource] = useState<string | null>(null);
 
   return (
     <div
@@ -174,29 +179,19 @@ function TriageCard({
         position: "relative",
       }}
     >
-      {/* Edit button */}
-      <button
-        onClick={(e) => { e.stopPropagation(); onEdit(lead.id); }}
-        style={{
-          position: "absolute", top: 6, right: 6,
-          background: "transparent", border: "none",
-          color: "#6b7280", fontSize: 12, cursor: "pointer",
-          lineHeight: 1, padding: "1px 3px",
-          opacity: hovered ? 1 : 0, transition: "opacity 0.1s",
-        }}
-        title="Edit lead"
-      >✎</button>
+      {/* Edit + Delete buttons */}
+      <div style={{ position: "absolute", top: 6, right: 6, display: "flex", gap: 2, opacity: hovered ? 1 : 0, transition: "opacity 0.1s" }}>
+        <button onClick={(e) => { e.stopPropagation(); onEdit(lead.id); }}
+          style={{ background: "transparent", border: "none", color: "#6b7280", fontSize: 12, cursor: "pointer", lineHeight: 1, padding: "1px 3px" }} title="Edit">✎</button>
+        <button onClick={(e) => { e.stopPropagation(); onDelete(lead.id); }}
+          style={{ background: "transparent", border: "none", color: "#6b7280", fontSize: 14, cursor: "pointer", lineHeight: 1, padding: "0 2px" }} title="Delete">×</button>
+      </div>
 
       <div style={{ display: "flex", alignItems: "center", gap: 9 }}>
-        <div style={{
-          width: 30, height: 30, borderRadius: "50%",
-          background: avatarColor(lead.name), flexShrink: 0,
-          display: "flex", alignItems: "center", justifyContent: "center",
-          fontSize: 11, fontWeight: 700, color: "#fff",
-        }}>
+        <div style={{ width: 30, height: 30, borderRadius: "50%", background: avatarColor(lead.name), flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 11, fontWeight: 700, color: "#fff" }}>
           {initials(lead.name)}
         </div>
-        <div style={{ flex: 1, minWidth: 0, paddingRight: 16 }}>
+        <div style={{ flex: 1, minWidth: 0, paddingRight: 32 }}>
           <div style={{ color: "#e6edf3", fontWeight: 600, fontSize: 13, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
             {lead.name}
           </div>
@@ -206,15 +201,12 @@ function TriageCard({
         </div>
       </div>
       {lead.email && (
-        <div style={{ color: "#8b949e", fontSize: 10, marginTop: 5, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
-          ✉ {lead.email}
-        </div>
+        <div style={{ color: "#8b949e", fontSize: 10, marginTop: 5, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>✉ {lead.email}</div>
       )}
       {lead.phone && (
-        <div style={{ color: "#8b949e", fontSize: 10, marginTop: 2 }}>
-          📞 {lead.phone}
-        </div>
+        <div style={{ color: "#8b949e", fontSize: 10, marginTop: 2 }}>📞 {lead.phone}</div>
       )}
+      <SourceSelector value={source} onChange={setSource} stageColor={TRIAGE_COLOR} />
       <div style={{ color: "#484f58", fontSize: 10, marginTop: 5 }}>{relTime(lead.receivedAt)}</div>
     </div>
   );
@@ -364,7 +356,6 @@ export default function LeadsPipeline({ companyId, triageLeads, stagedCards }: P
   }
 
   async function deleteLead(leadId: string) {
-    if (!confirm("Permanently delete this lead?")) return;
     setEditDeleting(true);
     try {
       await fetch(`/api/${companyId}/leads/${leadId}`, { method: "DELETE" });
@@ -380,6 +371,8 @@ export default function LeadsPipeline({ companyId, triageLeads, stagedCards }: P
   const [showAddStage, setShowAddStage] = useState(false);
   const [newStageName, setNewStageName] = useState("");
   const [newStageColor, setNewStageColor] = useState(STAGE_COLORS[0]);
+  const [editingStageId, setEditingStageId] = useState<string | null>(null);
+  const [editingStageName, setEditingStageName] = useState("");
   const draggingColId = useRef<string | null>(null);
   const [dragOverCol, setDragOverCol] = useState<string | null>(null);
 
@@ -415,6 +408,28 @@ export default function LeadsPipeline({ companyId, triageLeads, stagedCards }: P
       saveStageOrder(next);
       return next;
     });
+  }
+
+  function renameStage(stageId: string) {
+    const name = editingStageName.trim();
+    if (!name) { setEditingStageId(null); return; }
+    setStages((prev) => {
+      const next = prev.map((s) => s.id === stageId ? { ...s, label: name } : s);
+      saveStageOrder(next);
+      // persist custom stage name change
+      const s = next.find((x) => x.id === stageId);
+      if (s?.custom) saveCustomStage(s);
+      else {
+        // override base stage label in order storage (label stored per order entry isn't possible, store overrides)
+        if (typeof window !== "undefined") {
+          const overrides = JSON.parse(localStorage.getItem("gc_pipeline_label_overrides") || "{}");
+          overrides[stageId] = name;
+          localStorage.setItem("gc_pipeline_label_overrides", JSON.stringify(overrides));
+        }
+      }
+      return next;
+    });
+    setEditingStageId(null);
   }
 
   function handleAddStage() {
@@ -552,6 +567,11 @@ export default function LeadsPipeline({ companyId, triageLeads, stagedCards }: P
     }
   }, [triage, cards, companyId, triageLeads]);
 
+  const handleDeleteTriageLead = useCallback(async (leadId: string) => {
+    setTriage((prev) => prev.filter((l) => l.id !== leadId));
+    try { await fetch(`/api/${companyId}/leads/${leadId}`, { method: "DELETE" }); } catch { /* */ }
+  }, [companyId]);
+
   const handleDelete = useCallback(async (cardId: string) => {
     const card = cards.find((c) => c.id === cardId);
     if (!card) return;
@@ -578,8 +598,6 @@ export default function LeadsPipeline({ companyId, triageLeads, stagedCards }: P
       });
     } catch { /* non-fatal */ }
   }, [companyId]);
-
-  const TRIAGE_COLOR = "#ef4444";
 
   return (
     <div>
@@ -636,7 +654,7 @@ export default function LeadsPipeline({ companyId, triageLeads, stagedCards }: P
               </div>
             ) : (
               filteredTriage.map((lead) => (
-                <TriageCard key={lead.id} lead={lead} onDragStart={handleDragStart} onEdit={openEdit} />
+                <TriageCard key={lead.id} lead={lead} onDragStart={handleDragStart} onEdit={openEdit} onDelete={handleDeleteTriageLead} />
               ))
             )}
           </div>
@@ -672,9 +690,19 @@ export default function LeadsPipeline({ companyId, triageLeads, stagedCards }: P
                 <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
                   <div style={{ display: "flex", alignItems: "center", gap: 6, flex: 1, minWidth: 0 }}>
                     <span style={{ color: "#484f58", fontSize: 10, flexShrink: 0 }} title="Drag to reorder">⠿</span>
-                    <span style={{ color: "#e6edf3", fontWeight: 700, fontSize: 11, textTransform: "uppercase", letterSpacing: "0.06em", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                      {stage.label}
-                    </span>
+                    {editingStageId === stage.id ? (
+                      <input autoFocus value={editingStageName} onChange={(e) => setEditingStageName(e.target.value)}
+                        onBlur={() => renameStage(stage.id)}
+                        onKeyDown={(e) => { if (e.key === "Enter") renameStage(stage.id); if (e.key === "Escape") setEditingStageId(null); }}
+                        onClick={(e) => e.stopPropagation()}
+                        style={{ background: "transparent", color: "#e6edf3", border: "none", borderBottom: `1px solid ${stage.color}`, outline: "none", fontWeight: 700, fontSize: 11, textTransform: "uppercase", letterSpacing: "0.06em", width: "100%", padding: 0 }} />
+                    ) : (
+                      <span onDoubleClick={(e) => { e.stopPropagation(); setEditingStageId(stage.id); setEditingStageName(stage.label); }}
+                        style={{ color: "#e6edf3", fontWeight: 700, fontSize: 11, textTransform: "uppercase", letterSpacing: "0.06em", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", cursor: "text" }}
+                        title="Double-click to rename">
+                        {stage.label}
+                      </span>
+                    )}
                   </div>
                   <span style={{
                     background: stage.color + "33", color: stage.color,
