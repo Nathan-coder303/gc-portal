@@ -23,6 +23,7 @@ export default function ClientCoverPhotoSelector({
   const [selected, setSelected] = useState<string | null>(initialType);
   const [customUrl, setCustomUrl] = useState<string | null>(initialType === "CUSTOM" ? initialUrl : null);
   const [uploading, setUploading] = useState(false);
+  const [uploadError, setUploadError] = useState<string | null>(null);
   const [dragOver, setDragOver] = useState(false);
   const [isPending, startTransition] = useTransition();
   const fileRef = useRef<HTMLInputElement>(null);
@@ -47,18 +48,25 @@ export default function ClientCoverPhotoSelector({
 
   async function uploadFile(file: File) {
     setUploading(true);
+    setUploadError(null);
     try {
       const fd = new FormData();
       fd.append("file", file);
       const pathParts = window.location.pathname.split("/");
       const companyId = pathParts[1];
       const res = await fetch(`/api/${companyId}/clients/${clientId}/cover`, { method: "POST", body: fd });
-      const data = await res.json();
+      const text = await res.text();
+      let data: { url?: string; error?: string } = {};
+      try { data = JSON.parse(text); } catch { /* non-JSON */ }
       if (data.url) {
         setCustomUrl(data.url);
         setSelected("CUSTOM");
         router.refresh();
+      } else {
+        setUploadError(data.error ?? `Upload failed (${res.status})`);
       }
+    } catch (err) {
+      setUploadError(String(err));
     } finally {
       setUploading(false);
       if (fileRef.current) fileRef.current.value = "";
@@ -168,6 +176,10 @@ export default function ClientCoverPhotoSelector({
           onChange={handleUpload}
         />
       </div>
+
+      {uploadError && (
+        <p className="text-xs mt-2" style={{ color: "#ef4444" }}>⚠ {uploadError}</p>
+      )}
     </div>
   );
 }
