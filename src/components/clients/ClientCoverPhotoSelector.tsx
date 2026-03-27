@@ -13,15 +13,18 @@ const PRESETS = [
 
 export default function ClientCoverPhotoSelector({
   clientId,
+  companyId,
   initialType,
-  initialUrl,
+  initialUrl: _initialUrl,
 }: {
   clientId: string;
+  companyId: string;
   initialType: string | null;
   initialUrl: string | null;
 }) {
+  const proxyUrl = `/api/${companyId}/clients/${clientId}/cover`;
   const [selected, setSelected] = useState<string | null>(initialType);
-  const [customUrl, setCustomUrl] = useState<string | null>(initialType === "CUSTOM" ? initialUrl : null);
+  const [customUrl, setCustomUrl] = useState<string | null>(initialType === "CUSTOM" ? proxyUrl : null);
   const [uploading, setUploading] = useState(false);
   const [uploadError, setUploadError] = useState<string | null>(null);
   const [dragOver, setDragOver] = useState(false);
@@ -52,8 +55,6 @@ export default function ClientCoverPhotoSelector({
     try {
       const fd = new FormData();
       fd.append("file", file);
-      const pathParts = window.location.pathname.split("/");
-      const companyId = pathParts[1];
       const res = await fetch(`/api/${companyId}/clients/${clientId}/cover`, { method: "POST", body: fd });
       const text = await res.text();
       let data: { url?: string; error?: string } = {};

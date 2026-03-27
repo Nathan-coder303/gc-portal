@@ -135,6 +135,7 @@ export default async function ClientDetailPage({
 
       <ClientCoverPhotoSelector
         clientId={safeClient.id}
+        companyId={params.companyId}
         initialType={safeClient.coverPhotoType ?? null}
         initialUrl={safeClient.coverPhotoUrl ?? null}
       />
@@ -188,7 +189,7 @@ export default async function ClientDetailPage({
           canEdit={canEdit}
           canDelete={canDelete}
           isCommercial={safeClient.isCommercial}
-          clientCoverPhotoUrl={safeClient.coverPhotoUrl ?? null}
+          clientCoverPhotoUrl={safeClient.coverPhotoType === "CUSTOM" ? `/api/${params.companyId}/clients/${params.clientId}/cover` : null}
         />
       )}
 

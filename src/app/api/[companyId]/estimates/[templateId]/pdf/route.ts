@@ -5,6 +5,22 @@ import { can } from "@/lib/auth/permissions";
 import { renderTemplatePdf } from "@/lib/estimates/templatePdf";
 import { insertClientPageIntoEstimate } from "@/lib/estimates/insertClientPage";
 
+/** Fetch a private Vercel Blob URL and return a base64 data URL for react-pdf */
+async function resolvePrivateCoverUrl(blobUrl: string | null): Promise<string | null> {
+  if (!blobUrl) return null;
+  try {
+    const res = await fetch(blobUrl, {
+      headers: { Authorization: `Bearer ${process.env.BLOB_READ_WRITE_TOKEN}` },
+    });
+    if (!res.ok) return null;
+    const ab = await res.arrayBuffer();
+    const mt = res.headers.get("content-type") ?? "image/jpeg";
+    return `data:${mt};base64,${Buffer.from(ab).toString("base64")}`;
+  } catch {
+    return null;
+  }
+}
+
 const DEFAULT_PAYMENT_SCHEDULE = [
   { payment: "Deposit", trigger: "Contract signing – permits, engineering, scheduling", pct: 25 },
   { payment: "Structure Start", trigger: "Foundation completed / framing start", pct: 25 },
@@ -106,7 +122,7 @@ export async function GET(
     includeCoverPage: cover,
     insulationType: template.insulationType ?? "ISO",
     clientCoverPhotoType: coverTypeParam ?? template.client?.coverPhotoType ?? null,
-    clientCoverPhotoUrl: template.client?.coverPhotoUrl ?? null,
+    clientCoverPhotoUrl: await resolvePrivateCoverUrl(template.client?.coverPhotoUrl ?? null),
   });
 
   // Insert client's marked PDF page 2 as page 3 (roofing estimates only)
