@@ -9,8 +9,14 @@ export async function POST(
   req: NextRequest,
   { params }: { params: { companyId: string } }
 ) {
-  const session = await auth();
-  if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  // Allow cron secret auth (for local upload script) OR session auth
+  const cronSecret = req.headers.get("x-cron-secret");
+  if (cronSecret && cronSecret === process.env.CRON_SECRET) {
+    // authenticated via cron secret — proceed
+  } else {
+    const session = await auth();
+    if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
 
   const formData = await req.formData();
   const file = formData.get("file") as File | null;
