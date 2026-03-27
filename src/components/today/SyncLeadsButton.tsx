@@ -29,21 +29,29 @@ export default function SyncLeadsButton({ companyId }: { companyId: string }) {
   async function sync(backfill = false) {
     setStatus(backfill ? "backfilling" : "syncing");
     setResult("");
+    let totalAdded = 0;
+    let totalMerged = 0;
     try {
-      const res = await fetch(`/api/${companyId}/fetch-leads`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ backfill }),
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error ?? "Failed");
-      const added = data.added ?? 0;
-      const merged = data.merged ?? 0;
+      do {
+        const res = await fetch(`/api/${companyId}/fetch-leads`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ backfill }),
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error ?? "Failed");
+        totalAdded += data.added ?? 0;
+        totalMerged += data.merged ?? 0;
+        if (data.remaining > 0) {
+          setResult(`Importing… +${totalAdded} so far, ${data.remaining} remaining`);
+        }
+        if (!backfill || (data.remaining ?? 0) === 0) break;
+      } while (true);
+
       const parts: string[] = [];
-      if (added > 0) parts.push(`+${added} new`);
-      if (merged > 0) parts.push(`${merged} merged`);
+      if (totalAdded > 0) parts.push(`+${totalAdded} new`);
+      if (totalMerged > 0) parts.push(`${totalMerged} merged`);
       if (parts.length === 0) parts.push("up to date");
-      if (data.remaining > 0) parts.push(`${data.remaining} more — sync again`);
       setResult(parts.join(" · "));
       setStatus("done");
       await fetchLastSynced();
