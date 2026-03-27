@@ -71,7 +71,9 @@ model Company {
   termsTemplates    TermsTemplate[]
   leads             Lead[]
   leadsLastSyncedAt DateTime?
-  pipelineCards     PipelineCard[]
+  pipelineCards        PipelineCard[]
+  requestTrackerUrl    String?
+  requestTrackerDate   String?
 }
 
 model Lead {
