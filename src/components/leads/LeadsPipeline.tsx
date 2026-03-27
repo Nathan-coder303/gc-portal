@@ -373,6 +373,7 @@ export default function LeadsPipeline({ companyId, triageLeads, stagedCards }: P
   const [newStageColor, setNewStageColor] = useState(STAGE_COLORS[0]);
   const [editingStageId, setEditingStageId] = useState<string | null>(null);
   const [editingStageName, setEditingStageName] = useState("");
+  const [colorPickerStageId, setColorPickerStageId] = useState<string | null>(null);
   const draggingColId = useRef<string | null>(null);
   const [dragOverCol, setDragOverCol] = useState<string | null>(null);
 
@@ -408,6 +409,20 @@ export default function LeadsPipeline({ companyId, triageLeads, stagedCards }: P
       saveStageOrder(next);
       return next;
     });
+  }
+
+  function recolorStage(stageId: string, color: string) {
+    setStages((prev) => {
+      const next = prev.map((s) => s.id === stageId ? { ...s, color } : s);
+      saveStageOrder(next);
+      if (typeof window !== "undefined") {
+        const overrides = JSON.parse(localStorage.getItem("gc_pipeline_color_overrides") || "{}");
+        overrides[stageId] = color;
+        localStorage.setItem("gc_pipeline_color_overrides", JSON.stringify(overrides));
+      }
+      return next;
+    });
+    setColorPickerStageId(null);
   }
 
   function renameStage(stageId: string) {
@@ -690,6 +705,10 @@ export default function LeadsPipeline({ companyId, triageLeads, stagedCards }: P
                 <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
                   <div style={{ display: "flex", alignItems: "center", gap: 6, flex: 1, minWidth: 0 }}>
                     <span style={{ color: "#484f58", fontSize: 10, flexShrink: 0 }} title="Drag to reorder">⠿</span>
+                    {/* Color swatch — click to open picker */}
+                    <button onClick={(e) => { e.stopPropagation(); setColorPickerStageId(colorPickerStageId === stage.id ? null : stage.id); }}
+                      style={{ width: 10, height: 10, borderRadius: "50%", background: stage.color, border: "none", cursor: "pointer", flexShrink: 0, padding: 0 }}
+                      title="Change color" />
                     {editingStageId === stage.id ? (
                       <input autoFocus value={editingStageName} onChange={(e) => setEditingStageName(e.target.value)}
                         onBlur={() => renameStage(stage.id)}
@@ -704,14 +723,18 @@ export default function LeadsPipeline({ companyId, triageLeads, stagedCards }: P
                       </span>
                     )}
                   </div>
-                  <span style={{
-                    background: stage.color + "33", color: stage.color,
-                    fontSize: 11, fontWeight: 700, borderRadius: 20,
-                    padding: "1px 8px", border: `1px solid ${stage.color}55`, flexShrink: 0,
-                  }}>
+                  <span style={{ background: stage.color + "33", color: stage.color, fontSize: 11, fontWeight: 700, borderRadius: 20, padding: "1px 8px", border: `1px solid ${stage.color}55`, flexShrink: 0 }}>
                     {stageCards.length}
                   </span>
                 </div>
+                {colorPickerStageId === stage.id && (
+                  <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginTop: 10 }} onClick={(e) => e.stopPropagation()}>
+                    {STAGE_COLORS.map((c) => (
+                      <button key={c} onClick={() => recolorStage(stage.id, c)}
+                        style={{ width: 20, height: 20, borderRadius: "50%", background: c, border: stage.color === c ? "3px solid #fff" : "2px solid transparent", cursor: "pointer", padding: 0, outline: "none", boxSizing: "border-box" }} />
+                    ))}
+                  </div>
+                )}
               </div>
               <div style={{ minHeight: 80, paddingTop: 8 }}>
                 {stageCards.map((card) => (
