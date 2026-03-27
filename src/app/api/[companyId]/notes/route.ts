@@ -1,6 +1,30 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { google } from "googleapis";
+
+export const runtime = "nodejs";
+
+function getOAuthClient() {
+  const oauth2Client = new google.auth.OAuth2(
+    process.env.GOOGLE_CLIENT_ID,
+    process.env.GOOGLE_CLIENT_SECRET,
+    "urn:ietf:wg:oauth:2.0:oob"
+  );
+  oauth2Client.setCredentials({ refresh_token: process.env.GOOGLE_REFRESH_TOKEN });
+  return oauth2Client;
+}
+
+const MIKE_SIGNATURE = `Mike Baruh
+Founder/CEO | MIBH Construction
+Certified & Licensed General Contractor CGC 1527069
+Certified & Licensed Roofer CCC 1336817
+
+📱 Cell: 305.746.7307
+📧 Email: mike@mibhconstruction.com
+📍 Address: 2950 N 28 Terr, Hollywood, FL 33020
+🌐 Website: www.mibhconstruction.com
+📸 Instagram: @mibh_construction`;
 
 // GET /api/[companyId]/notes?leadId=...  OR  ?clientId=...
 export async function GET(
@@ -58,6 +82,47 @@ export async function POST(
       createdBy: session.user.id,
     },
   });
+
+  // Auto-email client when note is on a client record
+  if (clientId) {
+    try {
+      const client = await prisma.client.findFirst({
+        where: { id: clientId, companyId: params.companyId },
+        select: { name: true, email: true, address: true },
+      });
+
+      if (client?.email) {
+        const firstName = client.name.split(" ")[0];
+        const subject = `Your Scope at ${client.address ?? "Your Project"}`;
+        const emailBody = `Dear ${firstName},\n\nWe have an exciting update on your project.\n\n${content.trim()}\n\n${MIKE_SIGNATURE}`;
+
+        const oauth2Client = getOAuthClient();
+        const gmail = google.gmail({ version: "v1", auth: oauth2Client });
+        const profile = await gmail.users.getProfile({ userId: "me" });
+        const fromEmail = profile.data.emailAddress ?? "me";
+
+        const encodedSubject = /^[\x00-\x7F]*$/.test(subject)
+          ? subject
+          : `=?UTF-8?B?${Buffer.from(subject).toString("base64")}?=`;
+
+        const mimeLines = [
+          `From: ${fromEmail}`,
+          `To: ${client.email}`,
+          `Cc: mikebaruh@gmail.com`,
+          `Subject: ${encodedSubject}`,
+          `MIME-Version: 1.0`,
+          `Content-Type: text/plain; charset=UTF-8`,
+          ``,
+          emailBody,
+        ];
+        const raw = Buffer.from(mimeLines.join("\r\n")).toString("base64url");
+        await gmail.users.messages.send({ userId: "me", requestBody: { raw } });
+      }
+    } catch (err) {
+      // Don't fail the note save if email fails — just log
+      console.error("Note email send failed:", err);
+    }
+  }
 
   return NextResponse.json(note);
 }
