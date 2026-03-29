@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
 import { google } from "googleapis";
-import Anthropic from "@anthropic-ai/sdk";
 import { prisma } from "@/lib/prisma";
 import { STANDARD_DIVISIONS } from "@/lib/divisions";
 import { auth } from "@/lib/auth";
@@ -108,24 +107,27 @@ export async function POST(req: NextRequest, { params }: { params: { companyId: 
 
   const authClient = getOAuthClient();
   const gmail = google.gmail({ version: "v1", auth: authClient });
-  const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
+  const safeApiKey = (process.env.ANTHROPIC_API_KEY ?? "").replace(/[^\x20-\x7E]/g, "").trim();
 
-  // Use targeted query — dramatically fewer emails to process
-  const gmailQuery = buildGmailQuery(clientName, clientAddress);
+  // Search with multiple queries: targeted + broad recent catch-all
+  const targetedQuery = buildGmailQuery(clientName, clientAddress);
+  const queries = [
+    targetedQuery,
+    `has:attachment filename:pdf newer_than:7d`,
+  ];
 
-  // Paginate through matching messages (targeted query → usually < 50 results)
   const allMessages: { id?: string | null }[] = [];
-  let pageToken: string | undefined;
-  do {
-    const listRes = await gmail.users.messages.list({
-      userId: "me",
-      q: gmailQuery,
-      maxResults: 100,
-      pageToken,
-    });
-    allMessages.push(...(listRes.data.messages ?? []));
-    pageToken = listRes.data.nextPageToken ?? undefined;
-  } while (pageToken && allMessages.length < 200);
+  const seenIds = new Set<string>();
+  for (const q of queries) {
+    let pageToken: string | undefined;
+    do {
+      const listRes = await gmail.users.messages.list({ userId: "me", q, maxResults: 100, pageToken });
+      for (const m of listRes.data.messages ?? []) {
+        if (m.id && !seenIds.has(m.id)) { seenIds.add(m.id); allMessages.push(m); }
+      }
+      pageToken = listRes.data.nextPageToken ?? undefined;
+    } while (pageToken && allMessages.length < 300);
+  }
 
   // Bulk dedup: one query to get all already-imported Gmail message IDs for this client
   const existingSubBids = await prisma.subBid.findMany({
@@ -178,28 +180,29 @@ Respond ONLY with valid JSON, no markdown:
   "notes": "<1-sentence scope summary>"
 }`;
 
-      const aiMsg = await anthropic.messages.create({
-        model: "claude-haiku-4-5-20251001",
-        max_tokens: 300,
-        messages: [{ role: "user", content: prompt }],
+      const aiRes = await fetch("https://api.anthropic.com/v1/messages", {
+        method: "POST",
+        headers: { "content-type": "application/json", "x-api-key": safeApiKey, "anthropic-version": "2023-06-01" },
+        body: JSON.stringify({ model: "claude-haiku-4-5-20251001", max_tokens: 300, messages: [{ role: "user", content: prompt }] }),
       });
+      const aiJson = await aiRes.json() as { content?: { type: string; text: string }[]; error?: { message: string } };
+      if (aiJson.error) { errors.push(`[ai] ${aiJson.error.message.slice(0, 80)}`); skippedInLoop++; continue; }
+      const aiText = aiJson.content?.[0]?.type === "text" ? aiJson.content[0].text.trim() : "{}";
 
-      const aiText = aiMsg.content[0].type === "text" ? aiMsg.content[0].text.trim() : "{}";
       let parsed: { isMatch?: boolean; divisionCode?: string; contractorName?: string; amount?: number | null; notes?: string };
       try {
-        parsed = JSON.parse(aiText);
+        parsed = JSON.parse(aiText.replace(/```json\n?|\n?```/g, ""));
       } catch {
         skippedInLoop++;
         continue;
       }
 
-      if (!parsed.isMatch || !parsed.divisionCode) {
-        skippedInLoop++;
-        continue;
-      }
+      // If AI says not a match, skip entirely (don't clutter triage)
+      if (!parsed.isMatch) { skippedInLoop++; continue; }
 
-      const division = STANDARD_DIVISIONS.find(d => d.code === parsed.divisionCode);
-      if (!division) { skippedInLoop++; continue; }
+      // Valid division or fall back to triage (00)
+      const division = STANDARD_DIVISIONS.find(d => d.code === parsed.divisionCode)
+        ?? { code: "00", name: "Triage" };
 
       const fileUrl = pdfParts.length > 0
         ? `gmail:${msg.id}:${pdfParts[0].body?.attachmentId ?? ""}`
@@ -236,7 +239,7 @@ Respond ONLY with valid JSON, no markdown:
     skipped,
     remaining,
     totalFound: allMessages.length,
-    query: gmailQuery,
+    query: targetedQuery,
     errors: errors.slice(0, 5),
   });
 }
