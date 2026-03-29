@@ -196,6 +196,6 @@ export async function POST(
   }
 
   const extracted = results.filter((r) => r.amount !== null).length;
-  const errors = [...new Set(results.filter((r) => r.error).map((r) => r.error))];
+  const errors = Array.from(new Set(results.filter((r) => r.error).map((r) => r.error)));
   return NextResponse.json({ total: results.length, extracted, results, errors });
 }

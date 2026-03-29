@@ -105,7 +105,7 @@ export default function SubsBidsTab({ clientId, companyId, clientName, clientAdd
         setExtractResult(`Error: ${data.error ?? "Failed"}`);
         return;
       }
-      const errSummary = data.errors?.length ? ` · ${[...new Set(data.errors)].slice(0, 3).join(" | ")}` : "";
+      const errSummary = data.errors?.length ? ` · ${Array.from(new Set(data.errors as string[])).slice(0, 3).join(" | ")}` : "";
       setExtractResult(`Done — ${data.extracted} of ${data.total} extracted${errSummary}`);
       if (data.extracted > 0) router.refresh();
     } catch (e) {
