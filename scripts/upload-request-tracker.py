@@ -30,7 +30,7 @@ except ImportError:
 COMPANY_ID = "cmme9q6fg0000hriagrothwrc"
 BASE_URL = "https://gc-portal-two.vercel.app"
 JSONL_DIR = os.path.expanduser("~/.claude/projects/-Users-mike")
-OUTPUT_PATH = os.path.expanduser("~/Desktop/GC_Portal_Full_History.xlsx")
+OUTPUT_PATH = "/tmp/GC_Portal_Full_History.xlsx"
 
 # Load CRON_SECRET from .env
 env_path = os.path.expanduser("~/gc-portal/.env")

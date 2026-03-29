@@ -30,7 +30,7 @@ export async function POST(
     blob = await put(
       `request-tracker-${params.companyId}.xlsx`,
       Buffer.from(arrayBuffer),
-      { access: "private", contentType: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", addRandomSuffix: false }
+      { access: "private", contentType: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", addRandomSuffix: false, allowOverwrite: true }
     );
   } catch (err) {
     console.error("Blob upload failed:", err);
