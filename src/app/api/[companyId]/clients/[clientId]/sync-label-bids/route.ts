@@ -91,13 +91,14 @@ export async function POST(
       return NextResponse.json({ error: "Gmail label '7729 bids' not found", gmailEmail, allLabels: allLabelNames }, { status: 400 });
     }
 
-    // Fetch emails: labeled "7729 bids" OR keyword-matched (7729 / Carlyle)
+    // Fetch emails: labeled "7729 bids" OR keyword-matched (7729 / Carlyle / Miami Beach / bid / proposal)
     const allMessages: { id?: string | null }[] = [];
     const seenIds = new Set<string>();
 
     const queries = [
       { labelIds: [label.id] },
       { q: "(7729 OR Carlyle) has:attachment filename:pdf" },
+      { q: "(bid OR proposal OR quote) (\"Miami Beach\" OR \"MIBH\") has:attachment filename:pdf newer_than:90d" },
     ];
 
     for (const queryOpts of queries) {
