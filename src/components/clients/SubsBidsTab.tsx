@@ -74,6 +74,8 @@ type EditForm = {
 export default function SubsBidsTab({ clientId, companyId, clientName, clientAddress, subBids: initialSubBids, canEdit, canDelete, isCommercial = false }: Props) {
   const router = useRouter();
   const [subBids, setSubBids] = useState<SubBidRow[]>(initialSubBids);
+  // displayIsCommercial updates immediately on click so the button turns gold before navigation
+  const [displayIsCommercial, setDisplayIsCommercial] = useState(isCommercial);
   const [togglingCommercial, setTogglingCommercial] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
@@ -279,6 +281,7 @@ export default function SubsBidsTab({ clientId, companyId, clientName, clientAdd
   }, [clientId, companyId]);
 
   async function handleToggleCommercial(val: boolean) {
+    setDisplayIsCommercial(val); // instant visual feedback
     setTogglingCommercial(true);
     const url = new URL(window.location.href);
     url.searchParams.set("commercial", val ? "1" : "0");
@@ -293,7 +296,7 @@ export default function SubsBidsTab({ clientId, companyId, clientName, clientAdd
     window.location.href = url.toString();
   }
 
-  const allDivisions = isCommercial
+  const allDivisions = displayIsCommercial
     ? [...STANDARD_DIVISIONS, ...COMMERCIAL_ONLY_DIVISIONS].sort((a, b) => a.code.localeCompare(b.code))
     : [...STANDARD_DIVISIONS];
 
@@ -310,7 +313,7 @@ export default function SubsBidsTab({ clientId, companyId, clientName, clientAdd
             onClick={() => { void handleToggleCommercial(false); }}
             disabled={togglingCommercial}
             className="px-3 py-1.5 text-xs font-semibold transition-all"
-            style={{ background: !isCommercial ? "#C9A84C" : "transparent", color: !isCommercial ? "#0d1117" : "#8b949e" }}
+            style={{ background: !displayIsCommercial ? "#C9A84C" : "transparent", color: !displayIsCommercial ? "#0d1117" : "#8b949e" }}
           >
             Residential
           </button>
@@ -318,12 +321,12 @@ export default function SubsBidsTab({ clientId, companyId, clientName, clientAdd
             onClick={() => { void handleToggleCommercial(true); }}
             disabled={togglingCommercial}
             className="px-3 py-1.5 text-xs font-semibold transition-all"
-            style={{ background: isCommercial ? "#C9A84C" : "transparent", color: isCommercial ? "#0d1117" : "#8b949e", borderLeft: "1px solid #30373f" }}
+            style={{ background: displayIsCommercial ? "#C9A84C" : "transparent", color: displayIsCommercial ? "#0d1117" : "#8b949e", borderLeft: "1px solid #30373f" }}
           >
             Commercial
           </button>
         </div>
-        {isCommercial && <span className="text-xs" style={{ color: "#C9A84C" }}>+ Div 11 Equipment · 13 Special Construction · 14 Conveying · 21 Fire Suppression · 27 Communications · 28 Electronic Safety · 31 Earthwork (Adv) · 32 Exterior Improvements · 33 Utilities</span>}
+        {displayIsCommercial && <span className="text-xs" style={{ color: "#C9A84C" }}>+ Div 11 Equipment · 13 Special Construction · 14 Conveying · 21 Fire Suppression · 27 Communications · 28 Electronic Safety · 31 Earthwork (Adv) · 32 Exterior Improvements · 33 Utilities</span>}
       </div>
 
       {/* Gmail sync + extract amounts buttons */}
@@ -407,8 +410,8 @@ export default function SubsBidsTab({ clientId, companyId, clientName, clientAdd
                     ))}
                   </select>
                 </div>
-                <div className="text-xs mt-2" style={{ color: "#8b949e" }} suppressHydrationWarning>
-                  📅 {offer.createdAt ? fmtDate(offer.createdAt) : "—"}
+                <div className="flex items-center gap-1 text-xs mt-2" style={{ color: "#8b949e" }} suppressHydrationWarning>
+                  <span>📅</span><span>{offer.createdAt ? fmtDate(offer.createdAt) : "—"}</span>
                 </div>
               </div>
             ))}
@@ -552,8 +555,8 @@ export default function SubsBidsTab({ clientId, companyId, clientName, clientAdd
                             )}
                           </div>
                         </div>
-                        <div className="text-xs mt-2" style={{ color: "#8b949e" }} suppressHydrationWarning>
-                          📅 {offer.createdAt ? fmtDate(offer.createdAt) : "—"}
+                        <div className="flex items-center gap-1 text-xs mt-2" style={{ color: "#8b949e" }} suppressHydrationWarning>
+                          <span>📅</span><span>{offer.createdAt ? fmtDate(offer.createdAt) : "—"}</span>
                         </div>
                       </div>
                     )}
