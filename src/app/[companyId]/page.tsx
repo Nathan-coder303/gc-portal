@@ -91,7 +91,7 @@ export default async function HubPage({
             </div>
             {company?.requestTrackerUrl && (
               <a
-                href={company.requestTrackerUrl}
+                href={`/api/${params.companyId}/download-request-tracker`}
                 download="GC_Portal_Request_Tracker.xlsx"
                 className="shrink-0 px-4 py-2 rounded-lg text-sm font-semibold"
                 style={{ background: "#C9A84C", color: "#0d1117" }}
