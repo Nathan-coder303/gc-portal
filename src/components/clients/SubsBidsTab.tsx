@@ -80,8 +80,33 @@ export default function SubsBidsTab({ clientId, companyId, clientName, clientAdd
   const [divisionDrag, setDivisionDrag] = useState<{ offerId: string; fromCode: string } | null>(null);
   const [syncing, setSyncing] = useState(false);
   const [syncResult, setSyncResult] = useState<string | null>(null);
+  const [extracting, setExtracting] = useState(false);
+  const [extractResult, setExtractResult] = useState<string | null>(null);
   const [formData, setFormData] = useState<EditForm>({ contractorName: "", amount: "", notes: "", status: "RECEIVED" });
   const fileInputRefs = useRef<Record<string, HTMLInputElement | null>>({});
+
+  async function handleExtractAmounts() {
+    setExtracting(true);
+    setExtractResult(null);
+    try {
+      const res = await fetch(`/api/${companyId}/extract-bid-amounts`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ clientId }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setExtractResult(`Error: ${data.error ?? "Failed"}`);
+        return;
+      }
+      setExtractResult(`Done — ${data.extracted} of ${data.total} amounts extracted`);
+      if (data.extracted > 0) router.refresh();
+    } catch (e) {
+      setExtractResult("Failed: " + String(e));
+    } finally {
+      setExtracting(false);
+    }
+  }
 
   async function handleSyncGmail() {
     setSyncing(true);
@@ -282,9 +307,9 @@ export default function SubsBidsTab({ clientId, companyId, clientName, clientAdd
         {isCommercial && <span className="text-xs" style={{ color: "#C9A84C" }}>+ Div 11 Equipment · 13 Special Construction · 14 Conveying · 21 Fire Suppression · 27 Communications · 28 Electronic Safety · 31 Earthwork (Adv) · 32 Exterior Improvements · 33 Utilities</span>}
       </div>
 
-      {/* Gmail sync button */}
+      {/* Gmail sync + extract amounts buttons */}
       {canEdit && (
-        <div className="flex items-center gap-3 mb-4">
+        <div className="flex flex-wrap items-center gap-3 mb-4">
           <button
             onClick={handleSyncGmail}
             disabled={syncing}
@@ -293,9 +318,17 @@ export default function SubsBidsTab({ clientId, companyId, clientName, clientAdd
           >
             {syncing ? "Syncing Gmail…" : "Sync Gmail Bids"}
           </button>
-          {syncResult && (
-            <span className="text-xs" style={{ color: syncResult.startsWith("Error") ? "#ef4444" : "#8b949e" }}>
-              {syncResult}
+          <button
+            onClick={handleExtractAmounts}
+            disabled={extracting}
+            className="flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-semibold transition-all"
+            style={{ background: extracting ? "#1e2736" : "#1e2736", color: extracting ? "#8b949e" : "#C9A84C", border: "1px solid #C9A84C44", opacity: extracting ? 0.7 : 1 }}
+          >
+            {extracting ? "Extracting…" : "Extract Amounts from PDFs"}
+          </button>
+          {(syncResult || extractResult) && (
+            <span className="text-xs" style={{ color: (syncResult ?? extractResult ?? "").startsWith("Error") || (syncResult ?? extractResult ?? "").startsWith("Failed") ? "#ef4444" : "#8b949e" }}>
+              {extractResult ?? syncResult}
             </span>
           )}
         </div>

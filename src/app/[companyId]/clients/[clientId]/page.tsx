@@ -80,7 +80,7 @@ export default async function ClientDetailPage({
         fileName: b.fileName,
         status: b.status,
         isPlaceholder: b.isPlaceholder,
-        createdAt: b.createdAt ? new Date(b.createdAt as any).toISOString() : new Date(0).toISOString(),
+        createdAt: b.createdAt ? new Date(b.createdAt).toISOString() : new Date(0).toISOString(),
       });
     }
     subBids = Array.from(map.values()).sort((a, b) => a.divisionCode.localeCompare(b.divisionCode));
