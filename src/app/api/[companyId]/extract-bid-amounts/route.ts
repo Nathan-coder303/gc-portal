@@ -7,7 +7,6 @@
  * Updates the SubBid record with the extracted amount.
  */
 import { NextRequest, NextResponse } from "next/server";
-import * as https from "https";
 import { google } from "googleapis";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
@@ -95,58 +94,39 @@ async function fetchPdfBytes(fileUrl: string): Promise<{ buffer: Buffer | null; 
   return { buffer: null, error: "Unknown file URL format" };
 }
 
-function httpsPost(options: https.RequestOptions, body: Buffer): Promise<string> {
-  return new Promise((resolve, reject) => {
-    const req = https.request(options, (res) => {
-      const chunks: Buffer[] = [];
-      res.on("data", (c: Buffer) => chunks.push(c));
-      res.on("end", () => resolve(Buffer.concat(chunks).toString("utf8")));
-    });
-    req.on("error", reject);
-    req.write(body);
-    req.end();
-  });
-}
-
 async function extractAmountFromPdf(pdfBytes: Buffer): Promise<{ amount: number | null; error?: string }> {
   try {
     const apiKey = (process.env.ANTHROPIC_API_KEY ?? "").replace(/[^\x20-\x7E]/g, "").trim();
-    const bodyObj = {
-      model: "claude-sonnet-4-6",
-      max_tokens: 256,
-      messages: [{
-        role: "user",
-        content: [
-          { type: "document", source: { type: "base64", media_type: "application/pdf", data: pdfBytes.toString("base64") } },
-          { type: "text", text: "Extract the total bid/proposal amount from this document. Look for the grand total, total cost, total price, or base bid amount. Return ONLY the numeric dollar amount with no symbols, commas, or text - just digits and a decimal point (e.g. 27500.00). If you cannot find a clear total amount, return the word null." },
-        ],
-      }],
-    };
-    const bodyBuf = Buffer.from(JSON.stringify(bodyObj), "utf8");
-
-    const rawResponse = await httpsPost({
-      hostname: "api.anthropic.com",
-      path: "/v1/messages",
+    const aiRes = await fetch("https://api.anthropic.com/v1/messages", {
       method: "POST",
       headers: {
+        "content-type": "application/json",
         "x-api-key": apiKey,
         "anthropic-version": "2023-06-01",
         "anthropic-beta": "pdfs-2024-09-25",
-        "content-type": "application/json",
-        "content-length": bodyBuf.length,
       },
-    }, bodyBuf);
-
-    const parsed = JSON.parse(rawResponse);
-    if (parsed.error) return { amount: null, error: `API error: ${parsed.error.message ?? JSON.stringify(parsed.error)}` };
-    const text: string = parsed.content?.[0]?.text?.trim() ?? "";
+      body: JSON.stringify({
+        model: "claude-haiku-4-5-20251001",
+        max_tokens: 256,
+        messages: [{
+          role: "user",
+          content: [
+            { type: "document", source: { type: "base64", media_type: "application/pdf", data: pdfBytes.toString("base64") } },
+            { type: "text", text: "Extract the total bid/proposal amount from this document. Look for the grand total, total cost, total price, or base bid amount. Return ONLY the numeric dollar amount with no symbols, commas, or text - just digits and a decimal point (e.g. 27500.00). If you cannot find a clear total amount, return the word null." },
+          ],
+        }],
+      }),
+    });
+    const parsed = await aiRes.json() as { content?: { type: string; text: string }[]; error?: { message: string } };
+    if (parsed.error) return { amount: null, error: `API error: ${parsed.error.message}` };
+    const text = parsed.content?.[0]?.type === "text" ? parsed.content[0].text.trim() : "";
     if (!text || text === "null") return { amount: null, error: "Claude returned null" };
     const cleaned = text.replace(/[^0-9.]/g, "");
     const amount = parseFloat(cleaned);
-    if (isNaN(amount) || amount <= 0) return { amount: null, error: `Claude returned unparseable: "${text}"` };
+    if (isNaN(amount) || amount <= 0) return { amount: null, error: `Claude returned: "${text}"` };
     return { amount };
   } catch (e) {
-    return { amount: null, error: `Claude error: ${String(e)}` };
+    return { amount: null, error: `Error: ${String(e)}` };
   }
 }
 
