@@ -74,7 +74,6 @@ type EditForm = {
 export default function SubsBidsTab({ clientId, companyId, clientName, clientAddress, subBids: initialSubBids, canEdit, canDelete, isCommercial = false }: Props) {
   const router = useRouter();
   const [subBids, setSubBids] = useState<SubBidRow[]>(initialSubBids);
-  // displayIsCommercial updates immediately on click so the button turns gold before navigation
   const [displayIsCommercial, setDisplayIsCommercial] = useState(isCommercial);
   const [togglingCommercial, setTogglingCommercial] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -281,19 +280,18 @@ export default function SubsBidsTab({ clientId, companyId, clientName, clientAdd
   }, [clientId, companyId]);
 
   async function handleToggleCommercial(val: boolean) {
-    setDisplayIsCommercial(val); // instant visual feedback
+    setDisplayIsCommercial(val);
     setTogglingCommercial(true);
-    const url = new URL(window.location.href);
-    url.searchParams.set("commercial", val ? "1" : "0");
-    // Use API route (not Server Action) to avoid session/cancellation issues
     try {
       await fetch(`/api/${companyId}/clients/${clientId}/set-commercial`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ isCommercial: val }),
       });
-    } catch { /* navigate anyway */ }
-    window.location.href = url.toString();
+      router.refresh();
+    } catch { /* ignore */ } finally {
+      setTogglingCommercial(false);
+    }
   }
 
   const allDivisions = displayIsCommercial

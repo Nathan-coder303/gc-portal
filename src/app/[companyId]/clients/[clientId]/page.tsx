@@ -53,11 +53,7 @@ export default async function ClientDetailPage({
   const canEdit = can(session.user.role, "estimate:create");
   const canDelete = session.user.role === "ADMIN";
 
-  // URL param overrides DB value for instant toggle response
-  const isCommercial =
-    searchParams.commercial === "1" ? true :
-    searchParams.commercial === "0" ? false :
-    safeClient.isCommercial;
+  const isCommercial = safeClient.isCommercial;
 
   // Load sub bids for subs-bids and client-bid tabs
   let subBids: SubBidRow[] = [];
@@ -154,7 +150,7 @@ export default async function ClientDetailPage({
           return (
             <Link
               key={tab.key}
-              href={`/${params.companyId}/clients/${params.clientId}?tab=${tab.key}${isCommercial ? "&commercial=1" : ""}`}
+              href={`/${params.companyId}/clients/${params.clientId}?tab=${tab.key}`}
               className="px-4 py-1.5 rounded-full text-sm font-medium transition-all"
               style={
                 isActive
