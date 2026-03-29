@@ -41,7 +41,12 @@ function fmt(n: number) {
 }
 
 function fmtDate(iso: string) {
-  return new Date(iso).toLocaleString("en-US", { month: "short", day: "numeric", year: "numeric", hour: "numeric", minute: "2-digit", hour12: true });
+  try {
+    const d = new Date(iso);
+    if (isNaN(d.getTime()) || d.getFullYear() < 2020) return "—";
+    const months = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+    return `${months[d.getMonth()]} ${d.getDate()}, ${d.getFullYear()} ${d.getHours() % 12 || 12}:${String(d.getMinutes()).padStart(2,"0")} ${d.getHours() >= 12 ? "PM" : "AM"}`;
+  } catch { return "—"; }
 }
 
 function getPdfHref(fileUrl: string, companyId: string): string {
@@ -99,7 +104,8 @@ export default function SubsBidsTab({ clientId, companyId, clientName, clientAdd
         setExtractResult(`Error: ${data.error ?? "Failed"}`);
         return;
       }
-      setExtractResult(`Done — ${data.extracted} of ${data.total} amounts extracted`);
+      const errSample = data.errors?.[0] ?? null;
+      setExtractResult(`Done — ${data.extracted} of ${data.total} extracted${errSample ? ` · ${errSample}` : ""}`);
       if (data.extracted > 0) router.refresh();
     } catch (e) {
       setExtractResult("Failed: " + String(e));
@@ -265,12 +271,17 @@ export default function SubsBidsTab({ clientId, companyId, clientName, clientAdd
   }, [clientId, companyId]);
 
   async function handleToggleCommercial(val: boolean) {
-    if (!setCommercialAction) return;
     setTogglingCommercial(true);
     const url = new URL(window.location.href);
     url.searchParams.set("commercial", val ? "1" : "0");
-    // Await DB save before navigating — browser cancels in-flight requests on navigation
-    await setCommercialAction(clientId, companyId, val).catch(() => {});
+    // Use API route (not Server Action) to avoid session/cancellation issues
+    try {
+      await fetch(`/api/${companyId}/clients/${clientId}/set-commercial`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ isCommercial: val }),
+      });
+    } catch { /* navigate anyway */ }
     window.location.href = url.toString();
   }
 
@@ -288,7 +299,7 @@ export default function SubsBidsTab({ clientId, companyId, clientName, clientAdd
         <span className="text-xs font-semibold" style={{ color: "#8b949e" }}>Project type:</span>
         <div className="flex rounded-lg overflow-hidden" style={{ border: "1px solid #30373f" }}>
           <button
-            onClick={() => handleToggleCommercial(false)}
+            onClick={() => { void handleToggleCommercial(false); }}
             disabled={togglingCommercial}
             className="px-3 py-1.5 text-xs font-semibold transition-all"
             style={{ background: !isCommercial ? "#C9A84C" : "transparent", color: !isCommercial ? "#0d1117" : "#8b949e" }}
@@ -296,7 +307,7 @@ export default function SubsBidsTab({ clientId, companyId, clientName, clientAdd
             Residential
           </button>
           <button
-            onClick={() => handleToggleCommercial(true)}
+            onClick={() => { void handleToggleCommercial(true); }}
             disabled={togglingCommercial}
             className="px-3 py-1.5 text-xs font-semibold transition-all"
             style={{ background: isCommercial ? "#C9A84C" : "transparent", color: isCommercial ? "#0d1117" : "#8b949e", borderLeft: "1px solid #30373f" }}
@@ -388,7 +399,7 @@ export default function SubsBidsTab({ clientId, companyId, clientName, clientAdd
                     ))}
                   </select>
                 </div>
-                <div className="text-xs mt-2" style={{ color: "#8b949e" }}>
+                <div className="text-xs mt-2" style={{ color: "#8b949e" }} suppressHydrationWarning>
                   📅 {offer.createdAt ? fmtDate(offer.createdAt) : "—"}
                 </div>
               </div>

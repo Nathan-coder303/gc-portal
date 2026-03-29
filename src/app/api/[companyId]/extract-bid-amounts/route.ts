@@ -40,26 +40,26 @@ function findFirstPdfPart(payload: any): any | null {
   return null;
 }
 
-async function fetchPdfBytes(fileUrl: string): Promise<Buffer | null> {
+async function fetchPdfBytes(fileUrl: string): Promise<{ buffer: Buffer | null; error?: string }> {
   // Vercel Blob private URL
   if (fileUrl.startsWith("https://")) {
     try {
       const res = await fetch(fileUrl, {
         headers: { Authorization: `Bearer ${process.env.BLOB_READ_WRITE_TOKEN}` },
       });
-      if (!res.ok) return null;
-      return Buffer.from(await res.arrayBuffer());
-    } catch {
-      return null;
+      if (!res.ok) return { buffer: null, error: `Blob fetch failed: ${res.status}` };
+      return { buffer: Buffer.from(await res.arrayBuffer()) };
+    } catch (e) {
+      return { buffer: null, error: `Blob error: ${String(e)}` };
     }
   }
 
   // Gmail attachment: "gmail:msgId" or "gmail:msgId:attachmentId"
   if (fileUrl.startsWith("gmail:")) {
     const parts = fileUrl.split(":");
-    if (parts.length < 2) return null;
+    if (parts.length < 2) return { buffer: null, error: "Invalid gmail URL" };
     const msgId = parts[1];
-    const attachmentId = parts.length >= 3 ? parts[2] : null;
+    const attachmentId = parts.length >= 3 && parts[2] ? parts[2] : null;
 
     try {
       const gmail = google.gmail({ version: "v1", auth: getOAuthClient() });
@@ -69,32 +69,32 @@ async function fetchPdfBytes(fileUrl: string): Promise<Buffer | null> {
           userId: "me", messageId: msgId, id: attachmentId,
         });
         const data = att.data.data;
-        if (!data) return null;
-        return Buffer.from(data.replace(/-/g, "+").replace(/_/g, "/"), "base64");
+        if (!data) return { buffer: null, error: "No attachment data" };
+        return { buffer: Buffer.from(data.replace(/-/g, "+").replace(/_/g, "/"), "base64") };
       } else {
         // Inline PDF — fetch from message body
         const msg = await gmail.users.messages.get({ userId: "me", id: msgId, format: "full" });
         const part = findFirstPdfPart(msg.data.payload);
-        if (!part) return null;
+        if (!part) return { buffer: null, error: "No PDF part in message" };
         if (part.body?.data) {
-          return Buffer.from(part.body.data.replace(/-/g, "+").replace(/_/g, "/"), "base64");
+          return { buffer: Buffer.from(part.body.data.replace(/-/g, "+").replace(/_/g, "/"), "base64") };
         }
         if (part.body?.attachmentId) {
           const att = await gmail.users.messages.attachments.get({
             userId: "me", messageId: msgId, id: part.body.attachmentId,
           });
           const data = att.data.data;
-          if (!data) return null;
-          return Buffer.from(data.replace(/-/g, "+").replace(/_/g, "/"), "base64");
+          if (!data) return { buffer: null, error: "No inline attachment data" };
+          return { buffer: Buffer.from(data.replace(/-/g, "+").replace(/_/g, "/"), "base64") };
         }
-        return null;
+        return { buffer: null, error: "No usable PDF data in message" };
       }
-    } catch {
-      return null;
+    } catch (e) {
+      return { buffer: null, error: `Gmail error: ${String(e)}` };
     }
   }
 
-  return null;
+  return { buffer: null, error: "Unknown file URL format" };
 }
 
 async function extractAmountFromPdf(pdfBytes: Buffer): Promise<number | null> {
@@ -150,12 +150,18 @@ export async function POST(
   const bids = await prisma.subBid.findMany({ where });
 
   const results: { id: string; amount: number | null; error?: string }[] = [];
+  const deadline = Date.now() + 50_000; // stop after 50s to stay within 60s limit
 
   for (const bid of bids) {
     if (!bid.fileUrl) continue;
-    const pdfBytes = await fetchPdfBytes(bid.fileUrl);
+    if (Date.now() > deadline) {
+      results.push({ id: bid.id, amount: null, error: "Time limit reached — run again to continue" });
+      continue;
+    }
+
+    const { buffer: pdfBytes, error: fetchError } = await fetchPdfBytes(bid.fileUrl);
     if (!pdfBytes) {
-      results.push({ id: bid.id, amount: null, error: "Could not fetch PDF" });
+      results.push({ id: bid.id, amount: null, error: fetchError ?? "Could not fetch PDF" });
       continue;
     }
 
@@ -166,9 +172,10 @@ export async function POST(
         data: { amount, status: "RECEIVED" },
       });
     }
-    results.push({ id: bid.id, amount });
+    results.push({ id: bid.id, amount, error: amount === null ? "Could not parse amount from PDF" : undefined });
   }
 
   const extracted = results.filter((r) => r.amount !== null).length;
-  return NextResponse.json({ total: results.length, extracted, results });
+  const errors = results.filter((r) => r.error).map((r) => r.error);
+  return NextResponse.json({ total: results.length, extracted, results, errors });
 }
