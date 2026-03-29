@@ -110,7 +110,7 @@ function httpsPost(options: https.RequestOptions, body: Buffer): Promise<string>
 
 async function extractAmountFromPdf(pdfBytes: Buffer): Promise<{ amount: number | null; error?: string }> {
   try {
-    const apiKey = process.env.ANTHROPIC_API_KEY ?? "";
+    const apiKey = (process.env.ANTHROPIC_API_KEY ?? "").replace(/[^\x20-\x7E]/g, "").trim();
     const bodyObj = {
       model: "claude-sonnet-4-6",
       max_tokens: 256,
