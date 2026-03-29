@@ -140,11 +140,10 @@ export async function POST(
   const { clientId, bidIds } = await req.json() as { clientId: string; bidIds?: string[] };
   if (!clientId) return NextResponse.json({ error: "Missing clientId" }, { status: 400 });
 
-  // Extract from all bids that have a PDF file (not just amount: null)
-  // so re-clicking always picks up bids where email-body parsing missed the amount
+  // Only process bids that have a PDF but no amount yet — skip already-extracted ones
   const where = bidIds?.length
     ? { id: { in: bidIds }, clientId, companyId: params.companyId }
-    : { clientId, companyId: params.companyId, fileUrl: { not: null }, isPlaceholder: false };
+    : { clientId, companyId: params.companyId, fileUrl: { not: null }, isPlaceholder: false, amount: null };
 
   const bids = await prisma.subBid.findMany({ where });
 
@@ -173,8 +172,8 @@ export async function POST(
       });
     }
     results.push({ id: bid.id, amount, error: extractError });
-    // Throttle to avoid hitting 50k token/min rate limit
-    await new Promise((r) => setTimeout(r, 1500));
+    // Throttle to stay under 50k token/min rate limit
+    await new Promise((r) => setTimeout(r, 3000));
   }
 
   const extracted = results.filter((r) => r.amount !== null).length;
