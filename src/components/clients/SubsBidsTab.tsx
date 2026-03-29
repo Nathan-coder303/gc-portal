@@ -42,9 +42,10 @@ function fmt(n: number) {
 function fmtDate(iso: string) {
   try {
     const d = new Date(iso);
-    if (isNaN(d.getTime()) || d.getFullYear() < 2020) return "—";
+    if (isNaN(d.getTime()) || d.getUTCFullYear() < 2020) return "—";
     const months = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
-    return `${months[d.getMonth()]} ${d.getDate()}, ${d.getFullYear()} ${d.getHours() % 12 || 12}:${String(d.getMinutes()).padStart(2,"0")} ${d.getHours() >= 12 ? "PM" : "AM"}`;
+    const h = d.getUTCHours();
+    return `${months[d.getUTCMonth()]} ${d.getUTCDate()}, ${d.getUTCFullYear()} ${h % 12 || 12}:${String(d.getUTCMinutes()).padStart(2,"0")} ${h >= 12 ? "PM" : "AM"}`;
   } catch { return "—"; }
 }
 
@@ -70,10 +71,9 @@ type EditForm = {
   status: string;
 };
 
-export default function SubsBidsTab({ clientId, companyId, clientName, clientAddress, subBids: initialSubBids, canEdit, canDelete, isCommercial: initialIsCommercial = false }: Props) {
+export default function SubsBidsTab({ clientId, companyId, clientName, clientAddress, subBids: initialSubBids, canEdit, canDelete, isCommercial = false }: Props) {
   const router = useRouter();
   const [subBids, setSubBids] = useState<SubBidRow[]>(initialSubBids);
-  const [isCommercial] = useState(initialIsCommercial);
   const [togglingCommercial, setTogglingCommercial] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
@@ -136,8 +136,17 @@ export default function SubsBidsTab({ clientId, companyId, clientName, clientAdd
         setSyncResult(`Syncing… ${totalAdded} bids found so far (round ${round})`);
         if ((data.remaining ?? 0) === 0) break;
       }
-      setSyncResult(`Done — ${totalAdded} new bid${totalAdded !== 1 ? "s" : ""} imported`);
-      if (totalAdded > 0) router.refresh();
+      setSyncResult(`Done — ${totalAdded} new bid${totalAdded !== 1 ? "s" : ""} imported. Extracting amounts…`);
+      // Auto-extract amounts from PDFs of newly synced bids
+      const extractRes = await fetch(`/api/${companyId}/extract-bid-amounts`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ clientId }),
+      });
+      const extractData = extractRes.ok ? await extractRes.json() : null;
+      const extractedCount = extractData?.extracted ?? 0;
+      setSyncResult(`Done — ${totalAdded} new bid${totalAdded !== 1 ? "s" : ""} imported, ${extractedCount} amount${extractedCount !== 1 ? "s" : ""} extracted`);
+      if (totalAdded > 0 || extractedCount > 0) router.refresh();
     } catch (e) {
       setSyncResult("Sync failed: " + String(e));
     } finally {
@@ -543,7 +552,7 @@ export default function SubsBidsTab({ clientId, companyId, clientName, clientAdd
                             )}
                           </div>
                         </div>
-                        <div className="text-xs mt-2" style={{ color: "#8b949e" }}>
+                        <div className="text-xs mt-2" style={{ color: "#8b949e" }} suppressHydrationWarning>
                           📅 {offer.createdAt ? fmtDate(offer.createdAt) : "—"}
                         </div>
                       </div>
