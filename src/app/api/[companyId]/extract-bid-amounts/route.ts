@@ -7,15 +7,13 @@
  * Updates the SubBid record with the extracted amount.
  */
 import { NextRequest, NextResponse } from "next/server";
-import Anthropic from "@anthropic-ai/sdk";
+import * as https from "https";
 import { google } from "googleapis";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 
 export const runtime = "nodejs";
 export const maxDuration = 60;
-
-const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 
 function getOAuthClient() {
   const oauth2Client = new google.auth.OAuth2(
@@ -97,31 +95,50 @@ async function fetchPdfBytes(fileUrl: string): Promise<{ buffer: Buffer | null; 
   return { buffer: null, error: "Unknown file URL format" };
 }
 
+function httpsPost(options: https.RequestOptions, body: Buffer): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const req = https.request(options, (res) => {
+      const chunks: Buffer[] = [];
+      res.on("data", (c: Buffer) => chunks.push(c));
+      res.on("end", () => resolve(Buffer.concat(chunks).toString("utf8")));
+    });
+    req.on("error", reject);
+    req.write(body);
+    req.end();
+  });
+}
+
 async function extractAmountFromPdf(pdfBytes: Buffer): Promise<{ amount: number | null; error?: string }> {
   try {
-    const response = await anthropic.messages.create({
+    const apiKey = process.env.ANTHROPIC_API_KEY ?? "";
+    const bodyObj = {
       model: "claude-sonnet-4-6",
       max_tokens: 256,
       messages: [{
         role: "user",
         content: [
-          {
-            type: "document",
-            source: {
-              type: "base64",
-              media_type: "application/pdf",
-              data: pdfBytes.toString("base64"),
-            },
-          } as Anthropic.DocumentBlockParam,
-          {
-            type: "text",
-            text: "Extract the total bid/proposal amount from this document. Look for the grand total, total cost, total price, or base bid amount. Return ONLY the numeric dollar amount with no symbols, commas, or text - just digits and a decimal point (e.g. 27500.00). If you cannot find a clear total amount, return the word null.",
-          },
+          { type: "document", source: { type: "base64", media_type: "application/pdf", data: pdfBytes.toString("base64") } },
+          { type: "text", text: "Extract the total bid/proposal amount from this document. Look for the grand total, total cost, total price, or base bid amount. Return ONLY the numeric dollar amount with no symbols, commas, or text - just digits and a decimal point (e.g. 27500.00). If you cannot find a clear total amount, return the word null." },
         ],
       }],
-    });
+    };
+    const bodyBuf = Buffer.from(JSON.stringify(bodyObj), "utf8");
 
-    const text = response.content[0]?.type === "text" ? response.content[0].text.trim() : "";
+    const rawResponse = await httpsPost({
+      hostname: "api.anthropic.com",
+      path: "/v1/messages",
+      method: "POST",
+      headers: {
+        "x-api-key": apiKey,
+        "anthropic-version": "2023-06-01",
+        "content-type": "application/json",
+        "content-length": bodyBuf.length,
+      },
+    }, bodyBuf);
+
+    const parsed = JSON.parse(rawResponse);
+    if (parsed.error) return { amount: null, error: `API error: ${parsed.error.message ?? JSON.stringify(parsed.error)}` };
+    const text: string = parsed.content?.[0]?.text?.trim() ?? "";
     if (!text || text === "null") return { amount: null, error: "Claude returned null" };
     const cleaned = text.replace(/[^0-9.]/g, "");
     const amount = parseFloat(cleaned);
