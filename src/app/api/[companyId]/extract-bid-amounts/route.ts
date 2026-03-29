@@ -40,7 +40,7 @@ function findFirstPdfPart(payload: any): any | null {
   return null;
 }
 
-async function fetchPdfBytes(fileUrl: string, companyId: string): Promise<Buffer | null> {
+async function fetchPdfBytes(fileUrl: string): Promise<Buffer | null> {
   // Vercel Blob private URL
   if (fileUrl.startsWith("https://")) {
     try {
@@ -153,7 +153,7 @@ export async function POST(
 
   for (const bid of bids) {
     if (!bid.fileUrl) continue;
-    const pdfBytes = await fetchPdfBytes(bid.fileUrl, params.companyId);
+    const pdfBytes = await fetchPdfBytes(bid.fileUrl);
     if (!pdfBytes) {
       results.push({ id: bid.id, amount: null, error: "Could not fetch PDF" });
       continue;
