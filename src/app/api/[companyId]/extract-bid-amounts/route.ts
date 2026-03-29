@@ -115,7 +115,7 @@ async function extractAmountFromPdf(pdfBytes: Buffer): Promise<{ amount: number 
           } as Anthropic.DocumentBlockParam,
           {
             type: "text",
-            text: `Extract the total bid/proposal amount from this document. Look for the grand total, total cost, total price, or base bid amount. Return ONLY the numeric dollar amount with no symbols, commas, or text — just digits and a decimal point (e.g. "27500.00"). If you cannot find a clear total amount, return "null".`,
+            text: "Extract the total bid/proposal amount from this document. Look for the grand total, total cost, total price, or base bid amount. Return ONLY the numeric dollar amount with no symbols, commas, or text - just digits and a decimal point (e.g. 27500.00). If you cannot find a clear total amount, return the word null.",
           },
         ],
       }],

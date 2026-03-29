@@ -2,8 +2,6 @@ import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import DarkCalendar from "@/components/calendar/DarkCalendar";
 import { auth } from "@/lib/auth";
-import fs from "fs";
-import path from "path";
 
 export const dynamic = "force-dynamic";
 
@@ -57,12 +55,6 @@ export default async function HubPage({
   }
 
   if (tab === "memory") {
-    let backupStatus: { date: string; file: string; size: string; timestamp: string } | null = null;
-    try {
-      const statusFile = path.join(process.env.HOME || "/Users/mike", "gc-portal-backups", "last-backup.json");
-      backupStatus = JSON.parse(fs.readFileSync(statusFile, "utf-8"));
-    } catch { /* no backup yet */ }
-
     const company = await prisma.company.findFirst({
       where: { id: params.companyId },
       select: { requestTrackerUrl: true, requestTrackerDate: true },
@@ -105,23 +97,12 @@ export default async function HubPage({
         </div>
 
         {/* Database Backup */}
-        <div className="rounded-2xl p-5" style={{ background: "#1e2736", border: `1px solid ${backupStatus ? "#22c55e44" : "#30373f"}` }}>
+        <div className="rounded-2xl p-5" style={{ background: "#1e2736", border: "1px solid #30373f" }}>
           <div className="flex items-start gap-4">
             <span className="text-3xl">💾</span>
             <div className="flex-1">
               <div className="font-semibold mb-1" style={{ color: "#e6edf3" }}>Daily Database Backup</div>
-              {backupStatus ? (
-                <>
-                  <p className="text-sm" style={{ color: "#22c55e" }}>
-                    Last backup: {new Date(backupStatus.timestamp).toLocaleString("en-US", { month: "short", day: "numeric", year: "numeric", hour: "numeric", minute: "2-digit", hour12: true })} — {backupStatus.size}
-                  </p>
-                  <p className="text-xs mt-1" style={{ color: "#484f58" }}>
-                    Saved to: {backupStatus.file}
-                  </p>
-                </>
-              ) : (
-                <p className="text-sm" style={{ color: "#8b949e" }}>No backup yet — runs nightly at 2 AM.</p>
-              )}
+              <p className="text-sm" style={{ color: "#8b949e" }}>Runs nightly at 2 AM — saved locally to ~/gc-portal-backups/</p>
               <p className="text-xs mt-2" style={{ color: "#484f58" }}>
                 Full PostgreSQL dump · runs every night at 2 AM · previous backup deleted automatically
               </p>
