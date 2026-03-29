@@ -107,12 +107,12 @@ async function extractAmountFromPdf(pdfBytes: Buffer): Promise<{ amount: number 
       },
       body: JSON.stringify({
         model: "claude-haiku-4-5-20251001",
-        max_tokens: 256,
+        max_tokens: 512,
         messages: [{
           role: "user",
           content: [
             { type: "document", source: { type: "base64", media_type: "application/pdf", data: pdfBytes.toString("base64") } },
-            { type: "text", text: "Extract the total bid/proposal amount from this document. Look for the grand total, total cost, total price, or base bid amount. Return ONLY the numeric dollar amount with no symbols, commas, or text - just digits and a decimal point (e.g. 27500.00). If you cannot find a clear total amount, return the word null." },
+            { type: "text", text: "This is a subcontractor bid or proposal document. Find the total contract/bid amount. Search every page carefully - it may be labeled Total, Grand Total, Total Cost, Total Price, Contract Amount, Proposal Amount, Base Bid, Lump Sum, Total Bid, Total Due, or just a final dollar amount at the bottom. Return ONLY the single largest dollar amount as digits and decimal only (e.g. 27500.00) - no $ sign, no commas, no other text. If you find multiple totals pick the largest. If you find no dollar amount at all, return null." },
           ],
         }],
       }),
@@ -149,7 +149,7 @@ export async function POST(
   const bids = await prisma.subBid.findMany({ where });
 
   const results: { id: string; amount: number | null; error?: string }[] = [];
-  const deadline = Date.now() + 50_000; // stop after 50s to stay within 60s limit
+  const deadline = Date.now() + 280_000; // stop after 280s to stay within 300s limit
 
   for (const bid of bids) {
     if (!bid.fileUrl) continue;
