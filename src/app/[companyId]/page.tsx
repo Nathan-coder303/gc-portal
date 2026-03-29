@@ -5,6 +5,8 @@ import { auth } from "@/lib/auth";
 import fs from "fs";
 import path from "path";
 
+export const dynamic = "force-dynamic";
+
 export default async function HubPage({
   params,
   searchParams,
