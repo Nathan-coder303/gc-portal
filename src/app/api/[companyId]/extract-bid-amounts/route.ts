@@ -131,6 +131,7 @@ async function extractAmountFromPdf(pdfBytes: Buffer): Promise<{ amount: number 
       headers: {
         "x-api-key": apiKey,
         "anthropic-version": "2023-06-01",
+        "anthropic-beta": "pdfs-2024-09-25",
         "content-type": "application/json",
         "content-length": bodyBuf.length,
       },
@@ -195,6 +196,6 @@ export async function POST(
   }
 
   const extracted = results.filter((r) => r.amount !== null).length;
-  const errors = results.filter((r) => r.error).map((r) => r.error);
+  const errors = [...new Set(results.filter((r) => r.error).map((r) => r.error))];
   return NextResponse.json({ total: results.length, extracted, results, errors });
 }
