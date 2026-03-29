@@ -97,7 +97,7 @@ async function fetchPdfBytes(fileUrl: string): Promise<{ buffer: Buffer | null; 
   return { buffer: null, error: "Unknown file URL format" };
 }
 
-async function extractAmountFromPdf(pdfBytes: Buffer): Promise<number | null> {
+async function extractAmountFromPdf(pdfBytes: Buffer): Promise<{ amount: number | null; error?: string }> {
   try {
     const response = await anthropic.messages.create({
       model: "claude-sonnet-4-6",
@@ -122,13 +122,13 @@ async function extractAmountFromPdf(pdfBytes: Buffer): Promise<number | null> {
     });
 
     const text = response.content[0]?.type === "text" ? response.content[0].text.trim() : "";
-    if (!text || text === "null") return null;
-    // Strip any accidental formatting
+    if (!text || text === "null") return { amount: null, error: "Claude returned null" };
     const cleaned = text.replace(/[^0-9.]/g, "");
     const amount = parseFloat(cleaned);
-    return isNaN(amount) || amount <= 0 ? null : amount;
-  } catch {
-    return null;
+    if (isNaN(amount) || amount <= 0) return { amount: null, error: `Claude returned unparseable: "${text}"` };
+    return { amount };
+  } catch (e) {
+    return { amount: null, error: `Claude error: ${String(e)}` };
   }
 }
 
@@ -166,7 +166,7 @@ export async function POST(
       continue;
     }
 
-    const amount = await extractAmountFromPdf(pdfBytes);
+    const { amount, error: extractError } = await extractAmountFromPdf(pdfBytes);
     const currentAmount = bid.amount !== null ? Number(bid.amount) : null;
     if (amount !== null && amount !== currentAmount) {
       await prisma.subBid.update({
@@ -174,7 +174,7 @@ export async function POST(
         data: { amount, status: "RECEIVED" },
       });
     }
-    results.push({ id: bid.id, amount, error: amount === null ? "Could not parse amount from PDF" : undefined });
+    results.push({ id: bid.id, amount, error: extractError });
   }
 
   const extracted = results.filter((r) => r.amount !== null).length;
