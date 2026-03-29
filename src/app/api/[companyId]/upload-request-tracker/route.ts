@@ -25,11 +25,17 @@ export async function POST(
   const date = new Date().toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" });
   const arrayBuffer = await file.arrayBuffer();
 
-  const blob = await put(
-    `request-tracker-${params.companyId}.xlsx`,
-    Buffer.from(arrayBuffer),
-    { access: "public", contentType: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", addRandomSuffix: false }
-  );
+  let blob;
+  try {
+    blob = await put(
+      `request-tracker-${params.companyId}.xlsx`,
+      Buffer.from(arrayBuffer),
+      { access: "public", contentType: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", addRandomSuffix: false }
+    );
+  } catch (err) {
+    console.error("Blob upload failed:", err);
+    return NextResponse.json({ error: "Blob upload failed", detail: String(err) }, { status: 500 });
+  }
 
   await prisma.company.update({
     where: { id: params.companyId },
