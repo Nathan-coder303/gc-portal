@@ -97,6 +97,8 @@ async function fetchPdfBytes(fileUrl: string): Promise<{ buffer: Buffer | null; 
 async function extractAmountFromPdf(pdfBytes: Buffer): Promise<{ amount: number | null; error?: string }> {
   try {
     const apiKey = (process.env.ANTHROPIC_API_KEY ?? "").replace(/[^\x20-\x7E]/g, "").trim();
+    // Cap at 150KB to limit token usage — totals are always on the first/last page
+    const capped = pdfBytes.length > 150_000 ? pdfBytes.slice(0, 150_000) : pdfBytes;
     const aiRes = await fetch("https://api.anthropic.com/v1/messages", {
       method: "POST",
       headers: {
@@ -107,11 +109,11 @@ async function extractAmountFromPdf(pdfBytes: Buffer): Promise<{ amount: number 
       },
       body: JSON.stringify({
         model: "claude-haiku-4-5-20251001",
-        max_tokens: 512,
+        max_tokens: 64,
         messages: [{
           role: "user",
           content: [
-            { type: "document", source: { type: "base64", media_type: "application/pdf", data: pdfBytes.toString("base64") } },
+            { type: "document", source: { type: "base64", media_type: "application/pdf", data: capped.toString("base64") } },
             { type: "text", text: "This is a subcontractor bid or proposal document. Find the total contract/bid amount. Search every page carefully - it may be labeled Total, Grand Total, Total Cost, Total Price, Contract Amount, Proposal Amount, Base Bid, Lump Sum, Total Bid, Total Due, or just a final dollar amount at the bottom. Return ONLY the single largest dollar amount as digits and decimal only (e.g. 27500.00) - no $ sign, no commas, no other text. If you find multiple totals pick the largest. If you find no dollar amount at all, return null." },
           ],
         }],
@@ -172,8 +174,8 @@ export async function POST(
       });
     }
     results.push({ id: bid.id, amount, error: extractError });
-    // Throttle to stay under 50k token/min rate limit
-    await new Promise((r) => setTimeout(r, 3000));
+    // Throttle to stay under 50k token/min rate limit (~4k tokens/PDF, 5s gap = ~48k/min)
+    await new Promise((r) => setTimeout(r, 5000));
   }
 
   const extracted = results.filter((r) => r.amount !== null).length;
