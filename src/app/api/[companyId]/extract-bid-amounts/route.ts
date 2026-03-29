@@ -105,12 +105,12 @@ async function callClaude(apiKey: string, pdfBase64: string): Promise<{ text: st
     },
     body: JSON.stringify({
       model: "claude-haiku-4-5-20251001",
-      max_tokens: 64,
+      max_tokens: 128,
       messages: [{
         role: "user",
         content: [
           { type: "document", source: { type: "base64", media_type: "application/pdf", data: pdfBase64 } },
-          { type: "text", text: "This is a subcontractor bid or proposal document. Find the total contract/bid amount. It may be labeled Total, Grand Total, Total Cost, Total Price, Contract Amount, Proposal Amount, Base Bid, Lump Sum, or Total Due. Return ONLY the dollar amount as digits and decimal only (e.g. 27500.00) - no $ sign, no commas, no other text. If you find no dollar amount, return null." },
+          { type: "text", text: "This is a subcontractor bid/proposal. Extract two things and respond with ONLY valid JSON, nothing else: {\"amount\": <total dollar amount as number, e.g. 27500.00, or null>, \"date\": <proposal/bid date as MM/DD/YYYY string, or null>}. For amount: find Grand Total, Total Cost, Total Price, Base Bid, Lump Sum, or Total Due. For date: find the date the proposal was written or submitted." },
         ],
       }],
     }),
@@ -123,27 +123,32 @@ async function callClaude(apiKey: string, pdfBase64: string): Promise<{ text: st
   return { text: parsed.content?.[0]?.type === "text" ? parsed.content[0].text.trim() : "", rateLimited: false };
 }
 
-async function extractAmountFromPdf(pdfBytes: Buffer): Promise<{ amount: number | null; error?: string }> {
+async function extractFromPdf(pdfBytes: Buffer): Promise<{ amount: number | null; bidDate: string | null; error?: string }> {
   try {
     const apiKey = (process.env.ANTHROPIC_API_KEY ?? "").replace(/[^\x20-\x7E]/g, "").trim();
     const pdfBase64 = pdfBytes.toString("base64");
 
     let result = await callClaude(apiKey, pdfBase64);
     if (result.rateLimited) {
-      // Wait 60s and retry once
       await new Promise((r) => setTimeout(r, 60_000));
       result = await callClaude(apiKey, pdfBase64);
     }
-    if (result.error) return { amount: null, error: `API error: ${result.error}` };
+    if (result.error) return { amount: null, bidDate: null, error: `API error: ${result.error}` };
 
-    const text = result.text;
-    if (!text || text === "null") return { amount: null, error: "Claude returned null" };
-    const cleaned = text.replace(/[^0-9.]/g, "");
-    const amount = parseFloat(cleaned);
-    if (isNaN(amount) || amount <= 0) return { amount: null, error: `Claude returned: "${text}"` };
-    return { amount };
+    const text = result.text.replace(/```json\n?|\n?```/g, "").trim();
+    let data: { amount?: number | null; date?: string | null } = {};
+    try { data = JSON.parse(text); } catch {
+      // fallback: try to parse as plain number (old format)
+      const cleaned = text.replace(/[^0-9.]/g, "");
+      const n = parseFloat(cleaned);
+      return { amount: isNaN(n) || n <= 0 ? null : n, bidDate: null, error: isNaN(n) ? `Unparseable: "${text}"` : undefined };
+    }
+
+    const amount = data.amount != null && !isNaN(Number(data.amount)) && Number(data.amount) > 0 ? Number(data.amount) : null;
+    const bidDate = data.date && data.date !== "null" ? String(data.date) : null;
+    return { amount, bidDate };
   } catch (e) {
-    return { amount: null, error: `Error: ${String(e)}` };
+    return { amount: null, bidDate: null, error: `Error: ${String(e)}` };
   }
 }
 
@@ -180,13 +185,13 @@ export async function POST(
       continue;
     }
 
-    const { amount, error: extractError } = await extractAmountFromPdf(pdfBytes);
+    const { amount, bidDate, error: extractError } = await extractFromPdf(pdfBytes);
     const currentAmount = bid.amount !== null ? Number(bid.amount) : null;
-    if (amount !== null && amount !== currentAmount) {
-      await prisma.subBid.update({
-        where: { id: bid.id },
-        data: { amount, status: "RECEIVED" },
-      });
+    const updateData: Record<string, unknown> = {};
+    if (amount !== null && amount !== currentAmount) { updateData.amount = amount; updateData.status = "RECEIVED"; }
+    if (bidDate) updateData.bidDate = bidDate;
+    if (Object.keys(updateData).length > 0) {
+      await prisma.subBid.update({ where: { id: bid.id }, data: updateData });
     }
     results.push({ id: bid.id, amount, error: extractError });
     // Throttle to stay under 50k token/min rate limit (~4k tokens/PDF, 5s gap = ~48k/min)

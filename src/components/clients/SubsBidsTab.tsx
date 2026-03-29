@@ -15,6 +15,7 @@ export type SubBidOffer = {
   status: string;
   isPlaceholder: boolean;
   createdAt?: string;
+  bidDate?: string | null;
 };
 
 export type SubBidRow = {
@@ -409,7 +410,7 @@ export default function SubsBidsTab({ clientId, companyId, clientName, clientAdd
                   </select>
                 </div>
                 <div className="flex items-center gap-1 text-xs mt-2" style={{ color: "#8b949e" }} suppressHydrationWarning>
-                  <span>📅</span><span>{offer.createdAt ? fmtDate(offer.createdAt) : "—"}</span>
+                  <span>📅</span><span>{offer.bidDate ?? (offer.createdAt ? fmtDate(offer.createdAt) : "—")}</span>
                 </div>
               </div>
             ))}
@@ -554,7 +555,7 @@ export default function SubsBidsTab({ clientId, companyId, clientName, clientAdd
                           </div>
                         </div>
                         <div className="flex items-center gap-1 text-xs mt-2" style={{ color: "#8b949e" }} suppressHydrationWarning>
-                          <span>📅</span><span>{offer.createdAt ? fmtDate(offer.createdAt) : "—"}</span>
+                          <span>📅</span><span>{offer.bidDate ?? (offer.createdAt ? fmtDate(offer.createdAt) : "—")}</span>
                         </div>
                       </div>
                     )}
