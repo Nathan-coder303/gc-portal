@@ -32,7 +32,6 @@ type Props = {
   canEdit: boolean;
   canDelete?: boolean;
   isCommercial?: boolean;
-  setCommercialAction?: (clientId: string, companyId: string, isCommercial: boolean) => Promise<void>;
 };
 
 
@@ -71,7 +70,7 @@ type EditForm = {
   status: string;
 };
 
-export default function SubsBidsTab({ clientId, companyId, clientName, clientAddress, subBids: initialSubBids, canEdit, canDelete, isCommercial: initialIsCommercial = false, setCommercialAction }: Props) {
+export default function SubsBidsTab({ clientId, companyId, clientName, clientAddress, subBids: initialSubBids, canEdit, canDelete, isCommercial: initialIsCommercial = false }: Props) {
   const router = useRouter();
   const [subBids, setSubBids] = useState<SubBidRow[]>(initialSubBids);
   const [isCommercial] = useState(initialIsCommercial);

@@ -13,7 +13,6 @@ import ClientDetailHeader from "@/components/clients/ClientDetailHeader";
 import ClientNotesTab from "@/components/clients/ClientNotesTab";
 import ClientTextNotes from "@/components/clients/ClientTextNotes";
 import ClientCoverPhotoSelector from "@/components/clients/ClientCoverPhotoSelector";
-import { setClientCommercial } from "../actions";
 
 export default async function ClientDetailPage({
   params,
@@ -230,7 +229,7 @@ export default async function ClientDetailPage({
             canEdit={canEdit}
             canDelete={canDelete}
             isCommercial={isCommercial}
-            setCommercialAction={setClientCommercial}
+
           />
         </div>
       )}
