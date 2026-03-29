@@ -109,25 +109,16 @@ export async function POST(req: NextRequest, { params }: { params: { companyId: 
   const gmail = google.gmail({ version: "v1", auth: authClient });
   const safeApiKey = (process.env.ANTHROPIC_API_KEY ?? "").replace(/[^\x20-\x7E]/g, "").trim();
 
-  // Search with multiple queries: targeted + broad recent catch-all
+  // Targeted query only — avoids pulling unrelated emails
   const targetedQuery = buildGmailQuery(clientName, clientAddress);
-  const queries = [
-    targetedQuery,
-    `has:attachment filename:pdf newer_than:7d`,
-  ];
 
   const allMessages: { id?: string | null }[] = [];
-  const seenIds = new Set<string>();
-  for (const q of queries) {
-    let pageToken: string | undefined;
-    do {
-      const listRes = await gmail.users.messages.list({ userId: "me", q, maxResults: 100, pageToken });
-      for (const m of listRes.data.messages ?? []) {
-        if (m.id && !seenIds.has(m.id)) { seenIds.add(m.id); allMessages.push(m); }
-      }
-      pageToken = listRes.data.nextPageToken ?? undefined;
-    } while (pageToken && allMessages.length < 300);
-  }
+  let pageToken: string | undefined;
+  do {
+    const listRes = await gmail.users.messages.list({ userId: "me", q: targetedQuery, maxResults: 100, pageToken });
+    allMessages.push(...(listRes.data.messages ?? []));
+    pageToken = listRes.data.nextPageToken ?? undefined;
+  } while (pageToken && allMessages.length < 200);
 
   // Bulk dedup: one query to get all already-imported Gmail message IDs for this client
   const existingSubBids = await prisma.subBid.findMany({

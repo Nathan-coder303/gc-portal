@@ -99,7 +99,6 @@ export async function POST(
       { labelIds: [label.id] },
       { q: "(7729 OR Carlyle) has:attachment filename:pdf" },
       { q: "(bid OR proposal OR quote) (\"Miami Beach\" OR \"MIBH\") has:attachment filename:pdf newer_than:90d" },
-      { q: "has:attachment filename:pdf newer_than:7d" },
     ];
 
     for (const queryOpts of queries) {

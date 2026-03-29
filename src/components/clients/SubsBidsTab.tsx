@@ -88,6 +88,7 @@ export default function SubsBidsTab({ clientId, companyId, clientName, clientAdd
   const [syncResult, setSyncResult] = useState<string | null>(null);
   const [extracting, setExtracting] = useState(false);
   const [extractResult, setExtractResult] = useState<string | null>(null);
+  const [triageOpen, setTriageOpen] = useState(true);
   const [formData, setFormData] = useState<EditForm>({ contractorName: "", amount: "", notes: "", status: "RECEIVED" });
   const fileInputRefs = useRef<Record<string, HTMLInputElement | null>>({});
 
@@ -365,10 +366,19 @@ export default function SubsBidsTab({ clientId, companyId, clientName, clientAdd
       {/* Triage section */}
       {triageRow && triageRow.offers.length > 0 && (
         <div className="mb-6">
-          <div className="text-xs font-bold uppercase tracking-wider mb-2" style={{ color: "#f97316" }}>
-            ⚠ Triage — drag to assign division
-          </div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <button
+            onClick={() => setTriageOpen(o => !o)}
+            className="flex items-center gap-2 w-full text-left mb-2"
+          >
+            <span className="text-xs font-bold uppercase tracking-wider" style={{ color: "#f97316" }}>
+              ⚠ Triage — drag to assign division
+            </span>
+            <span className="text-xs font-semibold px-2 py-0.5 rounded-full" style={{ background: "#f9731622", color: "#f97316" }}>
+              {triageRow.offers.length}
+            </span>
+            <span className="ml-auto text-xs" style={{ color: "#f97316" }}>{triageOpen ? "▲ Hide" : "▼ Show"}</span>
+          </button>
+          {triageOpen && <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             {triageRow.offers.map(offer => (
               <div
                 key={offer.id}
@@ -414,7 +424,7 @@ export default function SubsBidsTab({ clientId, companyId, clientName, clientAdd
                 </div>
               </div>
             ))}
-          </div>
+          </div>}
         </div>
       )}
 
