@@ -242,11 +242,10 @@ export default function SubsBidsTab({ clientId, companyId, clientName, clientAdd
   async function handleToggleCommercial(val: boolean) {
     if (!setCommercialAction) return;
     setTogglingCommercial(true);
-    // Navigate immediately with URL param — page re-renders without DB round-trip
     const url = new URL(window.location.href);
     url.searchParams.set("commercial", val ? "1" : "0");
-    // Save to DB in background (non-blocking)
-    setCommercialAction(clientId, companyId, val).catch(() => {});
+    // Await DB save before navigating — browser cancels in-flight requests on navigation
+    await setCommercialAction(clientId, companyId, val).catch(() => {});
     window.location.href = url.toString();
   }
 

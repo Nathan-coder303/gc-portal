@@ -80,7 +80,7 @@ export default async function ClientDetailPage({
         fileName: b.fileName,
         status: b.status,
         isPlaceholder: b.isPlaceholder,
-        createdAt: b.createdAt.toISOString(),
+        createdAt: b.createdAt ? new Date(b.createdAt as any).toISOString() : new Date(0).toISOString(),
       });
     }
     subBids = Array.from(map.values()).sort((a, b) => a.divisionCode.localeCompare(b.divisionCode));
@@ -153,7 +153,7 @@ export default async function ClientDetailPage({
           return (
             <Link
               key={tab.key}
-              href={`/${params.companyId}/clients/${params.clientId}?tab=${tab.key}`}
+              href={`/${params.companyId}/clients/${params.clientId}?tab=${tab.key}${isCommercial ? "&commercial=1" : ""}`}
               className="px-4 py-1.5 rounded-full text-sm font-medium transition-all"
               style={
                 isActive
