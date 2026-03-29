@@ -94,34 +94,49 @@ async function fetchPdfBytes(fileUrl: string): Promise<{ buffer: Buffer | null; 
   return { buffer: null, error: "Unknown file URL format" };
 }
 
+async function callClaude(apiKey: string, pdfBase64: string): Promise<{ text: string; rateLimited: boolean; error?: string }> {
+  const aiRes = await fetch("https://api.anthropic.com/v1/messages", {
+    method: "POST",
+    headers: {
+      "content-type": "application/json",
+      "x-api-key": apiKey,
+      "anthropic-version": "2023-06-01",
+      "anthropic-beta": "pdfs-2024-09-25",
+    },
+    body: JSON.stringify({
+      model: "claude-haiku-4-5-20251001",
+      max_tokens: 64,
+      messages: [{
+        role: "user",
+        content: [
+          { type: "document", source: { type: "base64", media_type: "application/pdf", data: pdfBase64 } },
+          { type: "text", text: "This is a subcontractor bid or proposal document. Find the total contract/bid amount. It may be labeled Total, Grand Total, Total Cost, Total Price, Contract Amount, Proposal Amount, Base Bid, Lump Sum, or Total Due. Return ONLY the dollar amount as digits and decimal only (e.g. 27500.00) - no $ sign, no commas, no other text. If you find no dollar amount, return null." },
+        ],
+      }],
+    }),
+  });
+  const parsed = await aiRes.json() as { content?: { type: string; text: string }[]; error?: { message: string; type?: string } };
+  if (parsed.error) {
+    const isRateLimit = parsed.error.type === "rate_limit_error" || (parsed.error.message ?? "").includes("rate limit");
+    return { text: "", rateLimited: isRateLimit, error: parsed.error.message };
+  }
+  return { text: parsed.content?.[0]?.type === "text" ? parsed.content[0].text.trim() : "", rateLimited: false };
+}
+
 async function extractAmountFromPdf(pdfBytes: Buffer): Promise<{ amount: number | null; error?: string }> {
   try {
     const apiKey = (process.env.ANTHROPIC_API_KEY ?? "").replace(/[^\x20-\x7E]/g, "").trim();
-    // Cap at 150KB to limit token usage — totals are always on the first/last page
-    const capped = pdfBytes.length > 150_000 ? pdfBytes.slice(0, 150_000) : pdfBytes;
-    const aiRes = await fetch("https://api.anthropic.com/v1/messages", {
-      method: "POST",
-      headers: {
-        "content-type": "application/json",
-        "x-api-key": apiKey,
-        "anthropic-version": "2023-06-01",
-        "anthropic-beta": "pdfs-2024-09-25",
-      },
-      body: JSON.stringify({
-        model: "claude-haiku-4-5-20251001",
-        max_tokens: 64,
-        messages: [{
-          role: "user",
-          content: [
-            { type: "document", source: { type: "base64", media_type: "application/pdf", data: capped.toString("base64") } },
-            { type: "text", text: "This is a subcontractor bid or proposal document. Find the total contract/bid amount. Search every page carefully - it may be labeled Total, Grand Total, Total Cost, Total Price, Contract Amount, Proposal Amount, Base Bid, Lump Sum, Total Bid, Total Due, or just a final dollar amount at the bottom. Return ONLY the single largest dollar amount as digits and decimal only (e.g. 27500.00) - no $ sign, no commas, no other text. If you find multiple totals pick the largest. If you find no dollar amount at all, return null." },
-          ],
-        }],
-      }),
-    });
-    const parsed = await aiRes.json() as { content?: { type: string; text: string }[]; error?: { message: string } };
-    if (parsed.error) return { amount: null, error: `API error: ${parsed.error.message}` };
-    const text = parsed.content?.[0]?.type === "text" ? parsed.content[0].text.trim() : "";
+    const pdfBase64 = pdfBytes.toString("base64");
+
+    let result = await callClaude(apiKey, pdfBase64);
+    if (result.rateLimited) {
+      // Wait 60s and retry once
+      await new Promise((r) => setTimeout(r, 60_000));
+      result = await callClaude(apiKey, pdfBase64);
+    }
+    if (result.error) return { amount: null, error: `API error: ${result.error}` };
+
+    const text = result.text;
     if (!text || text === "null") return { amount: null, error: "Claude returned null" };
     const cleaned = text.replace(/[^0-9.]/g, "");
     const amount = parseFloat(cleaned);
