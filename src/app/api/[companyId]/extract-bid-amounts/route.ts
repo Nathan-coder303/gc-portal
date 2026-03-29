@@ -12,7 +12,7 @@ import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 
 export const runtime = "nodejs";
-export const maxDuration = 60;
+export const maxDuration = 300;
 
 function getOAuthClient() {
   const oauth2Client = new google.auth.OAuth2(
@@ -173,6 +173,8 @@ export async function POST(
       });
     }
     results.push({ id: bid.id, amount, error: extractError });
+    // Throttle to avoid hitting 50k token/min rate limit
+    await new Promise((r) => setTimeout(r, 1500));
   }
 
   const extracted = results.filter((r) => r.amount !== null).length;
