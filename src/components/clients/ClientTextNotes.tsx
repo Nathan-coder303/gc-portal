@@ -21,7 +21,7 @@ type TextNote = {
 };
 
 function formatDate(iso: string) {
-  return new Date(iso).toLocaleString("en-US", { month: "short", day: "numeric", year: "numeric", hour: "numeric", minute: "2-digit", hour12: true });
+  return new Date(iso).toLocaleDateString("en-US", { timeZone: "UTC", month: "short", day: "numeric", year: "numeric" });
 }
 
 function todayISO() {
@@ -94,7 +94,7 @@ export default function ClientTextNotes({
       const res = await fetch(`/api/${companyId}/notes`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ clientId, content: content.trim(), noteDate: new Date(noteDate).toISOString(), sendEmail: false }),
+        body: JSON.stringify({ clientId, content: content.trim(), noteDate: new Date(noteDate + "T12:00:00Z").toISOString(), sendEmail: false }),
       });
       if (res.ok) {
         const note = await res.json();
@@ -119,7 +119,7 @@ export default function ClientTextNotes({
         body: JSON.stringify({
           clientId,
           content: content.trim(),
-          noteDate: new Date(noteDate).toISOString(),
+          noteDate: new Date(noteDate + "T12:00:00Z").toISOString(),
           sendEmail: true,
           emailSubject: subject,
           emailTo: to,
@@ -159,7 +159,7 @@ export default function ClientTextNotes({
     await fetch(`/api/${companyId}/notes`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ noteId, content: editContent.trim(), noteDate: new Date(editDate).toISOString() }),
+      body: JSON.stringify({ noteId, content: editContent.trim(), noteDate: new Date(editDate + "T12:00:00Z").toISOString() }),
     });
     setNotes((prev) => prev.map((n) => n.id === noteId ? { ...n, content: editContent.trim(), noteDate: new Date(editDate).toISOString() } : n));
     setEditingId(null);
