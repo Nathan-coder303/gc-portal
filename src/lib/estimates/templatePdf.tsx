@@ -293,15 +293,13 @@ function CoverPages({ template, client, clientCoverPhotoType, clientCoverPhotoUr
         </View>
         <Text style={{ fontSize: 12, fontFamily: "Helvetica-Bold", color: DARK, marginBottom: 12, textTransform: "uppercase", letterSpacing: 0.5 }}>Why Choose Us</Text>
         {[
-          "Over 20 years of delivering the highest quality workmanship",
-          "Multilingual service: English, Spanish, Portuguese, French, and Creole",
-          "Locally owned and operated company",
-          "Team of highly skilled and experienced professionals",
-          "Specialized expertise in Florida climate conditions: hurricanes, sun exposure, and wind resistance",
-          "Customized solutions with honest, transparent recommendations",
-          "Proven track record in high-end and custom home construction",
-          "Industry-recognized and award-winning performance",
-          "Strong, long-term relationships with trusted manufacturers and suppliers",
+          "Licensed & Insured — CGC1527069 | CCC1336817",
+          "Miami-Dade Approved Materials & NOA Certified",
+          "Florida Building Code 2023 Compliant",
+          "Expert Teams for All Roofing Systems: Shingle, Tile, Metal, TPO, Flat",
+          "Free Inspections & Emergency Repair Services",
+          "Dedicated Project Manager on Every Job",
+          "Serving South Florida Homeowners & Businesses for 20+ Years",
         ].map((item, i) => (
           <View key={i} style={{ flexDirection: "row", alignItems: "flex-start", marginBottom: 7, gap: 8 }}>
             <Text style={{ fontSize: 10, color: GOLD, fontFamily: "Helvetica-Bold" }}>•</Text>
@@ -725,7 +723,7 @@ function TemplatePdfDocument({ companyName, template, client, divisions, showTer
         </View>
       )}
       {/* Signature Block */}
-      <View style={[styles.sigSection, { marginTop: 14 }]} minPresenceAhead={220}>
+      <View style={[styles.sigSection, { marginTop: 14 }]} wrap={false}>
         <View style={[styles.sectionDivider, { marginTop: 10 }]} />
         <Text style={[styles.sectionTitle, { marginBottom: 4, paddingTop: 6 }]}>Agreement &amp; Authorization</Text>
         <Text style={{ fontSize: 8, color: "#475569", marginBottom: 4 }}>
@@ -874,7 +872,7 @@ function TemplatePdfDocument({ companyName, template, client, divisions, showTer
                   .reduce((s, i) => s + calcTotal(i.defaultQty, i.defaultUnitCost, i.defaultMarkupPct), 0);
 
                 return (
-                  <View key={div.id} break={div.name.toLowerCase().includes("roofing system")}>
+                  <View key={div.id}>
                     <View wrap={false} minPresenceAhead={120} style={[styles.divisionHeader, groupLabel ? { marginTop: 6 } : {}]}>
                       <View style={styles.divisionLeft}>
                         {!isRoof && div.csiCode ? <Text style={styles.divisionCsi}>{div.csiCode}</Text> : null}

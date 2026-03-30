@@ -16,7 +16,6 @@ export type Page2Type = "ROOF" | "ADDITION" | "NONE";
 const PAGE2_OPTIONS: { type: Page2Type; label: string; desc: string; icon: string }[] = [
   { type: "ROOF",     label: "Roof Presentation",        desc: "Roof upgrades & options pages", icon: "🏠" },
   { type: "ADDITION", label: "Construction Presentation", desc: "Addition / construction intro",  icon: "🏗️" },
-  { type: "NONE",     label: "Skip",                     desc: "No presentation page",           icon: "⊘"  },
 ];
 
 export type PdfOptions = {
@@ -48,7 +47,7 @@ export default function CoverPagePickerModal({
 }) {
   const defaultCover: CoverType = isCommercial ? "COMMERCIAL" : "RESIDENTIAL";
   const [cover, setCover]               = useState<CoverType>(defaultCover);
-  const [page2, setPage2]               = useState<Page2Type>(initialPage2);
+  const [page2, setPage2]               = useState<Page2Type>(initialPage2 === "NONE" ? "ROOF" : initialPage2);
   const [includeInsert, setIncludeInsert] = useState(true);
 
   const coverOptions: { type: CoverType; label: string; img: string; desc: string }[] = [
@@ -98,7 +97,7 @@ export default function CoverPagePickerModal({
         {/* ── Section 2: Presentation Page ── */}
         <div>
           <p className="text-xs font-semibold uppercase tracking-widest mb-2" style={{ color: "#8b949e" }}>Page 2 — Presentation</p>
-          <div className="grid grid-cols-3 gap-2">
+          <div className="grid grid-cols-2 gap-2">
             {PAGE2_OPTIONS.map((opt) => {
               const active = page2 === opt.type;
               return (
@@ -120,26 +119,27 @@ export default function CoverPagePickerModal({
         {/* ── Section 3: Insert File ── */}
         {hasInsertFile && (
           <div>
-            <p className="text-xs font-semibold uppercase tracking-widest mb-2" style={{ color: "#8b949e" }}>Page 3 — Client Drawing / Report</p>
-            <label
-              className="flex items-center gap-3 cursor-pointer rounded-xl px-4 py-3"
-              style={{ border: `2px solid ${includeInsert ? "#C9A84C" : "#30373f"}`, background: includeInsert ? "#1e2a12" : "#1e2736" }}
-            >
-              <input
-                type="checkbox"
-                checked={includeInsert}
-                onChange={e => setIncludeInsert(e.target.checked)}
-                className="w-4 h-4 rounded accent-[#C9A84C]"
-              />
-              <div>
-                <div className="text-sm font-semibold" style={{ color: includeInsert ? "#C9A84C" : "#e6edf3" }}>
-                  Include client drawing / roof report
-                </div>
-                <div className="text-xs mt-0.5" style={{ color: "#8b949e" }}>
-                  Inserts the uploaded file — uncheck to skip and avoid a blank page
-                </div>
-              </div>
-            </label>
+            <p className="text-xs font-semibold uppercase tracking-widest mb-2" style={{ color: "#8b949e" }}>Include page 2 from report?</p>
+            <div className="grid grid-cols-2 gap-2">
+              <button
+                onClick={() => setIncludeInsert(true)}
+                className="rounded-xl p-3 text-left transition-all"
+                style={{ border: `2px solid ${includeInsert ? "#C9A84C" : "#30373f"}`, background: includeInsert ? "#1e2a12" : "#1e2736", outline: "none" }}
+              >
+                <div className="text-2xl mb-1">✅</div>
+                <div className="text-xs font-semibold" style={{ color: includeInsert ? "#C9A84C" : "#e6edf3" }}>Yes</div>
+                <div className="text-[10px] mt-0.5" style={{ color: "#8b949e" }}>Include the uploaded report page</div>
+              </button>
+              <button
+                onClick={() => setIncludeInsert(false)}
+                className="rounded-xl p-3 text-left transition-all"
+                style={{ border: `2px solid ${!includeInsert ? "#C9A84C" : "#30373f"}`, background: !includeInsert ? "#1e2a12" : "#1e2736", outline: "none" }}
+              >
+                <div className="text-2xl mb-1">⊘</div>
+                <div className="text-xs font-semibold" style={{ color: !includeInsert ? "#C9A84C" : "#e6edf3" }}>No</div>
+                <div className="text-[10px] mt-0.5" style={{ color: "#8b949e" }}>Skip — avoid blank page</div>
+              </button>
+            </div>
           </div>
         )}
 
