@@ -628,11 +628,11 @@ function AdditionPage2({ client }: Pick<TemplatePdfProps, "client">) {
       <View style={{ paddingHorizontal: 28, paddingTop: 8, paddingBottom: 8 }}>
 
         {/* WHAT WE BUILD + OUR APPROACH side by side */}
-        <View style={{ flexDirection: "row", gap: 20, marginBottom: 14 }}>
+        <View style={{ flexDirection: "row", gap: 20, marginBottom: 10 }}>
           <View style={{ flex: 1 }}>
-            <Text style={{ fontSize: 14, fontFamily: "Helvetica-Bold", color: DARK, letterSpacing: 0.5, marginBottom: 12 }}>WHAT WE BUILD</Text>
+            <Text style={{ fontSize: 14, fontFamily: "Helvetica-Bold", color: DARK, letterSpacing: 0.5, marginBottom: 8 }}>WHAT WE BUILD</Text>
             {WHAT_ITEMS.map((item, i) => (
-              <View key={i} style={{ flexDirection: "row", alignItems: "flex-start", marginBottom: 8, gap: 8 }}>
+              <View key={i} style={{ flexDirection: "row", alignItems: "flex-start", marginBottom: 5, gap: 8 }}>
                 <Text style={{ fontSize: 12, color: GOLD, fontFamily: "Helvetica-Bold" }}>•</Text>
                 <Text style={{ fontSize: 12, color: "#334155", flex: 1 }}>{item}</Text>
               </View>
@@ -640,7 +640,7 @@ function AdditionPage2({ client }: Pick<TemplatePdfProps, "client">) {
           </View>
           <View style={{ width: 2, backgroundColor: GOLD, marginVertical: 2 }} />
           <View style={{ flex: 1, paddingLeft: 6 }}>
-            <Text style={{ fontSize: 14, fontFamily: "Helvetica-Bold", color: DARK, letterSpacing: 0.5, marginBottom: 12 }}>OUR APPROACH</Text>
+            <Text style={{ fontSize: 14, fontFamily: "Helvetica-Bold", color: DARK, letterSpacing: 0.5, marginBottom: 8 }}>OUR APPROACH</Text>
             <Text style={{ fontSize: 12, color: "#334155", lineHeight: 1.6 }}>
               We handle your project from concept to completion — including planning, engineering, permitting, and construction — ensuring a seamless process with one accountable team. You get a single point of contact, no subcontractor confusion, and full transparency from day one.
             </Text>
@@ -648,14 +648,14 @@ function AdditionPage2({ client }: Pick<TemplatePdfProps, "client">) {
         </View>
 
         {/* Scope of Work title */}
-        <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "center", marginBottom: 12, gap: 12 }}>
+        <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "center", marginBottom: 8, gap: 12 }}>
           <View style={{ flex: 1, height: 1, backgroundColor: GOLD }} />
           <Text style={{ fontSize: 15, fontFamily: "Helvetica-Bold", color: DARK, letterSpacing: 1 }}>SCOPE OF WORK</Text>
           <View style={{ flex: 1, height: 1, backgroundColor: GOLD }} />
         </View>
 
         {/* Intro */}
-        <Text style={{ fontSize: 11, color: "#334155", lineHeight: 1.55, marginBottom: 14 }}>
+        <Text style={{ fontSize: 11, color: "#334155", lineHeight: 1.55, marginBottom: 8 }}>
           We appreciate the opportunity to provide this proposal. MIBH Construction will deliver all labor, materials, equipment, and supervision required to complete your addition in full compliance with Florida Building Code (FBC 2023), local municipal requirements, and approved engineering plans.
         </Text>
 
