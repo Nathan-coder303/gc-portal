@@ -104,7 +104,7 @@ const styles = StyleSheet.create({
   sectionTitle: { fontSize: 12, fontFamily: "Helvetica-Bold", color: DARK, marginBottom: 8, paddingTop: 12 },
 
   // T&C
-  termsText: { fontSize: 8.5, color: "#475569", lineHeight: 1.6 },
+  termsText: { fontSize: 8, color: "#475569", lineHeight: 1.45 },
 
   // Payment schedule
   payTable: { marginTop: 4 },
@@ -118,10 +118,10 @@ const styles = StyleSheet.create({
   pageNumber: { position: "absolute", bottom: 24, right: 40, fontSize: 8, color: "#94a3b8" },
 
   // Signature block
-  sigSection: { marginTop: 28 },
-  sigRow: { flexDirection: "row", gap: 40, marginTop: 20 },
+  sigSection: { marginTop: 14 },
+  sigRow: { flexDirection: "row", gap: 40, marginTop: 10 },
   sigBlock: { flex: 1 },
-  sigPartyLabel: { fontSize: 9, fontFamily: "Helvetica-Bold", color: DARK, textTransform: "uppercase", letterSpacing: 1, marginBottom: 16 },
+  sigPartyLabel: { fontSize: 9, fontFamily: "Helvetica-Bold", color: DARK, textTransform: "uppercase", letterSpacing: 1, marginBottom: 10 },
   sigLine: { borderBottomWidth: 1, borderBottomColor: "#475569", marginBottom: 3 },
   sigLineLabel: { fontSize: 7, color: "#94a3b8" },
   sigPrefilled: { fontSize: 9, color: DARK, fontFamily: "Helvetica-Bold", marginBottom: 3 },
@@ -777,38 +777,38 @@ function TemplatePdfDocument({ companyName, template, client, divisions, showTer
           <Text style={styles.sectionTitle}>Terms &amp; Conditions</Text>
           {termsContent
             ? termsContent.split(/\r?\n\r?\n|\r?\n(?=\d+[\.\)]?\s)/).filter(Boolean).map((para, i) => (
-                <Text key={i} style={[styles.termsText, { marginBottom: 10 }]}>{para.trim()}</Text>
+                <Text key={i} style={[styles.termsText, { marginBottom: 6 }]}>{para.trim()}</Text>
               ))
             : null}
         </View>
       )}
       {/* Signature Block */}
-      <View style={[styles.sigSection, { marginTop: 14 }]} wrap={false}>
-        <View style={[styles.sectionDivider, { marginTop: 10 }]} />
-        <Text style={[styles.sectionTitle, { marginBottom: 4, paddingTop: 6 }]}>Agreement &amp; Authorization</Text>
-        <Text style={{ fontSize: 8, color: "#475569", marginBottom: 4 }}>
+      <View style={styles.sigSection} wrap={false}>
+        <View style={[styles.sectionDivider, { marginTop: 6 }]} />
+        <Text style={[styles.sectionTitle, { marginBottom: 3, paddingTop: 5 }]}>Agreement &amp; Authorization</Text>
+        <Text style={{ fontSize: 8, color: "#475569", marginBottom: 3 }}>
           By signing below, both parties agree to the scope of work, pricing, and terms described in this document.
         </Text>
-        <View style={[styles.sigRow, { marginTop: 12 }]}>
+        <View style={styles.sigRow}>
           {/* Customer */}
           <View style={styles.sigBlock}>
             <Text style={styles.sigPartyLabel}>Customer</Text>
             {clientSignatureData
               // eslint-disable-next-line jsx-a11y/alt-text
-              ? <Image src={clientSignatureData} style={{ height: 40, marginBottom: 3, objectFit: "contain", objectPositionX: 0 }} />
-              : <View style={[styles.sigLine, { marginBottom: 3, height: 40 }]} />}
+              ? <Image src={clientSignatureData} style={{ height: 32, marginBottom: 3, objectFit: "contain", objectPositionX: 0 }} />
+              : <View style={[styles.sigLine, { marginBottom: 3, height: 32 }]} />}
             <Text style={styles.sigLineLabel}>Signature</Text>
-            <View style={{ height: 6 }} />
+            <View style={{ height: 4 }} />
             <View style={styles.sigLine} />
             {clientSignedByName
               ? <Text style={styles.sigPrefilled}>{clientSignedByName}</Text>
-              : <View style={{ height: 10 }} />}
+              : <View style={{ height: 8 }} />}
             <Text style={styles.sigLineLabel}>Name (Print)</Text>
-            <View style={{ height: 6 }} />
+            <View style={{ height: 4 }} />
             <View style={styles.sigLine} />
             {clientSignedAt
               ? <Text style={styles.sigPrefilled}>{clientSignedAt.toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" })}</Text>
-              : <View style={{ height: 10 }} />}
+              : <View style={{ height: 8 }} />}
             <Text style={styles.sigLineLabel}>Date</Text>
           </View>
           {/* Contractor */}
@@ -816,18 +816,18 @@ function TemplatePdfDocument({ companyName, template, client, divisions, showTer
             <Text style={styles.sigPartyLabel}>Contractor</Text>
             {contractorSignatureData
               // eslint-disable-next-line jsx-a11y/alt-text
-              ? <Image src={contractorSignatureData} style={{ height: 40, marginBottom: 3, objectFit: "contain", objectPositionX: 0 }} />
-              : <View style={[styles.sigLine, { marginBottom: 3, height: 40 }]} />}
+              ? <Image src={contractorSignatureData} style={{ height: 32, marginBottom: 3, objectFit: "contain", objectPositionX: 0 }} />
+              : <View style={[styles.sigLine, { marginBottom: 3, height: 32 }]} />}
             <Text style={styles.sigLineLabel}>Signature</Text>
-            <View style={{ height: 6 }} />
+            <View style={{ height: 4 }} />
             <View style={styles.sigLine} />
             <Text style={styles.sigPrefilled}>Mike Baruh</Text>
             <Text style={styles.sigLineLabel}>Name (Print)</Text>
-            <View style={{ height: 6 }} />
+            <View style={{ height: 4 }} />
             <View style={styles.sigLine} />
             {contractorSignedAt
               ? <Text style={styles.sigPrefilled}>{contractorSignedAt.toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" })}</Text>
-              : <View style={{ height: 10 }} />}
+              : <View style={{ height: 8 }} />}
             <Text style={styles.sigLineLabel}>Date</Text>
           </View>
         </View>
