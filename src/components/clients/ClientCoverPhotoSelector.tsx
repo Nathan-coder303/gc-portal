@@ -9,6 +9,8 @@ const GOLD = "#C9A84C";
 const PRESETS = [
   { key: "FLAT_ROOFS", label: "Flat Roofs", thumb: "/flat-roofs-cover.jpg" },
   { key: "ADDITIONS", label: "Additions", thumb: "/additions.jpg" },
+  { key: "LAUNDRY", label: "Laundry", thumb: "/laundry-cover.png" },
+  { key: "SHINGLE_ROOFS", label: "Shingle Roofs", thumb: "/shingle-roofs-cover.png" },
 ] as const;
 
 export default function ClientCoverPhotoSelector({
