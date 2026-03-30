@@ -829,11 +829,11 @@ function TemplatePdfDocument({ companyName, template, client, divisions, showTer
           </View>
         </View>
 
-        {/* Roof intro text — page 1, before divisions */}
+        {/* Roof intro text — page 1, before divisions (all except closing para) */}
         {isRoof && (
           <View style={{ marginBottom: 10, paddingVertical: 4 }}>
-            {ROOF_INTRO_PARAS.map((para, i) => (
-              <Text key={i} style={{ fontSize: 10.5, color: "#334155", lineHeight: 1.65, marginBottom: i < ROOF_INTRO_PARAS.length - 1 ? 8 : 0 }}>{para}</Text>
+            {ROOF_INTRO_PARAS.slice(0, -1).map((para, i) => (
+              <Text key={i} style={{ fontSize: 10.5, color: "#334155", lineHeight: 1.65, marginBottom: i < ROOF_INTRO_PARAS.length - 2 ? 8 : 0 }}>{para}</Text>
             ))}
           </View>
         )}
@@ -937,6 +937,13 @@ function TemplatePdfDocument({ companyName, template, client, divisions, showTer
             <Text style={GRAND_TOTAL_VALUE_STYLE}>${fmt(grandTotalWithGc)}</Text>
           </View>
         </View>
+
+        {/* Closing paragraph (roof only) — after estimate, before payment */}
+        {isRoof && (
+          <Text style={{ fontSize: 10.5, color: "#334155", lineHeight: 1.65, marginTop: 10, marginBottom: 4 }}>
+            {ROOF_INTRO_PARAS[ROOF_INTRO_PARAS.length - 1]}
+          </Text>
+        )}
 
         {/* Payment terms + signature: inline when no extra page */}
         {!includeRoofUpgradesPage && paymentTermsSignatureBlock}
