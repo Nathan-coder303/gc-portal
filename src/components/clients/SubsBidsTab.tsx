@@ -396,49 +396,55 @@ export default function SubsBidsTab({ clientId, companyId, clientName, clientAdd
       {triageRow && triageRow.offers.length > 0 && (
         <div className="mb-6">
           {/* Header row */}
-          <div className="flex items-center gap-2 mb-2">
-            <button onClick={() => setTriageOpen(o => !o)} className="flex items-center gap-2">
-              <span className="text-xs font-bold uppercase tracking-wider" style={{ color: "#f97316" }}>⚠ Triage — drag to assign division</span>
+          <div className="flex items-center gap-3 mb-2">
+            {/* Left: collapse toggle */}
+            <button onClick={() => setTriageOpen(o => !o)} className="flex items-center gap-2 shrink-0">
+              <span className="text-xs font-bold uppercase tracking-wider" style={{ color: "#f97316" }}>⚠ Triage</span>
               <span className="text-xs font-semibold px-2 py-0.5 rounded-full" style={{ background: "#f9731622", color: "#f97316" }}>{triageRow.offers.length}</span>
               <span className="text-xs" style={{ color: "#f97316" }}>{triageOpen ? "▲ Hide" : "▼ Show"}</span>
             </button>
-            {/* Bulk action bar — only visible when items selected */}
-            {triageSelected.size > 0 && (
-              <div className="flex items-center gap-2 ml-auto">
-                <span className="text-xs" style={{ color: "#8b949e" }}>{triageSelected.size} selected</span>
-                <select
-                  defaultValue=""
-                  disabled={bulkMoving}
-                  onChange={(e) => { if (e.target.value) handleBulkMove(e.target.value); }}
-                  style={{ background: "#1e2736", color: "#e6edf3", border: "1px solid #C9A84C66", borderRadius: 6, padding: "3px 6px", fontSize: 11, cursor: "pointer" }}
+
+            {/* Right side: select-all + bulk actions */}
+            <div className="flex items-center gap-2 ml-auto">
+              {/* Select all / Deselect all — always visible when open */}
+              {triageOpen && (
+                <button
+                  onClick={() => setTriageSelected(
+                    triageSelected.size === triageRow.offers.length
+                      ? new Set()
+                      : new Set(triageRow.offers.map(o => o.id))
+                  )}
+                  className="px-2 py-1 rounded text-xs font-semibold"
+                  style={{ background: "#f9731622", color: "#f97316", border: "1px solid #f9731644" }}
                 >
-                  <option value="">Move to…</option>
-                  {allDivisions.map(d => <option key={d.code} value={d.code}>{d.code} — {d.name}</option>)}
-                </select>
-                {canDelete && (
-                  <button
-                    onClick={handleBulkDelete}
+                  {triageSelected.size === triageRow.offers.length && triageRow.offers.length > 0 ? "Deselect all" : "Select all"}
+                </button>
+              )}
+
+              {/* Bulk actions — only when items selected */}
+              {triageSelected.size > 0 && (
+                <>
+                  <span className="text-xs" style={{ color: "#8b949e" }}>{triageSelected.size} selected</span>
+                  <select
+                    value=""
                     disabled={bulkMoving}
-                    className="px-2 py-1 rounded text-xs font-semibold disabled:opacity-50"
-                    style={{ background: "#f8514922", color: "#f85149", border: "1px solid #f8514933" }}
-                  >Delete</button>
-                )}
-              </div>
-            )}
-            {/* Select all / clear */}
-            {triageOpen && triageRow.offers.length > 0 && (
-              <button
-                onClick={() => setTriageSelected(
-                  triageSelected.size === triageRow.offers.length
-                    ? new Set()
-                    : new Set(triageRow.offers.map(o => o.id))
-                )}
-                className="ml-auto text-xs"
-                style={{ color: "#8b949e" }}
-              >
-                {triageSelected.size === triageRow.offers.length ? "Deselect all" : "Select all"}
-              </button>
-            )}
+                    onChange={(e) => { if (e.target.value) handleBulkMove(e.target.value); }}
+                    style={{ background: "#1e2736", color: "#e6edf3", border: "1px solid #C9A84C66", borderRadius: 6, padding: "3px 6px", fontSize: 11, cursor: "pointer" }}
+                  >
+                    <option value="">Move to…</option>
+                    {allDivisions.map(d => <option key={d.code} value={d.code}>{d.code} — {d.name}</option>)}
+                  </select>
+                  {canDelete && (
+                    <button
+                      onClick={handleBulkDelete}
+                      disabled={bulkMoving}
+                      className="px-2 py-1 rounded text-xs font-semibold disabled:opacity-50"
+                      style={{ background: "#f8514922", color: "#f85149", border: "1px solid #f8514933" }}
+                    >Delete</button>
+                  )}
+                </>
+              )}
+            </div>
           </div>
 
           {/* Cards */}
