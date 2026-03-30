@@ -12,7 +12,7 @@ import { auth } from "@/lib/auth";
 import { STANDARD_DIVISIONS } from "@/lib/divisions";
 
 export const runtime = "nodejs";
-export const maxDuration = 60;
+export const maxDuration = 120;
 
 function getOAuthClient() {
   const oauth2Client = new google.auth.OAuth2(
@@ -65,12 +65,7 @@ export async function POST(
     if (!client) return NextResponse.json({ error: "Client not found" }, { status: 404 });
 
     const gmail = google.gmail({ version: "v1", auth: getOAuthClient() });
-    // Sanitize API key — strip any invisible/non-ASCII chars that cause ByteString errors in fetch headers
     const safeApiKey = (process.env.ANTHROPIC_API_KEY ?? "").replace(/[^\x20-\x7E]/g, "").trim();
-
-    // Confirm which Gmail account is being accessed
-    const profileRes = await gmail.users.getProfile({ userId: "me" });
-    const gmailEmail = profileRes.data.emailAddress ?? "unknown";
 
     // Get already-imported gmail msg IDs to deduplicate (exclude EXCLUDED placeholders so PDF emails can be retried)
     const existingBids = await prisma.subBid.findMany({
@@ -88,40 +83,27 @@ export async function POST(
     );
     if (!label?.id) {
       const allLabelNames = labelsRes.data.labels?.map(l => l.name).filter(Boolean) ?? [];
-      return NextResponse.json({ error: "Gmail label '7729 bids' not found", gmailEmail, allLabels: allLabelNames }, { status: 400 });
+      return NextResponse.json({ error: "Gmail label '7729 bids' not found", allLabels: allLabelNames }, { status: 400 });
     }
 
-    // Fetch emails: labeled "7729 bids" OR keyword-matched (7729 / Carlyle / Miami Beach / bid / proposal)
+    // Fetch only emails tagged with the "7729 bids" label — no keyword guessing
     const allMessages: { id?: string | null }[] = [];
-    const seenIds = new Set<string>();
-
-    const queries = [
-      { labelIds: [label.id] },
-      { q: "(7729 OR Carlyle) has:attachment filename:pdf" },
-      { q: "(bid OR proposal OR quote) (\"Miami Beach\" OR \"MIBH\") has:attachment filename:pdf newer_than:90d" },
-    ];
-
-    for (const queryOpts of queries) {
-      let pageToken: string | undefined;
-      do {
-        const listRes = await gmail.users.messages.list({
-          userId: "me",
-          maxResults: 100,
-          pageToken,
-          ...queryOpts,
-        });
-        for (const m of listRes.data.messages ?? []) {
-          if (m.id && !seenIds.has(m.id)) {
-            seenIds.add(m.id);
-            allMessages.push(m);
-          }
-        }
-        pageToken = listRes.data.nextPageToken ?? undefined;
-      } while (pageToken && allMessages.length < 500);
-    }
+    let pageToken: string | undefined;
+    do {
+      const listRes = await gmail.users.messages.list({
+        userId: "me",
+        maxResults: 100,
+        labelIds: [label.id],
+        pageToken,
+      });
+      for (const m of listRes.data.messages ?? []) {
+        if (m.id) allMessages.push(m);
+      }
+      pageToken = listRes.data.nextPageToken ?? undefined;
+    } while (pageToken && allMessages.length < 500);
 
     const newMessages = allMessages.filter(m => m.id && !processedMsgIds.has(m.id));
-    const toProcess = newMessages.slice(0, 40);
+    const toProcess = newMessages.slice(0, 15); // ~15 emails × ~4s each = ~60s, safe within 120s limit
 
     const divisionList = STANDARD_DIVISIONS.map(d => `${d.code} - ${d.name}`).join("\n");
 
@@ -261,7 +243,6 @@ Respond ONLY with valid JSON, no markdown:
     const remaining = Math.max(0, newMessages.length - toProcess.length);
 
     return NextResponse.json({
-      gmailEmail,
       labelId: label.id,
       found: allMessages.length,
       newUnprocessed: newMessages.length,

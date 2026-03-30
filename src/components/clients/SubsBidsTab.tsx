@@ -72,7 +72,7 @@ type EditForm = {
   status: string;
 };
 
-export default function SubsBidsTab({ clientId, companyId, clientName, clientAddress, subBids: initialSubBids, canEdit, canDelete, isCommercial = false }: Props) {
+export default function SubsBidsTab({ clientId, companyId, subBids: initialSubBids, canEdit, canDelete, isCommercial = false }: Props) {
   const router = useRouter();
   const [subBids, setSubBids] = useState<SubBidRow[]>(initialSubBids);
   const [displayIsCommercial, setDisplayIsCommercial] = useState(isCommercial);
