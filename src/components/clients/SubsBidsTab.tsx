@@ -181,7 +181,7 @@ export default function SubsBidsTab({ clientId, companyId, clientName, clientAdd
   function toggleTriageSelect(id: string) {
     setTriageSelected(prev => {
       const next = new Set(prev);
-      next.has(id) ? next.delete(id) : next.add(id);
+      if (next.has(id)) { next.delete(id); } else { next.add(id); }
       return next;
     });
   }
