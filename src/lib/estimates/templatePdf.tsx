@@ -625,7 +625,7 @@ function AdditionPage2({ client }: Pick<TemplatePdfProps, "client">) {
       <View style={{ height: 3, backgroundColor: GOLD }} />
 
       {/* Main content */}
-      <View style={{ paddingHorizontal: 28, paddingTop: 10, paddingBottom: 10 }}>
+      <View style={{ paddingHorizontal: 28, paddingTop: 8, paddingBottom: 8 }}>
 
         {/* WHAT WE BUILD + OUR APPROACH side by side */}
         <View style={{ flexDirection: "row", gap: 20, marginBottom: 14 }}>
@@ -663,10 +663,10 @@ function AdditionPage2({ client }: Pick<TemplatePdfProps, "client">) {
         <View style={{ flexDirection: "row", gap: 20 }}>
           <View style={{ flex: 1 }}>
             {SECTIONS.slice(0, 3).map((sec, si) => (
-              <View key={si} style={{ marginBottom: 14 }}>
-                <Text style={{ fontSize: 11, fontFamily: "Helvetica-Bold", color: DARK, marginBottom: 6, textTransform: "uppercase" }}>{sec.title}</Text>
+              <View key={si} style={{ marginBottom: 11 }}>
+                <Text style={{ fontSize: 11, fontFamily: "Helvetica-Bold", color: DARK, marginBottom: 5, textTransform: "uppercase" }}>{sec.title}</Text>
                 {sec.items.map((item, ii) => (
-                  <View key={ii} style={{ flexDirection: "row", alignItems: "flex-start", marginBottom: 4, gap: 7 }}>
+                  <View key={ii} style={{ flexDirection: "row", alignItems: "flex-start", marginBottom: 3, gap: 7 }}>
                     <Text style={{ fontSize: 11, color: GOLD, fontFamily: "Helvetica-Bold" }}>•</Text>
                     <Text style={{ fontSize: 11, color: "#475569", flex: 1 }}>{item}</Text>
                   </View>
@@ -676,10 +676,10 @@ function AdditionPage2({ client }: Pick<TemplatePdfProps, "client">) {
           </View>
           <View style={{ flex: 1 }}>
             {SECTIONS.slice(3).map((sec, si) => (
-              <View key={si} style={{ marginBottom: 14 }}>
-                <Text style={{ fontSize: 11, fontFamily: "Helvetica-Bold", color: DARK, marginBottom: 6, textTransform: "uppercase" }}>{sec.title}</Text>
+              <View key={si} style={{ marginBottom: 11 }}>
+                <Text style={{ fontSize: 11, fontFamily: "Helvetica-Bold", color: DARK, marginBottom: 5, textTransform: "uppercase" }}>{sec.title}</Text>
                 {sec.items.map((item, ii) => (
-                  <View key={ii} style={{ flexDirection: "row", alignItems: "flex-start", marginBottom: 4, gap: 7 }}>
+                  <View key={ii} style={{ flexDirection: "row", alignItems: "flex-start", marginBottom: 3, gap: 7 }}>
                     <Text style={{ fontSize: 11, color: GOLD, fontFamily: "Helvetica-Bold" }}>•</Text>
                     <Text style={{ fontSize: 11, color: "#475569", flex: 1 }}>{item}</Text>
                   </View>
