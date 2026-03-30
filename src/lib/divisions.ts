@@ -5,9 +5,7 @@ export const COMMERCIAL_ONLY_DIVISIONS = [
   { code: "21", name: "Fire Suppression" },
   { code: "27", name: "Communications" },
   { code: "28", name: "Electronic Safety" },
-  { code: "31c", name: "Earthwork (Advanced)" },
-  { code: "32c", name: "Exterior Improvements" },
-  { code: "33", name: "Utilities" },
+{ code: "33", name: "Utilities" },
 ] as const;
 
 export const STANDARD_DIVISIONS = [
