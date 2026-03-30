@@ -875,8 +875,8 @@ function TemplatePdfDocument({ companyName, template, client, divisions, showTer
             <Text style={styles.centerBold}>{template.estimateNumber ? `Estimate #${template.estimateNumber}` : "ESTIMATE"}</Text>
           </View>
 
-          {/* Right: Client — marginTop aligns with address text (below 90px logo + gap) */}
-          <View style={{ marginTop: 96 }}>
+          {/* Right: Client — marginTop aligns with address text (below 76px logo + gap) */}
+          <View style={{ marginTop: 76 }}>
             {client ? (
               <>
                 <Text style={styles.clientName}>{client.name}</Text>
