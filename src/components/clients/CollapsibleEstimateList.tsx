@@ -31,7 +31,7 @@ function fmt(n: number) {
 
 function EstimateCard({
   est, companyId, clientId, clientName, clientEmail, clientAddress, canEdit, canDelete,
-  isCommercial, clientCoverPhotoUrl,
+  isCommercial, clientCoverPhotoUrl, hasInsertFile,
 }: {
   est: EstimateRow;
   companyId: string;
@@ -43,6 +43,7 @@ function EstimateCard({
   canDelete: boolean;
   isCommercial?: boolean;
   clientCoverPhotoUrl?: string | null;
+  hasInsertFile?: boolean;
 }) {
   const router = useRouter();
   const [hovered, setHovered] = useState(false);
@@ -67,9 +68,9 @@ function EstimateCard({
     </span>
   ) : null;
 
-  function handlePdfConfirm(coverType: CoverType) {
+  function handlePdfConfirm(coverType: CoverType, includeInsert: boolean) {
     setShowCoverPicker(false);
-    window.open(`/api/${companyId}/estimates/${est.id}/pdf?cover=1&coverType=${coverType}`, "_blank");
+    window.open(`/api/${companyId}/estimates/${est.id}/pdf?cover=1&coverType=${coverType}&includeInsert=${includeInsert ? 1 : 0}`, "_blank");
   }
 
   return (
@@ -130,6 +131,7 @@ function EstimateCard({
               clientAddress={clientAddress}
               isCommercial={isCommercial}
               clientCoverPhotoUrl={clientCoverPhotoUrl}
+              hasInsertFile={hasInsertFile}
             />
             {canEdit && (
               <EditEstimateModal
@@ -157,6 +159,7 @@ function EstimateCard({
         <CoverPagePickerModal
           isCommercial={isCommercial}
           customCoverUrl={clientCoverPhotoUrl}
+          hasInsertFile={hasInsertFile}
           confirmLabel="Download PDF"
           onConfirm={handlePdfConfirm}
           onClose={() => setShowCoverPicker(false)}
@@ -168,7 +171,7 @@ function EstimateCard({
 
 export default function CollapsibleEstimateList({
   estimates, companyId, clientId, clientName, clientEmail, clientAddress, canEdit, canDelete,
-  isCommercial, clientCoverPhotoUrl,
+  isCommercial, clientCoverPhotoUrl, hasInsertFile,
 }: {
   estimates: EstimateRow[];
   companyId: string;
@@ -180,6 +183,7 @@ export default function CollapsibleEstimateList({
   canDelete: boolean;
   isCommercial?: boolean;
   clientCoverPhotoUrl?: string | null;
+  hasInsertFile?: boolean;
 }) {
   if (estimates.length === 0) {
     return (
@@ -210,6 +214,7 @@ export default function CollapsibleEstimateList({
             canDelete={canDelete}
             isCommercial={isCommercial}
             clientCoverPhotoUrl={clientCoverPhotoUrl}
+            hasInsertFile={hasInsertFile}
           />
         ))}
       </div>

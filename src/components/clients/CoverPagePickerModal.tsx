@@ -15,18 +15,21 @@ export type CoverType = (typeof COVER_OPTIONS)[number]["type"] | "CUSTOM";
 export default function CoverPagePickerModal({
   isCommercial,
   customCoverUrl,
+  hasInsertFile,
   confirmLabel = "Generate PDF",
   onConfirm,
   onClose,
 }: {
   isCommercial?: boolean;
   customCoverUrl?: string | null;
+  hasInsertFile?: boolean;
   confirmLabel?: string;
-  onConfirm: (coverType: CoverType) => void;
+  onConfirm: (coverType: CoverType, includeInsert: boolean) => void;
   onClose: () => void;
 }) {
   const defaultType: CoverType = isCommercial ? "COMMERCIAL" : "RESIDENTIAL";
   const [selected, setSelected] = useState<CoverType>(defaultType);
+  const [includeInsert, setIncludeInsert] = useState(true);
 
   const options: { type: CoverType; label: string; img: string; desc: string }[] = [
     ...COVER_OPTIONS,
@@ -64,9 +67,24 @@ export default function CoverPagePickerModal({
           })}
         </div>
 
+        {hasInsertFile && (
+          <label className="flex items-center gap-3 cursor-pointer px-1">
+            <input
+              type="checkbox"
+              checked={includeInsert}
+              onChange={e => setIncludeInsert(e.target.checked)}
+              className="w-4 h-4 rounded accent-[#C9A84C]"
+            />
+            <div>
+              <span className="text-sm font-medium" style={{ color: "#e6edf3" }}>Include client drawing / photo</span>
+              <span className="text-xs ml-2" style={{ color: "#8b949e" }}>Inserts uploaded file as page 3</span>
+            </div>
+          </label>
+        )}
+
         <div className="flex gap-3 pt-1">
           <button
-            onClick={() => onConfirm(selected)}
+            onClick={() => onConfirm(selected, includeInsert)}
             className="flex-1 rounded-xl py-2.5 text-sm font-bold"
             style={{ background: "#C9A84C", color: "#0d1117" }}
           >

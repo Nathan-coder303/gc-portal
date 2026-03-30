@@ -87,7 +87,7 @@ export async function POST(
   if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const body = await req.json().catch(() => ({}));
-  const { templateId, to, cc, bcc, subject, body: emailBody, coverType } = body as {
+  const { templateId, to, cc, bcc, subject, body: emailBody, coverType, includeInsert } = body as {
     templateId?: string;
     to?: string;
     cc?: string;
@@ -95,6 +95,7 @@ export async function POST(
     subject?: string;
     body?: string;
     coverType?: string;
+    includeInsert?: boolean;
   };
 
   if (!templateId || !to || !subject || !emailBody) {
@@ -201,10 +202,9 @@ export async function POST(
     clientCoverPhotoUrl: await resolvePrivateCoverUrl(template.client?.coverPhotoUrl ?? null),
   });
 
-  // Insert client's marked PDF page 2 as page 3 (roofing only)
-  // Only attempt when a real file URL exists — skip entirely if none.
+  // Insert client's marked PDF file as page 3 (if opted in and file exists)
   let finalBuffer = buffer;
-  if (template.name.toLowerCase().includes("roof") && template.client) {
+  if (includeInsert !== false && template.client) {
     const insertFile = await prisma.clientFile.findFirst({
       where: { clientId: template.client.id, useInEstimate: true },
       select: { fileUrl: true },

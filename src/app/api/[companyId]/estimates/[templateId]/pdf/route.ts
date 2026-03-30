@@ -125,11 +125,10 @@ export async function GET(
     clientCoverPhotoUrl: await resolvePrivateCoverUrl(template.client?.coverPhotoUrl ?? null),
   });
 
-  // Insert client's marked PDF page 2 as page 3 (roofing estimates only)
-  // Only attempt insertion when a real file URL exists — skip entirely if none.
-  const isRoof = template.name.toLowerCase().includes("roof");
+  // Insert client's marked PDF file as page 3 (if opted in and file exists)
+  const includeInsert = req.nextUrl.searchParams.get("includeInsert") !== "0";
   let finalBuffer = buffer;
-  if (isRoof && template.client) {
+  if (includeInsert && template.client) {
     const insertFile = await prisma.clientFile.findFirst({
       where: { clientId: template.client.id, useInEstimate: true },
       select: { fileUrl: true },

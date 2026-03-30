@@ -104,6 +104,7 @@ export default async function ClientDetailPage({
     where: { clientId: params.clientId, companyId: params.companyId },
     orderBy: { uploadedAt: "desc" },
   });
+  const hasInsertFile = clientFiles.some(f => f.useInEstimate);
 
   const clientNotes = await prisma.clientNote.findMany({
     where: { clientId: params.clientId, companyId: params.companyId },
@@ -193,6 +194,7 @@ export default async function ClientDetailPage({
           canDelete={canDelete}
           isCommercial={isCommercial}
           clientCoverPhotoUrl={safeClient.coverPhotoType === "CUSTOM" ? `/api/${params.companyId}/clients/${params.clientId}/cover` : null}
+          hasInsertFile={hasInsertFile}
         />
       )}
 
