@@ -159,7 +159,7 @@ export default function ClientTextNotes({
               style={{ width: "100%", background: "#0d1117", color: "#e6edf3", border: "1px solid #C9A84C66", borderRadius: 6, padding: "6px 10px", fontSize: 13, boxSizing: "border-box" }}
             />
             <p style={{ color: "#484f58", fontSize: 11, marginTop: 3 }}>
-              Email will read: "Dear {firstName}, …" then your note, then Mike&apos;s signature.
+              Email will read: &quot;Dear {firstName}, &hellip;&quot; then your note, then Mike&apos;s signature.
             </p>
           </div>
         )}
