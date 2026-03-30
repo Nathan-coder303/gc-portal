@@ -41,6 +41,9 @@ export default function ClientTextNotes({
   const [subject, setSubject] = useState(defaultSubject);
   const [saving, setSaving] = useState(false);
   const [sentStatus, setSentStatus] = useState<string | null>(null);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editContent, setEditContent] = useState("");
+  const [editDate, setEditDate] = useState("");
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -86,6 +89,23 @@ export default function ClientTextNotes({
   async function deleteNote(noteId: string) {
     setNotes((prev) => prev.filter((n) => n.id !== noteId));
     await fetch(`/api/${companyId}/notes?noteId=${noteId}`, { method: "DELETE" });
+  }
+
+  function startEdit(note: TextNote) {
+    setEditingId(note.id);
+    setEditContent(note.content);
+    setEditDate(note.noteDate.slice(0, 10));
+  }
+
+  async function saveEdit(noteId: string) {
+    if (!editContent.trim()) return;
+    await fetch(`/api/${companyId}/notes`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ noteId, content: editContent.trim(), noteDate: new Date(editDate).toISOString() }),
+    });
+    setNotes((prev) => prev.map((n) => n.id === noteId ? { ...n, content: editContent.trim(), noteDate: new Date(editDate).toISOString() } : n));
+    setEditingId(null);
   }
 
   return (
@@ -161,14 +181,40 @@ export default function ClientTextNotes({
       ) : (
         <div className="space-y-3">
           {notes.map((note) => (
-            <div key={note.id} style={{ borderLeft: "2px solid #C9A84C55", paddingLeft: 12, position: "relative" }}>
-              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 4 }}>
-                <span style={{ color: "#C9A84C", fontSize: 11, fontWeight: 600 }}>{formatDate(note.noteDate)}</span>
-                <button onClick={() => deleteNote(note.id)}
-                  style={{ background: "transparent", border: "none", color: "#484f58", fontSize: 13, cursor: "pointer", lineHeight: 1, padding: "0 2px" }}
-                  title="Delete note">×</button>
-              </div>
-              <p style={{ color: "#e6edf3", fontSize: 13, margin: 0, lineHeight: 1.5, whiteSpace: "pre-wrap" }}>{note.content}</p>
+            <div key={note.id} style={{ borderLeft: "2px solid #C9A84C55", paddingLeft: 12 }}>
+              {editingId === note.id ? (
+                <div className="space-y-2">
+                  <input type="date" value={editDate} onChange={(e) => setEditDate(e.target.value)}
+                    style={{ background: "#0d1117", color: "#e6edf3", border: "1px solid #30373f", borderRadius: 6, padding: "4px 8px", fontSize: 12 }} />
+                  <textarea rows={3} value={editContent} onChange={(e) => setEditContent(e.target.value)}
+                    style={{ width: "100%", background: "#0d1117", color: "#e6edf3", border: "1px solid #C9A84C66", borderRadius: 6, padding: "8px 10px", fontSize: 13, resize: "vertical", boxSizing: "border-box" }} />
+                  <div style={{ display: "flex", gap: 6 }}>
+                    <button onClick={() => saveEdit(note.id)}
+                      style={{ background: "#C9A84C", color: "#0d1117", border: "none", borderRadius: 6, padding: "5px 14px", fontSize: 12, fontWeight: 700, cursor: "pointer" }}>
+                      Save
+                    </button>
+                    <button onClick={() => setEditingId(null)}
+                      style={{ background: "transparent", color: "#8b949e", border: "1px solid #30373f", borderRadius: 6, padding: "5px 14px", fontSize: 12, cursor: "pointer" }}>
+                      Cancel
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <>
+                  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 4 }}>
+                    <span style={{ color: "#C9A84C", fontSize: 11, fontWeight: 600 }}>{formatDate(note.noteDate)}</span>
+                    <div style={{ display: "flex", gap: 6 }}>
+                      <button onClick={() => startEdit(note)}
+                        style={{ background: "transparent", border: "none", color: "#8b949e", fontSize: 11, cursor: "pointer", padding: "0 2px" }}
+                        title="Edit note">✎</button>
+                      <button onClick={() => deleteNote(note.id)}
+                        style={{ background: "transparent", border: "none", color: "#484f58", fontSize: 13, cursor: "pointer", lineHeight: 1, padding: "0 2px" }}
+                        title="Delete note">×</button>
+                    </div>
+                  </div>
+                  <p style={{ color: "#e6edf3", fontSize: 13, margin: 0, lineHeight: 1.5, whiteSpace: "pre-wrap" }}>{note.content}</p>
+                </>
+              )}
             </div>
           ))}
         </div>

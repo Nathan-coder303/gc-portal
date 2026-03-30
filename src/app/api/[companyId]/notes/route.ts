@@ -127,6 +127,30 @@ export async function POST(
   return NextResponse.json(note);
 }
 
+// PATCH /api/[companyId]/notes
+// body: { noteId, content, noteDate? }
+export async function PATCH(
+  req: NextRequest,
+  { params }: { params: { companyId: string } }
+) {
+  const session = await auth();
+  if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
+  const body = await req.json().catch(() => ({}));
+  const { noteId, content, noteDate } = body;
+  if (!noteId || !content?.trim()) return NextResponse.json({ error: "noteId and content required" }, { status: 400 });
+
+  const note = await prisma.note.updateMany({
+    where: { id: noteId, companyId: params.companyId },
+    data: {
+      content: content.trim(),
+      ...(noteDate ? { noteDate: new Date(noteDate) } : {}),
+    },
+  });
+
+  return NextResponse.json(note);
+}
+
 // DELETE /api/[companyId]/notes?noteId=...
 export async function DELETE(
   req: NextRequest,
