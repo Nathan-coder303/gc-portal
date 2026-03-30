@@ -20,15 +20,27 @@ function todayISO() {
 export default function ClientTextNotes({
   companyId,
   clientId,
+  clientName,
+  clientAddress,
+  clientEmail,
 }: {
   companyId: string;
   clientId: string;
+  clientName?: string;
+  clientAddress?: string | null;
+  clientEmail?: string | null;
 }) {
+  const defaultSubject = `Your Project at ${clientAddress ?? "Your Property"}`;
+  const firstName = clientName?.split(" ")[0] ?? "there";
+
   const [notes, setNotes] = useState<TextNote[]>([]);
   const [loading, setLoading] = useState(true);
   const [content, setContent] = useState("");
   const [noteDate, setNoteDate] = useState(todayISO());
+  const [sendEmail, setSendEmail] = useState(!!clientEmail);
+  const [subject, setSubject] = useState(defaultSubject);
   const [saving, setSaving] = useState(false);
+  const [sentStatus, setSentStatus] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -45,17 +57,26 @@ export default function ClientTextNotes({
   async function addNote() {
     if (!content.trim()) return;
     setSaving(true);
+    setSentStatus(null);
     try {
       const res = await fetch(`/api/${companyId}/notes`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ clientId, content: content.trim(), noteDate: new Date(noteDate).toISOString() }),
+        body: JSON.stringify({
+          clientId,
+          content: content.trim(),
+          noteDate: new Date(noteDate).toISOString(),
+          sendEmail: sendEmail && !!clientEmail,
+          emailSubject: subject.trim() || defaultSubject,
+        }),
       });
       if (res.ok) {
         const note = await res.json();
         setNotes((prev) => [note, ...prev]);
         setContent("");
         setNoteDate(todayISO());
+        setSubject(defaultSubject);
+        if (sendEmail && clientEmail) setSentStatus(`✓ Email sent to ${clientEmail}`);
       }
     } finally {
       setSaving(false);
@@ -72,26 +93,64 @@ export default function ClientTextNotes({
       <h3 className="text-sm font-semibold mb-4" style={{ color: "#e6edf3" }}>Text Notes</h3>
 
       {/* Add note form */}
-      <div className="mb-4">
-        <div style={{ display: "flex", gap: 8, marginBottom: 8 }}>
+      <div className="mb-4 space-y-2">
+        <div style={{ display: "flex", gap: 8 }}>
           <div style={{ flex: 1 }}>
             <label style={{ color: "#484f58", fontSize: 10, fontWeight: 600, display: "block", marginBottom: 3 }}>DATE</label>
             <input type="date" value={noteDate} onChange={(e) => setNoteDate(e.target.value)}
               style={{ background: "#0d1117", color: "#e6edf3", border: "1px solid #30373f", borderRadius: 6, padding: "5px 8px", fontSize: 12, width: "100%", boxSizing: "border-box" }} />
           </div>
         </div>
+
         <textarea
           rows={3}
           value={content}
           onChange={(e) => setContent(e.target.value)}
-          placeholder="Enter note..."
+          placeholder={`Note for ${firstName}…`}
           onKeyDown={(e) => { if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) addNote(); }}
           style={{ width: "100%", background: "#0d1117", color: "#e6edf3", border: "1px solid #30373f", borderRadius: 6, padding: "8px 10px", fontSize: 13, resize: "vertical", boxSizing: "border-box" }}
         />
-        <button onClick={addNote} disabled={saving || !content.trim()}
-          style={{ marginTop: 8, background: "#C9A84C", color: "#0d1117", border: "none", borderRadius: 8, padding: "7px 20px", fontSize: 13, fontWeight: 700, cursor: "pointer", opacity: saving || !content.trim() ? 0.5 : 1 }}>
-          {saving ? "Saving…" : "Add Note"}
-        </button>
+
+        {/* Email toggle */}
+        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+          <label style={{ display: "flex", alignItems: "center", gap: 6, cursor: clientEmail ? "pointer" : "default" }}>
+            <input
+              type="checkbox"
+              checked={sendEmail}
+              onChange={(e) => setSendEmail(e.target.checked)}
+              disabled={!clientEmail}
+              style={{ accentColor: "#C9A84C", width: 14, height: 14 }}
+            />
+            <span style={{ fontSize: 12, color: clientEmail ? "#e6edf3" : "#484f58" }}>
+              {clientEmail ? `Send email to ${clientEmail}` : "No client email on file"}
+            </span>
+          </label>
+        </div>
+
+        {/* Subject field — only shown when email is on */}
+        {sendEmail && clientEmail && (
+          <div>
+            <label style={{ color: "#484f58", fontSize: 10, fontWeight: 600, display: "block", marginBottom: 3 }}>EMAIL SUBJECT</label>
+            <input
+              type="text"
+              value={subject}
+              onChange={(e) => setSubject(e.target.value)}
+              placeholder={defaultSubject}
+              style={{ width: "100%", background: "#0d1117", color: "#e6edf3", border: "1px solid #C9A84C66", borderRadius: 6, padding: "6px 10px", fontSize: 13, boxSizing: "border-box" }}
+            />
+            <p style={{ color: "#484f58", fontSize: 11, marginTop: 3 }}>
+              Email will read: "Dear {firstName}, …" then your note, then Mike&apos;s signature.
+            </p>
+          </div>
+        )}
+
+        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+          <button onClick={addNote} disabled={saving || !content.trim()}
+            style={{ background: "#C9A84C", color: "#0d1117", border: "none", borderRadius: 8, padding: "7px 20px", fontSize: 13, fontWeight: 700, cursor: "pointer", opacity: saving || !content.trim() ? 0.5 : 1 }}>
+            {saving ? "Saving…" : sendEmail && clientEmail ? "Add Note & Send Email" : "Add Note"}
+          </button>
+          {sentStatus && <span style={{ fontSize: 12, color: "#22c55e" }}>{sentStatus}</span>}
+        </div>
       </div>
 
       {/* Notes list */}

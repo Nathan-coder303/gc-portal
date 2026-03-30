@@ -63,7 +63,7 @@ export async function POST(
   if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const body = await req.json().catch(() => ({}));
-  const { leadId, clientId, content, noteDate } = body;
+  const { leadId, clientId, content, noteDate, sendEmail, emailSubject } = body;
 
   if (!content?.trim()) {
     return NextResponse.json({ error: "content is required" }, { status: 400 });
@@ -83,8 +83,8 @@ export async function POST(
     },
   });
 
-  // Auto-email client when note is on a client record
-  if (clientId) {
+  // Auto-email client when note is on a client record and sendEmail is true
+  if (clientId && sendEmail !== false) {
     try {
       const client = await prisma.client.findFirst({
         where: { id: clientId, companyId: params.companyId },
@@ -93,8 +93,8 @@ export async function POST(
 
       if (client?.email) {
         const firstName = client.name.split(" ")[0];
-        const subject = `Your Scope at ${client.address ?? "Your Project"}`;
-        const emailBody = `Dear ${firstName},\n\nWe have an exciting update on your project.\n\n${content.trim()}\n\n${MIKE_SIGNATURE}`;
+        const subject = (emailSubject as string | undefined)?.trim() || `Your Project at ${client.address ?? "Your Property"}`;
+        const emailBody = `Dear ${firstName},\n\n${content.trim()}\n\n${MIKE_SIGNATURE}`;
 
         const oauth2Client = getOAuthClient();
         const gmail = google.gmail({ version: "v1", auth: oauth2Client });

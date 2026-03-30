@@ -198,7 +198,13 @@ export default async function ClientDetailPage({
 
       {activeTab === "notes" && (
         <>
-        <ClientTextNotes companyId={params.companyId} clientId={params.clientId} />
+        <ClientTextNotes
+          companyId={params.companyId}
+          clientId={params.clientId}
+          clientName={safeClient.name}
+          clientAddress={safeClient.address ?? null}
+          clientEmail={safeClient.email ?? null}
+        />
         <ClientNotesTab
           companyId={params.companyId}
           clientId={params.clientId}
