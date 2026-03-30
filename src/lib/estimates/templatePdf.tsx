@@ -56,11 +56,11 @@ function fmtDate(dateStr: string | null): string {
 }
 
 const styles = StyleSheet.create({
-  page: { fontFamily: "Helvetica", fontSize: 9, paddingTop: 36, paddingBottom: 96, paddingHorizontal: 40 },
-  header: { flexDirection: "row", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 20, paddingBottom: 12, borderBottomWidth: 2, borderBottomColor: GOLD },
+  page: { fontFamily: "Helvetica", fontSize: 9, paddingTop: 22, paddingBottom: 96, paddingHorizontal: 40 },
+  header: { flexDirection: "row", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 12, paddingBottom: 8, borderBottomWidth: 2, borderBottomColor: GOLD },
 
   // Left column
-  logo: { width: 90, height: 90, marginBottom: 4 },
+  logo: { width: 76, height: 76, marginBottom: 4 },
   companyInfo: { fontSize: 11, fontFamily: "Helvetica-Bold", color: DARK, marginTop: 2 },
 
   // Center column
@@ -71,7 +71,7 @@ const styles = StyleSheet.create({
   clientName: { fontSize: 13, fontFamily: "Helvetica-Bold", color: "#0f172a", marginBottom: 3, textAlign: "right" },
 
   // Division header row — text/total both white
-  divisionHeader: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", backgroundColor: DARK, paddingHorizontal: 8, paddingVertical: 5, marginTop: 12, borderRadius: 3 },
+  divisionHeader: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", backgroundColor: DARK, paddingHorizontal: 8, paddingVertical: 4, marginTop: 8, borderRadius: 3 },
   divisionLeft: { flexDirection: "row", alignItems: "center", gap: 6 },
   divisionCsi: { fontSize: 10, fontFamily: "Helvetica-Bold", color: "#ffffff" },
   divisionName: { fontSize: 10, fontFamily: "Helvetica-Bold", color: "#ffffff" },
@@ -80,9 +80,9 @@ const styles = StyleSheet.create({
   groupHeader: { flexDirection: "row", justifyContent: "space-between", backgroundColor: "#f1f5f9", paddingHorizontal: 8, paddingVertical: 3, marginTop: 4 },
   groupName: { fontSize: 8, fontFamily: "Helvetica-Bold", color: "#475569", textTransform: "uppercase" },
   groupTotal: { fontSize: 8, fontFamily: "Helvetica-Bold", color: "#475569" },
-  tableHeader: { flexDirection: "row", backgroundColor: "#f8fafc", paddingHorizontal: 8, paddingVertical: 3, borderBottomWidth: 1, borderBottomColor: "#e2e8f0" },
-  tableRow: { flexDirection: "row", paddingHorizontal: 8, paddingVertical: 3, borderBottomWidth: 1, borderBottomColor: "#f1f5f9" },
-  tableRowAlt: { flexDirection: "row", paddingHorizontal: 8, paddingVertical: 3, borderBottomWidth: 1, borderBottomColor: "#f1f5f9", backgroundColor: "#fafafa" },
+  tableHeader: { flexDirection: "row", backgroundColor: "#f8fafc", paddingHorizontal: 8, paddingVertical: 2, borderBottomWidth: 1, borderBottomColor: "#e2e8f0" },
+  tableRow: { flexDirection: "row", paddingHorizontal: 8, paddingVertical: 2, borderBottomWidth: 1, borderBottomColor: "#f1f5f9" },
+  tableRowAlt: { flexDirection: "row", paddingHorizontal: 8, paddingVertical: 2, borderBottomWidth: 1, borderBottomColor: "#f1f5f9", backgroundColor: "#fafafa" },
   colLineNum: { width: 18, textAlign: "right", paddingRight: 4 },
   colName: { flex: 3 },
   colDetail: { width: 60, textAlign: "center" },
@@ -401,7 +401,7 @@ function RoofIntroPage({ template, client }: Pick<TemplatePdfProps, "template" |
           <Text style={{ fontSize: 13, fontFamily: "Helvetica-Bold", color: DARK, letterSpacing: 1 }}>SCOPE OF WORK — ROOFING</Text>
           <View style={{ flex: 1, height: 2, backgroundColor: GOLD }} />
         </View>
-        {ROOF_INTRO_PARAS.slice(0, -1).map((para, i) => (
+        {ROOF_INTRO_PARAS.map((para, i) => (
           <Text key={i} style={{ fontSize: 10, color: "#334155", lineHeight: 1.6, marginBottom: 8 }}>{para}</Text>
         ))}
       </View>
@@ -988,13 +988,6 @@ function TemplatePdfDocument({ companyName, template, client, divisions, showTer
             <Text style={GRAND_TOTAL_VALUE_STYLE}>${fmt(grandTotalWithGc)}</Text>
           </View>
         </View>
-
-        {/* Closing paragraph (roof only) — after estimate, before payment */}
-        {isRoof && (
-          <Text style={{ fontSize: 10.5, color: "#334155", lineHeight: 1.65, marginTop: 10, marginBottom: 4 }}>
-            {ROOF_INTRO_PARAS[ROOF_INTRO_PARAS.length - 1]}
-          </Text>
-        )}
 
         {/* Payment terms + signature: inline when no extra page */}
         {!includeRoofUpgradesPage && paymentTermsSignatureBlock}
