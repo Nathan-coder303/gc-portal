@@ -63,7 +63,7 @@ export async function POST(
   if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const body = await req.json().catch(() => ({}));
-  const { leadId, clientId, content, noteDate, sendEmail, emailSubject } = body;
+  const { leadId, clientId, content, noteDate, sendEmail, emailSubject, emailTo, emailCc, emailBcc, emailBody } = body;
 
   if (!content?.trim()) {
     return NextResponse.json({ error: "content is required" }, { status: 400 });
@@ -91,10 +91,13 @@ export async function POST(
         select: { name: true, email: true, address: true },
       });
 
-      if (client?.email) {
-        const firstName = client.name.split(" ")[0];
-        const subject = (emailSubject as string | undefined)?.trim() || `Your Project at ${client.address ?? "Your Property"}`;
-        const emailBody = `Dear ${firstName},\n\n${content.trim()}\n\n${MIKE_SIGNATURE}`;
+      const toAddress = (emailTo as string | undefined)?.trim() || client?.email;
+      if (toAddress) {
+        const firstName = client?.name.split(" ")[0] ?? "there";
+        const subject = (emailSubject as string | undefined)?.trim() || `Your Project at ${client?.address ?? "Your Property"}`;
+        const body = (emailBody as string | undefined)?.trim() || `Dear ${firstName},\n\n${content.trim()}\n\n${MIKE_SIGNATURE}`;
+        const ccLine = (emailCc as string | undefined)?.trim();
+        const bccLine = (emailBcc as string | undefined)?.trim();
 
         const oauth2Client = getOAuthClient();
         const gmail = google.gmail({ version: "v1", auth: oauth2Client });
@@ -107,13 +110,14 @@ export async function POST(
 
         const mimeLines = [
           `From: ${fromEmail}`,
-          `To: ${client.email}`,
-          `Cc: mikebaruh@gmail.com`,
+          `To: ${toAddress}`,
+          ...(ccLine ? [`Cc: ${ccLine}`] : []),
+          ...(bccLine ? [`Bcc: ${bccLine}`] : []),
           `Subject: ${encodedSubject}`,
           `MIME-Version: 1.0`,
           `Content-Type: text/plain; charset=UTF-8`,
           ``,
-          emailBody,
+          body,
         ];
         const raw = Buffer.from(mimeLines.join("\r\n")).toString("base64url");
         await gmail.users.messages.send({ userId: "me", requestBody: { raw } });
