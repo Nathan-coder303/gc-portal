@@ -2,12 +2,10 @@
 import { useState } from "react";
 
 export const COVER_OPTIONS = [
-  { type: "RESIDENTIAL", label: "Residential", img: "/flat-roofs-cover.jpg", desc: "Default residential" },
-  { type: "COMMERCIAL", label: "Commercial", img: "/additions.jpg", desc: "Default commercial" },
-  { type: "FLAT_ROOFS", label: "Flat Roofs", img: "/flat-roofs-cover.jpg", desc: "Flat / low-slope roofing" },
-  { type: "ADDITIONS", label: "Additions", img: "/additions.jpg", desc: "Home additions" },
-  { type: "LAUNDRY", label: "Laundry", img: "/laundry-cover.png", desc: "Laundry room" },
-  { type: "SHINGLE_ROOFS", label: "Shingle Roofs", img: "/shingle-roofs-cover.png", desc: "Shingle roofing" },
+  { type: "FLAT_ROOFS",    label: "Flat Roofs",    img: "/flat-roofs-cover.jpg",      desc: "Flat / low-slope roofing" },
+  { type: "ADDITIONS",     label: "Additions",     img: "/additions.jpg",             desc: "Home additions" },
+  { type: "LAUNDRY",       label: "Laundry",       img: "/laundry-cover.png",         desc: "Laundry room" },
+  { type: "SHINGLE_ROOFS", label: "Shingle Roofs", img: "/shingle-roofs-cover.png",   desc: "Shingle roofing" },
 ] as const;
 
 export type CoverType = (typeof COVER_OPTIONS)[number]["type"] | "CUSTOM";
@@ -33,6 +31,7 @@ export default function CoverPagePickerModal({
   showPreview = false,
   onConfirm,
   onPreview,
+  onSendEmail,
   onClose,
 }: {
   isCommercial?: boolean;
@@ -43,9 +42,10 @@ export default function CoverPagePickerModal({
   showPreview?: boolean;
   onConfirm: (opts: PdfOptions) => void;
   onPreview?: (opts: PdfOptions) => void;
+  onSendEmail?: (opts: PdfOptions) => void;
   onClose: () => void;
 }) {
-  const defaultCover: CoverType = isCommercial ? "COMMERCIAL" : "RESIDENTIAL";
+  const defaultCover: CoverType = isCommercial ? "ADDITIONS" : "FLAT_ROOFS";
   const [cover, setCover]               = useState<CoverType>(defaultCover);
   const [page2, setPage2]               = useState<Page2Type>(initialPage2 === "NONE" ? "ROOF" : initialPage2);
   const [includeInsert, setIncludeInsert] = useState(true);
@@ -161,6 +161,15 @@ export default function CoverPagePickerModal({
           >
             {confirmLabel}
           </button>
+          {onSendEmail && (
+            <button
+              onClick={() => onSendEmail(opts)}
+              className="flex-1 rounded-xl py-2.5 text-sm font-bold"
+              style={{ background: "#1a2436", border: "1px solid #C9A84C", color: "#C9A84C" }}
+            >
+              ✉ Send via Email
+            </button>
+          )}
           <button
             onClick={onClose}
             className="px-5 rounded-xl py-2.5 text-sm font-medium"

@@ -40,7 +40,7 @@ export default function SendEstimateEmailButton({ templateId, companyId, templat
   if (clientAddress) subjectParts.push(`at ${clientAddress}`);
   const defaultSubject = subjectParts.join(" ");
 
-  const defaultCover: CoverType = isCommercial ? "COMMERCIAL" : "RESIDENTIAL";
+  const defaultCover: CoverType = isCommercial ? "ADDITIONS" : "FLAT_ROOFS";
 
   const n = templateName.toLowerCase();
   const defaultPage2: Page2Type = n.includes("roof") ? "ROOF" : n.includes("addition") ? "ADDITION" : "NONE";
