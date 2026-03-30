@@ -104,7 +104,7 @@ const styles = StyleSheet.create({
   sectionTitle: { fontSize: 12, fontFamily: "Helvetica-Bold", color: DARK, marginBottom: 8, paddingTop: 12 },
 
   // T&C
-  termsText: { fontSize: 8, color: "#475569", lineHeight: 1.45 },
+  termsText: { fontSize: 9.5, color: "#475569", lineHeight: 1.5 },
 
   // Payment schedule
   payTable: { marginTop: 4 },
@@ -787,8 +787,8 @@ function TemplatePdfDocument({ companyName, template, client, divisions, showTer
           <View style={styles.sectionDivider} />
           <Text style={styles.sectionTitle}>Terms &amp; Conditions</Text>
           {termsContent
-            ? termsContent.split(/\r?\n\r?\n|\r?\n(?=\d+[\.\)]?\s)/).filter(Boolean).map((para, i) => (
-                <Text key={i} style={[styles.termsText, { marginBottom: 6 }]}>{para.trim()}</Text>
+            ? termsContent.split(/\r?\n\r?\n|\r?\n(?=\d+[\.\)]?\s)/).map(p => p.trim()).filter(Boolean).map((para, i) => (
+                <Text key={i} style={[styles.termsText, { marginBottom: 8 }]}>{para}</Text>
               ))
             : null}
         </View>
