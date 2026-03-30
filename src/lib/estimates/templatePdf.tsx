@@ -351,6 +351,77 @@ function applyInsulationFilter(name: string, insulationType: string | null | und
   return name;
 }
 
+// ─── Roof Introduction Page ────────────────────────────────────────────────────
+const ROOF_INTRO_PARAS = [
+  "We appreciate your consideration and look forward to delivering the high-quality workmanship and customer service MIBH Construction is known for in South Florida. This proposal outlines the manpower, materials, equipment, and installation standards required to complete your roofing project in full compliance with Florida Building Code (FBC 2023), Miami-Dade standards, and manufacturer specifications.",
+  "1. MIBH Construction will handle the full permit application process by preparing all required documents, including permit forms, Notice of Commencement (if needed), product approvals/Miami-Dade NOAs, roof plans, scope of work, and all contractor credentials. Once the permit package is complete, we will submit it to the appropriate Building Department, pay or coordinate permitting fees, respond to any city comments or requested revisions, and track the application until full approval is issued.",
+  "2. Manpower Provided — MIBH Construction will supply: Certified roofing technicians · Project manager/supervisor · Safety-compliant crew (OSHA trained) · Cleanup team for daily and final site maintenance. Our team is experienced in commercial and residential roofing systems, including shingle, tile, metal, TPO, hot mop, and modified bitumen.",
+  "3. Equipment Provided — We will provide all required equipment, including: Tear-off machinery & power tools · Dump trailer or roll-off dumpster · Ladders, lifts, scaffolding (as needed) · Full safety gear and fall protection systems. All equipment is maintained to ensure safe, efficient operations.",
+  "4. Materials & Installation Standards — MIBH Construction uses only approved, high-quality roofing materials installed following: FBC 2023 and local code requirements · Miami-Dade NOA specifications · Manufacturer-approved installation practices · South Florida high-wind performance requirements. This ensures durability, waterproofing integrity, and warranty eligibility.",
+  "5. Tarps and coverings for landscaping & AC units. Clear job-site organization and debris control. OSHA fall-protection procedures. Daily cleanup and end-of-project magnetic sweep.",
+  "6. Remove all debris and materials. Conduct a full walkthrough. Prepare for city/county inspections. Provide warranty documentation as applicable.",
+  "We appreciate your consideration and look forward to working with you. Please reach out with any questions or adjustments you would like added to this proposal.",
+];
+
+function RoofIntroPage({ template, client }: Pick<TemplatePdfProps, "template" | "client">) {
+  const logoPath = path.join(process.cwd(), "public", "logo.png");
+  const today = new Date().toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" });
+  const clientCity = [client?.city, client?.state, client?.zip].filter(Boolean).join(", ");
+  return (
+    <Page size="LETTER" style={{ fontFamily: "Helvetica", padding: 0 }}>
+      {/* Header */}
+      <View style={{ flexDirection: "row", alignItems: "center", backgroundColor: DARK, paddingHorizontal: 24, paddingVertical: 10, gap: 14 }}>
+        {/* eslint-disable-next-line jsx-a11y/alt-text */}
+        <Image src={logoPath} style={{ width: 52, height: 52 }} />
+        <View>
+          <Text style={{ fontSize: 20, fontFamily: "Helvetica-Bold", color: GOLD, letterSpacing: 2 }}>MIBH CONSTRUCTION</Text>
+          <Text style={{ fontSize: 8, color: "#94a3b8", marginTop: 2 }}>Licensed &amp; Insured  |  CGC1527069  |  CCC1336817  |  2950 N 28 Terr, Hollywood, FL  |  (305) 746-7307</Text>
+        </View>
+      </View>
+      <View style={{ height: 3, backgroundColor: GOLD }} />
+
+      {/* Gold info bar */}
+      <View style={{ flexDirection: "row", backgroundColor: GOLD, paddingHorizontal: 28, paddingVertical: 16 }}>
+        <View style={{ flex: 1, justifyContent: "center" }}>
+          {client?.name ? <Text style={{ fontSize: 16, fontFamily: "Helvetica-Bold", color: "#fff", marginBottom: 4 }}>{client.name}</Text> : null}
+          {client?.address ? <Text style={{ fontSize: 10, color: "rgba(255,255,255,0.85)", marginBottom: 2 }}>{client.address}</Text> : null}
+          {clientCity ? <Text style={{ fontSize: 10, color: "rgba(255,255,255,0.85)" }}>{clientCity}</Text> : null}
+        </View>
+        <View style={{ width: 1, backgroundColor: "rgba(255,255,255,0.4)", marginVertical: 2, marginHorizontal: 24 }} />
+        <View style={{ flex: 1, justifyContent: "center" }}>
+          {template.name ? <Text style={{ fontSize: 16, fontFamily: "Helvetica-Bold", color: "#fff", marginBottom: 6, lineHeight: 1.25 }}>{template.name}</Text> : null}
+          <Text style={{ fontSize: 10, color: "rgba(255,255,255,0.85)" }}>{today}</Text>
+        </View>
+      </View>
+
+      {/* Intro paragraphs */}
+      <View style={{ paddingHorizontal: 28, paddingTop: 18, paddingBottom: 14, flex: 1 }}>
+        <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "center", marginBottom: 14, gap: 12 }}>
+          <View style={{ flex: 1, height: 2, backgroundColor: GOLD }} />
+          <Text style={{ fontSize: 13, fontFamily: "Helvetica-Bold", color: DARK, letterSpacing: 1 }}>SCOPE OF WORK — ROOFING</Text>
+          <View style={{ flex: 1, height: 2, backgroundColor: GOLD }} />
+        </View>
+        {ROOF_INTRO_PARAS.slice(0, -1).map((para, i) => (
+          <Text key={i} style={{ fontSize: 10, color: "#334155", lineHeight: 1.6, marginBottom: 8 }}>{para}</Text>
+        ))}
+      </View>
+
+      {/* Footer */}
+      <View style={{ backgroundColor: DARK, paddingHorizontal: 24, paddingVertical: 9, flexDirection: "row", alignItems: "center", gap: 12 }}>
+        <Text style={{ fontSize: 8.5, color: GOLD, fontFamily: "Helvetica-Bold" }}>MIBH CONSTRUCTION</Text>
+        <Text style={{ fontSize: 7, color: "#94a3b8" }}>|</Text>
+        <Text style={{ fontSize: 8.5, color: "#94a3b8" }}>mike@mibhconstruction.com</Text>
+        <Text style={{ fontSize: 7, color: "#94a3b8" }}>|</Text>
+        <Text style={{ fontSize: 8.5, color: "#94a3b8" }}>Mike Baruh</Text>
+        <Text style={{ fontSize: 7, color: "#94a3b8" }}>|</Text>
+        <Text style={{ fontSize: 8.5, color: "#94a3b8" }}>(305) 746-7307</Text>
+        <View style={{ flex: 1 }} />
+        <Text style={{ fontSize: 8, color: "#94a3b8" }} render={({ pageNumber, totalPages }) => `Page ${pageNumber} of ${totalPages}`} />
+      </View>
+    </Page>
+  );
+}
+
 // ─── Addition Marketing Page (Page 1) ─────────────────────────────────────────
 function AdditionPage1({ template, client }: Pick<TemplatePdfProps, "template" | "client">) {
   const logoPath = path.join(process.cwd(), "public", "logo.png");
@@ -677,17 +748,6 @@ function TemplatePdfDocument({ companyName, template, client, divisions, showTer
     }
   }
 
-  const ROOF_INTRO_PARAS = [
-    "We appreciate your consideration and look forward to delivering the high-quality workmanship and customer service MIBH Construction is known for in South Florida. This proposal outlines the manpower, materials, equipment, and installation standards required to complete your roofing project in full compliance with Florida Building Code (FBC 2023), Miami-Dade standards, and manufacturer specifications.",
-    "1. MIBH Construction will handle the full permit application process by preparing all required documents, including permit forms, Notice of Commencement (if needed), product approvals/Miami-Dade NOAs, roof plans, scope of work, and all contractor credentials. Once the permit package is complete, we will submit it to the appropriate Building Department, pay or coordinate permitting fees, respond to any city comments or requested revisions, and track the application until full approval is issued.",
-    "2. Manpower Provided — MIBH Construction will supply: Certified roofing technicians · Project manager/supervisor · Safety-compliant crew (OSHA trained) · Cleanup team for daily and final site maintenance. Our team is experienced in commercial and residential roofing systems, including shingle, tile, metal, TPO, hot mop, and modified bitumen.",
-    "3. Equipment Provided — We will provide all required equipment, including: Tear-off machinery & power tools · Dump trailer or roll-off dumpster · Ladders, lifts, scaffolding (as needed) · Full safety gear and fall protection systems. All equipment is maintained to ensure safe, efficient operations.",
-    "4. Materials & Installation Standards — MIBH Construction uses only approved, high-quality roofing materials installed following: FBC 2023 and local code requirements · Miami-Dade NOA specifications · Manufacturer-approved installation practices · South Florida high-wind performance requirements. This ensures durability, waterproofing integrity, and warranty eligibility.",
-    "5. Tarps and coverings for landscaping & AC units. Clear job-site organization and debris control. OSHA fall-protection procedures. Daily cleanup and end-of-project magnetic sweep.",
-    "6. Remove all debris and materials. Conduct a full walkthrough. Prepare for city/county inspections. Provide warranty documentation as applicable.",
-    "We appreciate your consideration and look forward to working with you. Please reach out with any questions or adjustments you would like added to this proposal.",
-  ];
-
   const paymentTermsSignatureBlock = (
     <>
       {/* Payment Schedule */}
@@ -777,7 +837,9 @@ function TemplatePdfDocument({ companyName, template, client, divisions, showTer
 
   return (
     <Document title={`${template.name} — Estimate`} author={companyName}>
-      {(includeCoverPage || clientCoverPhotoType) && !includeAdditionPages && <CoverPages template={template} client={client} clientCoverPhotoType={clientCoverPhotoType} clientCoverPhotoUrl={clientCoverPhotoUrl} />}
+      {(includeCoverPage || clientCoverPhotoType) && !includeAdditionPages && !includeRoofUpgradesPage && <CoverPages template={template} client={client} clientCoverPhotoType={clientCoverPhotoType} clientCoverPhotoUrl={clientCoverPhotoUrl} />}
+      {includeRoofUpgradesPage && <CoverPages template={template} client={client} clientCoverPhotoType={clientCoverPhotoType} clientCoverPhotoUrl={clientCoverPhotoUrl} />}
+      {includeRoofUpgradesPage && <RoofIntroPage template={template} client={client} />}
       {includeAdditionPages && <AdditionPage1 template={template} client={client} />}
       {includeAdditionPages && <AdditionPage2 client={client} />}
       <Page size="LETTER" style={styles.page}>
@@ -826,15 +888,6 @@ function TemplatePdfDocument({ companyName, template, client, divisions, showTer
             ) : null}
           </View>
         </View>
-
-        {/* Roof intro text — page 1, before divisions (all except closing para) */}
-        {isRoof && (
-          <View style={{ marginBottom: 10, paddingVertical: 4 }}>
-            {ROOF_INTRO_PARAS.slice(0, -1).map((para, i) => (
-              <Text key={i} style={{ fontSize: 10.5, color: "#334155", lineHeight: 1.65, marginBottom: i < ROOF_INTRO_PARAS.length - 2 ? 8 : 0 }}>{para}</Text>
-            ))}
-          </View>
-        )}
 
         {/* Divisions — grouped into super-sections (e.g. SHELL) */}
         {grouped.map(({ groupLabel, divs }, gi) => {
