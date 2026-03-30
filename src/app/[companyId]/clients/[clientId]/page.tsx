@@ -8,7 +8,6 @@ import { initClientSubBids } from "../actions";
 import SubsBidsTab, { SubBidRow } from "@/components/clients/SubsBidsTab";
 import ClientBidTab from "@/components/clients/ClientBidTab";
 import { can } from "@/lib/auth/permissions";
-import SyncLabelBidsButton from "@/components/clients/SyncLabelBidsButton";
 import ClientFilesTab from "@/components/clients/ClientFilesTab";
 import CollapsibleEstimateList from "@/components/clients/CollapsibleEstimateList";
 import ClientDetailHeader from "@/components/clients/ClientDetailHeader";
@@ -217,9 +216,6 @@ export default async function ClientDetailPage({
 
       {activeTab === "subs-bids" && (
         <div>
-          <div className="flex justify-end mb-3">
-            <SyncLabelBidsButton companyId={params.companyId} clientId={params.clientId} />
-          </div>
           <SubsBidsTab
             key={isCommercial ? "commercial" : "residential"}
             clientId={params.clientId}

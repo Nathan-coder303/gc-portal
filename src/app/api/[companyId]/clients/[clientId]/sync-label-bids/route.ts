@@ -72,9 +72,9 @@ export async function POST(
     const profileRes = await gmail.users.getProfile({ userId: "me" });
     const gmailEmail = profileRes.data.emailAddress ?? "unknown";
 
-    // Get already-imported gmail msg IDs to deduplicate
+    // Get already-imported gmail msg IDs to deduplicate (exclude EXCLUDED placeholders so PDF emails can be retried)
     const existingBids = await prisma.subBid.findMany({
-      where: { clientId: params.clientId, fileUrl: { startsWith: "gmail:" } },
+      where: { clientId: params.clientId, fileUrl: { startsWith: "gmail:" }, status: { not: "EXCLUDED" } },
       select: { fileUrl: true },
     });
     const processedMsgIds = new Set(
@@ -147,27 +147,8 @@ export async function POST(
         const from = headers.find(h => h.name === "From")?.value ?? "";
         const pdfParts = extractPdfParts(payload);
 
-        // Skip emails with no PDF — those are just correspondence threads
-        if (pdfParts.length === 0) {
-          // Mark as processed so we don't revisit, but don't save a bid card
-          await prisma.subBid.create({
-            data: {
-              clientId: params.clientId,
-              companyId: params.companyId,
-              divisionCode: "00",
-              divisionName: "Correspondence",
-              contractorName: null,
-              amount: null,
-              notes: null,
-              fileUrl: `gmail:${msg.id}`,
-              fileName: null,
-              status: "EXCLUDED",
-              emailSource: toAscii(from),
-              isPlaceholder: true,
-            },
-          });
-          continue;
-        }
+        // Skip emails with no PDF — just skip, don't save, so they can be retried if a PDF arrives later
+        if (pdfParts.length === 0) continue;
 
         const safeSubject = toAscii(subject);
         const safeFrom = toAscii(from);

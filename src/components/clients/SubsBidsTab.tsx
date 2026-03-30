@@ -123,14 +123,13 @@ export default function SubsBidsTab({ clientId, companyId, clientName, clientAdd
     setSyncResult(null);
     let totalAdded = 0;
     let round = 0;
-    const MAX_ROUNDS = 20; // cap at ~600 emails processed per click
+    const MAX_ROUNDS = 10;
     try {
+      // Use label-based sync (only emails tagged "7729 bids" in Gmail)
       while (round < MAX_ROUNDS) {
         round++;
-        const res = await fetch(`/api/${companyId}/fetch-gmail-bids`, {
+        const res = await fetch(`/api/${companyId}/clients/${clientId}/sync-label-bids`, {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ clientId, clientName, clientAddress }),
         });
         const data = await res.json();
         if (!res.ok) {
@@ -138,11 +137,10 @@ export default function SubsBidsTab({ clientId, companyId, clientName, clientAdd
           return;
         }
         totalAdded += data.added ?? 0;
-        setSyncResult(`Syncing… ${totalAdded} bids found so far (round ${round})`);
+        setSyncResult(`Syncing… ${totalAdded} bids found so far`);
         if ((data.remaining ?? 0) === 0) break;
       }
       setSyncResult(`Done — ${totalAdded} new bid${totalAdded !== 1 ? "s" : ""} imported. Extracting amounts…`);
-      // Auto-extract amounts from PDFs of newly synced bids
       const extractRes = await fetch(`/api/${companyId}/extract-bid-amounts`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
