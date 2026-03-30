@@ -233,9 +233,11 @@ function CoverPages({ template, client, clientCoverPhotoType, clientCoverPhotoUr
   } else if (clientCoverPhotoType === "FLAT_ROOFS" || clientCoverPhotoType === "RESIDENTIAL") {
     photoSrc = path.join(process.cwd(), "public", "flat-roofs-cover.jpg");
   } else if (clientCoverPhotoType === "LAUNDRY") {
-    photoSrc = path.join(process.cwd(), "public", "laundry-cover.jpg");
+    photoSrc = path.join(process.cwd(), "public", "laundry-cover.png");
+  } else if (clientCoverPhotoType === "SHINGLE_ROOFS") {
+    photoSrc = path.join(process.cwd(), "public", "shingle-roofs-cover.png");
   } else {
-    photoSrc = path.join(process.cwd(), "public", isKitchenLaundry ? "laundry-cover.jpg" : "flat-roofs-cover.jpg");
+    photoSrc = path.join(process.cwd(), "public", isKitchenLaundry ? "laundry-cover.png" : "flat-roofs-cover.jpg");
   }
   const GOLD = "#C9A84C";
   const DARK = "#1e293b";

@@ -6,7 +6,8 @@ export const COVER_OPTIONS = [
   { type: "COMMERCIAL", label: "Commercial", img: "/additions.jpg", desc: "Default commercial" },
   { type: "FLAT_ROOFS", label: "Flat Roofs", img: "/flat-roofs-cover.jpg", desc: "Flat / low-slope roofing" },
   { type: "ADDITIONS", label: "Additions", img: "/additions.jpg", desc: "Home additions" },
-  { type: "LAUNDRY", label: "Kitchen / Laundry", img: "/laundry-cover.jpg", desc: "Interior remodels" },
+  { type: "LAUNDRY", label: "Laundry", img: "/laundry-cover.png", desc: "Laundry room" },
+  { type: "SHINGLE_ROOFS", label: "Shingle Roofs", img: "/shingle-roofs-cover.png", desc: "Shingle roofing" },
 ] as const;
 
 export type CoverType = (typeof COVER_OPTIONS)[number]["type"] | "CUSTOM";
