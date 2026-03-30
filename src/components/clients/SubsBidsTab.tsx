@@ -89,6 +89,8 @@ export default function SubsBidsTab({ clientId, companyId, clientName, clientAdd
   const [extracting, setExtracting] = useState(false);
   const [extractResult, setExtractResult] = useState<string | null>(null);
   const [triageOpen, setTriageOpen] = useState(true);
+  const [triageSelected, setTriageSelected] = useState<Set<string>>(new Set());
+  const [bulkMoving, setBulkMoving] = useState(false);
   const [formData, setFormData] = useState<EditForm>({ contractorName: "", amount: "", notes: "", status: "RECEIVED" });
   const fileInputRefs = useRef<Record<string, HTMLInputElement | null>>({});
 
@@ -155,6 +157,33 @@ export default function SubsBidsTab({ clientId, companyId, clientName, clientAdd
     } finally {
       setSyncing(false);
     }
+  }
+
+  async function handleBulkDelete() {
+    if (triageSelected.size === 0) return;
+    setBulkMoving(true);
+    const ids = Array.from(triageSelected);
+    await Promise.all(ids.map(id => deleteSubBid(id, clientId, companyId)));
+    setSubBids(prev => prev.map(b => b.divisionCode === "00" ? { ...b, offers: b.offers.filter(o => !triageSelected.has(o.id)) } : b));
+    setTriageSelected(new Set());
+    setBulkMoving(false);
+  }
+
+  async function handleBulkMove(divCode: string) {
+    if (triageSelected.size === 0 || !divCode) return;
+    setBulkMoving(true);
+    const ids = Array.from(triageSelected);
+    await Promise.all(ids.map(id => assignTriageBid(id, divCode)));
+    setTriageSelected(new Set());
+    setBulkMoving(false);
+  }
+
+  function toggleTriageSelect(id: string) {
+    setTriageSelected(prev => {
+      const next = new Set(prev);
+      next.has(id) ? next.delete(id) : next.add(id);
+      return next;
+    });
   }
 
   const missingDivisions = subBids.filter((b) => b.offers.every((o) => o.status === "MISSING" || (!o.amount && !o.contractorName)));
@@ -366,65 +395,114 @@ export default function SubsBidsTab({ clientId, companyId, clientName, clientAdd
       {/* Triage section */}
       {triageRow && triageRow.offers.length > 0 && (
         <div className="mb-6">
-          <button
-            onClick={() => setTriageOpen(o => !o)}
-            className="flex items-center gap-2 w-full text-left mb-2"
-          >
-            <span className="text-xs font-bold uppercase tracking-wider" style={{ color: "#f97316" }}>
-              ⚠ Triage — drag to assign division
-            </span>
-            <span className="text-xs font-semibold px-2 py-0.5 rounded-full" style={{ background: "#f9731622", color: "#f97316" }}>
-              {triageRow.offers.length}
-            </span>
-            <span className="ml-auto text-xs" style={{ color: "#f97316" }}>{triageOpen ? "▲ Hide" : "▼ Show"}</span>
-          </button>
-          {triageOpen && <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            {triageRow.offers.map(offer => (
-              <div
-                key={offer.id}
-                draggable
-                onDragStart={() => setTriageDragId(offer.id)}
-                onDragEnd={() => setTriageDragId(null)}
-                className="rounded-xl p-4 cursor-grab relative"
-                style={{ background: "#1a1200", border: "1px solid #f9731666", opacity: triageDragId === offer.id ? 0.5 : 1 }}
-              >
+          {/* Header row */}
+          <div className="flex items-center gap-2 mb-2">
+            <button onClick={() => setTriageOpen(o => !o)} className="flex items-center gap-2">
+              <span className="text-xs font-bold uppercase tracking-wider" style={{ color: "#f97316" }}>⚠ Triage — drag to assign division</span>
+              <span className="text-xs font-semibold px-2 py-0.5 rounded-full" style={{ background: "#f9731622", color: "#f97316" }}>{triageRow.offers.length}</span>
+              <span className="text-xs" style={{ color: "#f97316" }}>{triageOpen ? "▲ Hide" : "▼ Show"}</span>
+            </button>
+            {/* Bulk action bar — only visible when items selected */}
+            {triageSelected.size > 0 && (
+              <div className="flex items-center gap-2 ml-auto">
+                <span className="text-xs" style={{ color: "#8b949e" }}>{triageSelected.size} selected</span>
+                <select
+                  defaultValue=""
+                  disabled={bulkMoving}
+                  onChange={(e) => { if (e.target.value) handleBulkMove(e.target.value); }}
+                  style={{ background: "#1e2736", color: "#e6edf3", border: "1px solid #C9A84C66", borderRadius: 6, padding: "3px 6px", fontSize: 11, cursor: "pointer" }}
+                >
+                  <option value="">Move to…</option>
+                  {allDivisions.map(d => <option key={d.code} value={d.code}>{d.code} — {d.name}</option>)}
+                </select>
                 {canDelete && (
                   <button
-                    onClick={() => handleDelete("00", offer)}
-                    disabled={deleting === offer.id}
-                    className="absolute top-2 right-2 w-5 h-5 rounded flex items-center justify-center disabled:opacity-50"
+                    onClick={handleBulkDelete}
+                    disabled={bulkMoving}
+                    className="px-2 py-1 rounded text-xs font-semibold disabled:opacity-50"
                     style={{ background: "#f8514922", color: "#f85149", border: "1px solid #f8514933" }}
-                    title="Delete">
-                    <TrashIcon size={10} />
-                  </button>
+                  >Delete</button>
                 )}
-                <div className="text-xs font-bold mb-2 pr-6" style={{ color: "#f97316" }}>Unassigned Bid</div>
-                {offer.contractorName && <div className="text-sm font-medium" style={{ color: "#e6edf3" }}>{offer.contractorName}</div>}
-                {offer.amount !== null && <div className="text-sm font-bold" style={{ color: "#C9A84C" }}>${fmt(offer.amount)}</div>}
-                {offer.notes && <div className="text-xs mt-1" style={{ color: "#8b949e" }}>{offer.notes}</div>}
-                {offer.fileUrl && (() => {
-                  const href = getPdfHref(offer.fileUrl, companyId);
-                  return href ? <a href={href} target="_blank" rel="noopener noreferrer" className="text-xs underline" style={{ color: "#C9A84C" }}>📄 {offer.fileName ?? "View PDF"}</a> : null;
-                })()}
-                <div className="flex items-center gap-2 mt-3">
-                  <select
-                    defaultValue=""
-                    onChange={(e) => { if (e.target.value) assignTriageBid(offer.id, e.target.value); }}
-                    onClick={(e) => e.stopPropagation()}
-                    style={{ flex: 1, background: "#0d1117", color: "#e6edf3", border: "1px solid #f9731666", borderRadius: 6, padding: "4px 6px", fontSize: 11, cursor: "pointer" }}
-                  >
-                    <option value="">Move to…</option>
-                    {allDivisions.map(d => (
-                      <option key={d.code} value={d.code}>{d.code} — {d.name}</option>
-                    ))}
-                  </select>
-                </div>
-                <div className="flex items-center gap-1 text-xs mt-2" style={{ color: "#8b949e" }} suppressHydrationWarning>
-                  <span>📅</span><span>{offer.bidDate ?? (offer.createdAt ? fmtDate(offer.createdAt) : "—")}</span>
-                </div>
               </div>
-            ))}
-          </div>}
+            )}
+            {/* Select all / clear */}
+            {triageOpen && triageRow.offers.length > 0 && (
+              <button
+                onClick={() => setTriageSelected(
+                  triageSelected.size === triageRow.offers.length
+                    ? new Set()
+                    : new Set(triageRow.offers.map(o => o.id))
+                )}
+                className="ml-auto text-xs"
+                style={{ color: "#8b949e" }}
+              >
+                {triageSelected.size === triageRow.offers.length ? "Deselect all" : "Select all"}
+              </button>
+            )}
+          </div>
+
+          {/* Cards */}
+          {triageOpen && (
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              {triageRow.offers.map(offer => {
+                const isSelected = triageSelected.has(offer.id);
+                return (
+                  <div
+                    key={offer.id}
+                    draggable={!isSelected}
+                    onDragStart={() => { if (!isSelected) setTriageDragId(offer.id); }}
+                    onDragEnd={() => setTriageDragId(null)}
+                    className="rounded-xl p-4 relative"
+                    style={{ background: isSelected ? "#1e1000" : "#1a1200", border: `1px solid ${isSelected ? "#f97316" : "#f9731666"}`, opacity: triageDragId === offer.id ? 0.5 : 1, cursor: isSelected ? "default" : "grab" }}
+                  >
+                    {/* Checkbox */}
+                    <input
+                      type="checkbox"
+                      checked={isSelected}
+                      onChange={() => toggleTriageSelect(offer.id)}
+                      onClick={e => e.stopPropagation()}
+                      className="absolute top-3 left-3"
+                      style={{ accentColor: "#f97316", width: 14, height: 14, cursor: "pointer" }}
+                    />
+                    {canDelete && !isSelected && (
+                      <button
+                        onClick={() => handleDelete("00", offer)}
+                        disabled={deleting === offer.id}
+                        className="absolute top-2 right-2 w-5 h-5 rounded flex items-center justify-center disabled:opacity-50"
+                        style={{ background: "#f8514922", color: "#f85149", border: "1px solid #f8514933" }}
+                        title="Delete">
+                        <TrashIcon size={10} />
+                      </button>
+                    )}
+                    <div className="text-xs font-bold mb-2 pl-5 pr-6" style={{ color: "#f97316" }}>Unassigned Bid</div>
+                    {offer.contractorName && <div className="text-sm font-medium pl-5" style={{ color: "#e6edf3" }}>{offer.contractorName}</div>}
+                    {offer.amount !== null && <div className="text-sm font-bold pl-5" style={{ color: "#C9A84C" }}>${fmt(offer.amount)}</div>}
+                    {offer.notes && <div className="text-xs mt-1 pl-5" style={{ color: "#8b949e" }}>{offer.notes}</div>}
+                    {offer.fileUrl && (() => {
+                      const href = getPdfHref(offer.fileUrl, companyId);
+                      return href ? <a href={href} target="_blank" rel="noopener noreferrer" className="text-xs underline pl-5 block mt-1" style={{ color: "#C9A84C" }}>📄 {offer.fileName ?? "View PDF"}</a> : null;
+                    })()}
+                    {!isSelected && (
+                      <div className="flex items-center gap-2 mt-3">
+                        <select
+                          defaultValue=""
+                          onChange={(e) => { if (e.target.value) assignTriageBid(offer.id, e.target.value); }}
+                          onClick={(e) => e.stopPropagation()}
+                          style={{ flex: 1, background: "#0d1117", color: "#e6edf3", border: "1px solid #f9731666", borderRadius: 6, padding: "4px 6px", fontSize: 11, cursor: "pointer" }}
+                        >
+                          <option value="">Move to…</option>
+                          {allDivisions.map(d => <option key={d.code} value={d.code}>{d.code} — {d.name}</option>)}
+                        </select>
+                      </div>
+                    )}
+                    <div className="flex items-center gap-1 text-xs mt-2 pl-5" style={{ color: "#8b949e" }} suppressHydrationWarning>
+                      <span>📅</span><span>{offer.bidDate ?? (offer.createdAt ? fmtDate(offer.createdAt) : "—")}</span>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
         </div>
       )}
 
