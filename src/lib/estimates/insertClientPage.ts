@@ -60,7 +60,7 @@ export async function insertClientPageIntoEstimate(
     const sourcePage = sourcePdf.getPages()[sourcePageIndex];
     const contents = sourcePage.node.get(PDFName.of("Contents"));
     const contentSize = contents ? resolveContentSize(contents, sourcePdf.context) : 0;
-    if (contentSize < 200) {
+    if (contentSize < 1500) {
       console.log("insertClientPageIntoEstimate: source page appears blank (contentSize=%d), skipping", contentSize);
       return estimateBuffer;
     }
