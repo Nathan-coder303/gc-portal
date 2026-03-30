@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import DeleteEstimateButton from "@/components/clients/DeleteEstimateButton";
 import EditEstimateModal from "@/components/clients/EditEstimateModal";
 import SendEstimateEmailButton from "@/components/clients/SendEstimateEmailButton";
-import CoverPagePickerModal, { CoverType } from "@/components/clients/CoverPagePickerModal";
+import CoverPagePickerModal, { PdfOptions, Page2Type } from "@/components/clients/CoverPagePickerModal";
 
 type EstimateRow = {
   id: string;
@@ -68,9 +68,20 @@ function EstimateCard({
     </span>
   ) : null;
 
-  function handlePdfConfirm(coverType: CoverType, includeInsert: boolean) {
+  const n = est.name.toLowerCase();
+  const initialPage2: Page2Type = n.includes("roof") ? "ROOF" : n.includes("addition") ? "ADDITION" : "NONE";
+
+  function buildPdfUrl(opts: PdfOptions, preview = false) {
+    return `/api/${companyId}/estimates/${est.id}/pdf?cover=1&coverType=${opts.coverType}&page2=${opts.page2}&includeInsert=${opts.includeInsert ? 1 : 0}${preview ? "&preview=1" : ""}`;
+  }
+
+  function handlePdfConfirm(opts: PdfOptions) {
     setShowCoverPicker(false);
-    window.open(`/api/${companyId}/estimates/${est.id}/pdf?cover=1&coverType=${coverType}&includeInsert=${includeInsert ? 1 : 0}`, "_blank");
+    window.open(buildPdfUrl(opts), "_blank");
+  }
+
+  function handlePdfPreview(opts: PdfOptions) {
+    window.open(buildPdfUrl(opts, true), "_blank");
   }
 
   return (
@@ -160,8 +171,11 @@ function EstimateCard({
           isCommercial={isCommercial}
           customCoverUrl={clientCoverPhotoUrl}
           hasInsertFile={hasInsertFile}
+          initialPage2={initialPage2}
           confirmLabel="Download PDF"
+          showPreview
           onConfirm={handlePdfConfirm}
+          onPreview={handlePdfPreview}
           onClose={() => setShowCoverPicker(false)}
         />
       )}

@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import CoverPagePickerModal, { CoverType, COVER_OPTIONS } from "@/components/clients/CoverPagePickerModal";
+import CoverPagePickerModal, { CoverType, COVER_OPTIONS, PdfOptions, Page2Type } from "@/components/clients/CoverPagePickerModal";
 
 const MIKE_SIGNATURE = `Mike Baruh
 Founder/CEO | MIBH Construction
@@ -42,8 +42,12 @@ export default function SendEstimateEmailButton({ templateId, companyId, templat
 
   const defaultCover: CoverType = isCommercial ? "COMMERCIAL" : "RESIDENTIAL";
 
+  const n = templateName.toLowerCase();
+  const defaultPage2: Page2Type = n.includes("roof") ? "ROOF" : n.includes("addition") ? "ADDITION" : "NONE";
+
   const [step, setStep] = useState<"cover" | "email" | null>(null);
   const [coverType, setCoverType] = useState<CoverType>(defaultCover);
+  const [page2, setPage2] = useState<Page2Type>(defaultPage2);
   const [includeInsert, setIncludeInsert] = useState(true);
   const [to, setTo] = useState(clientEmail ?? "");
   const [cc, setCc] = useState("mikebaruh@gmail.com");
@@ -59,9 +63,10 @@ export default function SendEstimateEmailButton({ templateId, companyId, templat
     setStep("cover");
   }
 
-  function handleCoverConfirm(type: CoverType, insert: boolean) {
-    setCoverType(type);
-    setIncludeInsert(insert);
+  function handleCoverConfirm(opts: PdfOptions) {
+    setCoverType(opts.coverType);
+    setPage2(opts.page2);
+    setIncludeInsert(opts.includeInsert);
     setStep("email");
   }
 
@@ -73,7 +78,7 @@ export default function SendEstimateEmailButton({ templateId, companyId, templat
       const res = await fetch(`/api/${companyId}/send-estimate-email`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ templateId, to, cc: cc.trim() || undefined, bcc: bcc.trim() || undefined, subject, body, coverType, includeInsert }),
+        body: JSON.stringify({ templateId, to, cc: cc.trim() || undefined, bcc: bcc.trim() || undefined, subject, body, coverType, page2, includeInsert }),
       });
       const text = await res.text();
       let data: { error?: string; detail?: string } = {};
@@ -111,6 +116,7 @@ export default function SendEstimateEmailButton({ templateId, companyId, templat
           isCommercial={isCommercial}
           customCoverUrl={clientCoverPhotoUrl}
           hasInsertFile={hasInsertFile}
+          initialPage2={defaultPage2}
           confirmLabel="Next: Write Email →"
           onConfirm={handleCoverConfirm}
           onClose={() => setStep(null)}

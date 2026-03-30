@@ -43,6 +43,8 @@ export async function GET(
   const countersigned = req.nextUrl.searchParams.get("countersigned") === "1";
   const cover = req.nextUrl.searchParams.get("cover") === "1";
   const coverTypeParam = req.nextUrl.searchParams.get("coverType");
+  const page2Param = req.nextUrl.searchParams.get("page2"); // "ROOF" | "ADDITION" | "NONE" | null (auto)
+  const isPreview = req.nextUrl.searchParams.get("preview") === "1";
 
   const [template, company] = await Promise.all([
     prisma.estimateTemplate.findFirst({
@@ -117,8 +119,8 @@ export async function GET(
       contractorSignatureData: template.counterSignatureData ?? null,
       contractorSignedAt: template.counterSignedAt ?? null,
     }),
-    includeRoofUpgradesPage: template.name.toLowerCase().includes("roof"),
-    includeAdditionPages: template.name.toLowerCase().includes("addition"),
+    includeRoofUpgradesPage: page2Param ? page2Param === "ROOF" : template.name.toLowerCase().includes("roof"),
+    includeAdditionPages: page2Param ? page2Param === "ADDITION" : template.name.toLowerCase().includes("addition"),
     includeCoverPage: cover,
     insulationType: template.insulationType ?? "ISO",
     clientCoverPhotoType: coverTypeParam ?? template.client?.coverPhotoType ?? null,
@@ -147,7 +149,7 @@ export async function GET(
     status: 200,
     headers: {
       "Content-Type": "application/pdf",
-      "Content-Disposition": `attachment; filename="${filename}"`,
+      "Content-Disposition": `${isPreview ? "inline" : "attachment"}; filename="${filename}"`,
     },
   });
 }

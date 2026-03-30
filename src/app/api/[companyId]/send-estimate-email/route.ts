@@ -87,7 +87,7 @@ export async function POST(
   if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const body = await req.json().catch(() => ({}));
-  const { templateId, to, cc, bcc, subject, body: emailBody, coverType, includeInsert } = body as {
+  const { templateId, to, cc, bcc, subject, body: emailBody, coverType, page2, includeInsert } = body as {
     templateId?: string;
     to?: string;
     cc?: string;
@@ -95,6 +95,7 @@ export async function POST(
     subject?: string;
     body?: string;
     coverType?: string;
+    page2?: string;
     includeInsert?: boolean;
   };
 
@@ -194,8 +195,8 @@ export async function POST(
         string,
         { qty: number | null; unit: string | null; unitCost: number | null; markupPct: number | null; manualTotal: number | null }
       > | null) ?? null,
-    includeRoofUpgradesPage: template.name.toLowerCase().includes("roof"),
-    includeAdditionPages: template.name.toLowerCase().includes("addition"),
+    includeRoofUpgradesPage: page2 ? page2 === "ROOF" : template.name.toLowerCase().includes("roof"),
+    includeAdditionPages: page2 ? page2 === "ADDITION" : template.name.toLowerCase().includes("addition"),
     includeCoverPage: true,
     insulationType: template.insulationType ?? "ISO",
     clientCoverPhotoType: coverType ?? template.client?.coverPhotoType ?? null,
