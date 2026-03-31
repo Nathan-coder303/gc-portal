@@ -14,6 +14,7 @@ import ClientDetailHeader from "@/components/clients/ClientDetailHeader";
 import ClientNotesTab from "@/components/clients/ClientNotesTab";
 import ClientTextNotes from "@/components/clients/ClientTextNotes";
 import ClientCoverPhotoSelector from "@/components/clients/ClientCoverPhotoSelector";
+import ClientInvoicesTab from "@/components/clients/ClientInvoicesTab";
 
 export default async function ClientDetailPage({
   params,
@@ -111,8 +112,14 @@ export default async function ClientDetailPage({
     orderBy: { createdAt: "desc" },
   });
 
+  const clientInvoices = await prisma.invoice.findMany({
+    where: { clientId: params.clientId, companyId: params.companyId },
+    orderBy: { createdAt: "asc" },
+  });
+
   const tabs = [
     { key: "estimates", label: "Estimates" },
+    { key: "invoices", label: `Invoices${clientInvoices.length > 0 ? ` (${clientInvoices.length})` : ""}` },
     { key: "notes", label: `Notes${clientNotes.length > 0 ? ` (${clientNotes.length})` : ""}` },
     { key: "subs-bids", label: "Subs Bids" },
     { key: "client-bid", label: "Client Bid" },
@@ -198,6 +205,37 @@ export default async function ClientDetailPage({
           isCommercial={isCommercial}
           clientCoverPhotoUrl={safeClient.coverPhotoType === "CUSTOM" ? `/api/${params.companyId}/clients/${params.clientId}/cover` : null}
           hasInsertFile={hasInsertFile}
+        />
+      )}
+
+      {activeTab === "invoices" && (
+        <ClientInvoicesTab
+          companyId={params.companyId}
+          clientId={params.clientId}
+          clientName={safeClient.name}
+          clientEmail={safeClient.email ?? null}
+          estimates={safeClient.templates.map((est) => ({
+            id: est.id,
+            name: est.name,
+            estimateNumber: est.estimateNumber ?? null,
+            paymentSchedule: est.paymentSchedule as { payment: string; trigger: string; pct: number }[] | null,
+            total: calcEstimateTotal(est.divisions, est.gcFeePercent),
+          }))}
+          initialInvoices={clientInvoices.map((inv) => ({
+            id: inv.id,
+            invoiceNumber: inv.invoiceNumber,
+            estimateId: inv.estimateId,
+            phase: inv.phase,
+            trigger: inv.trigger,
+            pct: inv.pct,
+            amount: inv.amount,
+            status: inv.status,
+            dueDate: inv.dueDate?.toISOString() ?? null,
+            notes: inv.notes,
+            sentAt: inv.sentAt?.toISOString() ?? null,
+            paidAt: inv.paidAt?.toISOString() ?? null,
+            createdAt: inv.createdAt.toISOString(),
+          }))}
         />
       )}
 

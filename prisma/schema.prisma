@@ -76,6 +76,7 @@ model Company {
   requestTrackerDate   String?
   backupFileUrl        String?
   backupFileDate       String?
+  invoices          Invoice[]
 }
 
 model Lead {
@@ -151,6 +152,7 @@ model Client {
   leadNotes      Note[]
   followUps      FollowUp[]
   pipelineCards  PipelineCard[]
+  invoices       Invoice[]
 }
 
 model ClientFile {
@@ -518,6 +520,7 @@ model EstimateTemplate {
   combinationType        String?
   divisions       EstimateTemplateDivision[]
   estimates   ProjectEstimate[]
+  invoices    Invoice[]
 
   @@index([companyId])
 }
@@ -721,4 +724,32 @@ model Note {
   @@index([leadId])
   @@index([clientId])
   @@index([companyId])
+}
+
+// ─── Invoices ─────────────────────────────────────────────────────────────────
+
+model Invoice {
+  id            String   @id @default(cuid())
+  companyId     String
+  company       Company  @relation(fields: [companyId], references: [id])
+  clientId      String
+  client        Client   @relation(fields: [clientId], references: [id])
+  estimateId    String
+  estimate      EstimateTemplate @relation(fields: [estimateId], references: [id])
+  invoiceNumber String          // e.g. "2641-1"
+  phase         String          // Payment phase name, e.g. "Deposit"
+  trigger       String?         // Milestone description
+  pct           Float           // Percentage
+  amount        Float           // Dollar amount
+  status        String  @default("DRAFT") // DRAFT | SENT | PAID
+  dueDate       DateTime?
+  notes         String?
+  sentAt        DateTime?
+  paidAt        DateTime?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@index([companyId])
+  @@index([clientId])
+  @@index([estimateId])
 }
