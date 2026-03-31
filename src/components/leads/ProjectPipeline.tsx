@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef, useCallback, useEffect } from "react";
+import React, { useState, useRef, useCallback, useEffect } from "react";
 import { type PipelineStage, loadProjectStages, saveProjectStages, STAGE_COLORS } from "@/lib/pipelineStages";
 import NotesPanel from "@/components/notes/NotesPanel";
 
@@ -459,7 +459,8 @@ export default function ProjectPipeline({ companyId, initialCards, activeClients
           const isColOver = dragOverCol === stage.id;
 
           return (
-            <div key={stage.id}
+            <React.Fragment key={stage.id}>
+            <div
               onDragOver={(e) => { e.preventDefault(); e.dataTransfer.dropEffect = "move"; setDragOver(stage.id); if (draggingColId.current && draggingColId.current !== stage.id) setDragOverCol(stage.id); }}
               onDragLeave={(e) => { if (!e.currentTarget.contains(e.relatedTarget as Node)) { setDragOver(null); setDragOverCol(null); } }}
               onDrop={(e) => { handleDrop(e, stage.id); handleColDrop(e, stage.id); }}
@@ -535,6 +536,7 @@ export default function ProjectPipeline({ companyId, initialCards, activeClients
                 >+</button>
               )}
             </div>
+            </React.Fragment>
           );
         })}
 
