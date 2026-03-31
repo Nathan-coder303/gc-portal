@@ -18,9 +18,12 @@ type ProjectCard = {
   createdAt: string;
 };
 
+type ActiveClient = { id: string; name: string; email: string | null };
+
 type Props = {
   companyId: string;
   initialCards: ProjectCard[];
+  activeClients?: ActiveClient[];
 };
 
 
@@ -51,30 +54,19 @@ function relTime(iso: string) {
 function AddCardModal({
   companyId,
   defaultStage,
+  activeClients = [],
   onAdd,
   onClose,
 }: {
   companyId: string;
   defaultStage: string;
+  activeClients?: ActiveClient[];
   onAdd: (card: ProjectCard) => void;
   onClose: () => void;
 }) {
   const [name, setName] = useState("");
-  const [clientSearch, setClientSearch] = useState("");
-  const [clients, setClients] = useState<{ id: string; name: string; email: string | null }[]>([]);
-  const [selectedClient, setSelectedClient] = useState<{ id: string; name: string; email: string | null } | null>(null);
+  const [selectedClient, setSelectedClient] = useState<ActiveClient | null>(null);
   const [saving, setSaving] = useState(false);
-
-  useEffect(() => {
-    if (clientSearch.length < 2) { setClients([]); return; }
-    const t = setTimeout(async () => {
-      try {
-        const res = await fetch(`/api/${companyId}/clients?search=${encodeURIComponent(clientSearch)}&limit=8`);
-        if (res.ok) setClients(await res.json());
-      } catch { /* ignore */ }
-    }, 300);
-    return () => clearTimeout(t);
-  }, [clientSearch, companyId]);
 
   async function handleAdd() {
     if (!name.trim()) return;
@@ -125,29 +117,23 @@ function AddCardModal({
               style={{ width: "100%", background: "#0d1117", color: "#e6edf3", border: "1px solid #30373f", borderRadius: 6, padding: "7px 10px", fontSize: 13, boxSizing: "border-box" }} />
           </div>
           <div>
-            <label style={{ color: "#8b949e", fontSize: 11, fontWeight: 600, display: "block", marginBottom: 4 }}>Link Client (optional — needed for email notifications)</label>
-            {selectedClient ? (
-              <div style={{ display: "flex", alignItems: "center", gap: 8, background: "#0d1117", border: "1px solid #30373f", borderRadius: 6, padding: "7px 10px" }}>
-                <span style={{ color: "#e6edf3", fontSize: 13, flex: 1 }}>{selectedClient.name}</span>
-                <button onClick={() => { setSelectedClient(null); setClientSearch(""); }} style={{ background: "transparent", border: "none", color: "#6b7280", cursor: "pointer", fontSize: 14 }}>×</button>
-              </div>
+            <label style={{ color: "#8b949e", fontSize: 11, fontWeight: 600, display: "block", marginBottom: 4 }}>Active Client (optional — needed for email notifications)</label>
+            {activeClients.length === 0 ? (
+              <p style={{ color: "#484f58", fontSize: 12 }}>No active clients — mark clients as Active in the Clients tab first.</p>
             ) : (
-              <div style={{ position: "relative" }}>
-                <input value={clientSearch} onChange={(e) => setClientSearch(e.target.value)} placeholder="Search clients..."
-                  style={{ width: "100%", background: "#0d1117", color: "#e6edf3", border: "1px solid #30373f", borderRadius: 6, padding: "7px 10px", fontSize: 13, boxSizing: "border-box" }} />
-                {clients.length > 0 && (
-                  <div style={{ position: "absolute", top: "100%", left: 0, right: 0, background: "#161b22", border: "1px solid #30373f", borderRadius: 6, marginTop: 2, zIndex: 10, maxHeight: 180, overflowY: "auto" }}>
-                    {clients.map((c) => (
-                      <div key={c.id} onClick={() => { setSelectedClient(c); setClientSearch(""); setClients([]); }}
-                        style={{ padding: "8px 12px", cursor: "pointer", color: "#e6edf3", fontSize: 13, borderBottom: "1px solid #21262d" }}
-                        onMouseEnter={(e) => (e.currentTarget.style.background = "#1e2736")}
-                        onMouseLeave={(e) => (e.currentTarget.style.background = "transparent")}>
-                        {c.name} {c.email && <span style={{ color: "#484f58", fontSize: 11 }}>— {c.email}</span>}
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
+              <select
+                value={selectedClient?.id ?? ""}
+                onChange={(e) => {
+                  const c = activeClients.find(c => c.id === e.target.value) ?? null;
+                  setSelectedClient(c);
+                }}
+                style={{ width: "100%", background: "#0d1117", color: selectedClient ? "#e6edf3" : "#6b7280", border: "1px solid #30373f", borderRadius: 6, padding: "7px 10px", fontSize: 13, boxSizing: "border-box" as const }}
+              >
+                <option value="">— None —</option>
+                {activeClients.map((c) => (
+                  <option key={c.id} value={c.id}>{c.name}{c.email ? ` — ${c.email}` : ""}</option>
+                ))}
+              </select>
             )}
           </div>
         </div>
@@ -307,7 +293,7 @@ function ProjectCardComponent({
 
 // ─── Main Component ───────────────────────────────────────────────────────────
 
-export default function ProjectPipeline({ companyId, initialCards }: Props) {
+export default function ProjectPipeline({ companyId, initialCards, activeClients = [] }: Props) {
   const [cards, setCards] = useState<ProjectCard[]>(initialCards);
   const [stages, setStages] = useState<PipelineStage[]>([]);
   const [notesClientId, setNotesClientId] = useState<string | null>(null);
@@ -534,7 +520,7 @@ export default function ProjectPipeline({ companyId, initialCards }: Props) {
       </div>
 
       {addCardStage && (
-        <AddCardModal companyId={companyId} defaultStage={addCardStage}
+        <AddCardModal companyId={companyId} defaultStage={addCardStage} activeClients={activeClients}
           onAdd={(card) => setCards((prev) => [...prev, card])}
           onClose={() => setAddCardStage(null)} />
       )}

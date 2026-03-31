@@ -12,6 +12,12 @@ export default async function ProjectPipelinePage({
   if (!session) redirect("/login");
   if (session.user.companyId !== params.companyId) redirect(`/${session.user.companyId}`);
 
+  const activeClients = await prisma.client.findMany({
+    where: { companyId: params.companyId, status: "ACTIVE" },
+    orderBy: [{ sortOrder: "asc" }, { name: "asc" }],
+    select: { id: true, name: true, email: true },
+  });
+
   const cards = await prisma.pipelineCard.findMany({
     where: { companyId: params.companyId, pipelineType: "project" },
     orderBy: [{ stage: "asc" }, { sortOrder: "asc" }],
@@ -40,7 +46,7 @@ export default async function ProjectPipelinePage({
           {cards.length} active project{cards.length !== 1 ? "s" : ""} · Notes notify clients by email
         </p>
       </div>
-      <ProjectPipeline companyId={params.companyId} initialCards={initialCards} />
+      <ProjectPipeline companyId={params.companyId} initialCards={initialCards} activeClients={activeClients} />
     </div>
   );
 }
