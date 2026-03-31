@@ -6,10 +6,13 @@ import { createProject } from "../actions";
 
 const TODAY = new Date().toISOString().split("T")[0];
 
-export default function NewProjectForm({ companyId }: { companyId: string }) {
+type ActiveClient = { id: string; name: string; address: string | null; city: string | null; state: string | null };
+
+export default function NewProjectForm({ companyId, activeClients }: { companyId: string; activeClients: ActiveClient[] }) {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [selectedClientId, setSelectedClientId] = useState<string>("");
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -113,6 +116,43 @@ export default function NewProjectForm({ companyId }: { companyId: string }) {
           <option value="COMPLETE">Complete</option>
         </select>
       </div>
+
+      {/* Active Client (optional) */}
+      {activeClients.length > 0 && (
+        <div>
+          <label className={labelClass}>Link to Active Client <span className="font-normal text-slate-400">(optional)</span></label>
+          <input type="hidden" name="clientId" value={selectedClientId} />
+          <div className="grid grid-cols-2 gap-2 mt-1">
+            {activeClients.map(c => {
+              const selected = selectedClientId === c.id;
+              const location = [c.city, c.state].filter(Boolean).join(", ");
+              return (
+                <button
+                  key={c.id}
+                  type="button"
+                  onClick={() => setSelectedClientId(selected ? "" : c.id)}
+                  className="rounded-xl px-3 py-2.5 text-left transition-all"
+                  style={{
+                    border: `2px solid ${selected ? "#C9A84C" : "#e2e8f0"}`,
+                    background: selected ? "#fffbeb" : "#fff",
+                  }}
+                >
+                  <div className="flex items-center gap-2">
+                    <div className="w-7 h-7 rounded-full flex items-center justify-center shrink-0 text-xs font-bold" style={{ background: selected ? "#C9A84C22" : "#f1f5f9", color: selected ? "#C9A84C" : "#64748b" }}>
+                      {c.name.slice(0, 2).toUpperCase()}
+                    </div>
+                    <div className="min-w-0">
+                      <div className="text-sm font-semibold truncate" style={{ color: selected ? "#92400e" : "#1e293b" }}>{c.name}</div>
+                      {location && <div className="text-xs truncate" style={{ color: "#94a3b8" }}>{location}</div>}
+                    </div>
+                    {selected && <span className="ml-auto text-xs font-bold" style={{ color: "#C9A84C" }}>✓</span>}
+                  </div>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      )}
 
       {/* Info box */}
       <div className="border border-slate-200 rounded-xl p-4 space-y-2">

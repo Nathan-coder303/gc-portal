@@ -1,6 +1,7 @@
 import { auth } from "@/lib/auth";
 import { redirect } from "next/navigation";
 import { can } from "@/lib/auth/permissions";
+import { prisma } from "@/lib/prisma";
 import Link from "next/link";
 import NewProjectForm from "./NewProjectForm";
 
@@ -12,6 +13,12 @@ export default async function NewProjectPage({
   const session = await auth();
   if (!session) redirect("/login");
   if (!can(session.user.role, "project:edit")) redirect(`/${params.companyId}/projects`);
+
+  const activeClients = await prisma.client.findMany({
+    where: { companyId: params.companyId, status: "ACTIVE" },
+    orderBy: [{ sortOrder: "asc" }, { name: "asc" }],
+    select: { id: true, name: true, address: true, city: true, state: true },
+  });
 
   return (
     <div className="max-w-lg mx-auto px-6 py-10">
@@ -31,7 +38,7 @@ export default async function NewProjectPage({
           Set up a project to track budget, expenses, schedule, and team collaboration.
         </p>
 
-        <NewProjectForm companyId={params.companyId} />
+        <NewProjectForm companyId={params.companyId} activeClients={activeClients} />
     </div>
   );
 }

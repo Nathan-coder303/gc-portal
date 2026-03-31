@@ -9,7 +9,7 @@ mkdir -p "$BACKUP_DIR"
 
 DATE=$(date +%Y-%m-%d)
 OUTFILE="$BACKUP_DIR/backup-$DATE.sql"
-COMPANY_ID="cmme9q6fg0000hriagrothwrc"
+COMPANY_ID="cmmij161r000004jm8il8bd0e"
 BASE_URL="https://gc-portal-two.vercel.app"
 
 # Load env vars from .env

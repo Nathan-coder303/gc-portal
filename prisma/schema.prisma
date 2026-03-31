@@ -142,6 +142,8 @@ model Client {
   coverPhotoType String?   // "FLAT_ROOFS" | "ADDITIONS" | "CUSTOM"
   coverPhotoUrl  String?   // Vercel Blob URL for CUSTOM uploads
   isCommercial   Boolean   @default(false)
+  status         String    @default("PROSPECT") // "PROSPECT" | "ACTIVE"
+  sortOrder      Int       @default(0)
   templates      EstimateTemplate[]
   subBids        SubBid[]
   files          ClientFile[]

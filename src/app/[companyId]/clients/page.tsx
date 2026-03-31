@@ -25,7 +25,7 @@ export default async function ClientsPage({ params }: { params: { companyId: str
 
   const clients = await prisma.client.findMany({
     where: { companyId: params.companyId },
-    orderBy: { name: "asc" },
+    orderBy: [{ sortOrder: "asc" }, { name: "asc" }],
     include: {
       _count: { select: { templates: { where: { type: "CLIENT_ESTIMATE", archivedAt: null } } } },
       templates: {
@@ -64,6 +64,8 @@ export default async function ClientsPage({ params }: { params: { companyId: str
           phone: c.phone,
           estimateCount: c._count.templates,
           estimateTotal: c.templates.reduce((sum, t) => sum + calcEstimateTotal(t.divisions, t.gcFeePercent), 0),
+          status: c.status,
+          sortOrder: c.sortOrder,
         }))}
         isAdmin={isAdmin}
       />
