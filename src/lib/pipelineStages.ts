@@ -12,6 +12,9 @@ export const BASE_STAGES: PipelineStage[] = [
   { id: "APPOINTMENT_DONE",    label: "Appointment Done",    color: "#06b6d4" },
   { id: "ESTIMATE_SENT",       label: "Estimate Sent",       color: "#C9A84C" },
   { id: "FOLLOW_UP",           label: "Follow Up",           color: "#f97316" },
+  { id: "NA1",                 label: "NA1",                 color: "#6b7280" },
+  { id: "NA2",                 label: "NA2",                 color: "#6b7280" },
+  { id: "NA3",                 label: "NA3",                 color: "#6b7280" },
   { id: "CLOSED_WON",          label: "Closed Won",          color: "#22c55e" },
   { id: "NOT_INTERESTED",      label: "Not Interested",      color: "#6b7280" },
 ];
@@ -24,85 +27,87 @@ export const PROJECT_STAGES: PipelineStage[] = [
   { id: "FINAL_INSPECTIONS", label: "Final Inspections", color: "#22c55e" },
 ];
 
-const PROJ_CUSTOM_KEY = "gc_project_pipeline_custom_stages";
-const PROJ_ORDER_KEY  = "gc_project_pipeline_stage_order";
-
-export function loadProjectStages(): PipelineStage[] {
-  if (typeof window === "undefined") return PROJECT_STAGES;
-  try {
-    const raw = localStorage.getItem(PROJ_CUSTOM_KEY);
-    const custom: PipelineStage[] = raw ? JSON.parse(raw) : [];
-    const all = [...PROJECT_STAGES, ...custom];
-    const orderRaw = localStorage.getItem(PROJ_ORDER_KEY);
-    if (!orderRaw) return all;
-    const order: string[] = JSON.parse(orderRaw);
-    const byId = Object.fromEntries(all.map((s) => [s.id, s]));
-    const ordered = order.map((id) => byId[id]).filter(Boolean) as PipelineStage[];
-    const orderedIds = new Set(order);
-    return [...ordered, ...all.filter((s) => !orderedIds.has(s.id))];
-  } catch { return PROJECT_STAGES; }
-}
-
-export function saveProjectStageOrder(stages: PipelineStage[]): void {
-  if (typeof window === "undefined") return;
-  try { localStorage.setItem(PROJ_ORDER_KEY, JSON.stringify(stages.map((s) => s.id))); } catch { /* */ }
-}
-
-export function saveProjectCustomStage(stage: PipelineStage): void {
-  if (typeof window === "undefined") return;
-  try {
-    const raw = localStorage.getItem(PROJ_CUSTOM_KEY);
-    const existing: PipelineStage[] = raw ? JSON.parse(raw) : [];
-    localStorage.setItem(PROJ_CUSTOM_KEY, JSON.stringify([...existing, stage]));
-  } catch { /* */ }
-}
-
 export const STAGE_COLORS = [
   "#3b82f6", "#06b6d4", "#a855f7", "#ec4899",
   "#C9A84C", "#f97316", "#ef4444", "#22c55e",
   "#14b8a6", "#8b5cf6", "#6b7280", "#f59e0b",
 ];
 
-const CUSTOM_KEY = "gc_pipeline_custom_stages";
-const ORDER_KEY  = "gc_pipeline_stage_order";
+// ─── Leads pipeline ───────────────────────────────────────────────────────────
+const LEADS_KEY = "gc_pipeline_stages_v2";
 
 export function loadStages(): PipelineStage[] {
   if (typeof window === "undefined") return BASE_STAGES;
   try {
-    const raw    = localStorage.getItem(CUSTOM_KEY);
-    const custom: PipelineStage[] = raw ? JSON.parse(raw) : [];
+    const raw = localStorage.getItem(LEADS_KEY);
+    if (raw) return JSON.parse(raw) as PipelineStage[];
+    // Migrate from old keys
+    return _migrateLeads();
+  } catch { return BASE_STAGES; }
+}
 
-    const base         = BASE_STAGES.filter((s) => s.id !== "NOT_INTERESTED");
+function _migrateLeads(): PipelineStage[] {
+  try {
+    const customRaw = localStorage.getItem("gc_pipeline_custom_stages");
+    const orderRaw  = localStorage.getItem("gc_pipeline_stage_order");
+    const custom: PipelineStage[] = customRaw ? JSON.parse(customRaw) : [];
+    const base = BASE_STAGES.filter((s) => s.id !== "NOT_INTERESTED");
     const notInterested = BASE_STAGES.find((s) => s.id === "NOT_INTERESTED")!;
-    const all          = [...base, ...custom, notInterested];
-
-    // Apply saved order if present
-    const orderRaw = localStorage.getItem(ORDER_KEY);
-    if (!orderRaw) return all;
-    const order: string[] = JSON.parse(orderRaw);
-    const byId = Object.fromEntries(all.map((s) => [s.id, s]));
-    const ordered = order.map((id) => byId[id]).filter(Boolean) as PipelineStage[];
-    // Append any stages not in saved order (newly added)
-    const orderedIds = new Set(order);
-    const extras = all.filter((s) => !orderedIds.has(s.id));
-    return [...ordered, ...extras];
-  } catch {
-    return BASE_STAGES;
-  }
+    const all = [...base, ...custom, notInterested];
+    if (orderRaw) {
+      const order: string[] = JSON.parse(orderRaw);
+      const byId = Object.fromEntries(all.map((s) => [s.id, s]));
+      const ordered = order.map((id) => byId[id]).filter(Boolean) as PipelineStage[];
+      const orderedIds = new Set(order);
+      return [...ordered, ...all.filter((s) => !orderedIds.has(s.id))];
+    }
+    return all;
+  } catch { return BASE_STAGES; }
 }
 
-export function saveStageOrder(stages: PipelineStage[]): void {
+export function saveStages(stages: PipelineStage[]): void {
   if (typeof window === "undefined") return;
-  try {
-    localStorage.setItem(ORDER_KEY, JSON.stringify(stages.map((s) => s.id)));
-  } catch { /* non-fatal */ }
+  try { localStorage.setItem(LEADS_KEY, JSON.stringify(stages)); } catch { /* */ }
 }
 
-export function saveCustomStage(stage: PipelineStage): void {
-  if (typeof window === "undefined") return;
+// Keep old exports so existing callers don't break
+export function saveStageOrder(stages: PipelineStage[]): void { saveStages(stages); }
+export function saveCustomStage(_stage: PipelineStage): void { /* no-op, use saveStages */ }
+
+// ─── Project pipeline ─────────────────────────────────────────────────────────
+const PROJ_KEY = "gc_project_pipeline_stages_v2";
+
+export function loadProjectStages(): PipelineStage[] {
+  if (typeof window === "undefined") return PROJECT_STAGES;
   try {
-    const raw = localStorage.getItem(CUSTOM_KEY);
-    const existing: PipelineStage[] = raw ? JSON.parse(raw) : [];
-    localStorage.setItem(CUSTOM_KEY, JSON.stringify([...existing, stage]));
-  } catch { /* non-fatal */ }
+    const raw = localStorage.getItem(PROJ_KEY);
+    if (raw) return JSON.parse(raw) as PipelineStage[];
+    return _migrateProject();
+  } catch { return PROJECT_STAGES; }
 }
+
+function _migrateProject(): PipelineStage[] {
+  try {
+    const customRaw = localStorage.getItem("gc_project_pipeline_custom_stages");
+    const orderRaw  = localStorage.getItem("gc_project_pipeline_stage_order");
+    const custom: PipelineStage[] = customRaw ? JSON.parse(customRaw) : [];
+    const all = [...PROJECT_STAGES, ...custom];
+    if (orderRaw) {
+      const order: string[] = JSON.parse(orderRaw);
+      const byId = Object.fromEntries(all.map((s) => [s.id, s]));
+      const ordered = order.map((id) => byId[id]).filter(Boolean) as PipelineStage[];
+      const orderedIds = new Set(order);
+      return [...ordered, ...all.filter((s) => !orderedIds.has(s.id))];
+    }
+    return all;
+  } catch { return PROJECT_STAGES; }
+}
+
+export function saveProjectStages(stages: PipelineStage[]): void {
+  if (typeof window === "undefined") return;
+  try { localStorage.setItem(PROJ_KEY, JSON.stringify(stages)); } catch { /* */ }
+}
+
+// Keep old exports
+export function saveProjectStageOrder(stages: PipelineStage[]): void { saveProjectStages(stages); }
+export function saveProjectCustomStage(_stage: PipelineStage): void { /* no-op */ }

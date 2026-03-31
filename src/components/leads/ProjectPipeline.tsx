@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useRef, useCallback, useEffect } from "react";
-import { type PipelineStage, loadProjectStages, saveProjectCustomStage, saveProjectStageOrder, STAGE_COLORS } from "@/lib/pipelineStages";
+import { type PipelineStage, loadProjectStages, saveProjectStages, STAGE_COLORS } from "@/lib/pipelineStages";
 import NotesPanel from "@/components/notes/NotesPanel";
 
 type ProjectCard = {
@@ -47,6 +47,35 @@ function relTime(iso: string) {
   if (d === 0) return "today";
   if (d === 1) return "1 day ago";
   return `${d} days ago`;
+}
+
+// ─── Add Stage Form ────────────────────────────────────────────────────────────
+
+function AddStageForm({ stageName, setNewStageName, stageColor, setNewStageColor, onAdd, onCancel }: {
+  stageName: string; setNewStageName: (v: string) => void;
+  stageColor: string; setNewStageColor: (v: string) => void;
+  onAdd: () => void; onCancel: () => void;
+}) {
+  return (
+    <div style={{ background: "#161b22", border: "1px solid #30373f", borderRadius: 12, padding: 14, minWidth: 180 }}>
+      <p style={{ color: "#e6edf3", fontWeight: 700, fontSize: 12, marginBottom: 8, marginTop: 0 }}>New Stage</p>
+      <input
+        autoFocus type="text" placeholder="Stage name..." value={stageName}
+        onChange={(e) => setNewStageName(e.target.value)}
+        onKeyDown={(e) => { if (e.key === "Enter") onAdd(); if (e.key === "Escape") onCancel(); }}
+        style={{ width: "100%", background: "#0d1117", color: "#e6edf3", border: "1px solid #484f58", borderRadius: 6, padding: "6px 8px", fontSize: 12, marginBottom: 8, boxSizing: "border-box" as const }}
+      />
+      <div style={{ display: "flex", flexWrap: "wrap", gap: 5, marginBottom: 10 }}>
+        {STAGE_COLORS.map((c) => (
+          <button key={c} onClick={() => setNewStageColor(c)} style={{ width: 18, height: 18, borderRadius: "50%", background: c, border: stageColor === c ? "3px solid #fff" : "2px solid transparent", cursor: "pointer", padding: 0, outline: "none", boxSizing: "border-box" as const }} />
+        ))}
+      </div>
+      <div style={{ display: "flex", gap: 6 }}>
+        <button onClick={onAdd} disabled={!stageName.trim()} style={{ flex: 1, background: stageColor, color: "#0d1117", border: "none", borderRadius: 6, padding: "5px 0", fontSize: 12, fontWeight: 700, cursor: "pointer", opacity: stageName.trim() ? 1 : 0.5 }}>Add</button>
+        <button onClick={onCancel} style={{ flex: 1, background: "transparent", color: "#8b949e", border: "1px solid #30373f", borderRadius: 6, padding: "5px 0", fontSize: 12, cursor: "pointer" }}>Cancel</button>
+      </div>
+    </div>
+  );
 }
 
 // ─── Add Card Modal ────────────────────────────────────────────────────────────
@@ -301,7 +330,7 @@ export default function ProjectPipeline({ companyId, initialCards, activeClients
   const [dragOver, setDragOver] = useState<string | null>(null);
   const dragPayload = useRef<string | null>(null);
   const [search, setSearch] = useState("");
-  const [showAddStage, setShowAddStage] = useState(false);
+  const [insertAfterStageId, setInsertAfterStageId] = useState<string | null>(null); // null=hidden, stageId=after that, "END"=append
   const [newStageName, setNewStageName] = useState("");
   const [newStageColor, setNewStageColor] = useState(STAGE_COLORS[0]);
   const draggingColId = useRef<string | null>(null);
@@ -336,7 +365,7 @@ export default function ProjectPipeline({ companyId, initialCards, activeClients
       if (from < 0 || to < 0) return prev;
       const [moved] = next.splice(from, 1);
       next.splice(to, 0, moved);
-      saveProjectStageOrder(next);
+      saveProjectStages(next);
       return next;
     });
   }
@@ -344,12 +373,7 @@ export default function ProjectPipeline({ companyId, initialCards, activeClients
   function recolorStage(stageId: string, color: string) {
     setStages((prev) => {
       const next = prev.map((s) => s.id === stageId ? { ...s, color } : s);
-      saveProjectStageOrder(next);
-      if (typeof window !== "undefined") {
-        const overrides = JSON.parse(localStorage.getItem("gc_proj_pipeline_color_overrides") || "{}");
-        overrides[stageId] = color;
-        localStorage.setItem("gc_proj_pipeline_color_overrides", JSON.stringify(overrides));
-      }
+      saveProjectStages(next);
       return next;
     });
     setColorPickerStageId(null);
@@ -360,12 +384,7 @@ export default function ProjectPipeline({ companyId, initialCards, activeClients
     if (!name) { setEditingStageId(null); return; }
     setStages((prev) => {
       const next = prev.map((s) => s.id === stageId ? { ...s, label: name } : s);
-      saveProjectStageOrder(next);
-      if (typeof window !== "undefined") {
-        const overrides = JSON.parse(localStorage.getItem("gc_proj_pipeline_label_overrides") || "{}");
-        overrides[stageId] = name;
-        localStorage.setItem("gc_proj_pipeline_label_overrides", JSON.stringify(overrides));
-      }
+      saveProjectStages(next);
       return next;
     });
     setEditingStageId(null);
@@ -376,9 +395,18 @@ export default function ProjectPipeline({ companyId, initialCards, activeClients
     if (!name) return;
     const id = "PROJ_CUSTOM_" + name.toUpperCase().replace(/\s+/g, "_") + "_" + Date.now();
     const stage: PipelineStage = { id, label: name, color: newStageColor, custom: true };
-    saveProjectCustomStage(stage);
-    setStages(loadProjectStages());
-    setNewStageName(""); setNewStageColor(STAGE_COLORS[0]); setShowAddStage(false);
+    setStages((prev) => {
+      let next: PipelineStage[];
+      if (insertAfterStageId === "END" || !insertAfterStageId) {
+        next = [...prev, stage];
+      } else {
+        const idx = prev.findIndex((s) => s.id === insertAfterStageId);
+        next = idx >= 0 ? [...prev.slice(0, idx + 1), stage, ...prev.slice(idx + 1)] : [...prev, stage];
+      }
+      saveProjectStages(next);
+      return next;
+    });
+    setNewStageName(""); setNewStageColor(STAGE_COLORS[0]); setInsertAfterStageId(null);
   }
 
   const handleDragStart = useCallback((e: React.DragEvent, payload: string) => {
@@ -488,29 +516,38 @@ export default function ProjectPipeline({ companyId, initialCards, activeClients
                 </button>
               </div>
             </div>
+
+            {/* Insert after this stage */}
+            <div style={{ display: "flex", alignItems: "flex-start", paddingTop: 8 }}>
+              {insertAfterStageId === stage.id ? (
+                <AddStageForm
+                  stageName={newStageName} setNewStageName={setNewStageName}
+                  stageColor={newStageColor} setNewStageColor={setNewStageColor}
+                  onAdd={handleAddStage} onCancel={() => { setInsertAfterStageId(null); setNewStageName(""); }}
+                />
+              ) : (
+                <button
+                  onClick={() => setInsertAfterStageId(stage.id)}
+                  title="Insert stage here"
+                  style={{ background: "transparent", border: "none", color: "#30373f", fontSize: 20, cursor: "pointer", padding: "4px 6px", borderRadius: 6, transition: "color 0.15s" }}
+                  onMouseEnter={(e) => (e.currentTarget.style.color = "#C9A84C")}
+                  onMouseLeave={(e) => (e.currentTarget.style.color = "#30373f")}
+                >+</button>
+              )}
+            </div>
           );
         })}
 
-        {/* Add Stage */}
+        {/* Add Stage at END button */}
         <div style={{ minWidth: 200, flexShrink: 0, alignSelf: "flex-start" }}>
-          {showAddStage ? (
-            <div style={{ background: "#161b22", border: "1px solid #30373f", borderRadius: 12, padding: 14 }}>
-              <p style={{ color: "#e6edf3", fontWeight: 700, fontSize: 12, marginBottom: 10, marginTop: 0 }}>New Stage</p>
-              <input autoFocus type="text" placeholder="Stage name..." value={newStageName} onChange={(e) => setNewStageName(e.target.value)}
-                onKeyDown={(e) => { if (e.key === "Enter") handleAddStage(); if (e.key === "Escape") setShowAddStage(false); }}
-                style={{ width: "100%", background: "#0d1117", color: "#e6edf3", border: "1px solid #484f58", borderRadius: 6, padding: "6px 8px", fontSize: 12, marginBottom: 10, boxSizing: "border-box" }} />
-              <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginBottom: 12 }}>
-                {STAGE_COLORS.map((c) => (
-                  <button key={c} onClick={() => setNewStageColor(c)} style={{ width: 22, height: 22, borderRadius: "50%", background: c, border: newStageColor === c ? "3px solid #fff" : "2px solid transparent", cursor: "pointer", padding: 0, outline: "none", boxSizing: "border-box" }} />
-                ))}
-              </div>
-              <div style={{ display: "flex", gap: 6 }}>
-                <button onClick={handleAddStage} disabled={!newStageName.trim()} style={{ flex: 1, background: newStageColor, color: "#0d1117", border: "none", borderRadius: 6, padding: "6px 0", fontSize: 12, fontWeight: 700, cursor: "pointer", opacity: newStageName.trim() ? 1 : 0.5 }}>Add Stage</button>
-                <button onClick={() => { setShowAddStage(false); setNewStageName(""); }} style={{ flex: 1, background: "transparent", color: "#8b949e", border: "1px solid #30373f", borderRadius: 6, padding: "6px 0", fontSize: 12, cursor: "pointer" }}>Cancel</button>
-              </div>
-            </div>
+          {insertAfterStageId === "END" ? (
+            <AddStageForm
+              stageName={newStageName} setNewStageName={setNewStageName}
+              stageColor={newStageColor} setNewStageColor={setNewStageColor}
+              onAdd={handleAddStage} onCancel={() => { setInsertAfterStageId(null); setNewStageName(""); }}
+            />
           ) : (
-            <button onClick={() => setShowAddStage(true)}
+            <button onClick={() => setInsertAfterStageId("END")}
               style={{ width: "100%", background: "transparent", color: "#8b949e", border: "2px dashed #30373f", borderRadius: 12, padding: "24px 0", fontSize: 22, cursor: "pointer", transition: "color 0.15s, border-color 0.15s" }}
               onMouseEnter={(e) => { (e.currentTarget as HTMLButtonElement).style.color = "#C9A84C"; (e.currentTarget as HTMLButtonElement).style.borderColor = "#C9A84C66"; }}
               onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.color = "#8b949e"; (e.currentTarget as HTMLButtonElement).style.borderColor = "#30373f"; }}
