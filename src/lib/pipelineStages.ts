@@ -72,6 +72,7 @@ export function saveStages(stages: PipelineStage[]): void {
 
 // Keep old exports so existing callers don't break
 export function saveStageOrder(stages: PipelineStage[]): void { saveStages(stages); }
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 export function saveCustomStage(_stage: PipelineStage): void { /* no-op, use saveStages */ }
 
 // ─── Project pipeline ─────────────────────────────────────────────────────────
@@ -110,4 +111,5 @@ export function saveProjectStages(stages: PipelineStage[]): void {
 
 // Keep old exports
 export function saveProjectStageOrder(stages: PipelineStage[]): void { saveProjectStages(stages); }
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 export function saveProjectCustomStage(_stage: PipelineStage): void { /* no-op */ }
