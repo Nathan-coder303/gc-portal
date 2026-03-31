@@ -14,17 +14,34 @@ function getOAuthClient() {
   return oauth2Client;
 }
 
+const FILE_MIMES = new Set([
+  "application/pdf",
+  "application/msword",
+  "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+]);
+
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-function findFirstPdfPart(payload: any): any | null {
+function findFirstFilePart(payload: any): any | null {
   if (!payload) return null;
-  if ((payload.mimeType === "application/pdf" || payload.filename?.endsWith(".pdf")) && (payload.body?.attachmentId || payload.body?.data)) return payload;
+  const isFile =
+    FILE_MIMES.has(payload.mimeType) ||
+    (payload.mimeType === "application/octet-stream" && payload.filename?.match(/\.(pdf|docx?)$/i)) ||
+    payload.filename?.match(/\.(pdf|docx?)$/i);
+  if (isFile && (payload.body?.attachmentId || payload.body?.data)) return payload;
   if (payload.parts) {
     for (const p of payload.parts) {
-      const found = findFirstPdfPart(p);
+      const found = findFirstFilePart(p);
       if (found) return found;
     }
   }
   return null;
+}
+
+function mimeForPart(part: { mimeType?: string; filename?: string }): string {
+  if (part.mimeType && FILE_MIMES.has(part.mimeType)) return part.mimeType;
+  if (part.filename?.match(/\.docx$/i)) return "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
+  if (part.filename?.match(/\.doc$/i)) return "application/msword";
+  return "application/pdf";
 }
 
 // GET /api/[companyId]/gmail-attachment?msgId=xxx&attachmentId=yyy
@@ -48,44 +65,45 @@ export async function GET(req: NextRequest) {
   const gmail = google.gmail({ version: "v1", auth: getOAuthClient() });
 
   let buffer: Buffer;
-  let filename = "bid.pdf";
+  let filename = "bid-document";
+  let contentType = "application/pdf";
 
   if (attachmentId) {
-    // Normal path: fetch attachment by ID
-    const attachment = await gmail.users.messages.attachments.get({
-      userId: "me",
-      messageId: msgId,
-      id: attachmentId,
-    });
-    const data = attachment.data.data ?? "";
+    // Normal path: fetch attachment by ID — also fetch message to get mime type
+    const [attRes, fullMsg] = await Promise.all([
+      gmail.users.messages.attachments.get({ userId: "me", messageId: msgId, id: attachmentId }),
+      gmail.users.messages.get({ userId: "me", id: msgId, format: "metadata" }),
+    ]);
+    const data = attRes.data.data ?? "";
     buffer = Buffer.from(data.replace(/-/g, "+").replace(/_/g, "/"), "base64");
+    // Find the part to get filename and mime type
+    const part = findFirstFilePart(fullMsg.data.payload);
+    if (part) { filename = part.filename ?? filename; contentType = mimeForPart(part); }
   } else {
-    // Fallback: fetch the full message and extract first PDF part
+    // Fallback: fetch full message and find first PDF or Word doc
     const full = await gmail.users.messages.get({ userId: "me", id: msgId });
-    const pdfPart = findFirstPdfPart(full.data.payload);
-    if (!pdfPart) return NextResponse.json({ error: "No PDF found in message" }, { status: 404 });
+    const filePart = findFirstFilePart(full.data.payload);
+    if (!filePart) return NextResponse.json({ error: "No file found in message" }, { status: 404 });
 
-    filename = pdfPart.filename ?? "bid.pdf";
-    if (pdfPart.body?.data) {
-      // Inline data
-      buffer = Buffer.from(pdfPart.body.data.replace(/-/g, "+").replace(/_/g, "/"), "base64");
-    } else if (pdfPart.body?.attachmentId) {
-      // Large attachment — fetch by ID found in the message
+    filename = filePart.filename ?? filename;
+    contentType = mimeForPart(filePart);
+
+    if (filePart.body?.data) {
+      buffer = Buffer.from(filePart.body.data.replace(/-/g, "+").replace(/_/g, "/"), "base64");
+    } else if (filePart.body?.attachmentId) {
       const attachment = await gmail.users.messages.attachments.get({
-        userId: "me",
-        messageId: msgId,
-        id: pdfPart.body.attachmentId,
+        userId: "me", messageId: msgId, id: filePart.body.attachmentId,
       });
       const data = attachment.data.data ?? "";
       buffer = Buffer.from(data.replace(/-/g, "+").replace(/_/g, "/"), "base64");
     } else {
-      return NextResponse.json({ error: "PDF part has no data" }, { status: 404 });
+      return NextResponse.json({ error: "File part has no data" }, { status: 404 });
     }
   }
 
   return new NextResponse(new Uint8Array(buffer), {
     headers: {
-      "Content-Type": "application/pdf",
+      "Content-Type": contentType,
       "Content-Disposition": `inline; filename="${filename}"`,
     },
   });
