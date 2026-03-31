@@ -75,7 +75,8 @@ function StatusBadge({ status }: { status: string }) {
 export default function ClientInvoicesTab({
   companyId,
   clientId,
-  clientName,
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  clientName: _clientName,
   clientEmail,
   estimates,
   initialInvoices,
