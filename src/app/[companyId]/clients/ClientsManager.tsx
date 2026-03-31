@@ -252,7 +252,6 @@ function ClientColumn({
 }) {
   const [dragOverId, setDragOverId] = useState<string | null>(null);
   const [dragOverZone, setDragOverZone] = useState(false);
-  const router = useRouter();
 
   return (
     <div
