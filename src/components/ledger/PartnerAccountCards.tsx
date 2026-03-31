@@ -163,7 +163,27 @@ function AccountCard({
   isAdmin: boolean;
   showDragHandle?: boolean;
   dragHandleProps?: React.HTMLAttributes<HTMLDivElement>;
-}) {
+})
+
+{
+  function printStatement() {
+    const credits = entries.filter((e) => e.entryType === "CREDIT").reduce((s, e) => s + e.amount, 0);
+    const debits = entries.filter((e) => e.entryType === "DEBIT").reduce((s, e) => s + e.amount, 0);
+    const jc = (capitalLines ?? []).reduce((s, l) => s + l.credit, 0);
+    const jd = (capitalLines ?? []).reduce((s, l) => s + l.debit, 0);
+    const endingBalance = beginningBalance + credits - debits + jc - jd;
+    const allLines = [
+      ...entries.map((e) => ({ date: e.date, memo: e.description, amount: e.entryType === "CREDIT" ? e.amount : -e.amount })),
+      ...(capitalLines ?? []).map((l) => ({ date: l.date, memo: l.memo, amount: l.credit > 0 ? l.credit : -l.debit })),
+    ].sort((a, b) => a.date.localeCompare(b.date));
+    const rows = allLines.map((l) => `<tr><td>${new Date(l.date + "T00:00:00").toLocaleDateString("en-US",{month:"short",day:"numeric",year:"numeric"})}</td><td>${l.memo}</td><td style="text-align:right;color:${l.amount>=0?"#166534":"#991b1b"};font-family:monospace">${l.amount>=0?"+":"-"}$${fmt(Math.abs(l.amount))}</td></tr>`).join("");
+    const html = `<!DOCTYPE html><html><head><title>${title} Statement</title><style>body{font-family:Arial,sans-serif;padding:40px;color:#111;max-width:700px;margin:0 auto}h1{font-size:20px;margin:0}p{color:#666;font-size:12px;margin:4px 0 28px}table{width:100%;border-collapse:collapse;font-size:13px}th{text-align:left;border-bottom:2px solid #000;padding:8px 6px;font-size:11px;text-transform:uppercase;letter-spacing:.05em}td{padding:7px 6px;border-bottom:1px solid #e5e7eb}td:last-child{text-align:right;font-family:monospace}.total td{font-weight:700;border-top:2px solid #000;border-bottom:none}.btn{display:inline-block;margin-top:24px;padding:8px 20px;background:#C9A84C;color:#000;border:none;border-radius:6px;cursor:pointer;font-size:13px;font-weight:600}@media print{.btn{display:none}}</style></head><body><h1>${title}</h1><p>Account Statement · Generated ${new Date().toLocaleDateString("en-US",{month:"long",day:"numeric",year:"numeric"})}</p><table><thead><tr><th>Date</th><th>Description</th><th style="text-align:right">Amount</th></tr></thead><tbody><tr><td></td><td>Beginning Balance</td><td style="text-align:right;font-family:monospace">$${fmt(beginningBalance)}</td></tr>${rows}<tr class="total"><td colspan="2">Ending Balance</td><td>$${fmt(endingBalance)}</td></tr></tbody></table><button class="btn" onclick="window.print()">Print / Save PDF</button></body></html>`;
+    const win = window.open("", "_blank");
+    if (!win) return;
+    win.document.write(html);
+    win.document.close();
+  }
+
   const [editingBalance, setEditingBalance] = useState(false);
   const [balanceInput, setBalanceInput] = useState(String(beginningBalance));
   const [savingBalance, setSavingBalance] = useState(false);
@@ -192,15 +212,22 @@ return (
           <div className="text-[10px] font-semibold uppercase tracking-wider mb-0.5" style={{ color: "#8b949e" }}>{subtitle}</div>
           <div className="text-sm font-bold" style={{ color: "#e6edf3" }}>{title}</div>
         </div>
-        {showDragHandle && (
-          <div
-            {...(dragHandleProps ?? {})}
-            className="cursor-grab active:cursor-grabbing px-1 py-0.5 rounded text-sm select-none"
-            style={{ color: "#8b949e", touchAction: "none" }}
-          >
-            ⠿
-          </div>
-        )}
+        <div className="flex items-center gap-2">
+          <button onClick={printStatement} title="Print Statement"
+            className="text-[10px] px-2 py-0.5 rounded font-semibold"
+            style={{ color: GOLD, background: "#C9A84C11", border: `1px solid ${GOLD}44` }}>
+            🖨 Print
+          </button>
+          {showDragHandle && (
+            <div
+              {...(dragHandleProps ?? {})}
+              className="cursor-grab active:cursor-grabbing px-1 py-0.5 rounded text-sm select-none"
+              style={{ color: "#8b949e", touchAction: "none" }}
+            >
+              ⠿
+            </div>
+          )}
+        </div>
       </div>
 
       {/* Balance */}
@@ -306,6 +333,7 @@ return (
 }
 
 function MasterCard({
+  projectId,
   partners,
   partnerEntriesMap,
   capitalLinesByPartner,
@@ -313,6 +341,7 @@ function MasterCard({
   showDragHandle,
   dragHandleProps,
 }: {
+  projectId: string;
   partners: Partner[];
   partnerEntriesMap: Record<string, Entry[]>;
   capitalLinesByPartner: Record<string, CapitalLine[]>;
@@ -330,6 +359,27 @@ function MasterCard({
     return p.beginningBalance + credits - debits + jc - jd;
   }
 
+  const EDDIE_CONTRIB = 55000;
+  const YOSEF_CONTRIB = 25000;
+  const CASH_ON_HAND = 25000;
+
+  const [bankAccount, setBankAccount] = useState(150000);
+  const [editingBank, setEditingBank] = useState(false);
+  const [bankInput, setBankInput] = useState("150000");
+  const [open, setOpen] = useState(true);
+
+  useEffect(() => {
+    const saved = localStorage.getItem(`master-bank-account-${projectId}`);
+    if (saved) { const v = parseFloat(saved); if (!isNaN(v)) { setBankAccount(v); setBankInput(String(v)); } }
+  }, [projectId]);
+
+  function saveBank() {
+    const val = parseFloat(bankInput) || 0;
+    setBankAccount(val);
+    localStorage.setItem(`master-bank-account-${projectId}`, String(val));
+    setEditingBank(false);
+  }
+
   const eddie = partners.find((p) => p.name === "Eddie Yakubov");
   const yosef = partners.find((p) => p.name === "Yosef Yakubov");
   const eddieBalance = eddie ? partnerBalance(eddie) : 0;
@@ -338,24 +388,25 @@ function MasterCard({
   const llcExpenseItems = llcEntries.filter((e) => e.entryType === "DEBIT");
   const llcExpenses = llcExpenseItems.reduce((s, e) => s + e.amount, 0);
 
-  const EDDIE_CONTRIB = 55000;
-  const YOSEF_CONTRIB = 25000;
-  const CASH_ON_HAND = 25000;
-  const BANK_ACCOUNT = 150000;
+  const total = eddieBalance + yosefBalance + EDDIE_CONTRIB + YOSEF_CONTRIB - CASH_ON_HAND - llcExpenses - bankAccount;
 
-  const total = eddieBalance + yosefBalance + EDDIE_CONTRIB + YOSEF_CONTRIB - CASH_ON_HAND - llcExpenses - BANK_ACCOUNT;
-
-  const rows: { label: string; value: number; dynamic?: boolean }[] = [
-    { label: "Eddie's Balance", value: eddieBalance, dynamic: true },
-    { label: "Yosef's Balance", value: yosefBalance, dynamic: true },
+  const rows: { label: string; value: number; editable?: boolean }[] = [
+    { label: "Eddie's Balance", value: eddieBalance },
+    { label: "Yosef's Balance", value: yosefBalance },
     { label: "Contribution to LLC (Eddie)", value: EDDIE_CONTRIB },
     { label: "Contribution to LLC (Yosef)", value: YOSEF_CONTRIB },
     { label: "Cash on Hand", value: -CASH_ON_HAND },
-    { label: `Items Paid by LLC (${llcExpenseItems.length})`, value: -llcExpenses, dynamic: true },
-    { label: "Bank Account", value: -BANK_ACCOUNT },
+    { label: `Items Paid by LLC (${llcExpenseItems.length})`, value: -llcExpenses },
+    { label: "Bank Account", value: -bankAccount, editable: true },
   ];
 
-  const [open, setOpen] = useState(true);
+  function printMaster() {
+    const html = `<!DOCTYPE html><html><head><title>Mike Master Statement</title><style>body{font-family:Arial,sans-serif;padding:40px;color:#111;max-width:600px;margin:0 auto}h1{font-size:20px;margin:0}p{color:#666;font-size:12px;margin:4px 0 28px}table{width:100%;border-collapse:collapse;font-size:13px}th{text-align:left;border-bottom:2px solid #000;padding:8px 6px;font-size:11px;text-transform:uppercase}td{padding:7px 6px;border-bottom:1px solid #e5e7eb}td:last-child{text-align:right;font-family:monospace}.total td{font-weight:700;border-top:2px solid #000;border-bottom:none}.btn{display:inline-block;margin-top:24px;padding:8px 20px;background:#C9A84C;color:#000;border:none;border-radius:6px;cursor:pointer;font-size:13px;font-weight:600}@media print{.btn{display:none}}</style></head><body><h1>Mike Master Summary</h1><p>Generated ${new Date().toLocaleDateString("en-US",{month:"long",day:"numeric",year:"numeric"})}</p><table><thead><tr><th>Item</th><th style="text-align:right">Amount</th></tr></thead><tbody>${rows.map(r=>`<tr><td>${r.label}</td><td style="color:${r.value>=0?"#166534":"#991b1b"}">${r.value>=0?"+":"-"}$${fmt(Math.abs(r.value))}</td></tr>`).join("")}<tr class="total"><td>Net Total</td><td>$${fmt(total)}</td></tr></tbody></table><button class="btn" onclick="window.print()">Print / Save PDF</button></body></html>`;
+    const win = window.open("", "_blank");
+    if (!win) return;
+    win.document.write(html);
+    win.document.close();
+  }
 
   return (
     <div className="rounded-xl p-4 flex flex-col gap-3" style={{ background: "#0d1117", border: `1px solid ${GOLD}` }}>
@@ -364,11 +415,18 @@ function MasterCard({
           <div className="text-[10px] font-semibold uppercase tracking-wider mb-0.5" style={{ color: GOLD }}>Master Summary</div>
           <div className="text-sm font-bold" style={{ color: "#e6edf3" }}>Mike Master</div>
         </div>
-        {showDragHandle && (
-          <div {...(dragHandleProps ?? {})} className="cursor-grab active:cursor-grabbing px-1 py-0.5 rounded text-sm select-none" style={{ color: "#8b949e", touchAction: "none" }}>
-            ⠿
-          </div>
-        )}
+        <div className="flex items-center gap-2">
+          <button onClick={printMaster} title="Print Statement"
+            className="text-[10px] px-2 py-0.5 rounded font-semibold"
+            style={{ color: GOLD, background: "#C9A84C11", border: `1px solid ${GOLD}44` }}>
+            🖨 Print
+          </button>
+          {showDragHandle && (
+            <div {...(dragHandleProps ?? {})} className="cursor-grab active:cursor-grabbing px-1 py-0.5 rounded text-sm select-none" style={{ color: "#8b949e", touchAction: "none" }}>
+              ⠿
+            </div>
+          )}
+        </div>
       </div>
 
       <div className="rounded-lg p-3" style={{ background: "#1e2736", border: `1px solid ${GOLD}44` }}>
@@ -390,10 +448,24 @@ function MasterCard({
             {rows.map((row) => (
               <div key={row.label} className="flex items-center justify-between gap-2">
                 <span className="text-xs font-semibold" style={{ color: "#e6edf3" }}>{row.label}</span>
-                <span className="text-xs font-mono font-semibold shrink-0"
-                  style={{ color: row.value >= 0 ? "#4ade80" : "#f87171" }}>
-                  {row.value >= 0 ? "+" : "−"}${fmt(Math.abs(row.value))}
-                </span>
+                {row.editable && editingBank ? (
+                  <div className="flex items-center gap-1">
+                    <input type="number" step="0.01" value={bankInput} onChange={(e) => setBankInput(e.target.value)}
+                      className="w-28 rounded px-2 py-0.5 text-xs focus:outline-none" style={INPUT_STYLE}
+                      onKeyDown={(e) => { if (e.key === "Enter") saveBank(); if (e.key === "Escape") setEditingBank(false); }} autoFocus />
+                    <button onClick={saveBank} className="text-[10px] px-1.5 py-0.5 rounded" style={{ background: GOLD, color: "#0d1117", fontWeight: 700 }}>✓</button>
+                    <button onClick={() => setEditingBank(false)} className="text-[10px] px-1.5 py-0.5 rounded" style={{ background: "#30373f", color: "#8b949e" }}>✕</button>
+                  </div>
+                ) : (
+                  <div className="flex items-center gap-1">
+                    <span className="text-xs font-mono font-semibold shrink-0" style={{ color: row.value >= 0 ? "#4ade80" : "#f87171" }}>
+                      {row.value >= 0 ? "+" : "−"}${fmt(Math.abs(row.value))}
+                    </span>
+                    {row.editable && (
+                      <button onClick={() => setEditingBank(true)} className="text-[10px] px-1 py-0.5 rounded" style={{ color: GOLD, background: "#C9A84C11" }}>✎</button>
+                    )}
+                  </div>
+                )}
               </div>
             ))}
           </div>
@@ -512,6 +584,7 @@ export default function PartnerAccountCards({
   );
   cardMap["master"] = (dragHandleProps: React.HTMLAttributes<HTMLDivElement>) => (
     <MasterCard
+      projectId={projectId}
       partners={partners}
       partnerEntriesMap={partnerEntriesMap}
       capitalLinesByPartner={capitalLinesByPartner}
