@@ -57,7 +57,7 @@ export async function POST(
 
     // Upload and date-extract in parallel
     const [blob, bidDate] = await Promise.all([
-      put(`bid-pdfs/${Date.now()}-${file.name}`, buffer, { access: "private", contentType: file.type || "application/octet-stream" }),
+      put(`bid-pdfs/${Date.now()}-${file.name}`, Buffer.from(buffer), { access: "private", contentType: file.type || "application/octet-stream" }),
       extractDateFromPdf(base64, file.name),
     ]);
 

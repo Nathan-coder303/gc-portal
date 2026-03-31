@@ -43,11 +43,10 @@ function fmt(n: number) {
 function fmtDate(iso: string) {
   try {
     const d = new Date(iso);
-    if (isNaN(d.getTime()) || d.getUTCFullYear() < 2020) return "—";
+    if (isNaN(d.getTime()) || d.getUTCFullYear() < 2020) return "";
     const months = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
-    const h = d.getUTCHours();
-    return `${months[d.getUTCMonth()]} ${d.getUTCDate()}, ${d.getUTCFullYear()} ${h % 12 || 12}:${String(d.getUTCMinutes()).padStart(2,"0")} ${h >= 12 ? "PM" : "AM"}`;
-  } catch { return "—"; }
+    return `${months[d.getUTCMonth()]} ${d.getUTCDate()}, ${d.getUTCFullYear()}`;
+  } catch { return ""; }
 }
 
 function getPdfHref(fileUrl: string, companyId: string): string {
