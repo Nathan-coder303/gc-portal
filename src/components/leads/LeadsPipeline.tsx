@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef, useCallback, useEffect } from "react";
+import React, { useState, useRef, useCallback, useEffect } from "react";
 import { type PipelineStage, loadStages, saveStages, STAGE_COLORS } from "@/lib/pipelineStages";
 import NotesPanel from "@/components/notes/NotesPanel";
 
@@ -140,6 +140,61 @@ function SourceSelector({
   );
 }
 
+// ─── Project Type Selector ────────────────────────────────────────────────────
+
+const PRESET_PROJECT_TYPES = [
+  "Roof Replacement",
+  "Bathroom Remodeling",
+  "Kitchen Remodeling",
+  "Custom Home",
+  "Additions",
+];
+
+function ProjectTypeSelector({ value, onChange }: { value: string; onChange: (v: string) => void }) {
+  const [customTypes, setCustomTypes] = useState<string[]>([]);
+  const [addingCustom, setAddingCustom] = useState(false);
+  const [customInput, setCustomInput] = useState("");
+
+  const all = [...PRESET_PROJECT_TYPES, ...customTypes];
+
+  function handleSelect(e: React.ChangeEvent<HTMLSelectElement>) {
+    const v = e.target.value;
+    if (v === "__add__") { setAddingCustom(true); return; }
+    onChange(v);
+  }
+
+  function handleAddCustom() {
+    const v = customInput.trim();
+    if (!v) return;
+    setCustomTypes((prev) => [...prev, v]);
+    onChange(v);
+    setAddingCustom(false);
+    setCustomInput("");
+  }
+
+  return (
+    <div>
+      {addingCustom ? (
+        <div style={{ display: "flex", gap: 4 }}>
+          <input autoFocus value={customInput} onChange={(e) => setCustomInput(e.target.value)}
+            onKeyDown={(e) => { if (e.key === "Enter") handleAddCustom(); if (e.key === "Escape") setAddingCustom(false); }}
+            placeholder="Project type..."
+            style={{ flex: 1, background: "#0d1117", color: "#e6edf3", border: "1px solid #484f58", borderRadius: 6, padding: "7px 10px", fontSize: 13, boxSizing: "border-box" as const }} />
+          <button onClick={handleAddCustom} style={{ background: "#C9A84C", color: "#0d1117", border: "none", borderRadius: 6, padding: "7px 10px", fontSize: 13, fontWeight: 700, cursor: "pointer" }}>✓</button>
+          <button onClick={() => setAddingCustom(false)} style={{ background: "transparent", color: "#8b949e", border: "1px solid #30373f", borderRadius: 6, padding: "7px 8px", fontSize: 13, cursor: "pointer" }}>✕</button>
+        </div>
+      ) : (
+        <select value={value} onChange={handleSelect}
+          style={{ width: "100%", background: "#0d1117", color: value ? "#e6edf3" : "#484f58", border: "1px solid #30373f", borderRadius: 6, padding: "7px 10px", fontSize: 13, boxSizing: "border-box" as const }}>
+          <option value="">Select project type…</option>
+          {all.map((t) => <option key={t} value={t}>{t}</option>)}
+          <option value="__add__" style={{ color: "#C9A84C" }}>+ Add type…</option>
+        </select>
+      )}
+    </div>
+  );
+}
+
 const TRIAGE_COLOR = "#ef4444";
 
 // ─── Add Stage Form ────────────────────────────────────────────────────────────
@@ -175,16 +230,20 @@ function AddStageForm({ stageName, setNewStageName, stageColor, setNewStageColor
 
 function TriageCard({
   lead,
+  stages,
   onDragStart,
   onEdit,
   onDelete,
   onNotes,
+  onMoveToStage,
 }: {
   lead: TriageLead;
+  stages: PipelineStage[];
   onDragStart: (e: React.DragEvent, payload: string) => void;
   onEdit: (leadId: string) => void;
   onDelete: (leadId: string) => void;
   onNotes: (leadId: string, name: string) => void;
+  onMoveToStage: (leadId: string, stageId: string) => void;
 }) {
   const [dragging, setDragging] = useState(false);
   const [hovered, setHovered] = useState(false);
@@ -241,7 +300,17 @@ function TriageCard({
         <div style={{ color: "#8b949e", fontSize: 10, marginTop: 2 }}>📞 {lead.phone}</div>
       )}
       <SourceSelector value={source} onChange={setSource} stageColor={TRIAGE_COLOR} />
-      <div style={{ color: "#484f58", fontSize: 10, marginTop: 5 }}>{relTime(lead.receivedAt)}</div>
+      <div style={{ marginTop: 5 }} onClick={(e) => e.stopPropagation()}>
+        <select
+          value=""
+          onChange={(e) => { if (e.target.value) { onMoveToStage(lead.id, e.target.value); e.currentTarget.value = ""; } }}
+          style={{ width: "100%", background: "#0d1117", color: "#8b949e", border: "1px solid #30373f", borderRadius: 4, padding: "3px 6px", fontSize: 11, cursor: "pointer" }}
+        >
+          <option value="">Move to stage…</option>
+          {stages.map((s) => <option key={s.id} value={s.id} style={{ color: "#e6edf3" }}>{s.label}</option>)}
+        </select>
+      </div>
+      <div style={{ color: "#484f58", fontSize: 10, marginTop: 4 }}>{relTime(lead.receivedAt)}</div>
     </div>
   );
 }
@@ -251,17 +320,21 @@ function TriageCard({
 function StageCard({
   card,
   stageColor,
+  stages,
   onDragStart,
   onDelete,
   onSourceChange,
+  onStageChange,
   onEdit,
   onNotes,
 }: {
   card: StagedCard;
   stageColor: string;
+  stages: PipelineStage[];
   onDragStart: (e: React.DragEvent, payload: string) => void;
   onDelete: (id: string) => void;
   onSourceChange: (id: string, source: string | null) => void;
+  onStageChange: (id: string, stageId: string) => void;
   onEdit: (leadId: string) => void;
   onNotes: (leadId: string, name: string) => void;
 }) {
@@ -340,6 +413,17 @@ function StageCard({
         onChange={(v) => onSourceChange(card.id, v)}
       />
 
+      {/* Stage dropdown */}
+      <div style={{ marginTop: 4 }} onClick={(e) => e.stopPropagation()}>
+        <select
+          value={card.stage}
+          onChange={(e) => onStageChange(card.id, e.target.value)}
+          style={{ width: "100%", background: "#0d1117", color: stageColor, border: `1px solid ${stageColor}44`, borderRadius: 4, padding: "3px 6px", fontSize: 11, cursor: "pointer" }}
+        >
+          {stages.map((s) => <option key={s.id} value={s.id} style={{ color: "#e6edf3" }}>{s.label}</option>)}
+        </select>
+      </div>
+
       {card.notes && (
         <div style={{ color: "#8b949e", fontSize: 10, marginTop: 6, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
           {card.notes}
@@ -367,7 +451,7 @@ export default function LeadsPipeline({ companyId, triageLeads, stagedCards }: P
   // ── Edit lead modal ──────────────────────────────────────────────────────
   type EditForm = { name: string; email: string; phone: string; address: string; city: string; state: string; projectType: string; message: string };
   const [editLeadId, setEditLeadId] = useState<string | null>(null);
-  const [editForm, setEditForm] = useState<EditForm>({ name: "", email: "", phone: "", address: "", city: "", state: "", projectType: "", message: "" });
+  const [editForm, setEditForm] = useState<EditForm>({ name: "", email: "", phone: "", address: "", city: "", state: "FL", projectType: "", message: "" });
   const [editSaving, setEditSaving] = useState(false);
   const [editDeleting, setEditDeleting] = useState(false);
 
@@ -378,7 +462,7 @@ export default function LeadsPipeline({ companyId, triageLeads, stagedCards }: P
       const res = await fetch(`/api/${companyId}/leads/${leadId}`);
       if (res.ok) {
         const d = await res.json();
-        setEditForm({ name: d.name ?? "", email: d.email ?? "", phone: d.phone ?? "", address: d.address ?? "", city: d.city ?? "", state: d.state ?? "", projectType: d.projectType ?? "", message: d.message ?? "" });
+        setEditForm({ name: d.name ?? "", email: d.email ?? "", phone: d.phone ?? "", address: d.address ?? "", city: d.city ?? "", state: d.state ?? "FL", projectType: d.projectType ?? "", message: d.message ?? "" });
       }
     } catch { /* ignore */ }
   }
@@ -654,6 +738,48 @@ export default function LeadsPipeline({ companyId, triageLeads, stagedCards }: P
     } catch { /* non-fatal */ }
   }, [companyId]);
 
+  const handleStageChange = useCallback(async (cardId: string, newStage: string) => {
+    const card = cards.find((c) => c.id === cardId);
+    if (!card || card.stage === newStage) return;
+    setCards((prev) => prev.map((c) => c.id === cardId ? { ...c, stage: newStage } : c));
+    try {
+      await fetch(`/api/${companyId}/pipeline/${cardId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ stage: newStage }),
+      });
+    } catch {
+      setCards((prev) => prev.map((c) => c.id === cardId ? { ...c, stage: card.stage } : c));
+    }
+  }, [cards, companyId]);
+
+  const handleTriageMoveToStage = useCallback(async (leadId: string, targetStage: string) => {
+    const lead = triage.find((l) => l.id === leadId);
+    if (!lead) return;
+    const tempCard: StagedCard = {
+      id: `temp-${Date.now()}`, displayName: lead.name, stage: targetStage,
+      source: null, estimateValue: null, notes: null, leadId: lead.id, sortOrder: 0, createdAt: new Date().toISOString(),
+    };
+    setTriage((prev) => prev.filter((l) => l.id !== leadId));
+    setCards((prev) => [...prev, tempCard]);
+    try {
+      const res = await fetch(`/api/${companyId}/pipeline`, {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ displayName: lead.name, leadId: lead.id, stage: targetStage }),
+      });
+      if (!res.ok) throw new Error();
+      const created = await res.json();
+      setCards((prev) => prev.map((c) => c.id === tempCard.id ? {
+        id: created.id, displayName: created.displayName, stage: created.stage,
+        source: created.source, estimateValue: created.estimateValue != null ? Number(created.estimateValue) : null,
+        notes: created.notes, leadId: created.leadId, sortOrder: created.sortOrder, createdAt: created.createdAt,
+      } : c));
+    } catch {
+      setCards((prev) => prev.filter((c) => c.id !== tempCard.id));
+      setTriage((prev) => [...prev, lead]);
+    }
+  }, [triage, companyId]);
+
   return (
     <div>
       {/* Search */}
@@ -709,7 +835,7 @@ export default function LeadsPipeline({ companyId, triageLeads, stagedCards }: P
               </div>
             ) : (
               filteredTriage.map((lead) => (
-                <TriageCard key={lead.id} lead={lead} onDragStart={handleDragStart} onEdit={openEdit} onDelete={handleDeleteTriageLead} onNotes={(id, name) => { setNotesLeadId(id); setNotesTitle(name); }} />
+                <TriageCard key={lead.id} lead={lead} stages={stages} onDragStart={handleDragStart} onEdit={openEdit} onDelete={handleDeleteTriageLead} onNotes={(id, name) => { setNotesLeadId(id); setNotesTitle(name); }} onMoveToStage={handleTriageMoveToStage} />
               ))
             )}
           </div>
@@ -722,8 +848,8 @@ export default function LeadsPipeline({ companyId, triageLeads, stagedCards }: P
           const isColOver = dragOverCol === stage.id;
 
           return (
+            <React.Fragment key={stage.id}>
             <div
-              key={stage.id}
               onDragOver={(e) => { handleDragOver(e, stage.id); handleColDragOver(e, stage.id); }}
               onDragLeave={(e) => { if (!e.currentTarget.contains(e.relatedTarget as Node)) { setDragOver(null); setDragOverCol(null); } }}
               onDrop={(e) => { handleDrop(e, stage.id); handleColDrop(e, stage.id); }}
@@ -782,9 +908,11 @@ export default function LeadsPipeline({ companyId, triageLeads, stagedCards }: P
                     key={card.id}
                     card={card}
                     stageColor={stage.color}
+                    stages={stages}
                     onDragStart={handleDragStart}
                     onDelete={handleDelete}
                     onSourceChange={handleSourceChange}
+                    onStageChange={handleStageChange}
                     onEdit={openEdit}
                     onNotes={(leadId, name) => { setNotesLeadId(leadId); setNotesTitle(name); }}
                   />
@@ -815,6 +943,7 @@ export default function LeadsPipeline({ companyId, triageLeads, stagedCards }: P
                 >+</button>
               )}
             </div>
+            </React.Fragment>
           );
         })}
 
@@ -859,9 +988,9 @@ export default function LeadsPipeline({ companyId, triageLeads, stagedCards }: P
             </div>
 
             <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-              {(["name", "email", "phone", "projectType", "address", "city", "state"] as const).map((field) => (
+              {(["name", "email", "phone", "address", "city", "state"] as const).map((field) => (
                 <div key={field}>
-                  <label style={{ color: "#8b949e", fontSize: 11, fontWeight: 600, display: "block", marginBottom: 4, textTransform: "capitalize" }}>{field === "projectType" ? "Project Type" : field}</label>
+                  <label style={{ color: "#8b949e", fontSize: 11, fontWeight: 600, display: "block", marginBottom: 4, textTransform: "capitalize" }}>{field}</label>
                   <input
                     type="text"
                     value={editForm[field]}
@@ -870,6 +999,10 @@ export default function LeadsPipeline({ companyId, triageLeads, stagedCards }: P
                   />
                 </div>
               ))}
+              <div>
+                <label style={{ color: "#8b949e", fontSize: 11, fontWeight: 600, display: "block", marginBottom: 4 }}>Project Type</label>
+                <ProjectTypeSelector value={editForm.projectType} onChange={(v) => setEditForm((f) => ({ ...f, projectType: v }))} />
+              </div>
               <div>
                 <label style={{ color: "#8b949e", fontSize: 11, fontWeight: 600, display: "block", marginBottom: 4 }}>Message</label>
                 <textarea
