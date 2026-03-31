@@ -279,7 +279,7 @@ export default function SubsBidsTab({ clientId, companyId, subBids: initialSubBi
   }
 
   const uploadFile = useCallback(async (file: File, bid: SubBidRow, offerId?: string) => {
-    if (!file || file.type !== "application/pdf") return;
+    if (!file) return;
     setUploading(bid.divisionCode);
     try {
       const fd = new FormData();
@@ -664,8 +664,8 @@ export default function SubsBidsTab({ clientId, companyId, subBids: initialSubBi
                 <div className="mt-3 rounded-lg px-3 py-2 text-center cursor-pointer text-xs transition-all"
                   style={{ border: "1px dashed #30373f", color: "#8b949e" }}
                   onClick={() => fileInputRefs.current[bid.divisionCode]?.click()}>
-                  {isUploading ? "Uploading…" : isDragging ? "Drop PDF here" : "Drop PDF or click to upload"}
-                  <input type="file" accept="application/pdf" className="hidden"
+                  {isUploading ? "Uploading…" : isDragging ? "Drop file here" : "Drop PDF/Word or click to upload"}
+                  <input type="file" accept=".pdf,.doc,.docx,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document" className="hidden"
                     ref={(el) => { fileInputRefs.current[bid.divisionCode] = el; }}
                     onChange={(e) => { const f = e.target.files?.[0]; if (f) uploadFile(f, bid, placeholder?.id); e.target.value = ""; }} />
                 </div>
