@@ -166,24 +166,7 @@ function AccountCard({
 })
 
 {
-  function printStatement() {
-    const credits = entries.filter((e) => e.entryType === "CREDIT").reduce((s, e) => s + e.amount, 0);
-    const debits = entries.filter((e) => e.entryType === "DEBIT").reduce((s, e) => s + e.amount, 0);
-    const jc = (capitalLines ?? []).reduce((s, l) => s + l.credit, 0);
-    const jd = (capitalLines ?? []).reduce((s, l) => s + l.debit, 0);
-    const endingBalance = beginningBalance + credits - debits + jc - jd;
-    const allLines = [
-      ...entries.map((e) => ({ date: e.date, memo: e.description, amount: e.entryType === "CREDIT" ? e.amount : -e.amount })),
-      ...(capitalLines ?? []).map((l) => ({ date: l.date, memo: l.memo, amount: l.credit > 0 ? l.credit : -l.debit })),
-    ].sort((a, b) => a.date.localeCompare(b.date));
-    const rows = allLines.map((l) => `<tr><td>${new Date(l.date + "T00:00:00").toLocaleDateString("en-US",{month:"short",day:"numeric",year:"numeric"})}</td><td>${l.memo}</td><td style="text-align:right;color:${l.amount>=0?"#166534":"#991b1b"};font-family:monospace">${l.amount>=0?"+":"-"}$${fmt(Math.abs(l.amount))}</td></tr>`).join("");
-    const html = `<!DOCTYPE html><html><head><title>${title} Statement</title><style>body{font-family:Arial,sans-serif;padding:40px;color:#111;max-width:700px;margin:0 auto}h1{font-size:20px;margin:0}p{color:#666;font-size:12px;margin:4px 0 28px}table{width:100%;border-collapse:collapse;font-size:13px}th{text-align:left;border-bottom:2px solid #000;padding:8px 6px;font-size:11px;text-transform:uppercase;letter-spacing:.05em}td{padding:7px 6px;border-bottom:1px solid #e5e7eb}td:last-child{text-align:right;font-family:monospace}.total td{font-weight:700;border-top:2px solid #000;border-bottom:none}.btn{display:inline-block;margin-top:24px;padding:8px 20px;background:#C9A84C;color:#000;border:none;border-radius:6px;cursor:pointer;font-size:13px;font-weight:600}@media print{.btn{display:none}}</style></head><body><h1>${title}</h1><p>Account Statement · Generated ${new Date().toLocaleDateString("en-US",{month:"long",day:"numeric",year:"numeric"})}</p><table><thead><tr><th>Date</th><th>Description</th><th style="text-align:right">Amount</th></tr></thead><tbody><tr><td></td><td>Beginning Balance</td><td style="text-align:right;font-family:monospace">$${fmt(beginningBalance)}</td></tr>${rows}<tr class="total"><td colspan="2">Ending Balance</td><td>$${fmt(endingBalance)}</td></tr></tbody></table><button class="btn" onclick="window.print()">Print / Save PDF</button></body></html>`;
-    const win = window.open("", "_blank");
-    if (!win) return;
-    win.document.write(html);
-    win.document.close();
-  }
-
+  const [previewHtml, setPreviewHtml] = useState<string | null>(null);
   const [editingBalance, setEditingBalance] = useState(false);
   const [balanceInput, setBalanceInput] = useState(String(beginningBalance));
   const [savingBalance, setSavingBalance] = useState(false);
@@ -195,6 +178,34 @@ function AccountCard({
   const journalCredits = (capitalLines ?? []).reduce((s, l) => s + l.credit, 0);
   const journalDebits = (capitalLines ?? []).reduce((s, l) => s + l.debit, 0);
   const balance = beginningBalance + credits - debits + journalCredits - journalDebits;
+
+  function buildStatementHtml() {
+    const allLines = [
+      ...entries.map((e) => ({ date: e.date, memo: e.description, amount: e.entryType === "CREDIT" ? e.amount : -e.amount })),
+      ...(capitalLines ?? []).map((l) => ({ date: l.date, memo: l.memo, amount: l.credit > 0 ? l.credit : -l.debit })),
+    ].sort((a, b) => a.date.localeCompare(b.date));
+    const rows = allLines.map((l) => `<tr><td>${new Date(l.date + "T00:00:00").toLocaleDateString("en-US",{month:"short",day:"numeric",year:"numeric"})}</td><td>${l.memo}</td><td style="text-align:right;color:${l.amount>=0?"#166534":"#991b1b"};font-family:monospace">${l.amount>=0?"+":"-"}$${fmt(Math.abs(l.amount))}</td></tr>`).join("");
+    return `<!DOCTYPE html><html><head><title>${title} Statement</title><style>body{font-family:Arial,sans-serif;padding:40px;color:#111;max-width:700px;margin:0 auto}h1{font-size:20px;margin:0}p{color:#666;font-size:12px;margin:4px 0 28px}table{width:100%;border-collapse:collapse;font-size:13px}th{text-align:left;border-bottom:2px solid #000;padding:8px 6px;font-size:11px;text-transform:uppercase;letter-spacing:.05em}td{padding:7px 6px;border-bottom:1px solid #e5e7eb}td:last-child{text-align:right;font-family:monospace}.total td{font-weight:700;border-top:2px solid #000;border-bottom:none}.actions{margin-top:24px;display:flex;gap:10px}button{padding:8px 20px;border:none;border-radius:6px;cursor:pointer;font-size:13px;font-weight:600}.print-btn{background:#C9A84C;color:#000}.dl-btn{background:#1e2736;color:#e6edf3}@media print{.actions{display:none}}</style></head><body><h1>${title}</h1><p>Account Statement · Generated ${new Date().toLocaleDateString("en-US",{month:"long",day:"numeric",year:"numeric"})}</p><table><thead><tr><th>Date</th><th>Description</th><th style="text-align:right">Amount</th></tr></thead><tbody><tr><td></td><td>Beginning Balance</td><td style="text-align:right;font-family:monospace">$${fmt(beginningBalance)}</td></tr>${rows}<tr class="total"><td colspan="2">Ending Balance</td><td>$${fmt(balance)}</td></tr></tbody></table><div class="actions"><button class="print-btn" onclick="window.print()">🖨 Print / Save PDF</button></div></body></html>`;
+  }
+
+  function handlePreview() { setPreviewHtml(buildStatementHtml()); }
+  function handlePrint() {
+    const html = buildStatementHtml();
+    const win = window.open("", "_blank");
+    if (!win) return;
+    win.document.write(html);
+    win.document.close();
+  }
+  function handleDownload() {
+    const html = buildStatementHtml();
+    const blob = new Blob([html], { type: "text/html" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `${title.replace(/[^a-z0-9]/gi, "-")}-statement.html`;
+    a.click();
+    URL.revokeObjectURL(url);
+  }
 
   async function saveBalance() {
     setSavingBalance(true);
@@ -212,20 +223,12 @@ return (
           <div className="text-[10px] font-semibold uppercase tracking-wider mb-0.5" style={{ color: "#8b949e" }}>{subtitle}</div>
           <div className="text-sm font-bold" style={{ color: "#e6edf3" }}>{title}</div>
         </div>
-        <div className="flex items-center gap-2">
-          <button onClick={printStatement} title="Print Statement"
-            className="text-[10px] px-2 py-0.5 rounded font-semibold"
-            style={{ color: GOLD, background: "#C9A84C11", border: `1px solid ${GOLD}44` }}>
-            🖨 Print
-          </button>
+        <div className="flex items-center gap-1">
+          <button onClick={handlePreview} title="Preview statement" className="text-[10px] px-1.5 py-0.5 rounded font-semibold" style={{ color: "#8b949e", background: "#30373f" }}>👁</button>
+          <button onClick={handleDownload} title="Download statement" className="text-[10px] px-1.5 py-0.5 rounded font-semibold" style={{ color: "#8b949e", background: "#30373f" }}>⬇</button>
+          <button onClick={handlePrint} title="Print statement" className="text-[10px] px-1.5 py-0.5 rounded font-semibold" style={{ color: GOLD, background: "#C9A84C11", border: `1px solid ${GOLD}44` }}>🖨</button>
           {showDragHandle && (
-            <div
-              {...(dragHandleProps ?? {})}
-              className="cursor-grab active:cursor-grabbing px-1 py-0.5 rounded text-sm select-none"
-              style={{ color: "#8b949e", touchAction: "none" }}
-            >
-              ⠿
-            </div>
+            <div {...(dragHandleProps ?? {})} className="cursor-grab active:cursor-grabbing px-1 py-0.5 rounded text-sm select-none" style={{ color: "#8b949e", touchAction: "none" }}>⠿</div>
           )}
         </div>
       </div>
@@ -328,6 +331,21 @@ return (
         </div>
       )}
 
+      {/* Preview modal */}
+      {previewHtml && (
+        <div style={{ position: "fixed", inset: 0, zIndex: 60, background: "rgba(0,0,0,0.8)", display: "flex", alignItems: "center", justifyContent: "center", padding: 16 }}
+          onClick={() => setPreviewHtml(null)}>
+          <div style={{ background: "#fff", borderRadius: 12, width: "100%", maxWidth: 780, height: "85vh", display: "flex", flexDirection: "column", overflow: "hidden" }}
+            onClick={(e) => e.stopPropagation()}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "12px 16px", borderBottom: "1px solid #e5e7eb" }}>
+              <span style={{ fontWeight: 700, fontSize: 14, color: "#111" }}>{title} Statement</span>
+              <button onClick={() => setPreviewHtml(null)} style={{ background: "transparent", border: "none", fontSize: 22, cursor: "pointer", color: "#666", lineHeight: 1 }}>×</button>
+            </div>
+            <iframe srcDoc={previewHtml} style={{ flex: 1, border: "none", width: "100%" }} />
+          </div>
+        </div>
+      )}
+
     </div>
   );
 }
@@ -400,12 +418,27 @@ function MasterCard({
     { label: "Bank Account", value: -bankAccount, editable: true },
   ];
 
-  function printMaster() {
-    const html = `<!DOCTYPE html><html><head><title>Mike Master Statement</title><style>body{font-family:Arial,sans-serif;padding:40px;color:#111;max-width:600px;margin:0 auto}h1{font-size:20px;margin:0}p{color:#666;font-size:12px;margin:4px 0 28px}table{width:100%;border-collapse:collapse;font-size:13px}th{text-align:left;border-bottom:2px solid #000;padding:8px 6px;font-size:11px;text-transform:uppercase}td{padding:7px 6px;border-bottom:1px solid #e5e7eb}td:last-child{text-align:right;font-family:monospace}.total td{font-weight:700;border-top:2px solid #000;border-bottom:none}.btn{display:inline-block;margin-top:24px;padding:8px 20px;background:#C9A84C;color:#000;border:none;border-radius:6px;cursor:pointer;font-size:13px;font-weight:600}@media print{.btn{display:none}}</style></head><body><h1>Mike Master Summary</h1><p>Generated ${new Date().toLocaleDateString("en-US",{month:"long",day:"numeric",year:"numeric"})}</p><table><thead><tr><th>Item</th><th style="text-align:right">Amount</th></tr></thead><tbody>${rows.map(r=>`<tr><td>${r.label}</td><td style="color:${r.value>=0?"#166534":"#991b1b"}">${r.value>=0?"+":"-"}$${fmt(Math.abs(r.value))}</td></tr>`).join("")}<tr class="total"><td>Net Total</td><td>$${fmt(total)}</td></tr></tbody></table><button class="btn" onclick="window.print()">Print / Save PDF</button></body></html>`;
+  const [previewMasterHtml, setPreviewMasterHtml] = useState<string | null>(null);
+
+  function buildMasterHtml() {
+    return `<!DOCTYPE html><html><head><title>Mike Master Statement</title><style>body{font-family:Arial,sans-serif;padding:40px;color:#111;max-width:600px;margin:0 auto}h1{font-size:20px;margin:0}p{color:#666;font-size:12px;margin:4px 0 28px}table{width:100%;border-collapse:collapse;font-size:13px}th{text-align:left;border-bottom:2px solid #000;padding:8px 6px;font-size:11px;text-transform:uppercase}td{padding:7px 6px;border-bottom:1px solid #e5e7eb}td:last-child{text-align:right;font-family:monospace}.total td{font-weight:700;border-top:2px solid #000;border-bottom:none}.actions{margin-top:24px;display:flex;gap:10px}button{padding:8px 20px;border:none;border-radius:6px;cursor:pointer;font-size:13px;font-weight:600}.print-btn{background:#C9A84C;color:#000}@media print{.actions{display:none}}</style></head><body><h1>Mike Master Summary</h1><p>Generated ${new Date().toLocaleDateString("en-US",{month:"long",day:"numeric",year:"numeric"})}</p><table><thead><tr><th>Item</th><th style="text-align:right">Amount</th></tr></thead><tbody>${rows.map(r=>`<tr><td>${r.label}</td><td style="color:${r.value>=0?"#166534":"#991b1b"}">${r.value>=0?"+":"-"}$${fmt(Math.abs(r.value))}</td></tr>`).join("")}<tr class="total"><td>Net Total</td><td>$${fmt(total)}</td></tr></tbody></table><div class="actions"><button class="print-btn" onclick="window.print()">🖨 Print / Save PDF</button></div></body></html>`;
+  }
+  function handleMasterPreview() { setPreviewMasterHtml(buildMasterHtml()); }
+  function handleMasterPrint() {
     const win = window.open("", "_blank");
     if (!win) return;
-    win.document.write(html);
+    win.document.write(buildMasterHtml());
     win.document.close();
+  }
+  function handleMasterDownload() {
+    const html = buildMasterHtml();
+    const blob = new Blob([html], { type: "text/html" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "mike-master-statement.html";
+    a.click();
+    URL.revokeObjectURL(url);
   }
 
   return (
@@ -415,12 +448,10 @@ function MasterCard({
           <div className="text-[10px] font-semibold uppercase tracking-wider mb-0.5" style={{ color: GOLD }}>Master Summary</div>
           <div className="text-sm font-bold" style={{ color: "#e6edf3" }}>Mike Master</div>
         </div>
-        <div className="flex items-center gap-2">
-          <button onClick={printMaster} title="Print Statement"
-            className="text-[10px] px-2 py-0.5 rounded font-semibold"
-            style={{ color: GOLD, background: "#C9A84C11", border: `1px solid ${GOLD}44` }}>
-            🖨 Print
-          </button>
+        <div className="flex items-center gap-1">
+          <button onClick={handleMasterPreview} title="Preview statement" className="text-[10px] px-1.5 py-0.5 rounded font-semibold" style={{ color: "#8b949e", background: "#30373f" }}>👁</button>
+          <button onClick={handleMasterDownload} title="Download statement" className="text-[10px] px-1.5 py-0.5 rounded font-semibold" style={{ color: "#8b949e", background: "#30373f" }}>⬇</button>
+          <button onClick={handleMasterPrint} title="Print statement" className="text-[10px] px-1.5 py-0.5 rounded font-semibold" style={{ color: GOLD, background: "#C9A84C11", border: `1px solid ${GOLD}44` }}>🖨</button>
           {showDragHandle && (
             <div {...(dragHandleProps ?? {})} className="cursor-grab active:cursor-grabbing px-1 py-0.5 rounded text-sm select-none" style={{ color: "#8b949e", touchAction: "none" }}>
               ⠿
@@ -471,6 +502,22 @@ function MasterCard({
           </div>
         )}
       </div>
+
+      {/* Preview modal */}
+      {previewMasterHtml && (
+        <div style={{ position: "fixed", inset: 0, zIndex: 60, background: "rgba(0,0,0,0.8)", display: "flex", alignItems: "center", justifyContent: "center", padding: 16 }}
+          onClick={() => setPreviewMasterHtml(null)}>
+          <div style={{ background: "#fff", borderRadius: 12, width: "100%", maxWidth: 680, height: "85vh", display: "flex", flexDirection: "column", overflow: "hidden" }}
+            onClick={(e) => e.stopPropagation()}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "12px 16px", borderBottom: "1px solid #e5e7eb" }}>
+              <span style={{ fontWeight: 700, fontSize: 14, color: "#111" }}>Mike Master Statement</span>
+              <button onClick={() => setPreviewMasterHtml(null)} style={{ background: "transparent", border: "none", fontSize: 22, cursor: "pointer", color: "#666", lineHeight: 1 }}>×</button>
+            </div>
+            <iframe srcDoc={previewMasterHtml} style={{ flex: 1, border: "none", width: "100%" }} />
+          </div>
+        </div>
+      )}
+
     </div>
   );
 }
