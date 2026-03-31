@@ -24,19 +24,35 @@ function getOAuthClient() {
   return oauth2Client;
 }
 
+const PDF_MIMES = new Set(["application/pdf"]);
+const WORD_MIMES = new Set([
+  "application/msword",
+  "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+  "application/vnd.ms-word",
+]);
+
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-function extractPdfParts(payload: any): any[] {
+function isPdf(p: any) {
+  return PDF_MIMES.has(p.mimeType) ||
+    (p.mimeType === "application/octet-stream" && p.filename?.match(/\.pdf$/i)) ||
+    p.filename?.match(/\.pdf$/i);
+}
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function isWord(p: any) {
+  return WORD_MIMES.has(p.mimeType) ||
+    (p.mimeType === "application/octet-stream" && p.filename?.match(/\.docx?$/i)) ||
+    p.filename?.match(/\.docx?$/i);
+}
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function isAttachment(p: any) { return isPdf(p) || isWord(p); }
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function extractAttachmentParts(payload: any): any[] {
   if (!payload) return [];
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const results: any[] = [];
-  if (
-    payload.mimeType === "application/pdf" ||
-    (payload.mimeType === "application/octet-stream" && payload.filename?.endsWith(".pdf")) ||
-    payload.filename?.endsWith(".pdf")
-  ) {
-    results.push(payload);
-  }
-  if (payload.parts) for (const p of payload.parts) results.push(...extractPdfParts(p));
+  if (isAttachment(payload)) results.push(payload);
+  if (payload.parts) for (const p of payload.parts) results.push(...extractAttachmentParts(p));
   return results;
 }
 
@@ -76,13 +92,14 @@ export async function POST(
       existingBids.map(b => b.fileUrl!.split(":")[1]).filter(Boolean)
     );
 
-    // Resolve the "7729 bids" label ID dynamically
+    // Resolve the "7729 bids" label ID dynamically — try exact match first, then partial
     const labelsRes = await gmail.users.labels.list({ userId: "me" });
-    const label = labelsRes.data.labels?.find(
-      l => l.name?.toLowerCase() === "7729 bids"
-    );
+    const allLabels = labelsRes.data.labels ?? [];
+    const label =
+      allLabels.find(l => l.name?.toLowerCase() === "7729 bids") ??
+      allLabels.find(l => l.name?.toLowerCase().includes("7729") && l.name?.toLowerCase().includes("bid"));
     if (!label?.id) {
-      const allLabelNames = labelsRes.data.labels?.map(l => l.name).filter(Boolean) ?? [];
+      const allLabelNames = allLabels.map(l => l.name).filter(Boolean) ?? [];
       return NextResponse.json({ error: "Gmail label '7729 bids' not found", allLabels: allLabelNames }, { status: 400 });
     }
 
@@ -103,7 +120,7 @@ export async function POST(
     } while (pageToken && allMessages.length < 500);
 
     const newMessages = allMessages.filter(m => m.id && !processedMsgIds.has(m.id));
-    const toProcess = newMessages.slice(0, 15); // ~15 emails × ~4s each = ~60s, safe within 120s limit
+    const toProcess = newMessages.slice(0, 25); // 25 emails max per sync (Word docs skip AI so they're fast)
 
     const divisionList = STANDARD_DIVISIONS.map(d => `${d.code} - ${d.name}`).join("\n");
 
@@ -127,40 +144,64 @@ export async function POST(
         const headers = payload.headers ?? [];
         const subject = headers.find(h => h.name === "Subject")?.value ?? "";
         const from = headers.find(h => h.name === "From")?.value ?? "";
-        const pdfParts = extractPdfParts(payload);
-
-        // Skip emails with no PDF — just skip, don't save, so they can be retried if a PDF arrives later
-        if (pdfParts.length === 0) continue;
+        const attachmentParts = extractAttachmentParts(payload);
 
         const safeSubject = toAscii(subject);
         const safeFrom = toAscii(from);
 
-        // Step 2: Download PDF attachment
-        let pdfBase64: string | null = null;
-        const pdfPart = pdfParts[0];
-        if (pdfPart.body?.attachmentId) {
-          // Standard attachment — fetch separately
-          try {
-            const attRes = await gmail.users.messages.attachments.get({
-              userId: "me",
-              messageId: msg.id!,
-              id: pdfPart.body.attachmentId,
-            });
-            pdfBase64 = (attRes.data.data ?? "").replace(/-/g, "+").replace(/_/g, "/");
-            if (pdfBase64) pdfsLoaded++;
-          } catch (e) {
-            errors.push(`[pdf-dl] ${String(e).slice(0, 60)}`);
-          }
-        } else if (pdfPart.body?.data) {
-          // Inline/embedded attachment (small PDFs included directly in message)
-          pdfBase64 = pdfPart.body.data.replace(/-/g, "+").replace(/_/g, "/");
-          pdfsLoaded++;
+        // If no recognized attachment at all, still save to triage with email info
+        if (attachmentParts.length === 0) {
+          const fileUrl = `gmail:${msg.id}:`;
+          await prisma.subBid.create({
+            data: {
+              clientId: params.clientId,
+              companyId: params.companyId,
+              divisionCode: "00",
+              divisionName: "Triage",
+              contractorName: safeFrom,
+              amount: null,
+              notes: safeSubject,
+              fileUrl,
+              fileName: null,
+              status: "RECEIVED",
+              emailSource: safeFrom,
+              isPlaceholder: false,
+            },
+          });
+          added++;
+          continue;
         }
 
-        // Step 3: AI extraction via direct fetch (bypasses SDK ByteString issues)
+        // Process the first attachment (PDF preferred, then Word)
+        const pdfPart = attachmentParts.find(p => isPdf(p)) ?? attachmentParts[0];
+        const isWordDoc = !isPdf(pdfPart) && isWord(pdfPart);
+
+        // Step 2: Download PDF attachment (only for PDFs — Word docs not sent to Claude)
+        let pdfBase64: string | null = null;
+        if (!isWordDoc) {
+          if (pdfPart.body?.attachmentId) {
+            try {
+              const attRes = await gmail.users.messages.attachments.get({
+                userId: "me",
+                messageId: msg.id!,
+                id: pdfPart.body.attachmentId,
+              });
+              pdfBase64 = (attRes.data.data ?? "").replace(/-/g, "+").replace(/_/g, "/");
+              if (pdfBase64) pdfsLoaded++;
+            } catch (e) {
+              errors.push(`[pdf-dl] ${String(e).slice(0, 60)}`);
+            }
+          } else if (pdfPart.body?.data) {
+            pdfBase64 = pdfPart.body.data.replace(/-/g, "+").replace(/_/g, "/");
+            pdfsLoaded++;
+          }
+        }
+
+        // Step 3: AI extraction — only for PDFs (Word docs go straight to triage)
         let parsed: { divisionCode?: string | null; contractorName?: string; amount?: number | null; notes?: string } = {};
-        try {
-          const prompt = `You are helping a general contractor organize subcontractor bids for project: ${client.name}.
+        if (!isWordDoc) {
+          try {
+            const prompt = `You are helping a general contractor organize subcontractor bids for project: ${client.name}.
 
 EMAIL FROM: ${safeFrom}
 SUBJECT: ${safeSubject}
@@ -178,38 +219,40 @@ ${pdfBase64 ? "Read the attached PDF and extract:" : "Extract from the email sub
 Respond ONLY with valid JSON, no markdown:
 {"divisionCode":"<2-digit code>","contractorName":"<name>","amount":<number or null>,"notes":"<one sentence>"}`;
 
-          const contentBlocks: unknown[] = [];
-          if (pdfBase64) {
-            contentBlocks.push({ type: "document", source: { type: "base64", media_type: "application/pdf", data: pdfBase64 } });
-          }
-          contentBlocks.push({ type: "text", text: prompt });
+            const contentBlocks: unknown[] = [];
+            if (pdfBase64) {
+              contentBlocks.push({ type: "document", source: { type: "base64", media_type: "application/pdf", data: pdfBase64 } });
+            }
+            contentBlocks.push({ type: "text", text: prompt });
 
-          const aiRes = await fetch("https://api.anthropic.com/v1/messages", {
-            method: "POST",
-            headers: {
-              "content-type": "application/json",
-              "x-api-key": safeApiKey,
-              "anthropic-version": "2023-06-01",
-              "anthropic-beta": "pdfs-2024-09-25",
-            },
-            body: JSON.stringify({
-              model: "claude-haiku-4-5-20251001",
-              max_tokens: 300,
-              messages: [{ role: "user", content: contentBlocks }],
-            }),
-          });
-          const aiJson = await aiRes.json() as { content?: { type: string; text: string }[]; error?: { message: string } };
-          if (aiJson.error) throw new Error(aiJson.error.message);
-          const aiText = aiJson.content?.[0]?.type === "text" ? aiJson.content[0].text.trim() : "{}";
-          if (!aiSample) aiSample = aiText.slice(0, 120);
-          parsed = JSON.parse(aiText.replace(/```json\n?|\n?```/g, ""));
-        } catch (e) {
-          errors.push(`[ai] ${String(e).slice(0, 80)}`);
+            const aiRes = await fetch("https://api.anthropic.com/v1/messages", {
+              method: "POST",
+              headers: {
+                "content-type": "application/json",
+                "x-api-key": safeApiKey,
+                "anthropic-version": "2023-06-01",
+                "anthropic-beta": "pdfs-2024-09-25",
+              },
+              body: JSON.stringify({
+                model: "claude-haiku-4-5-20251001",
+                max_tokens: 300,
+                messages: [{ role: "user", content: contentBlocks }],
+              }),
+            });
+            const aiJson = await aiRes.json() as { content?: { type: string; text: string }[]; error?: { message: string } };
+            if (aiJson.error) throw new Error(aiJson.error.message);
+            const aiText = aiJson.content?.[0]?.type === "text" ? aiJson.content[0].text.trim() : "{}";
+            if (!aiSample) aiSample = aiText.slice(0, 120);
+            parsed = JSON.parse(aiText.replace(/```json\n?|\n?```/g, ""));
+          } catch (e) {
+            errors.push(`[ai] ${String(e).slice(0, 80)}`);
+          }
         }
 
         const divCode = parsed.divisionCode && STANDARD_DIVISIONS.find(d => d.code === parsed.divisionCode)
           ? parsed.divisionCode
           : null;
+        // Word docs and unclassified PDFs go to triage
         const division = divCode
           ? STANDARD_DIVISIONS.find(d => d.code === divCode)!
           : { code: "00", name: "Triage" };
