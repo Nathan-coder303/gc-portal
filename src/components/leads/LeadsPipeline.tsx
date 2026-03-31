@@ -562,6 +562,20 @@ export default function LeadsPipeline({ companyId, triageLeads, stagedCards }: P
     setEditingStageId(null);
   }
 
+  function deleteStage(stageId: string) {
+    const stageCards = cards.filter((c) => c.stage === stageId);
+    if (stageCards.length > 0) {
+      alert(`Move all ${stageCards.length} lead(s) out of this stage before deleting it.`);
+      return;
+    }
+    if (!confirm("Delete this stage?")) return;
+    setStages((prev) => {
+      const next = prev.filter((s) => s.id !== stageId);
+      saveStages(next);
+      return next;
+    });
+  }
+
   function handleAddStage() {
     const name = newStageName.trim();
     if (!name) return;
@@ -889,9 +903,18 @@ export default function LeadsPipeline({ companyId, triageLeads, stagedCards }: P
                       </span>
                     )}
                   </div>
-                  <span style={{ background: stage.color + "33", color: stage.color, fontSize: 11, fontWeight: 700, borderRadius: 20, padding: "1px 8px", border: `1px solid ${stage.color}55`, flexShrink: 0 }}>
-                    {stageCards.length}
-                  </span>
+                  <div style={{ display: "flex", alignItems: "center", gap: 4, flexShrink: 0 }}>
+                    <span style={{ background: stage.color + "33", color: stage.color, fontSize: 11, fontWeight: 700, borderRadius: 20, padding: "1px 8px", border: `1px solid ${stage.color}55` }}>
+                      {stageCards.length}
+                    </span>
+                    <button
+                      onClick={(e) => { e.stopPropagation(); deleteStage(stage.id); }}
+                      title="Delete stage"
+                      style={{ background: "transparent", border: "none", color: "#484f58", cursor: "pointer", fontSize: 13, lineHeight: 1, padding: "0 2px" }}
+                      onMouseEnter={(e) => (e.currentTarget.style.color = "#f87171")}
+                      onMouseLeave={(e) => (e.currentTarget.style.color = "#484f58")}
+                    >✕</button>
+                  </div>
                 </div>
                 {colorPickerStageId === stage.id && (
                   <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginTop: 10 }} onClick={(e) => e.stopPropagation()}>
