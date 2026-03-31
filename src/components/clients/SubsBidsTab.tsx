@@ -62,6 +62,12 @@ function getPdfHref(fileUrl: string, companyId: string): string {
     const url = `/api/${companyId}/gmail-attachment?msgId=${msgId}`;
     return attachmentId ? `${url}&attachmentId=${attachmentId}` : url;
   }
+  // Already a proxy URL
+  if (fileUrl.startsWith("/api/")) return fileUrl;
+  // Direct Vercel Blob URL (legacy records) — route through proxy
+  if (fileUrl.includes("vercel-storage.com") || fileUrl.includes("blob.vercel")) {
+    return `/api/${companyId}/blob-proxy?u=${encodeURIComponent(fileUrl)}`;
+  }
   return fileUrl;
 }
 

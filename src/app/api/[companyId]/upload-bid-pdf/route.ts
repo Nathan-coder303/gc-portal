@@ -4,7 +4,10 @@ import { put } from "@vercel/blob";
 
 export const runtime = "nodejs";
 
-export async function POST(req: NextRequest) {
+export async function POST(
+  req: NextRequest,
+  { params }: { params: { companyId: string } }
+) {
   const session = await auth();
   if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
@@ -14,7 +17,15 @@ export async function POST(req: NextRequest) {
   if (!file) return NextResponse.json({ error: "No file" }, { status: 400 });
   if (file.size > 20 * 1024 * 1024) return NextResponse.json({ error: "Max 20MB" }, { status: 400 });
 
-  const blob = await put(`bid-pdfs/${Date.now()}-${file.name}`, file, { access: "public" });
+  try {
+    const blob = await put(`bid-pdfs/${Date.now()}-${file.name}`, file, { access: "private" });
 
-  return NextResponse.json({ url: blob.url, fileName: file.name });
+    // Return a proxy URL so the private blob is served through an authenticated endpoint
+    const proxyUrl = `/api/${params.companyId}/blob-proxy?u=${encodeURIComponent(blob.url)}`;
+
+    return NextResponse.json({ url: proxyUrl, fileName: file.name });
+  } catch (err) {
+    console.error("Bid upload error:", err);
+    return NextResponse.json({ error: String(err) }, { status: 500 });
+  }
 }
