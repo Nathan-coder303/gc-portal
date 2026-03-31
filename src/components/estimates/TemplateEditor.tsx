@@ -1086,6 +1086,8 @@ export default function TemplateEditor({
   const total = subtotal + gcFeeAmount;
   const [sqFt, setSqFt] = useState<number | "">(template.sqFt ?? "");
   const [durationMonths, setDurationMonths] = useState<number | "">(template.durationMonths ?? "");
+  useEffect(() => { setSqFt(template.sqFt ?? ""); }, [template.sqFt]);
+  useEffect(() => { setDurationMonths(template.durationMonths ?? ""); }, [template.durationMonths]);
   const isRoofTemplate = template.name.toLowerCase().includes("roof");
   const [hasSkylights, setHasSkylights] = useState<boolean>(template.hasSkylights ?? true);
   const [hasRoofDrains, setHasRoofDrains] = useState<boolean>(template.hasRoofDrains ?? true);

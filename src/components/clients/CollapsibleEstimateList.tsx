@@ -174,9 +174,8 @@ function EstimateCard({
                 <span className="font-semibold text-sm" style={{ color: "#e6edf3" }}>{est.name}</span>
                 {est.estimateNumber && <span className="text-xs" style={{ color: "#8b949e" }}>#{est.estimateNumber}</span>}
               </div>
-              <div className="text-xs mt-0.5" style={{ color: "#8b949e" }}>
-                {sentStr ? `Sent ${sentStr} ET` : `Created ${createdStr} ET`}
-              </div>
+              <div className="text-xs mt-0.5" style={{ color: "#8b949e" }}>Created {createdStr} ET</div>
+              {sentStr && <div className="text-xs" style={{ color: "#C9A84C88" }}>Last sent {sentStr} ET</div>}
             </div>
             <div className="flex items-center gap-2 shrink-0">
               {statusBadge}
