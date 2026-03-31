@@ -62,7 +62,16 @@ export async function POST(
     return NextResponse.json({ error: `Failed to fetch sheet: ${e}` }, { status: 502 });
   }
 
-  const rows = parseCSV(csvText).filter((r) => r.name && r.name.trim());
+  // Filter out rows where name is clearly not a person/company name
+  // (e.g. property descriptions like "500 sq ft", "living in Florida...")
+  function looksLikeName(n: string): boolean {
+    if (!n || n.trim().length < 2) return false;
+    if (/\d+\s*(sq\s*ft|sqft|lot|acre)/i.test(n)) return false; // property measurement
+    if (/^(living|located|built|property|home|house|roof)/i.test(n)) return false; // description sentence
+    if (/^[\d\s,.()\-]+$/.test(n)) return false; // only numbers/punctuation
+    return true;
+  }
+  const rows = parseCSV(csvText).filter((r) => r.name && looksLikeName(r.name.trim()));
 
   if (rows.length === 0) {
     return NextResponse.json({ added: 0, skipped: 0, message: "No data rows found in sheet" });
