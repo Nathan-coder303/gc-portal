@@ -292,7 +292,7 @@ export default function SubsBidsTab({ clientId, companyId, subBids: initialSubBi
       fd.append("file", file);
       const res = await fetch(`/api/${companyId}/upload-bid-pdf`, { method: "POST", body: fd });
       if (!res.ok) throw new Error("Upload failed");
-      const { url, fileName } = await res.json();
+      const { url, fileName, bidDate } = await res.json();
       const record = await upsertSubBid({
         id: offerId,
         clientId, companyId,
@@ -301,15 +301,16 @@ export default function SubsBidsTab({ clientId, companyId, subBids: initialSubBi
         fileUrl: url,
         fileName,
         status: "RECEIVED",
+        bidDate: bidDate ?? null,
       });
       setSubBids((prev) => prev.map((b) => {
         if (b.divisionCode !== bid.divisionCode) return b;
         const existing = b.offers.find((o) => o.id === record.id);
         if (existing) {
-          return { ...b, offers: b.offers.map((o) => o.id === record.id ? { ...o, fileUrl: url, fileName, status: "RECEIVED" } : o) };
+          return { ...b, offers: b.offers.map((o) => o.id === record.id ? { ...o, fileUrl: url, fileName, bidDate: bidDate ?? null, status: "RECEIVED" } : o) };
         }
         // New offer (no placeholder existed) — append to list
-        return { ...b, offers: [...b.offers, { id: record.id, contractorName: null, amount: null, notes: null, bidDate: null, status: "RECEIVED", isPlaceholder: false, fileUrl: url, fileName, createdAt: new Date().toISOString() }] };
+        return { ...b, offers: [...b.offers, { id: record.id, contractorName: null, amount: null, notes: null, bidDate: bidDate ?? null, status: "RECEIVED", isPlaceholder: false, fileUrl: url, fileName, createdAt: new Date().toISOString() }] };
       }));
     } catch (e) {
       alert("Upload failed: " + String(e));
@@ -509,9 +510,11 @@ export default function SubsBidsTab({ clientId, companyId, subBids: initialSubBi
                         </select>
                       </div>
                     )}
-                    <div className="flex items-center gap-1 text-xs mt-2 pl-5" style={{ color: "#8b949e" }} suppressHydrationWarning>
-                      <span>📅</span><span>{offer.bidDate ?? (offer.createdAt ? fmtDate(offer.createdAt) : "—")}</span>
-                    </div>
+                    {(offer.bidDate || offer.createdAt) && (
+                      <div className="text-xs mt-1.5 pl-5" style={{ color: "#6b7280" }} suppressHydrationWarning>
+                        {offer.bidDate ?? (offer.createdAt ? fmtDate(offer.createdAt) : "")}
+                      </div>
+                    )}
                   </div>
                 );
               })}
@@ -656,9 +659,11 @@ export default function SubsBidsTab({ clientId, companyId, subBids: initialSubBi
                             )}
                           </div>
                         </div>
-                        <div className="flex items-center gap-1 text-xs mt-2" style={{ color: "#8b949e" }} suppressHydrationWarning>
-                          <span>📅</span><span>{offer.bidDate ?? (offer.createdAt ? fmtDate(offer.createdAt) : "—")}</span>
-                        </div>
+                        {(offer.bidDate || offer.createdAt) && (
+                          <div className="text-xs mt-1.5" style={{ color: "#6b7280" }} suppressHydrationWarning>
+                            {offer.bidDate ?? (offer.createdAt ? fmtDate(offer.createdAt) : "")}
+                          </div>
+                        )}
                       </div>
                     )}
                   </div>

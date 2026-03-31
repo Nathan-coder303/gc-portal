@@ -198,7 +198,7 @@ export async function POST(
         }
 
         // Step 3: AI extraction — only for PDFs (Word docs go straight to triage)
-        let parsed: { divisionCode?: string | null; contractorName?: string; amount?: number | null; notes?: string } = {};
+        let parsed: { divisionCode?: string | null; contractorName?: string; amount?: number | null; notes?: string; date?: string | null } = {};
         if (!isWordDoc) {
           try {
             const prompt = `You are helping a general contractor organize subcontractor bids for project: ${client.name}.
@@ -215,9 +215,10 @@ ${pdfBase64 ? "Read the attached PDF and extract:" : "Extract from the email sub
 2. Bid amount (number only, no $)?
 3. Contractor/company name?
 4. One sentence describing the scope.
+5. Date of the bid/proposal as "Mon DD, YYYY" (e.g. "Mar 20, 2026"), or null if not found.
 
 Respond ONLY with valid JSON, no markdown:
-{"divisionCode":"<2-digit code>","contractorName":"<name>","amount":<number or null>,"notes":"<one sentence>"}`;
+{"divisionCode":"<2-digit code>","contractorName":"<name>","amount":<number or null>,"notes":"<one sentence>","date":"<Mon DD, YYYY or null>"}`;
 
             const contentBlocks: unknown[] = [];
             if (pdfBase64) {
@@ -274,6 +275,7 @@ Respond ONLY with valid JSON, no markdown:
             status: "RECEIVED",
             emailSource: safeFrom,
             isPlaceholder: false,
+            bidDate: (parsed.date && parsed.date !== "null") ? parsed.date : null,
           },
         });
 
