@@ -278,7 +278,7 @@ export default function SubsBidsTab({ clientId, companyId, subBids: initialSubBi
     }
   }
 
-  const uploadFile = useCallback(async (file: File, bid: SubBidRow, offerId: string) => {
+  const uploadFile = useCallback(async (file: File, bid: SubBidRow, offerId?: string) => {
     if (!file || file.type !== "application/pdf") return;
     setUploading(bid.divisionCode);
     try {
@@ -287,7 +287,7 @@ export default function SubsBidsTab({ clientId, companyId, subBids: initialSubBi
       const res = await fetch(`/api/${companyId}/upload-bid-pdf`, { method: "POST", body: fd });
       if (!res.ok) throw new Error("Upload failed");
       const { url, fileName } = await res.json();
-      await upsertSubBid({
+      const record = await upsertSubBid({
         id: offerId,
         clientId, companyId,
         divisionCode: bid.divisionCode,
@@ -296,11 +296,15 @@ export default function SubsBidsTab({ clientId, companyId, subBids: initialSubBi
         fileName,
         status: "RECEIVED",
       });
-      setSubBids((prev) => prev.map((b) =>
-        b.divisionCode === bid.divisionCode
-          ? { ...b, offers: b.offers.map((o) => o.id === offerId ? { ...o, fileUrl: url, fileName, status: "RECEIVED" } : o) }
-          : b
-      ));
+      setSubBids((prev) => prev.map((b) => {
+        if (b.divisionCode !== bid.divisionCode) return b;
+        const existing = b.offers.find((o) => o.id === record.id);
+        if (existing) {
+          return { ...b, offers: b.offers.map((o) => o.id === record.id ? { ...o, fileUrl: url, fileName, status: "RECEIVED" } : o) };
+        }
+        // New offer (no placeholder existed) — append to list
+        return { ...b, offers: [...b.offers, { id: record.id, contractorName: null, amount: null, notes: null, bidDate: null, status: "RECEIVED", isPlaceholder: false, fileUrl: url, fileName, createdAt: new Date().toISOString() }] };
+      }));
     } catch (e) {
       alert("Upload failed: " + String(e));
     } finally {
@@ -548,7 +552,7 @@ export default function SubsBidsTab({ clientId, companyId, subBids: initialSubBi
                   return;
                 }
                 const file = e.dataTransfer.files[0];
-                if (file && placeholder) uploadFile(file, bid, placeholder.id);
+                if (file) uploadFile(file, bid, placeholder?.id);
               }}
             >
               {/* Header */}
@@ -663,7 +667,7 @@ export default function SubsBidsTab({ clientId, companyId, subBids: initialSubBi
                   {isUploading ? "Uploading…" : isDragging ? "Drop PDF here" : "Drop PDF or click to upload"}
                   <input type="file" accept="application/pdf" className="hidden"
                     ref={(el) => { fileInputRefs.current[bid.divisionCode] = el; }}
-                    onChange={(e) => { const f = e.target.files?.[0]; if (f && placeholder) uploadFile(f, bid, placeholder.id); }} />
+                    onChange={(e) => { const f = e.target.files?.[0]; if (f) uploadFile(f, bid, placeholder?.id); e.target.value = ""; }} />
                 </div>
               )}
             </div>
