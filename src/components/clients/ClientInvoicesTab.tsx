@@ -75,8 +75,7 @@ function StatusBadge({ status }: { status: string }) {
 export default function ClientInvoicesTab({
   companyId,
   clientId,
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  clientName: _clientName,
+  clientName,
   clientEmail,
   estimates,
   initialInvoices,
@@ -101,9 +100,12 @@ export default function ClientInvoicesTab({
   const [sendInvoice, setSendInvoice] = useState<Invoice | null>(null);
   const [sendTo, setSendTo] = useState(clientEmail ?? "");
   const [sendCc, setSendCc] = useState("mikebaruh@gmail.com");
+  const [sendBcc, setSendBcc] = useState("");
   const [sendSubject, setSendSubject] = useState("");
+  const [sendBody, setSendBody] = useState("");
   const [sending, setSending] = useState(false);
   const [sendResult, setSendResult] = useState<string | null>(null);
+  const [previewOpen, setPreviewOpen] = useState(false);
 
   const selectedEst = estimates.find((e) => e.id === selectedEstId);
   const schedule = selectedEst?.paymentSchedule?.length
@@ -111,11 +113,15 @@ export default function ClientInvoicesTab({
     : DEFAULT_SCHEDULE;
 
   function openSend(inv: Invoice) {
+    const est = estimates.find(e => e.id === inv.estimateId);
     setSendInvoice(inv);
     setSendTo(clientEmail ?? "");
     setSendCc("mikebaruh@gmail.com");
-    setSendSubject(`Invoice #${inv.invoiceNumber} — ${inv.phase}`);
+    setSendBcc("");
+    setSendSubject(`Invoice #${inv.invoiceNumber} — ${inv.phase}${est?.estimateNumber ? ` — Est. #${est.estimateNumber}` : ""}`);
+    setSendBody(`Dear ${clientName},\n\nPlease find below your invoice for the ${inv.phase} phase of your project. We appreciate your continued trust in MIBH Construction and look forward to delivering exceptional results.\n\nPayment can be made via Zelle to mikebaruh@gmail.com or by check payable to MIBH Construction. Please include Invoice #${inv.invoiceNumber} in the memo.\n\nDon't hesitate to reach out if you have any questions.`);
     setSendResult(null);
+    setPreviewOpen(false);
   }
 
   async function createInvoice() {
@@ -171,7 +177,7 @@ export default function ClientInvoicesTab({
       const res = await fetch(`/api/${companyId}/clients/${clientId}/invoices/${sendInvoice.id}/send`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ to: sendTo, cc: sendCc, subject: sendSubject }),
+        body: JSON.stringify({ to: sendTo, cc: sendCc, bcc: sendBcc || undefined, subject: sendSubject, bodyText: sendBody }),
       });
       const data = await res.json();
       if (data.success) {
@@ -296,25 +302,73 @@ export default function ClientInvoicesTab({
 
       {/* Send modal */}
       {sendInvoice && (
-        <div style={{ position: "fixed", inset: 0, zIndex: 60, background: "rgba(0,0,0,0.7)", display: "flex", alignItems: "center", justifyContent: "center", padding: 16 }}
-          onClick={() => setSendInvoice(null)}>
-          <div style={{ background: "#161b22", border: "1px solid #30373f", borderRadius: 14, padding: 24, width: "100%", maxWidth: 440 }}
+        <div style={{ position: "fixed", inset: 0, zIndex: 60, background: "rgba(0,0,0,0.8)", display: "flex", alignItems: "center", justifyContent: "center", padding: 16 }}
+          onClick={() => { setSendInvoice(null); setPreviewOpen(false); }}>
+          <div style={{ background: "#161b22", border: "1px solid #30373f", borderRadius: 14, padding: 24, width: "100%", maxWidth: 560, maxHeight: "90vh", overflowY: "auto" }}
             onClick={(e) => e.stopPropagation()}>
-            <h3 className="text-sm font-bold mb-1" style={{ color: "#e6edf3" }}>Send Invoice #{sendInvoice.invoiceNumber}</h3>
-            <p className="text-[11px] mb-4" style={{ color: "#8b949e" }}>{sendInvoice.phase} — ${fmt(sendInvoice.amount)}</p>
+
+            <div className="flex items-start justify-between mb-3">
+              <div>
+                <h3 className="text-sm font-bold" style={{ color: "#e6edf3" }}>Send Invoice #{sendInvoice.invoiceNumber}</h3>
+                <p className="text-[11px] mt-0.5" style={{ color: "#8b949e" }}>{sendInvoice.phase} — <strong style={{ color: GOLD }}>${fmt(sendInvoice.amount)}</strong></p>
+              </div>
+              {/* Preview + Download */}
+              <div className="flex gap-2 shrink-0">
+                <button
+                  onClick={() => setPreviewOpen(v => !v)}
+                  className="text-[11px] px-2 py-1 rounded-lg font-semibold"
+                  style={{ background: "#3b82f622", color: "#3b82f6", border: "1px solid #3b82f644" }}>
+                  👁 Preview
+                </button>
+                <a
+                  href={`/api/${companyId}/clients/${clientId}/invoices/${sendInvoice.id}/preview${sendBody ? `?body=${encodeURIComponent(sendBody)}` : ""}`}
+                  target="_blank" rel="noopener noreferrer"
+                  className="text-[11px] px-2 py-1 rounded-lg font-semibold"
+                  style={{ background: "#22c55e22", color: "#22c55e", border: "1px solid #22c55e44" }}>
+                  ⬇ Download
+                </a>
+              </div>
+            </div>
+
+            {/* Preview iframe */}
+            {previewOpen && (
+              <div className="mb-4 rounded-lg overflow-hidden" style={{ border: "1px solid #30373f", height: 320 }}>
+                <iframe
+                  src={`/api/${companyId}/clients/${clientId}/invoices/${sendInvoice.id}/preview${sendBody ? `?body=${encodeURIComponent(sendBody)}` : ""}`}
+                  className="w-full h-full bg-white"
+                  style={{ border: "none" }}
+                />
+              </div>
+            )}
 
             <div className="space-y-3">
-              <div>
-                <label className="block text-[11px] mb-1" style={{ color: "#8b949e" }}>To</label>
-                <input type="email" value={sendTo} onChange={(e) => setSendTo(e.target.value)} style={INPUT_STYLE} />
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-[11px] mb-1" style={{ color: "#8b949e" }}>To *</label>
+                  <input type="email" value={sendTo} onChange={(e) => setSendTo(e.target.value)} style={INPUT_STYLE} />
+                </div>
+                <div>
+                  <label className="block text-[11px] mb-1" style={{ color: "#8b949e" }}>Cc</label>
+                  <input type="email" value={sendCc} onChange={(e) => setSendCc(e.target.value)} style={INPUT_STYLE} />
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-[11px] mb-1" style={{ color: "#8b949e" }}>Bcc</label>
+                  <input type="email" value={sendBcc} onChange={(e) => setSendBcc(e.target.value)} style={INPUT_STYLE} placeholder="optional" />
+                </div>
+                <div>
+                  <label className="block text-[11px] mb-1" style={{ color: "#8b949e" }}>Subject</label>
+                  <input type="text" value={sendSubject} onChange={(e) => setSendSubject(e.target.value)} style={INPUT_STYLE} />
+                </div>
               </div>
               <div>
-                <label className="block text-[11px] mb-1" style={{ color: "#8b949e" }}>Cc</label>
-                <input type="email" value={sendCc} onChange={(e) => setSendCc(e.target.value)} style={INPUT_STYLE} />
+                <label className="block text-[11px] mb-1" style={{ color: "#8b949e" }}>Message</label>
+                <textarea value={sendBody} onChange={(e) => setSendBody(e.target.value)} rows={6}
+                  style={{ ...INPUT_STYLE, resize: "vertical", lineHeight: 1.5 }} />
               </div>
-              <div>
-                <label className="block text-[11px] mb-1" style={{ color: "#8b949e" }}>Subject</label>
-                <input type="text" value={sendSubject} onChange={(e) => setSendSubject(e.target.value)} style={INPUT_STYLE} />
+              <div className="rounded-lg px-3 py-2 text-[11px]" style={{ background: "#1a2a1a", color: "#22c55e" }}>
+                ✓ Zelle payment info (mikebaruh@gmail.com) and full signature will be included automatically in the email.
               </div>
             </div>
 
@@ -328,7 +382,7 @@ export default function ClientInvoicesTab({
                 style={{ background: GOLD, color: "#0d1117" }}>
                 {sending ? "Sending…" : "✉ Send Invoice"}
               </button>
-              <button onClick={() => setSendInvoice(null)}
+              <button onClick={() => { setSendInvoice(null); setPreviewOpen(false); }}
                 className="px-4 py-2 text-xs rounded-lg"
                 style={{ background: "#30373f", color: "#8b949e" }}>Cancel</button>
             </div>
