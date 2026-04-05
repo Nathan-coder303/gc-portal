@@ -6,7 +6,32 @@ import SyncLeadsButton from "@/components/today/SyncLeadsButton";
 import SyncBidsButton from "@/components/today/SyncBidsButton";
 import TodayLeadCard from "@/components/leads/TodayLeadCard";
 import TodayTaskCard, { FollowUpItem } from "@/components/today/TodayTaskCard";
-import ClientPipeline from "@/components/today/ClientPipeline";
+import TodayCallsSection from "@/components/today/TodayCallsSection";
+
+const GOAL_2026 = 5_000_000;
+
+type DivisionLike = { items: { defaultQty: unknown; defaultUnitCost: unknown; defaultMarkupPct: unknown }[]; groups: { items: { defaultQty: unknown; defaultUnitCost: unknown; defaultMarkupPct: unknown }[] }[] };
+
+function calcRaw(divisions: DivisionLike[]): number {
+  return divisions.reduce((sum, div) => {
+    const allItems = [...div.items, ...div.groups.flatMap(g => g.items)];
+    return sum + allItems.reduce((s, i) => {
+      const qty = i.defaultQty ? Number(i.defaultQty) : 0;
+      const cost = i.defaultUnitCost ? Number(i.defaultUnitCost) : 0;
+      const markup = i.defaultMarkupPct ? Number(i.defaultMarkupPct) : 0;
+      return s + qty * cost * (1 + markup / 100);
+    }, 0);
+  }, 0);
+}
+
+function calcGcFee(divisions: DivisionLike[], gcFeePercent: unknown): number {
+  if (!gcFeePercent) return 0;
+  return calcRaw(divisions) * Number(gcFeePercent) / 100;
+}
+
+function calcEstimateTotal(divisions: DivisionLike[], gcFeePercent: unknown): number {
+  return calcRaw(divisions) * (1 + (gcFeePercent ? Number(gcFeePercent) / 100 : 0));
+}
 
 export default async function TodayPage({
   params,
@@ -21,13 +46,12 @@ export default async function TodayPage({
   const now = new Date();
   const etDateStr = now.toLocaleDateString("en-CA", { timeZone: "America/New_York" }); // "YYYY-MM-DD"
   const [etY, etM, etD] = etDateStr.split("-").map(Number);
-  // Find the UTC time that corresponds to midnight ET (try EDT=4, EST=5)
   let todayStart = new Date(Date.UTC(etY, etM - 1, etD, 4, 0, 0, 0));
   const verifyHour = parseInt(todayStart.toLocaleString("en-US", { timeZone: "America/New_York", hour: "2-digit", hour12: false }));
-  if (verifyHour !== 0) todayStart = new Date(Date.UTC(etY, etM - 1, etD, 5, 0, 0, 0)); // fall back to EST
-  const todayEnd = new Date(todayStart.getTime() + 24 * 60 * 60 * 1000 - 1); // 23:59:59.999 ET
+  if (verifyHour !== 0) todayStart = new Date(Date.UTC(etY, etM - 1, etD, 5, 0, 0, 0));
+  const todayEnd = new Date(todayStart.getTime() + 24 * 60 * 60 * 1000 - 1);
 
-  const [todayLeads, allLeadsCount, estimatesToSend, followUps, clients, pipelineCards, untriaged, pendingCountersigns] = await Promise.all([
+  const [todayLeads, allLeadsCount, estimatesToSend, followUps, clients, urgentLeads, untriaged, pendingCountersigns, activeClients] = await Promise.all([
     // Leads received today from email
     prisma.lead.findMany({
       where: {
@@ -36,15 +60,8 @@ export default async function TodayPage({
       },
       orderBy: { receivedAt: "desc" },
       select: {
-        id: true,
-        name: true,
-        email: true,
-        phone: true,
-        projectType: true,
-        message: true,
-        city: true,
-        state: true,
-        receivedAt: true,
+        id: true, name: true, email: true, phone: true,
+        projectType: true, message: true, city: true, state: true, receivedAt: true,
       },
     }),
     // All-time lead count
@@ -58,11 +75,7 @@ export default async function TodayPage({
         createdAt: { gte: todayStart, lte: todayEnd },
       },
       orderBy: { createdAt: "desc" },
-      select: {
-        id: true,
-        name: true,
-        project: { select: { id: true, name: true } },
-      },
+      select: { id: true, name: true, project: { select: { id: true, name: true } } },
     }),
     // All follow-ups for this company
     prisma.followUp.findMany({
@@ -70,24 +83,21 @@ export default async function TodayPage({
       orderBy: { createdAt: "asc" },
       include: { client: { select: { id: true, name: true } } },
     }),
-    // Clients list for assignment
+    // Clients list for assignment dropdowns
     prisma.client.findMany({
       where: { companyId: params.companyId },
       orderBy: { name: "asc" },
       select: { id: true, name: true },
     }),
-    // Pipeline cards
+    // To Call ASAP pipeline cards
     prisma.pipelineCard.findMany({
-      where: { companyId: params.companyId },
-      orderBy: [{ stage: "asc" }, { sortOrder: "asc" }],
+      where: { companyId: params.companyId, stage: "TO_CALL_ASAP" },
+      orderBy: [{ sortOrder: "asc" }],
       include: { client: { select: { id: true, name: true } } },
     }),
     // Leads not yet in pipeline
     prisma.lead.count({
-      where: {
-        companyId: params.companyId,
-        pipelineCard: null,
-      },
+      where: { companyId: params.companyId, pipelineCard: null },
     }),
     // Estimates signed by client but not yet countersigned
     prisma.estimateTemplate.findMany({
@@ -99,23 +109,41 @@ export default async function TodayPage({
       },
       orderBy: { signedAt: "asc" },
       select: {
-        id: true,
-        name: true,
-        estimateNumber: true,
-        signedAt: true,
-        signedByName: true,
-        signatureToken: true,
+        id: true, name: true, estimateNumber: true,
+        signedAt: true, signedByName: true, signatureToken: true,
         client: { select: { id: true, name: true } },
+      },
+    }),
+    // Active clients with template data for MIBH Income barometer
+    prisma.client.findMany({
+      where: { companyId: params.companyId, status: "ACTIVE" },
+      include: {
+        templates: {
+          where: { type: "CLIENT_ESTIMATE", archivedAt: null },
+          select: {
+            gcFeePercent: true,
+            divisions: {
+              where: { archivedAt: null },
+              select: {
+                items: { where: { archivedAt: null, groupId: null }, select: { defaultQty: true, defaultUnitCost: true, defaultMarkupPct: true } },
+                groups: { where: { archivedAt: null }, select: { items: { where: { archivedAt: null }, select: { defaultQty: true, defaultUnitCost: true, defaultMarkupPct: true } } } },
+              },
+            },
+          },
+        },
       },
     }),
   ]);
 
   const today = new Date().toLocaleDateString("en-US", {
-    weekday: "long",
-    year: "numeric",
-    month: "long",
-    day: "numeric",
+    weekday: "long", year: "numeric", month: "long", day: "numeric",
   });
+
+  // Compute MIBH Income barometer
+  const activeGcFeeTotal = activeClients.reduce((sum, c) => sum + c.templates.reduce((s, t) => s + calcGcFee(t.divisions, t.gcFeePercent), 0), 0);
+  const activeTotalFallback = activeClients.reduce((sum, c) => sum + c.templates.reduce((s, t) => s + calcEstimateTotal(t.divisions, t.gcFeePercent), 0), 0);
+  const mibhIncome = activeGcFeeTotal > 0 ? activeGcFeeTotal : activeTotalFallback;
+  const goalPct = Math.min(100, (mibhIncome / GOAL_2026) * 100);
 
   // Map follow-ups to FollowUpItem shape for each category
   function toItems(category: "TASK" | "FOLLOW_UP" | "ESTIMATE"): FollowUpItem[] {
@@ -150,7 +178,37 @@ export default async function TodayPage({
           <SyncLeadsButton companyId={params.companyId} />
         </div>
       </div>
-      <div className="mb-8" />
+
+      {/* MIBH Income 2026 Barometer */}
+      <div className="mt-6 mb-6 rounded-2xl px-6 py-5" style={{ background: "#0a1a0f", border: "1px solid #22c55e33" }}>
+        <div className="flex items-end justify-between mb-3">
+          <div>
+            <div className="text-xs font-semibold uppercase tracking-widest mb-1" style={{ color: "#22c55e88" }}>MIBH Income 2026</div>
+            <div className="text-5xl font-black leading-none" style={{ color: "#22c55e" }}>
+              ${mibhIncome.toLocaleString("en-US", { maximumFractionDigits: 0 })}
+            </div>
+          </div>
+          <div className="text-right">
+            <div className="text-xs font-semibold uppercase tracking-widest mb-1" style={{ color: "#8b949e" }}>Goal 2026</div>
+            <div className="text-2xl font-bold" style={{ color: "#8b949e" }}>$5,000,000</div>
+            <div className="text-sm font-semibold mt-0.5" style={{ color: "#22c55e" }}>{goalPct.toFixed(1)}% there</div>
+          </div>
+        </div>
+        <div className="rounded-full overflow-hidden" style={{ height: 18, background: "#1a2a1a", border: "1px solid #22c55e22" }}>
+          <div
+            className="h-full rounded-full transition-all duration-700"
+            style={{
+              width: `${Math.max(goalPct, 0.5)}%`,
+              background: goalPct >= 100 ? "#C9A84C" : "linear-gradient(90deg, #16a34a, #22c55e)",
+              minWidth: 4,
+            }}
+          />
+        </div>
+        <div className="flex justify-between mt-1.5">
+          <span className="text-xs" style={{ color: "#22c55e88" }}>{activeClients.length} active client{activeClients.length !== 1 ? "s" : ""}</span>
+          <span className="text-xs" style={{ color: "#8b949e" }}>${(GOAL_2026 - mibhIncome).toLocaleString("en-US", { maximumFractionDigits: 0 })} remaining</span>
+        </div>
+      </div>
 
       {/* Pending countersign alert */}
       {pendingCountersigns.length > 0 && (
@@ -259,7 +317,7 @@ export default async function TodayPage({
           )}
         </Link>
 
-        {/* Card 3 — Today's Tasks (interactive) */}
+        {/* Card 3 — Today's Tasks */}
         <TodayTaskCard
           companyId={params.companyId}
           category="TASK"
@@ -268,7 +326,7 @@ export default async function TodayPage({
           clients={clients}
         />
 
-        {/* Card 4 — Follow-ups (interactive) */}
+        {/* Card 4 — Follow-ups */}
         <TodayTaskCard
           companyId={params.companyId}
           category="FOLLOW_UP"
@@ -320,7 +378,7 @@ export default async function TodayPage({
           )}
         </div>
 
-        {/* Card 6 — Estimate Notes (interactive) */}
+        {/* Card 6 — Estimate Notes */}
         <TodayTaskCard
           companyId={params.companyId}
           category="ESTIMATE"
@@ -328,25 +386,22 @@ export default async function TodayPage({
           initialItems={toItems("ESTIMATE")}
           clients={clients}
         />
-      </div>
 
-      {/* Pipeline board */}
-      <div className="mt-10">
-        <ClientPipeline
-          companyId={params.companyId}
-          initialCards={pipelineCards.map((c) => ({
-            id: c.id,
-            displayName: c.displayName,
-            stage: c.stage,
-            estimateValue: c.estimateValue ? Number(c.estimateValue) : null,
-            notes: c.notes,
-            clientId: c.clientId,
-            clientName: c.client?.name ?? null,
-            sortOrder: c.sortOrder,
-            createdAt: c.createdAt.toISOString(),
-          }))}
-          clients={clients}
-        />
+        {/* Card 7 — To Call ASAP (full-width) */}
+        <div className="sm:col-span-2 lg:col-span-3">
+          <TodayCallsSection
+            companyId={params.companyId}
+            initialLeads={urgentLeads.map(c => ({
+              id: c.id,
+              displayName: c.displayName,
+              estimateValue: c.estimateValue ? Number(c.estimateValue) : null,
+              notes: c.notes,
+              clientId: c.clientId,
+              clientName: c.client?.name ?? null,
+              createdAt: c.createdAt.toISOString(),
+            }))}
+          />
+        </div>
       </div>
     </div>
   );

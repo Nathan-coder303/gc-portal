@@ -34,7 +34,7 @@ export default async function ClientsPage({ params }: { params: { companyId: str
   if (!session) redirect("/login");
   if (session.user.companyId !== params.companyId) redirect(`/${session.user.companyId}`);
 
-  const [clients, urgentLeads] = await Promise.all([
+  const [clients] = await Promise.all([
   prisma.client.findMany({
     where: { companyId: params.companyId },
     orderBy: [{ sortOrder: "asc" }, { name: "asc" }],
@@ -58,11 +58,6 @@ export default async function ClientsPage({ params }: { params: { companyId: str
       },
     },
   }),
-  prisma.pipelineCard.findMany({
-    where: { companyId: params.companyId, stage: "TO_CALL_ASAP" },
-    orderBy: [{ sortOrder: "asc" }],
-    include: { client: { select: { id: true, name: true } } },
-  }),
   ]);
 
   const isAdmin = can(session.user.role, "estimateTemplate:edit");
@@ -85,15 +80,6 @@ export default async function ClientsPage({ params }: { params: { companyId: str
           gcFee: c.templates.reduce((sum, t) => sum + calcGcFee(t.divisions, t.gcFeePercent), 0),
           status: c.status,
           sortOrder: c.sortOrder,
-        }))}
-        urgentLeads={urgentLeads.map(c => ({
-          id: c.id,
-          displayName: c.displayName,
-          estimateValue: c.estimateValue ? Number(c.estimateValue) : null,
-          notes: c.notes,
-          clientId: c.clientId,
-          clientName: c.client?.name ?? null,
-          createdAt: c.createdAt.toISOString(),
         }))}
         isAdmin={isAdmin}
       />

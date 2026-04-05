@@ -1,20 +1,14 @@
 "use client";
 
-import { useState, useTransition, useRef, useEffect } from "react";
+import { useState, useTransition, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { upsertClient, deleteClient } from "@/app/[companyId]/estimates/actions";
 import { TrashIcon, PencilIcon } from "@/components/ui/icons";
-import { BASE_STAGES, loadStages, type PipelineStage } from "@/lib/pipelineStages";
 
 type Client = {
   id: string; name: string; address: string | null; city: string | null;
   state: string | null; zip: string | null; email: string | null; phone: string | null;
   estimateCount: number; estimateTotal: number; gcFee: number; status: string; sortOrder: number;
-};
-
-type UrgentLead = {
-  id: string; displayName: string; estimateValue: number | null;
-  notes: string | null; clientId: string | null; clientName: string | null; createdAt: string;
 };
 
 const GOAL_2026 = 5_000_000;
@@ -256,134 +250,6 @@ function AddClientForm({ onDone, defaultStatus }: { onDone: () => void; defaultS
   );
 }
 
-function UrgentLeadsSection({ leads, companyId, onUpdate, onDelete }: {
-  leads: UrgentLead[];
-  companyId: string;
-  onUpdate: (id: string, updates: Partial<UrgentLead> & { stage?: string }) => void;
-  onDelete: (id: string) => void;
-}) {
-  const [stages, setStages] = useState<PipelineStage[]>(BASE_STAGES);
-  useEffect(() => { setStages(loadStages()); }, []);
-
-  if (leads.length === 0) return null;
-
-  return (
-    <div className="mb-6 rounded-2xl p-4" style={{ background: "#1a0d0d", border: "1px solid #ef444455" }}>
-      <div className="flex items-center gap-2 mb-3">
-        <span style={{ fontSize: 16 }}>🔴</span>
-        <span className="text-sm font-bold" style={{ color: "#ef4444" }}>To Call ASAP</span>
-        <span className="text-xs px-2 py-0.5 rounded-full font-semibold" style={{ background: "#ef444422", color: "#ef4444" }}>{leads.length}</span>
-      </div>
-      <div className="flex flex-col gap-2">
-        {leads.map(lead => (
-          <UrgentLeadCard key={lead.id} lead={lead} companyId={companyId} stages={stages} onUpdate={onUpdate} onDelete={onDelete} />
-        ))}
-      </div>
-    </div>
-  );
-}
-
-function UrgentLeadCard({ lead, companyId, stages, onUpdate, onDelete }: {
-  lead: UrgentLead; companyId: string; stages: PipelineStage[];
-  onUpdate: (id: string, updates: Partial<UrgentLead> & { stage?: string }) => void;
-  onDelete: (id: string) => void;
-}) {
-  const [editing, setEditing] = useState(false);
-  const [saving, setSaving] = useState(false);
-  const [showDelete, setShowDelete] = useState(false);
-  const [showMove, setShowMove] = useState(false);
-  const [form, setForm] = useState({ displayName: lead.displayName, estimateValue: lead.estimateValue?.toString() ?? "", notes: lead.notes ?? "" });
-
-  async function handleSave() {
-    setSaving(true);
-    await fetch(`/api/${companyId}/pipeline/${lead.id}`, {
-      method: "PATCH", headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ displayName: form.displayName, estimateValue: form.estimateValue ? parseFloat(form.estimateValue) : null, notes: form.notes || null }),
-    });
-    onUpdate(lead.id, { displayName: form.displayName, estimateValue: form.estimateValue ? parseFloat(form.estimateValue) : null, notes: form.notes || null });
-    setSaving(false);
-    setEditing(false);
-  }
-
-  async function handleDelete() {
-    await fetch(`/api/${companyId}/pipeline/${lead.id}`, { method: "DELETE" });
-    onDelete(lead.id);
-  }
-
-  async function handleMove(stage: string) {
-    await fetch(`/api/${companyId}/pipeline/${lead.id}`, {
-      method: "PATCH", headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ stage }),
-    });
-    onDelete(lead.id); // remove from urgent list
-    setShowMove(false);
-  }
-
-  if (editing) {
-    return (
-      <div className="rounded-xl p-3 space-y-2" style={{ background: "#161b22", border: "1px solid #30373f" }}>
-        <input value={form.displayName} onChange={e => setForm({...form, displayName: e.target.value})}
-          className="w-full rounded px-2 py-1.5 text-sm" style={{ background: "#0d1117", border: "1px solid #30373f", color: "#e6edf3" }} placeholder="Name" />
-        <input value={form.estimateValue} onChange={e => setForm({...form, estimateValue: e.target.value})}
-          className="w-full rounded px-2 py-1.5 text-sm" style={{ background: "#0d1117", border: "1px solid #30373f", color: "#e6edf3" }} placeholder="Estimate value" type="number" />
-        <input value={form.notes} onChange={e => setForm({...form, notes: e.target.value})}
-          className="w-full rounded px-2 py-1.5 text-sm" style={{ background: "#0d1117", border: "1px solid #30373f", color: "#e6edf3" }} placeholder="Notes" />
-        <div className="flex gap-2">
-          <button onClick={handleSave} disabled={saving} className="px-3 py-1 text-xs rounded-lg font-medium" style={{ background: "#C9A84C", color: "#0d1117" }}>Save</button>
-          <button onClick={() => setEditing(false)} className="px-3 py-1 text-xs rounded-lg" style={{ border: "1px solid #30373f", color: "#8b949e" }}>Cancel</button>
-        </div>
-      </div>
-    );
-  }
-
-  return (
-    <div className="rounded-xl px-4 py-3 flex items-center gap-3" style={{ background: "#161b22", border: "1px solid #30373f" }}>
-      <div className="flex-1 min-w-0">
-        <div className="text-sm font-semibold" style={{ color: "#e6edf3" }}>{lead.displayName}</div>
-        {lead.clientName && lead.clientName !== lead.displayName && (
-          <div className="text-xs" style={{ color: "#8b949e" }}>{lead.clientName}</div>
-        )}
-        {lead.estimateValue != null && (
-          <div className="text-xs font-medium" style={{ color: "#C9A84C" }}>${lead.estimateValue.toLocaleString()}</div>
-        )}
-        {lead.notes && <div className="text-xs mt-0.5" style={{ color: "#8b949e" }}>{lead.notes}</div>}
-      </div>
-      <div className="flex items-center gap-2 shrink-0">
-        {/* Move to stage */}
-        <div className="relative">
-          <button onClick={() => setShowMove(v => !v)} className="px-2 py-1 text-xs rounded-lg font-medium" style={{ background: "#30373f", color: "#e6edf3" }}>
-            Move ▾
-          </button>
-          {showMove && (
-            <div className="absolute right-0 top-7 z-20 rounded-xl shadow-xl overflow-hidden" style={{ background: "#1e2736", border: "1px solid #30373f", minWidth: 180 }}>
-              {stages.filter(s => s.id !== "TO_CALL_ASAP").map(s => (
-                <button key={s.id} onClick={() => handleMove(s.id)}
-                  className="w-full text-left px-3 py-2 text-xs hover:bg-[#30373f]" style={{ color: s.color }}>
-                  {s.label}
-                </button>
-              ))}
-            </div>
-          )}
-        </div>
-        {/* Edit */}
-        <button onClick={() => setEditing(true)} className="w-7 h-7 rounded-lg flex items-center justify-center" style={{ background: "#C9A84C22", color: "#C9A84C", border: "1px solid #C9A84C44" }} title="Edit">
-          <PencilIcon size={12} />
-        </button>
-        {/* Delete */}
-        {showDelete ? (
-          <div className="flex gap-1 items-center">
-            <button onClick={handleDelete} className="text-xs px-2 py-0.5 rounded font-medium" style={{ background: "#f8514922", color: "#f85149" }}>Yes</button>
-            <button onClick={() => setShowDelete(false)} className="text-xs px-2 py-0.5 rounded" style={{ color: "#8b949e", border: "1px solid #30373f" }}>No</button>
-          </div>
-        ) : (
-          <button onClick={() => setShowDelete(true)} className="w-7 h-7 rounded-lg flex items-center justify-center" style={{ background: "#f8514922", color: "#f85149", border: "1px solid #f8514933" }} title="Delete">
-            <TrashIcon size={12} />
-          </button>
-        )}
-      </div>
-    </div>
-  );
-}
 
 function ClientColumn({
   title, status, clients, companyId, isAdmin, adding,
@@ -446,9 +312,8 @@ function ClientColumn({
   );
 }
 
-export default function ClientsManager({ companyId, clients: initialClients, urgentLeads: initialUrgentLeads, isAdmin }: { companyId: string; clients: Client[]; urgentLeads: UrgentLead[]; isAdmin: boolean }) {
+export default function ClientsManager({ companyId, clients: initialClients, isAdmin }: { companyId: string; clients: Client[]; isAdmin: boolean }) {
   const [clients, setClients] = useState<Client[]>(initialClients);
-  const [urgentLeads, setUrgentLeads] = useState<UrgentLead[]>(initialUrgentLeads);
   const [addingIn, setAddingIn] = useState<string | null>(null);
   const dragIdRef = useRef<string | null>(null);
   const router = useRouter();
@@ -508,28 +373,28 @@ export default function ClientsManager({ companyId, clients: initialClients, urg
   return (
     <div>
       {/* MIBH Income 2026 Barometer */}
-      <div className="rounded-2xl p-5 mb-6" style={{ background: "#0a1a0f", border: "1px solid #22c55e33" }}>
+      <div className="rounded-2xl px-6 py-5 mb-6" style={{ background: "#0a1a0f", border: "1px solid #22c55e33" }}>
         <div className="flex items-end justify-between mb-3">
           <div>
             <div className="text-xs font-semibold uppercase tracking-widest mb-1" style={{ color: "#22c55e88" }}>MIBH Income 2026</div>
-            <div className="text-3xl font-bold" style={{ color: "#22c55e" }}>
+            <div className="text-5xl font-black leading-none" style={{ color: "#22c55e" }}>
               ${mibhIncome.toLocaleString("en-US", { maximumFractionDigits: 0 })}
             </div>
           </div>
           <div className="text-right">
             <div className="text-xs font-semibold uppercase tracking-widest mb-1" style={{ color: "#8b949e" }}>Goal 2026</div>
-            <div className="text-xl font-bold" style={{ color: "#8b949e" }}>$5,000,000</div>
+            <div className="text-2xl font-bold" style={{ color: "#8b949e" }}>$5,000,000</div>
+            <div className="text-sm font-semibold mt-0.5" style={{ color: "#22c55e" }}>{goalPct.toFixed(1)}% there</div>
           </div>
         </div>
-        {/* Barometer */}
-        <div className="rounded-full overflow-hidden" style={{ height: 14, background: "#1a2a1a", border: "1px solid #22c55e22" }}>
+        <div className="rounded-full overflow-hidden" style={{ height: 18, background: "#1a2a1a", border: "1px solid #22c55e22" }}>
           <div
             className="h-full rounded-full transition-all duration-700"
             style={{ width: `${Math.max(goalPct, 0.5)}%`, background: goalPct >= 100 ? "#C9A84C" : "linear-gradient(90deg, #16a34a, #22c55e)", minWidth: 4 }}
           />
         </div>
         <div className="flex justify-between mt-1.5">
-          <span className="text-xs font-semibold" style={{ color: "#22c55e" }}>{goalPct.toFixed(1)}% to goal</span>
+          <span className="text-xs" style={{ color: "#22c55e88" }}>{actives.length} active client{actives.length !== 1 ? "s" : ""}</span>
           <span className="text-xs" style={{ color: "#8b949e" }}>${(GOAL_2026 - mibhIncome).toLocaleString("en-US", { maximumFractionDigits: 0 })} remaining</span>
         </div>
       </div>
@@ -540,14 +405,6 @@ export default function ClientsManager({ companyId, clients: initialClients, urg
           <p className="text-sm mt-0.5" style={{ color: "#8b949e" }}>{prospects.length} prospect{prospects.length !== 1 ? "s" : ""} · {actives.length} active</p>
         </div>
       </div>
-
-      {/* Urgent leads */}
-      <UrgentLeadsSection
-        leads={urgentLeads}
-        companyId={companyId}
-        onUpdate={(id, updates) => setUrgentLeads(prev => prev.map(l => l.id === id ? { ...l, ...updates } : l))}
-        onDelete={(id) => setUrgentLeads(prev => prev.filter(l => l.id !== id))}
-      />
 
       <div className="flex gap-4">
         <ClientColumn
