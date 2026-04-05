@@ -6,7 +6,7 @@ import SubsBidsTab, { SubBidRow } from "@/components/clients/SubsBidsTab";
 import SyncLabelBidsButton from "@/components/clients/SyncLabelBidsButton";
 import { can } from "@/lib/auth/permissions";
 
-function groupBids(raw: { id: string; divisionCode: string; divisionName: string; contractorName: string | null; amount: unknown; notes: string | null; fileUrl: string | null; fileName: string | null; status: string; isPlaceholder: boolean }[]): SubBidRow[] {
+function groupBids(raw: { id: string; divisionCode: string; divisionName: string; contractorName: string | null; amount: unknown; notes: string | null; fileUrl: string | null; fileName: string | null; status: string; isPlaceholder: boolean; createdAt: Date | null; bidDate?: string | null; emailSource?: string | null }[]): SubBidRow[] {
   const map = new Map<string, SubBidRow>();
   for (const b of raw) {
     if (!map.has(b.divisionCode)) {
@@ -21,6 +21,9 @@ function groupBids(raw: { id: string; divisionCode: string; divisionName: string
       fileName: b.fileName,
       status: b.status,
       isPlaceholder: b.isPlaceholder,
+      createdAt: b.createdAt ? new Date(b.createdAt).toISOString() : undefined,
+      bidDate: b.bidDate ?? null,
+      emailSource: b.emailSource ?? null,
     });
   }
   return Array.from(map.values()).sort((a, b) => a.divisionCode.localeCompare(b.divisionCode));

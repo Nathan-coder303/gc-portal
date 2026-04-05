@@ -44,9 +44,8 @@ function fmt(n: number) {
 function fmtDate(iso: string) {
   try {
     const d = new Date(iso);
-    if (isNaN(d.getTime()) || d.getUTCFullYear() < 2020) return "";
-    const months = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
-    return `${months[d.getUTCMonth()]} ${d.getUTCDate()}, ${d.getUTCFullYear()}`;
+    if (isNaN(d.getTime()) || d.getFullYear() < 2020) return "";
+    return d.toLocaleString("en-US", { month: "short", day: "numeric", year: "numeric", hour: "numeric", minute: "2-digit" });
   } catch { return ""; }
 }
 
@@ -700,9 +699,14 @@ export default function SubsBidsTab({ clientId, companyId, clientName, subBids: 
                         </select>
                       </div>
                     )}
-                    {(offer.bidDate || offer.createdAt) && (
+                    {offer.createdAt && (
                       <div className="text-xs mt-1.5 pl-5" style={{ color: "#6b7280" }} suppressHydrationWarning>
-                        {offer.bidDate ?? (offer.createdAt ? fmtDate(offer.createdAt) : "")}
+                        Date received: {fmtDate(offer.createdAt)}
+                      </div>
+                    )}
+                    {!offer.createdAt && offer.bidDate && (
+                      <div className="text-xs mt-1.5 pl-5" style={{ color: "#6b7280" }} suppressHydrationWarning>
+                        {offer.bidDate}
                       </div>
                     )}
                     </>
@@ -873,9 +877,14 @@ export default function SubsBidsTab({ clientId, companyId, clientName, subBids: 
                             )}
                           </div>
                         </div>
-                        {(offer.bidDate || offer.createdAt) && (
+                        {offer.createdAt && (
                           <div className="text-xs mt-1.5" style={{ color: "#6b7280" }} suppressHydrationWarning>
-                            {offer.bidDate ?? (offer.createdAt ? fmtDate(offer.createdAt) : "")}
+                            Date received: {fmtDate(offer.createdAt)}
+                          </div>
+                        )}
+                        {!offer.createdAt && offer.bidDate && (
+                          <div className="text-xs mt-1.5" style={{ color: "#6b7280" }} suppressHydrationWarning>
+                            {offer.bidDate}
                           </div>
                         )}
                       </div>
