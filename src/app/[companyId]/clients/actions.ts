@@ -67,6 +67,7 @@ export async function upsertSubBid(data: {
   fileName?: string;
   status?: string;
   bidDate?: string | null;
+  emailSource?: string | null;
 }) {
   const session = await auth();
   if (!session) throw new Error("Unauthorized");
@@ -88,6 +89,7 @@ export async function upsertSubBid(data: {
         fileName: data.fileName || null,
         status,
         ...(data.bidDate !== undefined && { bidDate: data.bidDate }),
+        ...(data.emailSource !== undefined && { emailSource: data.emailSource }),
       },
     });
   } else {
@@ -106,6 +108,7 @@ export async function upsertSubBid(data: {
           fileName: data.fileName || null,
           status,
           ...(data.bidDate !== undefined && { bidDate: data.bidDate }),
+          ...(data.emailSource !== undefined && { emailSource: data.emailSource }),
         },
       });
     } else {
@@ -122,7 +125,8 @@ export async function upsertSubBid(data: {
           fileName: data.fileName || null,
           status,
           bidDate: data.bidDate ?? null,
-          isPlaceholder: true,
+          emailSource: data.emailSource ?? null,
+          isPlaceholder: false,
         },
       });
     }

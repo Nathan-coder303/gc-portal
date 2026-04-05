@@ -16,6 +16,7 @@ export type SubBidOffer = {
   isPlaceholder: boolean;
   createdAt?: string;
   bidDate?: string | null;
+  emailSource?: string | null;
 };
 
 export type SubBidRow = {
@@ -72,9 +73,78 @@ type EditForm = {
   amount: string;
   notes: string;
   status: string;
+  bidDate: string;
+  email: string;
 };
 
-export default function SubsBidsTab({ clientId, companyId, subBids: initialSubBids, canEdit, canDelete, isCommercial = false }: Props) {
+type AddForm = {
+  contractorName: string;
+  email: string;
+  amount: string;
+  notes: string;
+  bidDate: string;
+};
+
+type SendModal = {
+  offer: SubBidOffer;
+  bid: SubBidRow;
+  to: string;
+  cc: string;
+  bcc: string;
+  subject: string;
+  body: string;
+} | null;
+
+const FIELD_STYLE = { background: "#1e2736", border: "1px solid #30373f", color: "#e6edf3", outline: "none" };
+
+function EditOfferForm({ formData, onChange, onSave, onCancel, saving }: {
+  formData: EditForm;
+  onChange: (f: EditForm) => void;
+  onSave: () => void;
+  onCancel: () => void;
+  saving: boolean;
+}) {
+  return (
+    <div className="space-y-2">
+      <input placeholder="Partner / Contractor name" value={formData.contractorName}
+        onChange={e => onChange({ ...formData, contractorName: e.target.value })}
+        className="w-full rounded-lg px-3 py-1.5 text-sm" style={FIELD_STYLE} />
+      <input type="email" placeholder="Email (for sending)" value={formData.email}
+        onChange={e => onChange({ ...formData, email: e.target.value })}
+        className="w-full rounded-lg px-3 py-1.5 text-sm" style={FIELD_STYLE} />
+      <div className="grid grid-cols-2 gap-2">
+        <input type="number" placeholder="Bid amount" value={formData.amount}
+          onChange={e => onChange({ ...formData, amount: e.target.value })}
+          className="w-full rounded-lg px-3 py-1.5 text-sm" style={FIELD_STYLE} />
+        <input placeholder="Bid date (e.g. Apr 5, 2026)" value={formData.bidDate}
+          onChange={e => onChange({ ...formData, bidDate: e.target.value })}
+          className="w-full rounded-lg px-3 py-1.5 text-sm" style={FIELD_STYLE} />
+      </div>
+      <input placeholder="Notes" value={formData.notes}
+        onChange={e => onChange({ ...formData, notes: e.target.value })}
+        className="w-full rounded-lg px-3 py-1.5 text-sm" style={FIELD_STYLE} />
+      <select value={formData.status} onChange={e => onChange({ ...formData, status: e.target.value })}
+        className="w-full rounded-lg px-3 py-1.5 text-sm" style={FIELD_STYLE}>
+        <option value="MISSING">MISSING</option>
+        <option value="RECEIVED">RECEIVED</option>
+        <option value="APPROVED">APPROVED</option>
+      </select>
+      <div className="flex gap-2">
+        <button onClick={onSave} disabled={saving}
+          className="flex-1 rounded-lg px-3 py-1.5 text-xs font-semibold"
+          style={{ background: "#C9A84C", color: "#0d1117" }}>
+          {saving ? "Saving..." : "Save"}
+        </button>
+        <button onClick={onCancel} className="rounded-lg px-3 py-1.5 text-xs"
+          style={{ background: "#1e2736", color: "#8b949e", border: "1px solid #30373f" }}>
+          Cancel
+        </button>
+      </div>
+    </div>
+  );
+}
+
+export default function SubsBidsTab({ clientId, companyId, clientName, subBids: initialSubBids, canEdit, canDelete, isCommercial = false }: Props) {
   const router = useRouter();
   const [subBids, setSubBids] = useState<SubBidRow[]>(initialSubBids);
   const [displayIsCommercial, setDisplayIsCommercial] = useState(isCommercial);
@@ -82,18 +152,22 @@ export default function SubsBidsTab({ clientId, companyId, subBids: initialSubBi
   const [editingId, setEditingId] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [deleting, setDeleting] = useState<string | null>(null);
-  const [uploading, setUploading] = useState<string | null>(null); // divisionCode
+  const [uploading, setUploading] = useState<string | null>(null);
   const [dragOver, setDragOver] = useState<string | null>(null);
   const [triageDragId, setTriageDragId] = useState<string | null>(null);
   const [divisionDrag, setDivisionDrag] = useState<{ offerId: string; fromCode: string } | null>(null);
-  const [syncing, setSyncing] = useState(false);
-  const [syncResult, setSyncResult] = useState<string | null>(null);
   const [extracting, setExtracting] = useState(false);
   const [extractResult, setExtractResult] = useState<string | null>(null);
   const [triageOpen, setTriageOpen] = useState(true);
   const [triageSelected, setTriageSelected] = useState<Set<string>>(new Set());
   const [bulkMoving, setBulkMoving] = useState(false);
-  const [formData, setFormData] = useState<EditForm>({ contractorName: "", amount: "", notes: "", status: "RECEIVED" });
+  const [formData, setFormData] = useState<EditForm>({ contractorName: "", amount: "", notes: "", status: "RECEIVED", bidDate: "", email: "" });
+  const [addingToDivision, setAddingToDivision] = useState<string | null>(null);
+  const [addForm, setAddForm] = useState<AddForm>({ contractorName: "", email: "", amount: "", notes: "", bidDate: "" });
+  const [addSaving, setAddSaving] = useState(false);
+  const [sendModal, setSendModal] = useState<SendModal>(null);
+  const [sending, setSending] = useState(false);
+  const [sendResult, setSendResult] = useState<string | null>(null);
   const fileInputRefs = useRef<Record<string, HTMLInputElement | null>>({});
 
   async function handleExtractAmounts() {
@@ -120,42 +194,97 @@ export default function SubsBidsTab({ clientId, companyId, subBids: initialSubBi
     }
   }
 
-  async function handleSyncGmail() {
-    setSyncing(true);
-    setSyncResult(null);
-    let totalAdded = 0;
-    let round = 0;
-    const MAX_ROUNDS = 10;
+  function openAddPartner(divisionCode: string) {
+    setAddingToDivision(divisionCode);
+    setAddForm({ contractorName: "", email: "", amount: "", notes: "", bidDate: "" });
+  }
+
+  async function handleAddPartner(bid: SubBidRow) {
+    if (!addForm.contractorName.trim()) return;
+    setAddSaving(true);
     try {
-      // Use label-based sync (only emails tagged "7729 bids" in Gmail)
-      while (round < MAX_ROUNDS) {
-        round++;
-        const res = await fetch(`/api/${companyId}/clients/${clientId}/sync-label-bids`, {
-          method: "POST",
-        });
-        const data = await res.json();
-        if (!res.ok) {
-          setSyncResult(`Error: ${data.error ?? "Sync failed"}`);
-          return;
-        }
-        totalAdded += data.added ?? 0;
-        setSyncResult(`Syncing… ${totalAdded} bids found so far`);
-        if ((data.remaining ?? 0) === 0) break;
-      }
-      setSyncResult(`Done — ${totalAdded} new bid${totalAdded !== 1 ? "s" : ""} imported. Extracting amounts…`);
-      const extractRes = await fetch(`/api/${companyId}/extract-bid-amounts`, {
+      const amountVal = addForm.amount ? parseFloat(addForm.amount) : null;
+      const record = await upsertSubBid({
+        clientId, companyId,
+        divisionCode: bid.divisionCode,
+        divisionName: bid.divisionName,
+        contractorName: addForm.contractorName.trim(),
+        amount: amountVal && !isNaN(amountVal) ? amountVal : null,
+        notes: addForm.notes || undefined,
+        bidDate: addForm.bidDate || null,
+        emailSource: addForm.email.trim() || null,
+        status: "RECEIVED",
+      });
+      const newOffer: SubBidOffer = {
+        id: record.id,
+        contractorName: addForm.contractorName.trim(),
+        amount: amountVal && !isNaN(amountVal) ? amountVal : null,
+        notes: addForm.notes || null,
+        fileUrl: null, fileName: null,
+        bidDate: addForm.bidDate || null,
+        emailSource: addForm.email.trim() || null,
+        status: "RECEIVED",
+        isPlaceholder: false,
+        createdAt: new Date().toISOString(),
+      };
+      setSubBids(prev => prev.map(b =>
+        b.divisionCode === bid.divisionCode
+          ? { ...b, offers: [...b.offers.filter(o => !o.isPlaceholder || o.contractorName || o.amount), newOffer] }
+          : b
+      ));
+      setAddingToDivision(null);
+    } finally {
+      setAddSaving(false);
+    }
+  }
+
+  function openSendEmail(offer: SubBidOffer, bid: SubBidRow) {
+    const recipientEmail = offer.emailSource ?? "";
+    setSendModal({
+      offer, bid,
+      to: recipientEmail,
+      cc: "mikebaruh@gmail.com",
+      bcc: "",
+      subject: `Bid Confirmation — Division ${bid.divisionCode} ${bid.divisionName}${clientName ? ` — ${clientName}` : ""}`,
+      body: `Dear ${offer.contractorName ?? "Partner"},\n\nThank you for submitting your bid for Division ${bid.divisionCode} — ${bid.divisionName}${clientName ? ` on the ${clientName} project` : ""}.\n\n${offer.amount !== null ? `We have received your bid of $${fmt(offer.amount)}.\n\n` : ""}${offer.notes ? `Scope notes: ${offer.notes}\n\n` : ""}We will review all bids and be in touch shortly. Please don't hesitate to reach out with any questions.\n\nBest regards,\nMike Baruh\nMIBH Construction\n305.746.7307`,
+    });
+    setSendResult(null);
+  }
+
+  async function handleSendEmail() {
+    if (!sendModal) return;
+    setSending(true);
+    setSendResult(null);
+    try {
+      const html = `<!DOCTYPE html><html><body style="font-family:Arial,sans-serif;color:#111;max-width:600px;margin:0 auto;padding:32px 20px">
+        <div style="background:#0d1117;padding:24px 28px;border-radius:10px 10px 0 0">
+          <h2 style="margin:0 0 4px;color:#C9A84C;font-size:18px">Division ${sendModal.bid.divisionCode} — ${sendModal.bid.divisionName}</h2>
+          <p style="margin:0;font-size:12px;color:#8b949e">${clientName ?? "MIBH Construction"}</p>
+        </div>
+        <div style="border:1px solid #e5e7eb;border-top:none;padding:24px 28px;border-radius:0 0 10px 10px">
+          <p style="white-space:pre-line;font-size:14px;line-height:1.7">${sendModal.body.replace(/\n/g, "<br>")}</p>
+          ${sendModal.offer.amount !== null ? `<div style="background:#f9fafb;border:2px solid #C9A84C;border-radius:8px;padding:16px 20px;margin:20px 0;text-align:center"><div style="font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:#6b7280;margin-bottom:4px">Bid Amount on Record</div><div style="font-size:30px;font-weight:700;font-family:monospace">$${fmt(sendModal.offer.amount)}</div></div>` : ""}
+          <div style="margin-top:24px;padding-top:16px;border-top:1px solid #f3f4f6;font-size:13px;line-height:1.7">
+            <strong>Mike Baruh</strong><br>Founder/CEO · MIBH Construction<br>
+            CGC 1527069 | CCC 1336817<br>
+            📱 305.746.7307 · 📧 mike@mibhconstruction.com
+          </div>
+        </div>
+      </body></html>`;
+      const res = await fetch(`/api/${companyId}/clients/${clientId}/send-bid-email`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ clientId }),
+        body: JSON.stringify({ to: sendModal.to, cc: sendModal.cc || undefined, bcc: sendModal.bcc || undefined, subject: sendModal.subject, bodyHtml: html }),
       });
-      const extractData = extractRes.ok ? await extractRes.json() : null;
-      const extractedCount = extractData?.extracted ?? 0;
-      setSyncResult(`Done — ${totalAdded} new bid${totalAdded !== 1 ? "s" : ""} imported, ${extractedCount} amount${extractedCount !== 1 ? "s" : ""} extracted`);
-      if (totalAdded > 0 || extractedCount > 0) router.refresh();
-    } catch (e) {
-      setSyncResult("Sync failed: " + String(e));
+      const data = await res.json();
+      if (data.success) {
+        setSendResult("✓ Email sent successfully");
+        setTimeout(() => { setSendModal(null); setSendResult(null); }, 1500);
+      } else {
+        setSendResult("Error: " + (data.error ?? "Unknown error"));
+      }
     } finally {
-      setSyncing(false);
+      setSending(false);
     }
   }
 
@@ -250,6 +379,8 @@ export default function SubsBidsTab({ clientId, companyId, subBids: initialSubBi
       amount: offer.amount !== null ? String(offer.amount) : "",
       notes: offer.notes ?? "",
       status: offer.status === "MISSING" ? "RECEIVED" : offer.status,
+      bidDate: offer.bidDate ?? "",
+      email: offer.emailSource ?? "",
     });
   }
 
@@ -268,10 +399,12 @@ export default function SubsBidsTab({ clientId, companyId, subBids: initialSubBi
         fileUrl: offer.fileUrl || undefined,
         fileName: offer.fileName || undefined,
         status: formData.status,
+        bidDate: formData.bidDate || null,
+        emailSource: formData.email || null,
       });
       setSubBids((prev) => prev.map((b) =>
         b.divisionCode === bid.divisionCode
-          ? { ...b, offers: b.offers.map((o) => o.id === offer.id ? { ...o, contractorName: formData.contractorName || null, amount: amountVal && !isNaN(amountVal) ? amountVal : null, notes: formData.notes || null, status: formData.status } : o) }
+          ? { ...b, offers: b.offers.map((o) => o.id === offer.id ? { ...o, contractorName: formData.contractorName || null, amount: amountVal && !isNaN(amountVal) ? amountVal : null, notes: formData.notes || null, status: formData.status, bidDate: formData.bidDate || null, emailSource: formData.email || null } : o) }
           : b
       ));
       setEditingId(null);
@@ -363,30 +496,71 @@ export default function SubsBidsTab({ clientId, companyId, subBids: initialSubBi
         {displayIsCommercial && <span className="text-xs" style={{ color: "#C9A84C" }}>+ Div 11 Equipment · 13 Special Construction · 14 Conveying · 21 Fire Suppression · 27 Communications · 28 Electronic Safety · 31 Earthwork (Adv) · 32 Exterior Improvements · 33 Utilities</span>}
       </div>
 
-      {/* Gmail sync + extract amounts buttons */}
+      {/* Extract amounts button */}
       {canEdit && (
         <div className="flex flex-wrap items-center gap-3 mb-4">
-          <button
-            onClick={handleSyncGmail}
-            disabled={syncing}
-            className="flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-semibold transition-all"
-            style={{ background: syncing ? "#1e2736" : "#C9A84C", color: syncing ? "#8b949e" : "#0d1117", border: "1px solid #C9A84C", opacity: syncing ? 0.7 : 1 }}
-          >
-            {syncing ? "Syncing Gmail…" : "Sync Gmail Bids"}
-          </button>
           <button
             onClick={handleExtractAmounts}
             disabled={extracting}
             className="flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-semibold transition-all"
-            style={{ background: extracting ? "#1e2736" : "#1e2736", color: extracting ? "#8b949e" : "#C9A84C", border: "1px solid #C9A84C44", opacity: extracting ? 0.7 : 1 }}
+            style={{ background: "#1e2736", color: extracting ? "#8b949e" : "#C9A84C", border: "1px solid #C9A84C44", opacity: extracting ? 0.7 : 1 }}
           >
             {extracting ? "Extracting…" : "Extract Amounts from PDFs"}
           </button>
-          {(syncResult || extractResult) && (
-            <span className="text-xs" style={{ color: (syncResult ?? extractResult ?? "").startsWith("Error") || (syncResult ?? extractResult ?? "").startsWith("Failed") ? "#ef4444" : "#8b949e" }}>
-              {extractResult ?? syncResult}
+          {extractResult && (
+            <span className="text-xs" style={{ color: extractResult.startsWith("Error") || extractResult.startsWith("Failed") ? "#ef4444" : "#8b949e" }}>
+              {extractResult}
             </span>
           )}
+        </div>
+      )}
+
+      {/* Send email modal */}
+      {sendModal && (
+        <div style={{ position: "fixed", inset: 0, zIndex: 60, background: "rgba(0,0,0,0.8)", display: "flex", alignItems: "center", justifyContent: "center", padding: 16 }}
+          onClick={() => setSendModal(null)}>
+          <div style={{ background: "#161b22", border: "1px solid #30373f", borderRadius: 14, padding: 24, width: "100%", maxWidth: 520, maxHeight: "90vh", overflowY: "auto" }}
+            onClick={e => e.stopPropagation()}>
+            <h3 className="text-sm font-bold mb-1" style={{ color: "#e6edf3" }}>Send Bid Email</h3>
+            <p className="text-[11px] mb-4" style={{ color: "#8b949e" }}>Division {sendModal.bid.divisionCode} — {sendModal.bid.divisionName} · {sendModal.offer.contractorName}</p>
+            <div className="space-y-3">
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-[11px] mb-1" style={{ color: "#8b949e" }}>To *</label>
+                  <input type="email" value={sendModal.to} onChange={e => setSendModal(m => m && ({ ...m, to: e.target.value }))}
+                    style={{ background: "#1e2736", border: "1px solid #30373f", color: "#e6edf3", borderRadius: 6, padding: "6px 10px", fontSize: 13, width: "100%" }} />
+                </div>
+                <div>
+                  <label className="block text-[11px] mb-1" style={{ color: "#8b949e" }}>Cc</label>
+                  <input type="email" value={sendModal.cc} onChange={e => setSendModal(m => m && ({ ...m, cc: e.target.value }))}
+                    style={{ background: "#1e2736", border: "1px solid #30373f", color: "#e6edf3", borderRadius: 6, padding: "6px 10px", fontSize: 13, width: "100%" }} />
+                </div>
+              </div>
+              <div>
+                <label className="block text-[11px] mb-1" style={{ color: "#8b949e" }}>Subject</label>
+                <input type="text" value={sendModal.subject} onChange={e => setSendModal(m => m && ({ ...m, subject: e.target.value }))}
+                  style={{ background: "#1e2736", border: "1px solid #30373f", color: "#e6edf3", borderRadius: 6, padding: "6px 10px", fontSize: 13, width: "100%" }} />
+              </div>
+              <div>
+                <label className="block text-[11px] mb-1" style={{ color: "#8b949e" }}>Message</label>
+                <textarea rows={8} value={sendModal.body} onChange={e => setSendModal(m => m && ({ ...m, body: e.target.value }))}
+                  style={{ background: "#1e2736", border: "1px solid #30373f", color: "#e6edf3", borderRadius: 6, padding: "6px 10px", fontSize: 13, width: "100%", resize: "vertical", lineHeight: 1.5 }} />
+              </div>
+            </div>
+            {sendResult && (
+              <p className="text-xs mt-3" style={{ color: sendResult.startsWith("✓") ? "#22c55e" : "#f87171" }}>{sendResult}</p>
+            )}
+            <div className="flex gap-2 mt-4">
+              <button onClick={handleSendEmail} disabled={sending || !sendModal.to}
+                className="flex-1 py-2 text-xs font-semibold rounded-lg disabled:opacity-50"
+                style={{ background: "#C9A84C", color: "#0d1117" }}>
+                {sending ? "Sending…" : "✉ Send Email"}
+              </button>
+              <button onClick={() => setSendModal(null)}
+                className="px-4 py-2 text-xs rounded-lg"
+                style={{ background: "#30373f", color: "#8b949e" }}>Cancel</button>
+            </div>
+          </div>
         </div>
       )}
 
@@ -475,17 +649,37 @@ export default function SubsBidsTab({ clientId, companyId, subBids: initialSubBi
                       className="absolute top-3 left-3"
                       style={{ accentColor: "#f97316", width: 14, height: 14, cursor: "pointer" }}
                     />
-                    {canDelete && !isSelected && (
-                      <button
-                        onClick={() => handleDelete("00", offer)}
-                        disabled={deleting === offer.id}
-                        className="absolute top-2 right-2 w-5 h-5 rounded flex items-center justify-center disabled:opacity-50"
-                        style={{ background: "#f8514922", color: "#f85149", border: "1px solid #f8514933" }}
-                        title="Delete">
-                        <TrashIcon size={10} />
-                      </button>
+                    {!isSelected && (
+                      <div className="absolute top-2 right-2 flex gap-1">
+                        {canEdit && (
+                          <button onClick={() => openEdit(offer)}
+                            className="w-5 h-5 rounded flex items-center justify-center"
+                            style={{ background: "#C9A84C22", color: "#C9A84C", border: "1px solid #C9A84C44" }} title="Edit">
+                            <PencilIcon size={9} />
+                          </button>
+                        )}
+                        {canDelete && (
+                          <button onClick={() => handleDelete("00", offer)} disabled={deleting === offer.id}
+                            className="w-5 h-5 rounded flex items-center justify-center disabled:opacity-50"
+                            style={{ background: "#f8514922", color: "#f85149", border: "1px solid #f8514933" }} title="Delete">
+                            <TrashIcon size={10} />
+                          </button>
+                        )}
+                      </div>
                     )}
-                    <div className="text-xs font-bold mb-2 pl-5 pr-6" style={{ color: "#f97316" }}>Unassigned Bid</div>
+                    {editingId === offer.id ? (
+                      <div className="mt-2">
+                        <EditOfferForm
+                          formData={formData}
+                          onChange={setFormData}
+                          onSave={() => handleSave({ divisionCode: "00", divisionName: "Triage", offers: triageRow!.offers }, offer)}
+                          onCancel={() => setEditingId(null)}
+                          saving={saving}
+                        />
+                      </div>
+                    ) : (
+                    <>
+                    <div className="text-xs font-bold mb-2 pl-5 pr-12" style={{ color: "#f97316" }}>Unassigned Bid</div>
                     {offer.contractorName && <div className="text-sm font-medium pl-5" style={{ color: "#e6edf3" }}>{offer.contractorName}</div>}
                     {offer.amount !== null && <div className="text-sm font-bold pl-5" style={{ color: "#C9A84C" }}>${fmt(offer.amount)}</div>}
                     {offer.notes && <div className="text-xs mt-1 pl-5" style={{ color: "#8b949e" }}>{offer.notes}</div>}
@@ -510,6 +704,8 @@ export default function SubsBidsTab({ clientId, companyId, subBids: initialSubBi
                       <div className="text-xs mt-1.5 pl-5" style={{ color: "#6b7280" }} suppressHydrationWarning>
                         {offer.bidDate ?? (offer.createdAt ? fmtDate(offer.createdAt) : "")}
                       </div>
+                    )}
+                    </>
                     )}
                   </div>
                 );
@@ -564,20 +760,55 @@ export default function SubsBidsTab({ clientId, companyId, subBids: initialSubBi
               <div className="flex items-start justify-between gap-2 mb-3">
                 <div>
                   <div className="font-semibold text-xs" style={{ color: "#C9A84C" }}>Division {bid.divisionCode}</div>
-                  <div className="font-semibold text-sm mt-0.5" style={{ color: "#e6edf3" }}>
-                    {bid.divisionName}
-                  </div>
+                  <div className="font-semibold text-sm mt-0.5" style={{ color: "#e6edf3" }}>{bid.divisionName}</div>
                 </div>
-                <div className="flex flex-col items-end gap-1 shrink-0">
-                  <div className="text-lg font-bold leading-none" style={{ color: displayBest !== null ? "#C9A84C" : "#484f58" }}>
-                    {displayBest !== null ? `$${fmt(displayBest)}` : hasOffers ? "$ —" : ""}
+                <div className="flex items-start gap-2 shrink-0">
+                  <div className="flex flex-col items-end gap-1">
+                    <div className="text-lg font-bold leading-none" style={{ color: displayBest !== null ? "#C9A84C" : "#484f58" }}>
+                      {displayBest !== null ? `$${fmt(displayBest)}` : hasOffers ? "$ —" : ""}
+                    </div>
+                    <span className="text-[10px] font-bold px-2 py-0.5 rounded-full"
+                      style={{ background: (hasOffers ? "#C9A84C" : "#ef4444") + "22", color: hasOffers ? "#C9A84C" : "#ef4444", border: `1px solid ${hasOffers ? "#C9A84C" : "#ef4444"}55` }}>
+                      {hasOffers ? "RECEIVED" : "MISSING"}
+                    </span>
                   </div>
-                  <span className="text-[10px] font-bold px-2 py-0.5 rounded-full"
-                    style={{ background: (hasOffers ? "#C9A84C" : "#ef4444") + "22", color: hasOffers ? "#C9A84C" : "#ef4444", border: `1px solid ${hasOffers ? "#C9A84C" : "#ef4444"}55` }}>
-                    {hasOffers ? "RECEIVED" : "MISSING"}
-                  </span>
+                  {canEdit && (
+                    <button onClick={() => openAddPartner(bid.divisionCode)}
+                      className="w-6 h-6 rounded-full flex items-center justify-center text-sm font-bold shrink-0"
+                      style={{ background: "#C9A84C", color: "#0d1117" }} title="Add partner">
+                      +
+                    </button>
+                  )}
                 </div>
               </div>
+
+              {/* Inline add partner form */}
+              {addingToDivision === bid.divisionCode && (
+                <div className="rounded-lg p-3 mb-3 space-y-2" style={{ background: "#0d2a1a", border: "1px solid #22c55e55" }}>
+                  <div className="text-[11px] font-semibold mb-1" style={{ color: "#22c55e" }}>Add Partner</div>
+                  <input placeholder="Partner / Company name *" value={addForm.contractorName} onChange={e => setAddForm(f => ({ ...f, contractorName: e.target.value }))}
+                    className="w-full rounded px-2 py-1.5 text-xs" style={{ background: "#161b22", border: "1px solid #30373f", color: "#e6edf3" }} />
+                  <input type="email" placeholder="Email (for sending)" value={addForm.email} onChange={e => setAddForm(f => ({ ...f, email: e.target.value }))}
+                    className="w-full rounded px-2 py-1.5 text-xs" style={{ background: "#161b22", border: "1px solid #30373f", color: "#e6edf3" }} />
+                  <div className="grid grid-cols-2 gap-2">
+                    <input type="number" placeholder="Amount (optional)" value={addForm.amount} onChange={e => setAddForm(f => ({ ...f, amount: e.target.value }))}
+                      className="w-full rounded px-2 py-1.5 text-xs" style={{ background: "#161b22", border: "1px solid #30373f", color: "#e6edf3" }} />
+                    <input placeholder="Bid date (e.g. Apr 5, 2026)" value={addForm.bidDate} onChange={e => setAddForm(f => ({ ...f, bidDate: e.target.value }))}
+                      className="w-full rounded px-2 py-1.5 text-xs" style={{ background: "#161b22", border: "1px solid #30373f", color: "#e6edf3" }} />
+                  </div>
+                  <input placeholder="Notes (optional)" value={addForm.notes} onChange={e => setAddForm(f => ({ ...f, notes: e.target.value }))}
+                    className="w-full rounded px-2 py-1.5 text-xs" style={{ background: "#161b22", border: "1px solid #30373f", color: "#e6edf3" }} />
+                  <div className="flex gap-2 pt-1">
+                    <button onClick={() => handleAddPartner(bid)} disabled={addSaving || !addForm.contractorName.trim()}
+                      className="flex-1 py-1.5 text-xs font-semibold rounded disabled:opacity-50"
+                      style={{ background: "#22c55e", color: "#fff" }}>
+                      {addSaving ? "Adding…" : "Add Partner"}
+                    </button>
+                    <button onClick={() => setAddingToDivision(null)} className="px-3 py-1.5 text-xs rounded"
+                      style={{ background: "#30373f", color: "#8b949e" }}>Cancel</button>
+                  </div>
+                </div>
+              )}
 
               {/* All offers */}
               <div className="space-y-2">
@@ -591,34 +822,13 @@ export default function SubsBidsTab({ clientId, companyId, subBids: initialSubBi
                     style={{ background: "#161b22", border: "1px solid #30373f", opacity: divisionDrag?.offerId === offer.id ? 0.5 : 1 }}
                   >
                     {editingId === offer.id ? (
-                      <div className="space-y-2">
-                        {(["contractorName", "amount", "notes"] as const).map((field) => (
-                          <input key={field} type={field === "amount" ? "number" : "text"}
-                            placeholder={field === "contractorName" ? "Contractor name" : field === "amount" ? "Bid amount" : "Notes"}
-                            value={formData[field]}
-                            onChange={(e) => setFormData((f) => ({ ...f, [field]: e.target.value }))}
-                            className="w-full rounded-lg px-3 py-1.5 text-sm"
-                            style={{ background: "#1e2736", border: "1px solid #30373f", color: "#e6edf3", outline: "none" }} />
-                        ))}
-                        <select value={formData.status} onChange={(e) => setFormData((f) => ({ ...f, status: e.target.value }))}
-                          className="w-full rounded-lg px-3 py-1.5 text-sm"
-                          style={{ background: "#1e2736", border: "1px solid #30373f", color: "#e6edf3", outline: "none" }}>
-                          <option value="MISSING">MISSING</option>
-                          <option value="RECEIVED">RECEIVED</option>
-                          <option value="APPROVED">APPROVED</option>
-                        </select>
-                        <div className="flex gap-2">
-                          <button onClick={() => handleSave(bid, offer)} disabled={saving}
-                            className="flex-1 rounded-lg px-3 py-1.5 text-xs font-semibold"
-                            style={{ background: "#C9A84C", color: "#0d1117" }}>
-                            {saving ? "Saving..." : "Save"}
-                          </button>
-                          <button onClick={() => setEditingId(null)} className="rounded-lg px-3 py-1.5 text-xs"
-                            style={{ background: "#1e2736", color: "#8b949e", border: "1px solid #30373f" }}>
-                            Cancel
-                          </button>
-                        </div>
-                      </div>
+                      <EditOfferForm
+                        formData={formData}
+                        onChange={setFormData}
+                        onSave={() => handleSave(bid, offer)}
+                        onCancel={() => setEditingId(null)}
+                        saving={saving}
+                      />
                     ) : (
                       <div>
                         <div className="flex items-start justify-between gap-2">
@@ -637,6 +847,14 @@ export default function SubsBidsTab({ clientId, companyId, subBids: initialSubBi
                             })()}
                           </div>
                           <div className="flex gap-1 shrink-0">
+                            {canEdit && offer.emailSource?.includes("@") && (
+                              <button onClick={() => openSendEmail(offer, bid)}
+                                className="w-6 h-6 rounded flex items-center justify-center text-xs"
+                                style={{ background: "#3b82f622", color: "#3b82f6", border: "1px solid #3b82f644" }}
+                                title={`Email ${offer.emailSource}`}>
+                                ✉
+                              </button>
+                            )}
                             {canEdit && (
                               <button onClick={() => openEdit(offer)}
                                 className="w-6 h-6 rounded flex items-center justify-center"

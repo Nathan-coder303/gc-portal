@@ -79,6 +79,7 @@ export default async function ClientDetailPage({
         isPlaceholder: b.isPlaceholder,
         createdAt: b.createdAt ? new Date(b.createdAt).toISOString() : new Date(0).toISOString(),
         bidDate: b.bidDate ?? null,
+        emailSource: b.emailSource ?? null,
       });
     }
     subBids = Array.from(map.values()).sort((a, b) => a.divisionCode.localeCompare(b.divisionCode));
@@ -121,7 +122,7 @@ export default async function ClientDetailPage({
     { key: "estimates", label: "Estimates" },
     { key: "invoices", label: `Invoices${clientInvoices.length > 0 ? ` (${clientInvoices.length})` : ""}` },
     { key: "notes", label: `Notes${clientNotes.length > 0 ? ` (${clientNotes.length})` : ""}` },
-    { key: "subs-bids", label: "Subs Bids" },
+    { key: "subs-bids", label: "Build an Estimate" },
     { key: "client-bid", label: "Client Bid" },
     { key: "files", label: `Files${clientFiles.length > 0 ? ` (${clientFiles.length})` : ""}` },
   ];
