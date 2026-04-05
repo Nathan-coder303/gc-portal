@@ -3,12 +3,13 @@ import { google } from "googleapis";
 import { auth } from "@/lib/auth";
 
 export const runtime = "nodejs";
+export const maxDuration = 60;
 
 function getOAuthClient() {
   const oauth2Client = new google.auth.OAuth2(
     process.env.GOOGLE_CLIENT_ID,
     process.env.GOOGLE_CLIENT_SECRET,
-    "http://localhost:4000/callback"
+    "urn:ietf:wg:oauth:2.0:oob"
   );
   oauth2Client.setCredentials({ refresh_token: process.env.GOOGLE_REFRESH_TOKEN });
   return oauth2Client;

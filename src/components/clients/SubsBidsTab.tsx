@@ -57,7 +57,7 @@ function getPdfHref(fileUrl: string, companyId: string): string {
     const attachmentId = parts[2] ?? "";
     // No attachmentId = email had no file attachment → no link
     if (!attachmentId) return "";
-    return `/api/${companyId}/gmail-attachment?msgId=${msgId}&attachmentId=${attachmentId}`;
+    return `/api/${companyId}/gmail-attachment?msgId=${encodeURIComponent(msgId)}&attachmentId=${encodeURIComponent(attachmentId)}`;
   }
   // Already a proxy URL
   if (fileUrl.startsWith("/api/")) return fileUrl;
