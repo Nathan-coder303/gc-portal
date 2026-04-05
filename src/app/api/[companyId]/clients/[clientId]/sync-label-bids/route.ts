@@ -149,28 +149,8 @@ export async function POST(
         const safeSubject = toAscii(subject);
         const safeFrom = toAscii(from);
 
-        // If no recognized attachment at all, still save to triage with email info
-        if (attachmentParts.length === 0) {
-          const fileUrl = `gmail:${msg.id}:`;
-          await prisma.subBid.create({
-            data: {
-              clientId: params.clientId,
-              companyId: params.companyId,
-              divisionCode: "00",
-              divisionName: "Triage",
-              contractorName: safeFrom,
-              amount: null,
-              notes: safeSubject,
-              fileUrl,
-              fileName: null,
-              status: "RECEIVED",
-              emailSource: safeFrom,
-              isPlaceholder: false,
-            },
-          });
-          added++;
-          continue;
-        }
+        // Skip emails with no recognized attachment (PDF or Word)
+        if (attachmentParts.length === 0) continue;
 
         // Process the first attachment (PDF preferred, then Word)
         const pdfPart = attachmentParts.find(p => isPdf(p)) ?? attachmentParts[0];
