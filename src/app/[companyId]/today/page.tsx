@@ -7,6 +7,7 @@ import SyncBidsButton from "@/components/today/SyncBidsButton";
 import TodayLeadCard from "@/components/leads/TodayLeadCard";
 import TodayTaskCard, { FollowUpItem } from "@/components/today/TodayTaskCard";
 import TodayCallsSection from "@/components/today/TodayCallsSection";
+import PendingCountersignsCard from "@/components/today/PendingCountersignsCard";
 
 const GOAL_2026 = 5_000_000;
 
@@ -212,24 +213,21 @@ export default async function TodayPage({
 
       {/* Pending countersign alert */}
       {pendingCountersigns.length > 0 && (
-        <Link
-          href={`/${params.companyId}/clients`}
-          className="flex items-center justify-between gap-3 mb-3 px-4 py-3 rounded-xl transition-all hover:scale-[1.01]"
+        <div
+          className="flex items-center gap-3 mb-3 px-4 py-3 rounded-xl"
           style={{ background: "#1a2a1a", border: "1px solid #22c55e55" }}
         >
-          <div className="flex items-center gap-3">
-            <span style={{ fontSize: 18 }}>✍️</span>
-            <div>
-              <span className="text-sm font-semibold" style={{ color: "#22c55e" }}>
-                {pendingCountersigns.length} estimate{pendingCountersigns.length > 1 ? "s" : ""} awaiting your countersignature
-              </span>
-              <span className="text-xs ml-2" style={{ color: "#8b949e" }}>
-                {pendingCountersigns.map(e => e.estimateNumber ?? e.name).join(", ")}
-              </span>
-            </div>
+          <span style={{ fontSize: 18 }}>✍️</span>
+          <div className="flex-1">
+            <span className="text-sm font-semibold" style={{ color: "#22c55e" }}>
+              {pendingCountersigns.length} estimate{pendingCountersigns.length > 1 ? "s" : ""} awaiting your countersignature
+            </span>
+            <span className="text-xs ml-2" style={{ color: "#8b949e" }}>
+              {pendingCountersigns.map(e => e.estimateNumber ?? e.name).join(", ")}
+            </span>
           </div>
-          <span className="text-xs font-semibold" style={{ color: "#22c55e" }}>Sign Now →</span>
-        </Link>
+          <span className="text-xs font-semibold" style={{ color: "#22c55e" }}>↓ See card below</span>
+        </div>
       )}
 
       {/* Untriaged leads alert */}
@@ -335,48 +333,19 @@ export default async function TodayPage({
           clients={clients}
         />
 
-        {/* Card 5 — Pending Countersignatures */}
-        <div
-          className="rounded-xl p-5 flex flex-col gap-3"
-          style={{ background: "#161b22", border: `1px solid ${pendingCountersigns.length > 0 ? "#22c55e55" : "#30373f"}` }}
-        >
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold uppercase tracking-wider" style={{ color: "#8b949e" }}>
-              Pending Countersignatures
-            </span>
-            <span
-              className="text-xs font-bold px-2 py-0.5 rounded"
-              style={{ background: pendingCountersigns.length > 0 ? "#22c55e" : "#30373f", color: pendingCountersigns.length > 0 ? "#0d1117" : "#8b949e" }}
-            >
-              {pendingCountersigns.length}
-            </span>
-          </div>
-          {pendingCountersigns.length === 0 ? (
-            <p className="text-xs" style={{ color: "#8b949e" }}>No estimates awaiting countersignature.</p>
-          ) : (
-            <ul className="space-y-3">
-              {pendingCountersigns.map((est) => (
-                <li key={est.id}>
-                  <Link
-                    href={`/countersign/${est.signatureToken}`}
-                    className="text-sm font-medium hover:underline"
-                    style={{ color: "#22c55e" }}
-                  >
-                    {est.estimateNumber ? `#${est.estimateNumber}` : est.name}
-                  </Link>
-                  {est.client && (
-                    <div className="text-xs" style={{ color: "#8b949e" }}>{est.client.name}</div>
-                  )}
-                  {est.signedByName && (
-                    <div className="text-xs" style={{ color: "#8b949e" }}>
-                      Signed by {est.signedByName} · {new Date(est.signedAt!).toLocaleDateString("en-US", { month: "short", day: "numeric" })}
-                    </div>
-                  )}
-                </li>
-              ))}
-            </ul>
-          )}
-        </div>
+        {/* Card 5 — Pending Countersignatures (interactive) */}
+        <PendingCountersignsCard
+          companyId={params.companyId}
+          initialEstimates={pendingCountersigns.map(est => ({
+            id: est.id,
+            name: est.name,
+            estimateNumber: est.estimateNumber ?? null,
+            signedAt: est.signedAt!.toISOString(),
+            signedByName: est.signedByName ?? null,
+            clientName: est.client?.name ?? null,
+            clientId: est.client?.id ?? null,
+          }))}
+        />
 
         {/* Card 6 — Estimate Notes */}
         <TodayTaskCard
