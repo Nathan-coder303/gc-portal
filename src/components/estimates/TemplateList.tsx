@@ -3,7 +3,7 @@
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { createTemplate, createStandardTemplate, archiveTemplate, renameTemplate, duplicateTemplate, reorderTemplates } from "@/app/[companyId]/estimates/actions";
-import { TrashIcon, PencilIcon } from "@/components/ui/icons";
+import { TrashIcon, PencilIcon, CopyIcon } from "@/components/ui/icons";
 import {
   DndContext,
   closestCenter,
@@ -117,10 +117,11 @@ function TemplateCard({
                     }
                   }}
                   disabled={duplicating}
-                  className="px-3 py-1.5 rounded-lg text-xs font-medium"
+                  className="w-7 h-7 rounded-lg flex items-center justify-center"
                   style={{ background: "#0d1117", color: "#8b949e", border: "1px solid #30373f" }}
+                  title="Duplicate"
                 >
-                  {duplicating ? "…" : "⧉ Duplicate"}
+                  {duplicating ? <span style={{ fontSize: 11 }}>…</span> : <CopyIcon size={13} />}
                 </button>
               )}
               {canEdit && (
