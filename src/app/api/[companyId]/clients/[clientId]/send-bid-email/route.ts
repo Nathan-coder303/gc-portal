@@ -16,7 +16,7 @@ function getOAuthClient() {
 
 export async function POST(
   req: NextRequest,
-  { params }: { params: { companyId: string; clientId: string } }
+  { params: _params }: { params: { companyId: string; clientId: string } }
 ) {
   const session = await auth();
   if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });

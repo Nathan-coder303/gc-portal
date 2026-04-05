@@ -352,6 +352,7 @@ export default async function TodayPage({
   );
 }
 
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 function TbdCard({ label }: { label: string }) {
   return (
     <div
