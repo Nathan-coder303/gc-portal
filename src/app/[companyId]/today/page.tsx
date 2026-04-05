@@ -27,7 +27,7 @@ export default async function TodayPage({
   if (verifyHour !== 0) todayStart = new Date(Date.UTC(etY, etM - 1, etD, 5, 0, 0, 0)); // fall back to EST
   const todayEnd = new Date(todayStart.getTime() + 24 * 60 * 60 * 1000 - 1); // 23:59:59.999 ET
 
-  const [todayLeads, allLeadsCount, estimatesToSend, followUps, clients, pipelineCards, untriaged] = await Promise.all([
+  const [todayLeads, allLeadsCount, estimatesToSend, followUps, clients, pipelineCards, untriaged, pendingCountersigns] = await Promise.all([
     // Leads received today from email
     prisma.lead.findMany({
       where: {
@@ -89,6 +89,25 @@ export default async function TodayPage({
         pipelineCard: null,
       },
     }),
+    // Estimates signed by client but not yet countersigned
+    prisma.estimateTemplate.findMany({
+      where: {
+        companyId: params.companyId,
+        signedAt: { not: null },
+        counterSignedAt: null,
+        archivedAt: null,
+      },
+      orderBy: { signedAt: "asc" },
+      select: {
+        id: true,
+        name: true,
+        estimateNumber: true,
+        signedAt: true,
+        signedByName: true,
+        signatureToken: true,
+        client: { select: { id: true, name: true } },
+      },
+    }),
   ]);
 
   const today = new Date().toLocaleDateString("en-US", {
@@ -132,6 +151,28 @@ export default async function TodayPage({
         </div>
       </div>
       <div className="mb-8" />
+
+      {/* Pending countersign alert */}
+      {pendingCountersigns.length > 0 && (
+        <Link
+          href={`/${params.companyId}/clients`}
+          className="flex items-center justify-between gap-3 mb-3 px-4 py-3 rounded-xl transition-all hover:scale-[1.01]"
+          style={{ background: "#1a2a1a", border: "1px solid #22c55e55" }}
+        >
+          <div className="flex items-center gap-3">
+            <span style={{ fontSize: 18 }}>✍️</span>
+            <div>
+              <span className="text-sm font-semibold" style={{ color: "#22c55e" }}>
+                {pendingCountersigns.length} estimate{pendingCountersigns.length > 1 ? "s" : ""} awaiting your countersignature
+              </span>
+              <span className="text-xs ml-2" style={{ color: "#8b949e" }}>
+                {pendingCountersigns.map(e => e.estimateNumber ?? e.name).join(", ")}
+              </span>
+            </div>
+          </div>
+          <span className="text-xs font-semibold" style={{ color: "#22c55e" }}>Sign Now →</span>
+        </Link>
+      )}
 
       {/* Untriaged leads alert */}
       {untriaged > 0 && (
@@ -236,8 +277,48 @@ export default async function TodayPage({
           clients={clients}
         />
 
-        {/* Card 5 — TBD */}
-        <TbdCard label="Pending Invoices" />
+        {/* Card 5 — Pending Countersignatures */}
+        <div
+          className="rounded-xl p-5 flex flex-col gap-3"
+          style={{ background: "#161b22", border: `1px solid ${pendingCountersigns.length > 0 ? "#22c55e55" : "#30373f"}` }}
+        >
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-semibold uppercase tracking-wider" style={{ color: "#8b949e" }}>
+              Pending Countersignatures
+            </span>
+            <span
+              className="text-xs font-bold px-2 py-0.5 rounded"
+              style={{ background: pendingCountersigns.length > 0 ? "#22c55e" : "#30373f", color: pendingCountersigns.length > 0 ? "#0d1117" : "#8b949e" }}
+            >
+              {pendingCountersigns.length}
+            </span>
+          </div>
+          {pendingCountersigns.length === 0 ? (
+            <p className="text-xs" style={{ color: "#8b949e" }}>No estimates awaiting countersignature.</p>
+          ) : (
+            <ul className="space-y-3">
+              {pendingCountersigns.map((est) => (
+                <li key={est.id}>
+                  <Link
+                    href={`/countersign/${est.signatureToken}`}
+                    className="text-sm font-medium hover:underline"
+                    style={{ color: "#22c55e" }}
+                  >
+                    {est.estimateNumber ? `#${est.estimateNumber}` : est.name}
+                  </Link>
+                  {est.client && (
+                    <div className="text-xs" style={{ color: "#8b949e" }}>{est.client.name}</div>
+                  )}
+                  {est.signedByName && (
+                    <div className="text-xs" style={{ color: "#8b949e" }}>
+                      Signed by {est.signedByName} · {new Date(est.signedAt!).toLocaleDateString("en-US", { month: "short", day: "numeric" })}
+                    </div>
+                  )}
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
 
         {/* Card 6 — Estimate Notes (interactive) */}
         <TodayTaskCard
