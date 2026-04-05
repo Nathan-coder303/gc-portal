@@ -3,14 +3,7 @@ import { auth } from "@/lib/auth";
 import { redirect } from "next/navigation";
 import { can } from "@/lib/auth/permissions";
 import Link from "next/link";
-import { format } from "date-fns";
-import DeleteProjectButton from "./DeleteProjectButton";
-
-const statusStyle: Record<string, { background: string; color: string; border: string }> = {
-  ACTIVE:   { background: "#0d2a1a", color: "#4ade80", border: "1px solid #166534" },
-  ON_HOLD:  { background: "#2d2410", color: "#fbbf24", border: "1px solid #92400e" },
-  COMPLETE: { background: "#1e2736", color: "#8b949e", border: "1px solid #30373f" },
-};
+import ProjectCard from "./ProjectCard";
 
 export default async function ProjectsPage({
   params,
@@ -24,9 +17,8 @@ export default async function ProjectsPage({
   const isAdmin = can(session.user.role, "project:edit");
   const isPartner = session.user.role === "PARTNER";
 
-  // PARTNER users with explicit project access are restricted to those projects
   let projectFilter: { companyId: string; id?: { in: string[] } } = { companyId: params.companyId };
-  if (session.user.role === "PARTNER") {
+  if (isPartner) {
     const access = await prisma.userProjectAccess.findMany({
       where: { userId: session.user.id },
       select: { projectId: true },
@@ -34,10 +26,24 @@ export default async function ProjectsPage({
     projectFilter = { companyId: params.companyId, id: { in: access.map((a) => a.projectId) } };
   }
 
-  const projects = await prisma.project.findMany({
-    where: projectFilter,
-    orderBy: { createdAt: "desc" },
-  });
+  const [projects, partnerUsers] = await Promise.all([
+    prisma.project.findMany({
+      where: projectFilter,
+      orderBy: { createdAt: "desc" },
+      include: {
+        userAccess: {
+          include: { user: { select: { id: true, name: true, email: true } } },
+        },
+      },
+    }),
+    isAdmin
+      ? prisma.user.findMany({
+          where: { companyId: params.companyId, role: "PARTNER", archivedAt: null },
+          orderBy: { name: "asc" },
+          select: { id: true, name: true, email: true },
+        })
+      : Promise.resolve([]),
+  ]);
 
   return (
     <div className="max-w-5xl mx-auto px-4 md:px-8 py-6 md:py-8">
@@ -49,49 +55,32 @@ export default async function ProjectsPage({
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 md:gap-6">
-        {/* Existing project cards */}
         {projects.map((p) => (
-          <div key={p.id} className="relative group">
-            <Link
-              href={`/${params.companyId}/${p.id}/${isPartner ? "ledger" : "dashboard"}`}
-              className="flex flex-col items-center justify-center rounded-2xl py-10 px-10 text-center transition-all hover:border-[#C9A84C88]"
-              style={{ background: "#0d1117", border: "1px solid #C9A84C44", minHeight: "220px" }}
-            >
-              {/* Project name in big gold */}
-              <div className="font-bold text-5xl mb-4 leading-tight" style={{ color: "#C9A84C" }}>
-                {p.name}
-              </div>
-
-              {/* Status badge */}
-              <span
-                className="inline-block text-sm px-4 py-1 rounded-full font-semibold mb-4"
-                style={statusStyle[p.status] ?? { background: "#1e2736", color: "#8b949e", border: "1px solid #30373f" }}
-              >
-                {p.status}
-              </span>
-
-              {/* Budget + date */}
-              <div className="text-base font-semibold" style={{ color: "#8b949e" }}>
-                ${Number(p.budget).toLocaleString()}
-              </div>
-              <div className="text-sm mt-1" style={{ color: "#8b949e" }}>
-                {format(p.startDate, "MMM d, yyyy")}
-              </div>
-            </Link>
-
-            {isAdmin && (
-              <div className="absolute top-3 right-3 opacity-0 group-hover:opacity-100 transition-opacity">
-                <DeleteProjectButton
-                  projectId={p.id}
-                  projectName={p.name}
-                  companyId={params.companyId}
-                />
-              </div>
-            )}
-          </div>
+          <ProjectCard
+            key={p.id}
+            project={{
+              id: p.id,
+              name: p.name,
+              address: p.address,
+              city: p.city,
+              state: p.state,
+              zip: p.zip,
+              startDate: p.startDate,
+              budget: Number(p.budget),
+              status: p.status,
+              partners: p.userAccess.map(a => ({
+                id: a.user.id,
+                name: a.user.name,
+                email: a.user.email,
+              })),
+            }}
+            companyId={params.companyId}
+            isAdmin={isAdmin}
+            isPartner={isPartner}
+            partnerUsers={partnerUsers}
+          />
         ))}
 
-        {/* New Project card */}
         {isAdmin && (
           <Link
             href={`/${params.companyId}/projects/new`}

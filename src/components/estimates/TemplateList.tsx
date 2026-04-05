@@ -117,8 +117,8 @@ function TemplateCard({
                     }
                   }}
                   disabled={duplicating}
-                  className="w-7 h-7 rounded-lg flex items-center justify-center"
-                  style={{ background: "#0d1117", color: "#8b949e", border: "1px solid #30373f" }}
+                  className="w-8 h-8 rounded-lg flex items-center justify-center"
+                  style={{ background: "#58a6ff22", color: "#58a6ff", border: "1px solid #58a6ff44" }}
                   title="Duplicate"
                 >
                   {duplicating ? <span style={{ fontSize: 11 }}>…</span> : <CopyIcon size={13} />}

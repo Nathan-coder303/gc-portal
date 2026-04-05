@@ -85,6 +85,88 @@ export async function createProject(formData: FormData) {
   return { companyId: session.user.companyId, projectId: project.id };
 }
 
+export async function updateProject(projectId: string, data: {
+  name?: string; address?: string; city?: string; state?: string; zip?: string;
+  startDate?: string; budget?: number; status?: string;
+}) {
+  const session = await auth();
+  if (!session) throw new Error("Unauthorized");
+  requirePermission(session, "project:edit");
+
+  await prisma.project.update({
+    where: { id: projectId, companyId: session.user.companyId },
+    data: {
+      ...(data.name !== undefined && { name: data.name }),
+      ...(data.address !== undefined && { address: data.address || null }),
+      ...(data.city !== undefined && { city: data.city || null }),
+      ...(data.state !== undefined && { state: data.state || null }),
+      ...(data.zip !== undefined && { zip: data.zip || null }),
+      ...(data.startDate !== undefined && { startDate: new Date(data.startDate + "T00:00:00") }),
+      ...(data.budget !== undefined && { budget: data.budget }),
+      ...(data.status !== undefined && { status: data.status }),
+      updatedBy: session.user.id,
+    },
+  });
+}
+
+export async function duplicateProject(projectId: string) {
+  const session = await auth();
+  if (!session) throw new Error("Unauthorized");
+  requirePermission(session, "project:edit");
+
+  const original = await prisma.project.findUnique({
+    where: { id: projectId, companyId: session.user.companyId },
+  });
+  if (!original) throw new Error("Project not found");
+
+  const copy = await prisma.project.create({
+    data: {
+      companyId: session.user.companyId,
+      name: `Copy of ${original.name}`,
+      address: original.address,
+      city: original.city,
+      state: original.state,
+      zip: original.zip,
+      startDate: original.startDate,
+      budget: original.budget,
+      status: "ACTIVE",
+      updatedBy: session.user.id,
+    },
+  });
+
+  await prisma.account.createMany({
+    data: DEFAULT_ACCOUNTS.map((a) => ({
+      projectId: copy.id,
+      name: a.name,
+      type: a.type,
+      isPartnerCapital: a.isPartnerCapital,
+      updatedBy: session.user.id,
+    })),
+  });
+
+  return { companyId: session.user.companyId, projectId: copy.id };
+}
+
+export async function addProjectPartner(projectId: string, userId: string) {
+  const session = await auth();
+  if (!session) throw new Error("Unauthorized");
+  requirePermission(session, "project:edit");
+
+  await prisma.userProjectAccess.upsert({
+    where: { userId_projectId: { userId, projectId } },
+    create: { userId, projectId },
+    update: {},
+  });
+}
+
+export async function removeProjectPartner(projectId: string, userId: string) {
+  const session = await auth();
+  if (!session) throw new Error("Unauthorized");
+  requirePermission(session, "project:edit");
+
+  await prisma.userProjectAccess.deleteMany({ where: { userId, projectId } });
+}
+
 export async function deleteProject(projectId: string) {
   const session = await auth();
   if (!session) throw new Error("Unauthorized");
