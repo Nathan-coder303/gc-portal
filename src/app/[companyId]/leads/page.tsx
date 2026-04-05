@@ -69,7 +69,7 @@ export default async function LeadsPage({
             {leads.length} total · {triageLeads.length} need triaging
           </p>
         </div>
-        <div className="flex items-center gap-2 flex-wrap justify-end">
+        <div className="flex items-start gap-2 flex-wrap justify-end">
           <NsaCallReviewButton companyId={params.companyId} />
           <SyncFyrdButton companyId={params.companyId} />
           <SyncLeadsButton companyId={params.companyId} />

@@ -25,7 +25,16 @@ export default function SyncFyrdButton({ companyId }: { companyId: string }) {
   }
 
   return (
-    <div className="flex flex-col items-end gap-1">
+    <div className="flex items-center gap-2">
+      {result && (
+        <span
+          className="text-[10px] max-w-[160px] truncate"
+          style={{ color: status === "error" ? "#f85149" : "#C9A84C" }}
+          title={result}
+        >
+          {result}
+        </span>
+      )}
       <button
         onClick={sync}
         disabled={status === "syncing"}
@@ -34,15 +43,6 @@ export default function SyncFyrdButton({ companyId }: { companyId: string }) {
       >
         {status === "syncing" ? "Syncing FYRD…" : "Sync FYRD UP"}
       </button>
-      {result && (
-        <span
-          className="text-[10px] max-w-[220px] truncate text-right"
-          style={{ color: status === "error" ? "#f85149" : "#C9A84C" }}
-          title={result}
-        >
-          {result}
-        </span>
-      )}
     </div>
   );
 }

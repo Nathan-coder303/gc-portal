@@ -85,50 +85,42 @@ export default function SyncLeadsButton({ companyId }: { companyId: string }) {
   const isBusy = status === "syncing" || status === "backfilling" || status === "deduping";
 
   return (
-    <div className="flex flex-col items-end gap-1">
-      <div className="flex items-center gap-2 flex-wrap justify-end">
-        <button
-          onClick={() => sync(false)}
-          disabled={isBusy}
-          className="text-xs px-3 py-1.5 rounded-lg font-medium transition-opacity disabled:opacity-50 whitespace-nowrap"
-          style={{ background: "#C9A84C", color: "#0d1117" }}
-          title={result || undefined}
-        >
-          {status === "syncing" ? "Syncing…" : "Sync Leads"}
-        </button>
-        <button
-          onClick={() => sync(true)}
-          disabled={isBusy}
-          title={result || "Import all historical leads from Gmail"}
-          className="text-xs px-3 py-1.5 rounded-lg font-medium transition-opacity disabled:opacity-50 whitespace-nowrap"
-          style={{ background: "#161b22", border: "1px solid #30373f", color: "#8b949e" }}
-        >
-          {status === "backfilling" ? "Importing…" : "Backfill All"}
-        </button>
-        <button
-          onClick={dedup}
-          disabled={isBusy}
-          title={result || "Merge duplicate leads with same name"}
-          className="text-xs px-3 py-1.5 rounded-lg font-medium transition-opacity disabled:opacity-50 whitespace-nowrap"
-          style={{ background: "#161b22", border: "1px solid #30373f", color: "#8b949e" }}
-        >
-          {status === "deduping" ? "Merging…" : "Merge Dupes"}
-        </button>
-      </div>
-      {result && (
+    <div className="flex items-center gap-2 flex-wrap justify-end">
+      {(result || lastSynced) && (
         <span
-          className="text-[10px] max-w-[260px] truncate text-right"
-          style={{ color: status === "error" ? "#f85149" : "#C9A84C" }}
-          title={result}
+          className="text-[10px] max-w-[200px] truncate"
+          style={{ color: status === "error" ? "#f85149" : result ? "#C9A84C" : "#484f58" }}
+          title={result || `Last synced: ${lastSynced}`}
         >
-          {result}
+          {result || `Last synced: ${lastSynced}`}
         </span>
       )}
-      {lastSynced && !result && (
-        <span className="text-[10px]" style={{ color: "#484f58" }}>
-          Last synced: {lastSynced}
-        </span>
-      )}
+      <button
+        onClick={() => sync(false)}
+        disabled={isBusy}
+        className="text-xs px-3 py-1.5 rounded-lg font-medium transition-opacity disabled:opacity-50 whitespace-nowrap"
+        style={{ background: "#C9A84C", color: "#0d1117" }}
+      >
+        {status === "syncing" ? "Syncing…" : "Sync Leads"}
+      </button>
+      <button
+        onClick={() => sync(true)}
+        disabled={isBusy}
+        title="Import all historical leads from Gmail"
+        className="text-xs px-3 py-1.5 rounded-lg font-medium transition-opacity disabled:opacity-50 whitespace-nowrap"
+        style={{ background: "#161b22", border: "1px solid #30373f", color: "#8b949e" }}
+      >
+        {status === "backfilling" ? "Importing…" : "Backfill All"}
+      </button>
+      <button
+        onClick={dedup}
+        disabled={isBusy}
+        title="Merge duplicate leads with same name"
+        className="text-xs px-3 py-1.5 rounded-lg font-medium transition-opacity disabled:opacity-50 whitespace-nowrap"
+        style={{ background: "#161b22", border: "1px solid #30373f", color: "#8b949e" }}
+      >
+        {status === "deduping" ? "Merging…" : "Merge Dupes"}
+      </button>
     </div>
   );
 }
