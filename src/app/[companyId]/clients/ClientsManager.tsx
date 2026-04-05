@@ -456,7 +456,9 @@ export default function ClientsManager({ companyId, clients: initialClients, urg
   const prospects = clients.filter(c => c.status === "PROSPECT");
   const actives = clients.filter(c => c.status === "ACTIVE");
   const activeGcFeeTotal = actives.reduce((sum, c) => sum + c.gcFee, 0);
-  const goalPct = Math.min(100, (activeGcFeeTotal / GOAL_2026) * 100);
+  // Fall back to estimateTotal if no gcFeePercent is set on any estimate
+  const mibhIncome = activeGcFeeTotal > 0 ? activeGcFeeTotal : actives.reduce((sum, c) => sum + c.estimateTotal, 0);
+  const goalPct = Math.min(100, (mibhIncome / GOAL_2026) * 100);
 
   function handleDragStart(clientId: string) {
     dragIdRef.current = clientId;
@@ -511,7 +513,7 @@ export default function ClientsManager({ companyId, clients: initialClients, urg
           <div>
             <div className="text-xs font-semibold uppercase tracking-widest mb-1" style={{ color: "#22c55e88" }}>MIBH Income 2026</div>
             <div className="text-3xl font-bold" style={{ color: "#22c55e" }}>
-              ${activeGcFeeTotal.toLocaleString("en-US", { maximumFractionDigits: 0 })}
+              ${mibhIncome.toLocaleString("en-US", { maximumFractionDigits: 0 })}
             </div>
           </div>
           <div className="text-right">
@@ -523,12 +525,12 @@ export default function ClientsManager({ companyId, clients: initialClients, urg
         <div className="rounded-full overflow-hidden" style={{ height: 14, background: "#1a2a1a", border: "1px solid #22c55e22" }}>
           <div
             className="h-full rounded-full transition-all duration-700"
-            style={{ width: `${goalPct}%`, background: goalPct >= 100 ? "#C9A84C" : "linear-gradient(90deg, #16a34a, #22c55e)", minWidth: goalPct > 0 ? 8 : 0 }}
+            style={{ width: `${Math.max(goalPct, 0.5)}%`, background: goalPct >= 100 ? "#C9A84C" : "linear-gradient(90deg, #16a34a, #22c55e)", minWidth: 4 }}
           />
         </div>
         <div className="flex justify-between mt-1.5">
           <span className="text-xs font-semibold" style={{ color: "#22c55e" }}>{goalPct.toFixed(1)}% to goal</span>
-          <span className="text-xs" style={{ color: "#8b949e" }}>${(GOAL_2026 - activeGcFeeTotal).toLocaleString("en-US", { maximumFractionDigits: 0 })} remaining</span>
+          <span className="text-xs" style={{ color: "#8b949e" }}>${(GOAL_2026 - mibhIncome).toLocaleString("en-US", { maximumFractionDigits: 0 })} remaining</span>
         </div>
       </div>
 
