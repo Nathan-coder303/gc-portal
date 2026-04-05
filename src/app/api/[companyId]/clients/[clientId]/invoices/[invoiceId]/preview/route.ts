@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { buildInvoiceHtml } from "../send/route";
+import { buildInvoiceHtml } from "@/lib/invoiceHtml";
 
 export const runtime = "nodejs";
 
