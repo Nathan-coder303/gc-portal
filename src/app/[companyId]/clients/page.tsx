@@ -4,8 +4,10 @@ import { redirect } from "next/navigation";
 import { can } from "@/lib/auth/permissions";
 import ClientsManager from "./ClientsManager";
 
-function calcEstimateTotal(divisions: { items: { defaultQty: unknown; defaultUnitCost: unknown; defaultMarkupPct: unknown }[]; groups: { items: { defaultQty: unknown; defaultUnitCost: unknown; defaultMarkupPct: unknown }[] }[] }[], gcFeePercent: unknown): number {
-  const raw = divisions.reduce((sum, div) => {
+type DivisionLike = { items: { defaultQty: unknown; defaultUnitCost: unknown; defaultMarkupPct: unknown }[]; groups: { items: { defaultQty: unknown; defaultUnitCost: unknown; defaultMarkupPct: unknown }[] }[] };
+
+function calcRaw(divisions: DivisionLike[]): number {
+  return divisions.reduce((sum, div) => {
     const allItems = [...div.items, ...div.groups.flatMap(g => g.items)];
     return sum + allItems.reduce((s, i) => {
       const qty = i.defaultQty ? Number(i.defaultQty) : 0;
@@ -14,8 +16,17 @@ function calcEstimateTotal(divisions: { items: { defaultQty: unknown; defaultUni
       return s + qty * cost * (1 + markup / 100);
     }, 0);
   }, 0);
+}
+
+function calcEstimateTotal(divisions: DivisionLike[], gcFeePercent: unknown): number {
+  const raw = calcRaw(divisions);
   const fee = gcFeePercent ? raw * Number(gcFeePercent) / 100 : 0;
   return raw + fee;
+}
+
+function calcGcFee(divisions: DivisionLike[], gcFeePercent: unknown): number {
+  if (!gcFeePercent) return 0;
+  return calcRaw(divisions) * Number(gcFeePercent) / 100;
 }
 
 export default async function ClientsPage({ params }: { params: { companyId: string } }) {
@@ -23,7 +34,8 @@ export default async function ClientsPage({ params }: { params: { companyId: str
   if (!session) redirect("/login");
   if (session.user.companyId !== params.companyId) redirect(`/${session.user.companyId}`);
 
-  const clients = await prisma.client.findMany({
+  const [clients, urgentLeads] = await Promise.all([
+  prisma.client.findMany({
     where: { companyId: params.companyId },
     orderBy: [{ sortOrder: "asc" }, { name: "asc" }],
     include: {
@@ -45,7 +57,13 @@ export default async function ClientsPage({ params }: { params: { companyId: str
         },
       },
     },
-  });
+  }),
+  prisma.pipelineCard.findMany({
+    where: { companyId: params.companyId, stage: "TO_CALL_ASAP" },
+    orderBy: [{ sortOrder: "asc" }],
+    include: { client: { select: { id: true, name: true } } },
+  }),
+  ]);
 
   const isAdmin = can(session.user.role, "estimateTemplate:edit");
 
@@ -64,8 +82,18 @@ export default async function ClientsPage({ params }: { params: { companyId: str
           phone: c.phone,
           estimateCount: c._count.templates,
           estimateTotal: c.templates.reduce((sum, t) => sum + calcEstimateTotal(t.divisions, t.gcFeePercent), 0),
+          gcFee: c.templates.reduce((sum, t) => sum + calcGcFee(t.divisions, t.gcFeePercent), 0),
           status: c.status,
           sortOrder: c.sortOrder,
+        }))}
+        urgentLeads={urgentLeads.map(c => ({
+          id: c.id,
+          displayName: c.displayName,
+          estimateValue: c.estimateValue ? Number(c.estimateValue) : null,
+          notes: c.notes,
+          clientId: c.clientId,
+          clientName: c.client?.name ?? null,
+          createdAt: c.createdAt.toISOString(),
         }))}
         isAdmin={isAdmin}
       />
