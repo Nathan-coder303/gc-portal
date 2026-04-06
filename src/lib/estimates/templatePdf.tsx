@@ -1216,8 +1216,8 @@ function TemplatePdfDocument({ companyName, template, client, divisions, showTer
                   .reduce((s, i) => s + calcTotal(i.defaultQty, i.defaultUnitCost, i.defaultMarkupPct), 0);
 
                 return (
-                  <View key={div.id}>
-                    <View wrap={false} minPresenceAhead={120} style={[styles.divisionHeader, groupLabel ? { marginTop: 6 } : {}]}>
+                  <View key={div.id} minPresenceAhead={160}>
+                    <View wrap={false} style={[styles.divisionHeader, groupLabel ? { marginTop: 6 } : {}]}>
                       <View style={styles.divisionLeft}>
                         {!isRoof && div.csiCode ? <Text style={styles.divisionCsi}>{div.csiCode}</Text> : null}
                         <Text style={styles.divisionName}>{div.name}</Text>
@@ -1235,7 +1235,7 @@ function TemplatePdfDocument({ companyName, template, client, divisions, showTer
                     })}
 
                     {filledItems.length > 0 && (
-                      <View>
+                      <View minPresenceAhead={60}>
                         <ItemTableHeader showLineNum={isRoof} />
                         {filledItems.map((item, idx) => <ItemRow key={item.id} item={item} index={idx} lineNum={lineNumMap.get(item.id)} />)}
                       </View>
