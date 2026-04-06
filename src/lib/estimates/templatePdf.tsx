@@ -1061,7 +1061,7 @@ function TemplatePdfDocument({ companyName, template, client, divisions, showTer
       )}
       {/* T&C */}
       {(showTerms || !!termsContent) && (
-        <View minPresenceAhead={80}>
+        <View>
           <View style={styles.sectionDivider} />
           <Text style={styles.sectionTitle}>Terms &amp; Conditions</Text>
           {termsContent
