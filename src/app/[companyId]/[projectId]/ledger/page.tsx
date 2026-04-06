@@ -159,6 +159,7 @@ export default async function LedgerPage({
             partners={viewPartners.map((p) => ({
               id: p.id,
               name: p.name,
+              email: p.email ?? null,
               beginningBalance: Number(p.beginningBalance),
             }))}
             llcBeginningBalance={llcBeginningBalance}

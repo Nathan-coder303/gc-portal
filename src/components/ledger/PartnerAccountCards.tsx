@@ -7,6 +7,7 @@ import {
   updateLlcName,
   deletePartnerAccountEntry,
   updatePartnerAccountEntry,
+  archivePartner,
 } from "@/app/[companyId]/[projectId]/ledger/actions";
 import { format } from "date-fns";
 import {
@@ -44,7 +45,7 @@ type CapitalLine = {
   credit: number;
 };
 
-type Partner = { id: string; name: string; beginningBalance: number };
+type Partner = { id: string; name: string; email: string | null; beginningBalance: number };
 
 function fmt(n: number) {
   return n.toLocaleString("en-US", { minimumFractionDigits: 2 });
@@ -152,6 +153,8 @@ function AccountCard({
   isAdmin,
   showDragHandle,
   dragHandleProps,
+  onArchive,
+  onEmailStatement,
 }: {
   title: string;
   subtitle?: string;
@@ -164,6 +167,8 @@ function AccountCard({
   isAdmin: boolean;
   showDragHandle?: boolean;
   dragHandleProps?: React.HTMLAttributes<HTMLDivElement>;
+  onArchive?: () => void;
+  onEmailStatement?: (html: string) => void;
 })
 
 {
@@ -228,6 +233,12 @@ return (
           <button onClick={handlePreview} title="Preview statement" className="text-[10px] px-1.5 py-0.5 rounded font-semibold" style={{ color: "#8b949e", background: "#30373f" }}>👁</button>
           <button onClick={handleDownload} title="Download statement" className="text-[10px] px-1.5 py-0.5 rounded font-semibold" style={{ color: "#8b949e", background: "#30373f" }}>⬇</button>
           <button onClick={handlePrint} title="Print statement" className="text-[10px] px-1.5 py-0.5 rounded font-semibold" style={{ color: GOLD, background: "#C9A84C11", border: `1px solid ${GOLD}44` }}>🖨</button>
+          {onEmailStatement && (
+            <button onClick={() => onEmailStatement(buildStatementHtml())} title="Email statement to partner" className="text-[10px] px-1.5 py-0.5 rounded font-semibold" style={{ color: "#58a6ff", background: "#58a6ff11", border: "1px solid #58a6ff33" }}>✉</button>
+          )}
+          {isAdmin && onArchive && (
+            <button onClick={onArchive} title="Remove partner card" className="text-[10px] px-1.5 py-0.5 rounded font-semibold" style={{ color: "#f85149", background: "#f8514911", border: "1px solid #f8514933" }}>✕</button>
+          )}
           {showDragHandle && (
             <div {...(dragHandleProps ?? {})} className="cursor-grab active:cursor-grabbing px-1 py-0.5 rounded text-sm select-none" style={{ color: "#8b949e", touchAction: "none" }}>⠿</div>
           )}
@@ -541,7 +552,7 @@ function SortableCard({ id, fullWidth, children }: { id: string; fullWidth?: boo
 export default function PartnerAccountCards({
   projectId,
   companyId,
-  partners,
+  partners: initialPartners,
   llcBeginningBalance,
   llcName: initialLlcName,
   partnerEntriesMap,
@@ -561,6 +572,9 @@ export default function PartnerAccountCards({
   isAdmin: boolean;
   isPartner?: boolean;
 }) {
+  const [partners, setPartners] = useState(initialPartners);
+  const [emailStatus, setEmailStatus] = useState<Record<string, "sending" | "sent" | "error">>({});
+
   const [llcTitle, setLlcTitle] = useState(initialLlcName ?? "LLC Account");
   const [editingLlcName, setEditingLlcName] = useState(false);
   const [llcNameInput, setLlcNameInput] = useState(llcTitle);
@@ -573,6 +587,38 @@ export default function PartnerAccountCards({
     setEditingLlcName(false);
     setSavingLlcName(false);
   }
+  async function handleArchivePartner(partnerId: string) {
+    await archivePartner(partnerId);
+    setPartners((prev) => prev.filter((p) => p.id !== partnerId));
+    setOrder((prev) => prev.filter((id) => id !== partnerId));
+  }
+
+  async function handleEmailStatement(partner: Partner, html: string) {
+    if (!partner.email) {
+      alert(`No email address on file for ${partner.name}.`);
+      return;
+    }
+    setEmailStatus((s) => ({ ...s, [partner.id]: "sending" }));
+    try {
+      const res = await fetch(`/api/${companyId}/${projectId}/send-partner-statement`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          partnerName: partner.name,
+          partnerEmail: partner.email,
+          htmlContent: html,
+          subject: `Account Statement — ${partner.name}`,
+        }),
+      });
+      if (!res.ok) throw new Error(await res.text());
+      setEmailStatus((s) => ({ ...s, [partner.id]: "sent" }));
+      setTimeout(() => setEmailStatus((s) => { const n = { ...s }; delete n[partner.id]; return n; }), 3000);
+    } catch {
+      setEmailStatus((s) => ({ ...s, [partner.id]: "error" }));
+      setTimeout(() => setEmailStatus((s) => { const n = { ...s }; delete n[partner.id]; return n; }), 4000);
+    }
+  }
+
   const defaultOrder = [...partners.map((p) => p.id), "llc", ...(isAdmin && partners.length > 0 ? ["master"] : [])];
 
   const [order, setOrder] = useState<string[]>(defaultOrder);
@@ -614,20 +660,33 @@ export default function PartnerAccountCards({
   type CardRenderer = (dragHandleProps: React.HTMLAttributes<HTMLDivElement>) => React.ReactNode;
   const cardMap: Record<string, CardRenderer> = {};
   for (const partner of partners) {
-    cardMap[partner.id] = (dragHandleProps: React.HTMLAttributes<HTMLDivElement>) => (
-      <AccountCard
-        title={`${partner.name}'s Account`}
-        subtitle="Partner's Account"
-        beginningBalance={partner.beginningBalance}
-        entries={partnerEntriesMap[partner.id] ?? []}
-        capitalLines={capitalLinesByPartner[partner.id] ?? []}
-        isAdmin={isAdmin}
-        onUpdateBeginning={(amount) => updatePartnerBeginningBalance(partner.id, amount)}
-        onSave={makeSave()}
-        onDelete={(id) => deletePartnerAccountEntry(id, companyId, projectId)}
-        showDragHandle={true}
-        dragHandleProps={dragHandleProps}
-      />
+    const p = partner;
+    cardMap[p.id] = (dragHandleProps: React.HTMLAttributes<HTMLDivElement>) => (
+      <div>
+        {emailStatus[p.id] && (
+          <div className="mb-1 text-xs px-2 py-1 rounded text-center" style={{
+            background: emailStatus[p.id] === "sent" ? "#0d2a1a" : emailStatus[p.id] === "error" ? "#2d1b1b" : "#1e2736",
+            color: emailStatus[p.id] === "sent" ? "#4ade80" : emailStatus[p.id] === "error" ? "#f87171" : "#8b949e",
+          }}>
+            {emailStatus[p.id] === "sending" ? "Sending..." : emailStatus[p.id] === "sent" ? "Statement sent ✓" : "Failed to send"}
+          </div>
+        )}
+        <AccountCard
+          title={`${p.name}'s Account`}
+          subtitle="Partner's Account"
+          beginningBalance={p.beginningBalance}
+          entries={partnerEntriesMap[p.id] ?? []}
+          capitalLines={capitalLinesByPartner[p.id] ?? []}
+          isAdmin={isAdmin}
+          onUpdateBeginning={(amount) => updatePartnerBeginningBalance(p.id, amount)}
+          onSave={makeSave()}
+          onDelete={(id) => deletePartnerAccountEntry(id, companyId, projectId)}
+          showDragHandle={true}
+          dragHandleProps={dragHandleProps}
+          onArchive={() => handleArchivePartner(p.id)}
+          onEmailStatement={(html) => handleEmailStatement(p, html)}
+        />
+      </div>
     );
   }
   cardMap["llc"] = (dragHandleProps: React.HTMLAttributes<HTMLDivElement>) => (
