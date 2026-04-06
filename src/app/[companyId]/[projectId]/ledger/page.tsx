@@ -138,7 +138,7 @@ export default async function LedgerPage({
           <p className="text-sm mt-0.5" style={{ color: "#8b949e" }}>{entries.length} journal entries</p>
         </div>
         <div className="flex items-center gap-3 flex-wrap">
-          {isAdmin && <AddPartnerInline onAdded={() => {}} />}
+          {isAdmin && <AddPartnerInline />}
           <a
             href={`/api/${params.companyId}/${params.projectId}/export/ledger`}
             className="px-3 py-1.5 text-sm rounded-lg font-medium"
