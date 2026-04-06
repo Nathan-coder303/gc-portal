@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { createPartner, updatePartner, archivePartner, createPartnerPortalAccess } from "@/app/[companyId]/[projectId]/ledger/actions";
+import { createPartner, updatePartner, archivePartner, archiveAllPartners, createPartnerPortalAccess } from "@/app/[companyId]/[projectId]/ledger/actions";
 import { TrashIcon, PencilIcon } from "@/components/ui/icons";
 
 type Partner = {
@@ -15,29 +15,54 @@ type Partner = {
 const GOLD = "#C9A84C";
 const CARD = { background: "#0d1117", border: "1px solid #30373f" };
 
-export default function PartnerManager({
-  partners: initialPartners,
-  projectId,
-}: {
-  partners: Partner[];
-  projectId: string;
-}) {
-  const [partners, setPartners] = useState(initialPartners);
-  const [adding, setAdding] = useState(false);
-  const [editing, setEditing] = useState<Partner | null>(null);
-  const [grantingId, setGrantingId] = useState<string | null>(null);
-  const [accessEmail, setAccessEmail] = useState("");
-  const [accessPassword, setAccessPassword] = useState("");
-  const [loading, setLoading] = useState(false);
-  const [archiving, setArchiving] = useState<string | null>(null);
-  const [error, setError] = useState("");
-  const [success, setSuccess] = useState("");
+const inputStyle = {
+  background: "#1e2736",
+  border: "1px solid #30373f",
+  color: "#e6edf3",
+};
 
-  const inputStyle = {
-    background: "#1e2736",
-    border: "1px solid #30373f",
-    color: "#e6edf3",
-  };
+function PartnerFormFields({ defaults }: { defaults?: Partner }) {
+  return (
+    <div className="grid grid-cols-2 gap-3">
+      {defaults && <input type="hidden" name="id" value={defaults.id} />}
+      <div>
+        <label className="block text-xs mb-1" style={{ color: "#8b949e" }}>Name *</label>
+        <input type="text" name="name" required defaultValue={defaults?.name ?? ""}
+          placeholder="Full name"
+          className="w-full rounded-lg px-3 py-2 text-sm focus:outline-none"
+          style={inputStyle} />
+      </div>
+      <div>
+        <label className="block text-xs mb-1" style={{ color: "#8b949e" }}>Email</label>
+        <input type="email" name="email" defaultValue={defaults?.email ?? ""}
+          placeholder="partner@email.com"
+          className="w-full rounded-lg px-3 py-2 text-sm focus:outline-none"
+          style={inputStyle} />
+      </div>
+      <div>
+        <label className="block text-xs mb-1" style={{ color: "#8b949e" }}>Role / Title</label>
+        <input type="text" name="role" defaultValue={defaults?.role ?? ""}
+          placeholder="e.g. Managing Partner"
+          className="w-full rounded-lg px-3 py-2 text-sm focus:outline-none"
+          style={inputStyle} />
+      </div>
+      <div>
+        <label className="block text-xs mb-1" style={{ color: "#8b949e" }}>Ownership %</label>
+        <input type="number" name="ownershipPct" min="0" max="100" step="0.01"
+          defaultValue={defaults?.ownershipPct ?? ""}
+          placeholder="e.g. 40"
+          className="w-full rounded-lg px-3 py-2 text-sm focus:outline-none"
+          style={inputStyle} />
+      </div>
+    </div>
+  );
+}
+
+/** Inline add form — rendered in the page header area */
+export function AddPartnerInline({ onAdded }: { onAdded: (p: Partner) => void }) {
+  const [open, setOpen] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
 
   async function handleCreate(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -46,16 +71,74 @@ export default function PartnerManager({
     const fd = new FormData(e.currentTarget);
     try {
       await createPartner(fd);
-      // Optimistically reload — server revalidates, user sees updated list on next navigation
-      setAdding(false);
+      setOpen(false);
       (e.target as HTMLFormElement).reset();
-      setSuccess("Partner added. Refresh to see updated list.");
+      // Refresh to get new partner with id
+      window.location.reload();
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : "Failed");
     } finally {
       setLoading(false);
     }
   }
+
+  return (
+    <div>
+      {!open ? (
+        <button
+          onClick={() => setOpen(true)}
+          className="px-3 py-1.5 text-xs font-semibold rounded-lg"
+          style={{ background: GOLD, color: "#0d1117" }}
+        >
+          + Add Partner
+        </button>
+      ) : (
+        <div className="mt-4 rounded-xl p-4" style={{ background: "#1e2736", border: `1px solid ${GOLD}44` }}>
+          <p className="text-xs font-semibold mb-3" style={{ color: GOLD }}>New Partner</p>
+          {error && (
+            <div className="mb-3 px-3 py-2 rounded-lg text-xs" style={{ background: "#2d1b1b", border: "1px solid #6b2a2a", color: "#f87171" }}>
+              {error}
+            </div>
+          )}
+          <form onSubmit={handleCreate}>
+            <PartnerFormFields />
+            <div className="flex gap-2 mt-3">
+              <button type="submit" disabled={loading}
+                className="px-4 py-2 text-sm font-semibold rounded-lg disabled:opacity-50"
+                style={{ background: GOLD, color: "#0d1117" }}>
+                {loading ? "Adding..." : "Add Partner"}
+              </button>
+              <button type="button" onClick={() => { setOpen(false); setError(""); }}
+                className="px-4 py-2 text-sm rounded-lg"
+                style={{ background: "#30373f", color: "#8b949e" }}>
+                Cancel
+              </button>
+            </div>
+          </form>
+        </div>
+      )}
+    </div>
+  );
+}
+
+export default function PartnerManager({
+  partners: initialPartners,
+  projectId,
+}: {
+  partners: Partner[];
+  projectId: string;
+}) {
+  const [partners, setPartners] = useState(initialPartners);
+  const [editing, setEditing] = useState<Partner | null>(null);
+  const [grantingId, setGrantingId] = useState<string | null>(null);
+  const [accessEmail, setAccessEmail] = useState("");
+  const [accessPassword, setAccessPassword] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [archiving, setArchiving] = useState<string | null>(null);
+  const [resetting, setResetting] = useState(false);
+  const [confirmReset, setConfirmReset] = useState(false);
+  const [error, setError] = useState("");
+  const [success, setSuccess] = useState("");
 
   async function handleSave(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -92,6 +175,20 @@ export default function PartnerManager({
     }
   }
 
+  async function handleResetAll() {
+    setResetting(true);
+    try {
+      const result = await archiveAllPartners();
+      setPartners([]);
+      setSuccess(`Removed ${result.count} partner${result.count !== 1 ? "s" : ""}.`);
+      setConfirmReset(false);
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : "Failed");
+    } finally {
+      setResetting(false);
+    }
+  }
+
   async function handleGrantAccess(partner: Partner) {
     setLoading(true);
     setError("");
@@ -114,54 +211,33 @@ export default function PartnerManager({
     }
   }
 
-  const formFields = (defaults?: Partner) => (
-    <div className="grid grid-cols-2 gap-3">
-      {defaults && <input type="hidden" name="id" value={defaults.id} />}
-      <div>
-        <label className="block text-xs mb-1" style={{ color: "#8b949e" }}>Name *</label>
-        <input type="text" name="name" required defaultValue={defaults?.name ?? ""}
-          placeholder="Full name"
-          className="w-full rounded-lg px-3 py-2 text-sm focus:outline-none"
-          style={inputStyle} />
-      </div>
-      <div>
-        <label className="block text-xs mb-1" style={{ color: "#8b949e" }}>Email</label>
-        <input type="email" name="email" defaultValue={defaults?.email ?? ""}
-          placeholder="partner@email.com"
-          className="w-full rounded-lg px-3 py-2 text-sm focus:outline-none"
-          style={inputStyle} />
-      </div>
-      <div>
-        <label className="block text-xs mb-1" style={{ color: "#8b949e" }}>Role / Title</label>
-        <input type="text" name="role" defaultValue={defaults?.role ?? ""}
-          placeholder="e.g. Managing Partner"
-          className="w-full rounded-lg px-3 py-2 text-sm focus:outline-none"
-          style={inputStyle} />
-      </div>
-      <div>
-        <label className="block text-xs mb-1" style={{ color: "#8b949e" }}>Ownership %</label>
-        <input type="number" name="ownershipPct" min="0" max="100" step="0.01"
-          defaultValue={defaults?.ownershipPct ?? ""}
-          placeholder="e.g. 40"
-          className="w-full rounded-lg px-3 py-2 text-sm focus:outline-none"
-          style={inputStyle} />
-      </div>
-    </div>
-  );
-
   return (
     <div>
-      {/* Header */}
       <div className="flex items-center justify-between mb-4">
-        <h2 className="font-semibold text-base" style={{ color: "#e6edf3" }}>Partners List</h2>
-        {!adding && !editing && (
+        <h2 className="font-semibold text-base" style={{ color: "#e6edf3" }}>Partners</h2>
+        {partners.length > 0 && !confirmReset && (
           <button
-            onClick={() => { setAdding(true); setError(""); setSuccess(""); }}
-            className="px-3 py-1.5 text-xs font-semibold rounded-lg"
-            style={{ background: GOLD, color: "#0d1117" }}
+            onClick={() => setConfirmReset(true)}
+            className="text-xs px-2 py-1 rounded-lg"
+            style={{ color: "#f85149", border: "1px solid #f8514933", background: "#f8514911" }}
           >
-            + Add Partner
+            Reset All
           </button>
+        )}
+        {confirmReset && (
+          <div className="flex items-center gap-2">
+            <span className="text-xs" style={{ color: "#f87171" }}>Remove all partners?</span>
+            <button onClick={handleResetAll} disabled={resetting}
+              className="text-xs px-2 py-1 rounded-lg font-semibold disabled:opacity-50"
+              style={{ background: "#f85149", color: "#fff" }}>
+              {resetting ? "..." : "Yes, reset"}
+            </button>
+            <button onClick={() => setConfirmReset(false)}
+              className="text-xs px-2 py-1 rounded-lg"
+              style={{ background: "#30373f", color: "#8b949e" }}>
+              Cancel
+            </button>
+          </div>
         )}
       </div>
 
@@ -176,29 +252,8 @@ export default function PartnerManager({
         </div>
       )}
 
-      {/* Add form */}
-      {adding && (
-        <form onSubmit={handleCreate} className="mb-5 rounded-xl p-4" style={{ background: "#1e2736", border: `1px solid ${GOLD}44` }}>
-          <p className="text-xs font-semibold mb-3" style={{ color: GOLD }}>New Partner</p>
-          {formFields()}
-          <div className="flex gap-2 mt-3">
-            <button type="submit" disabled={loading}
-              className="px-4 py-2 text-sm font-semibold rounded-lg disabled:opacity-50"
-              style={{ background: GOLD, color: "#0d1117" }}>
-              {loading ? "Adding..." : "Add Partner"}
-            </button>
-            <button type="button" onClick={() => { setAdding(false); setError(""); }}
-              className="px-4 py-2 text-sm rounded-lg"
-              style={{ background: "#30373f", color: "#8b949e" }}>
-              Cancel
-            </button>
-          </div>
-        </form>
-      )}
-
-      {/* Partners list */}
-      {partners.length === 0 && !adding ? (
-        <p className="text-sm" style={{ color: "#8b949e" }}>No partners added yet.</p>
+      {partners.length === 0 ? (
+        <p className="text-sm" style={{ color: "#8b949e" }}>No partners yet. Use &ldquo;+ Add Partner&rdquo; above to add one.</p>
       ) : (
         <div className="space-y-3">
           {partners.map((p) => (
@@ -206,7 +261,7 @@ export default function PartnerManager({
               {editing?.id === p.id ? (
                 <form onSubmit={handleSave} className="rounded-xl p-4" style={{ background: "#1e2736", border: `1px solid ${GOLD}44` }}>
                   <p className="text-xs font-semibold mb-3" style={{ color: GOLD }}>Edit {p.name}</p>
-                  {formFields(editing)}
+                  <PartnerFormFields defaults={editing} />
                   <div className="flex gap-2 mt-3">
                     <button type="submit" disabled={loading}
                       className="px-4 py-2 text-sm font-semibold rounded-lg disabled:opacity-50"
@@ -254,7 +309,6 @@ export default function PartnerManager({
                     </div>
                   </div>
 
-                  {/* Portal Access form */}
                   {grantingId === p.id && (
                     <div className="mt-3 pt-3 rounded-lg p-3" style={{ background: "#1e2736", border: `1px solid ${GOLD}44` }}>
                       <p className="text-xs font-semibold mb-2" style={{ color: GOLD }}>

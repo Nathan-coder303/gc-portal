@@ -427,6 +427,27 @@ export async function archivePartner(id: string) {
   return { success: true };
 }
 
+export async function archiveAllPartners() {
+  const session = await auth();
+  if (!session) throw new Error("Unauthorized");
+  requirePermission(session, "partner:archive");
+
+  const partners = await prisma.partner.findMany({
+    where: { companyId: session.user.companyId, archivedAt: null },
+    select: { id: true },
+  });
+
+  for (const p of partners) {
+    await prisma.partner.update({
+      where: { id: p.id },
+      data: { archivedAt: new Date(), archivedBy: session.user.id, updatedBy: session.user.id },
+    });
+  }
+
+  revalidatePath(`/${session.user.companyId}`);
+  return { success: true, count: partners.length };
+}
+
 // ─── Account management ───────────────────────────────────────────────────────
 
 export async function updateAccount(formData: FormData) {
