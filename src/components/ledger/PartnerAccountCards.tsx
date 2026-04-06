@@ -558,7 +558,7 @@ export default function PartnerAccountCards({
   isAdmin: boolean;
   isPartner?: boolean;
 }) {
-  const defaultOrder = [...partners.map((p) => p.id), "llc", ...(isAdmin ? ["master"] : [])];
+  const defaultOrder = [...partners.map((p) => p.id), "llc", ...(isAdmin && partners.length > 0 ? ["master"] : [])];
 
   const [order, setOrder] = useState<string[]>(defaultOrder);
 

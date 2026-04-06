@@ -4,7 +4,7 @@ import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { format } from "date-fns";
-import { updateProject, duplicateProject, deleteProject, addProjectPartner, removeProjectPartner } from "./actions";
+import { updateProject, duplicateProject, deleteProject, removeProjectPartner } from "./actions";
 import { PencilIcon, TrashIcon } from "@/components/ui/icons";
 
 type Partner = { id: string; name: string; email: string };
@@ -48,7 +48,6 @@ export default function ProjectCard({
   const [editing, setEditing] = useState(false);
   const [duplicating, setDuplicating] = useState(false);
   const [showDelete, setShowDelete] = useState(false);
-  const [showPartnerDropdown, setShowPartnerDropdown] = useState(false);
   const [partners, setPartners] = useState<Partner[]>(project.partners);
 
   const [form, setForm] = useState({
@@ -96,18 +95,10 @@ export default function ProjectCard({
     });
   }
 
-  async function handleAddPartner(user: Partner) {
-    await addProjectPartner(project.id, user.id);
-    setPartners(prev => [...prev, user]);
-    setShowPartnerDropdown(false);
-  }
-
   async function handleRemovePartner(userId: string) {
     await removeProjectPartner(project.id, userId);
     setPartners(prev => prev.filter(p => p.id !== userId));
   }
-
-  const availableToAdd = partnerUsers.filter(u => !partners.some(p => p.id === u.id));
 
   if (editing) {
     return (
@@ -217,30 +208,6 @@ export default function ProjectCard({
               )}
             </div>
           ))}
-          {isAdmin && availableToAdd.length > 0 && (
-            <div className="relative">
-              <button
-                onClick={() => setShowPartnerDropdown(v => !v)}
-                className="w-7 h-7 rounded-full flex items-center justify-center text-sm font-bold"
-                style={{ background: "#30373f", color: "#8b949e", border: "1px dashed #8b949e55" }}
-                title="Add partner"
-              >
-                +
-              </button>
-              {showPartnerDropdown && (
-                <div className="absolute bottom-9 left-0 z-20 rounded-xl shadow-xl overflow-hidden" style={{ background: "#1e2736", border: "1px solid #30373f", minWidth: 200 }}>
-                  <div className="px-3 py-2 text-xs font-semibold uppercase tracking-wider" style={{ color: "#8b949e" }}>Add Partner</div>
-                  {availableToAdd.map(u => (
-                    <button key={u.id} onClick={() => handleAddPartner(u)}
-                      className="w-full text-left px-3 py-2 text-sm hover:bg-[#30373f]" style={{ color: "#e6edf3" }}>
-                      {u.name}
-                      <span className="text-xs ml-1" style={{ color: "#8b949e" }}>{u.email}</span>
-                    </button>
-                  ))}
-                </div>
-              )}
-            </div>
-          )}
         </div>
       )}
 
