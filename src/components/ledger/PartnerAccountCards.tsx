@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import {
   updatePartnerBeginningBalance,
   updateLlcBeginningBalance,
+  updateLlcName,
   deletePartnerAccountEntry,
   updatePartnerAccountEntry,
 } from "@/app/[companyId]/[projectId]/ledger/actions";
@@ -542,6 +543,7 @@ export default function PartnerAccountCards({
   companyId,
   partners,
   llcBeginningBalance,
+  llcName: initialLlcName,
   partnerEntriesMap,
   llcEntries,
   capitalLinesByPartner,
@@ -552,12 +554,25 @@ export default function PartnerAccountCards({
   companyId: string;
   partners: Partner[];
   llcBeginningBalance: number;
+  llcName: string | null;
   partnerEntriesMap: Record<string, Entry[]>;
   llcEntries: Entry[];
   capitalLinesByPartner: Record<string, CapitalLine[]>;
   isAdmin: boolean;
   isPartner?: boolean;
 }) {
+  const [llcTitle, setLlcTitle] = useState(initialLlcName ?? "LLC Account");
+  const [editingLlcName, setEditingLlcName] = useState(false);
+  const [llcNameInput, setLlcNameInput] = useState(llcTitle);
+  const [savingLlcName, setSavingLlcName] = useState(false);
+
+  async function saveLlcName() {
+    setSavingLlcName(true);
+    await updateLlcName(projectId, llcNameInput);
+    setLlcTitle(llcNameInput);
+    setEditingLlcName(false);
+    setSavingLlcName(false);
+  }
   const defaultOrder = [...partners.map((p) => p.id), "llc", ...(isAdmin && partners.length > 0 ? ["master"] : [])];
 
   const [order, setOrder] = useState<string[]>(defaultOrder);
@@ -616,18 +631,48 @@ export default function PartnerAccountCards({
     );
   }
   cardMap["llc"] = (dragHandleProps: React.HTMLAttributes<HTMLDivElement>) => (
-    <AccountCard
-      title="13 Million 84 LLC"
-      subtitle="Project Account"
-      beginningBalance={llcBeginningBalance}
-      entries={llcEntries}
-      isAdmin={isAdmin}
-      onUpdateBeginning={(amount) => updateLlcBeginningBalance(projectId, amount)}
-      onSave={makeSave()}
-      onDelete={(id) => deletePartnerAccountEntry(id, companyId, projectId)}
-      showDragHandle={true}
-      dragHandleProps={dragHandleProps}
-    />
+    <div>
+      {isAdmin && editingLlcName ? (
+        <div className="flex gap-2 mb-2 items-center">
+          <input
+            value={llcNameInput}
+            onChange={e => setLlcNameInput(e.target.value)}
+            className="flex-1 rounded-lg px-2 py-1.5 text-sm focus:outline-none"
+            style={INPUT_STYLE}
+          />
+          <button onClick={saveLlcName} disabled={savingLlcName}
+            className="px-3 py-1.5 text-xs font-semibold rounded-lg disabled:opacity-50"
+            style={{ background: GOLD, color: "#0d1117" }}>
+            {savingLlcName ? "..." : "Save"}
+          </button>
+          <button onClick={() => { setEditingLlcName(false); setLlcNameInput(llcTitle); }}
+            className="px-3 py-1.5 text-xs rounded-lg"
+            style={{ background: "#30373f", color: "#8b949e" }}>
+            Cancel
+          </button>
+        </div>
+      ) : (
+        isAdmin && (
+          <button onClick={() => { setEditingLlcName(true); setLlcNameInput(llcTitle); }}
+            className="text-xs mb-1 ml-1 underline"
+            style={{ color: "#8b949e" }}>
+            Edit LLC name
+          </button>
+        )
+      )}
+      <AccountCard
+        title={llcTitle}
+        subtitle="Project Account"
+        beginningBalance={llcBeginningBalance}
+        entries={llcEntries}
+        isAdmin={isAdmin}
+        onUpdateBeginning={(amount) => updateLlcBeginningBalance(projectId, amount)}
+        onSave={makeSave()}
+        onDelete={(id) => deletePartnerAccountEntry(id, companyId, projectId)}
+        showDragHandle={true}
+        dragHandleProps={dragHandleProps}
+      />
+    </div>
   );
   cardMap["master"] = (dragHandleProps: React.HTMLAttributes<HTMLDivElement>) => (
     <MasterCard

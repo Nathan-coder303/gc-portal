@@ -34,7 +34,7 @@ export default async function LedgerPage({
       where: { companyId: params.companyId, archivedAt: null },
       orderBy: { name: "asc" },
     }),
-    prisma.project.findUnique({ where: { id: params.projectId }, select: { llcBeginningBalance: true } }),
+    prisma.project.findUnique({ where: { id: params.projectId }, select: { llcBeginningBalance: true, llcName: true } }),
     prisma.partnerAccountEntry.findMany({
       where: { projectId: params.projectId },
       orderBy: { date: "asc" },
@@ -162,6 +162,7 @@ export default async function LedgerPage({
               beginningBalance: Number(p.beginningBalance),
             }))}
             llcBeginningBalance={llcBeginningBalance}
+            llcName={project?.llcName ?? null}
             partnerEntriesMap={partnerEntriesMap}
             llcEntries={llcEntries}
             capitalLinesByPartner={capitalLinesByPartner}

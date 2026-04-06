@@ -592,6 +592,14 @@ export async function updatePartnerBeginningBalance(partnerId: string, amount: n
   return { success: true };
 }
 
+export async function updateLlcName(projectId: string, name: string) {
+  const session = await auth();
+  if (!session) throw new Error("Unauthorized");
+  requirePermission(session, "partner:edit");
+  await prisma.project.update({ where: { id: projectId }, data: { llcName: name.trim() || null } });
+  revalidatePath(`/${session.user.companyId}/${projectId}/ledger`);
+}
+
 export async function updateLlcBeginningBalance(projectId: string, amount: number) {
   const session = await auth();
   if (!session) throw new Error("Unauthorized");

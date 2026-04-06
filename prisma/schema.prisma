@@ -260,6 +260,7 @@ model Project {
   estimates      ProjectEstimate[]
   userAccess          UserProjectAccess[]
   llcBeginningBalance Decimal             @default(0) @db.Decimal(14, 2)
+  llcName             String?
   partnerAccountEntries PartnerAccountEntry[]
 }
 
