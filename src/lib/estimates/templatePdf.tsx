@@ -791,7 +791,7 @@ function RetailPage1({ template, client, clientCoverPhotoType, clientCoverPhotoU
         {WHY_ITEMS.map((item, i) => (
           <View key={i} style={{ flexDirection: "row", alignItems: "flex-start", marginBottom: 5, gap: 8 }}>
             <Text style={{ fontSize: 9.5, color: GOLD, fontFamily: "Helvetica-Bold" }}>•</Text>
-            <Text style={{ fontSize: 9.5, color: "#334155", flex: 1, lineHeight: 1.35 }}>{item}</Text>
+            <Text style={{ fontSize: 9.5, color: "#334155", flex: 1, lineHeight: 1.35, textAlign: "justify" }}>{item}</Text>
           </View>
         ))}
       </View>
@@ -880,7 +880,7 @@ function RetailPage2({ client }: Pick<TemplatePdfProps, "client">) {
   ];
   const clientName = client?.name ?? "";
   return (
-    <Page size="LETTER" style={{ fontFamily: "Helvetica", padding: 0, paddingBottom: 96 }}>
+    <Page size="LETTER" style={{ fontFamily: "Helvetica", padding: 0, paddingBottom: 36 }}>
       {/* Fixed footer */}
       <View fixed style={{ position: "absolute", bottom: 0, left: 0, right: 0, backgroundColor: DARK, paddingHorizontal: 24, paddingVertical: 9, flexDirection: "row", alignItems: "center", gap: 12 }}>
         <Text style={{ fontSize: 8.5, color: GOLD, fontFamily: "Helvetica-Bold" }}>MIBH CONSTRUCTION</Text>
@@ -907,34 +907,34 @@ function RetailPage2({ client }: Pick<TemplatePdfProps, "client">) {
 
       <View style={{ paddingHorizontal: 28, paddingTop: 8, paddingBottom: 8 }}>
         {/* WHAT WE BUILD + OUR APPROACH side by side */}
-        <View style={{ flexDirection: "row", gap: 20, marginBottom: 10 }}>
+        <View style={{ flexDirection: "row", gap: 20, marginBottom: 8 }}>
           <View style={{ flex: 1 }}>
-            <Text style={{ fontSize: 14, fontFamily: "Helvetica-Bold", color: DARK, letterSpacing: 0.5, marginBottom: 8 }}>WHAT WE BUILD</Text>
+            <Text style={{ fontSize: 11, fontFamily: "Helvetica-Bold", color: DARK, letterSpacing: 0.5, marginBottom: 6 }}>WHAT WE BUILD</Text>
             {WHAT_ITEMS.map((item, i) => (
-              <View key={i} style={{ flexDirection: "row", alignItems: "flex-start", marginBottom: 5, gap: 8 }}>
-                <Text style={{ fontSize: 12, color: GOLD, fontFamily: "Helvetica-Bold" }}>•</Text>
-                <Text style={{ fontSize: 12, color: "#334155", flex: 1 }}>{item}</Text>
+              <View key={i} style={{ flexDirection: "row", alignItems: "flex-start", marginBottom: 4, gap: 6 }}>
+                <Text style={{ fontSize: 9, color: GOLD, fontFamily: "Helvetica-Bold" }}>•</Text>
+                <Text style={{ fontSize: 9, color: "#334155", flex: 1 }}>{item}</Text>
               </View>
             ))}
           </View>
           <View style={{ width: 2, backgroundColor: GOLD, marginVertical: 2 }} />
           <View style={{ flex: 1, paddingLeft: 6 }}>
-            <Text style={{ fontSize: 14, fontFamily: "Helvetica-Bold", color: DARK, letterSpacing: 0.5, marginBottom: 8 }}>OUR APPROACH</Text>
-            <Text style={{ fontSize: 12, color: "#334155", lineHeight: 1.6 }}>
+            <Text style={{ fontSize: 11, fontFamily: "Helvetica-Bold", color: DARK, letterSpacing: 0.5, marginBottom: 6 }}>OUR APPROACH</Text>
+            <Text style={{ fontSize: 9, color: "#334155", lineHeight: 1.55, textAlign: "justify" }}>
               We handle your retail project from concept to completion — including planning, engineering, permitting, and construction — ensuring a seamless process with one accountable team. You get a single point of contact, no subcontractor confusion, and full transparency from day one.{"\n\n"}We focus on delivering spaces that reflect your brand, maximize customer experience, and meet strict retail timelines.
             </Text>
           </View>
         </View>
 
         {/* Scope of Work title */}
-        <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "center", marginBottom: 8, gap: 12 }}>
+        <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "center", marginBottom: 6, gap: 12 }}>
           <View style={{ flex: 1, height: 1, backgroundColor: GOLD }} />
-          <Text style={{ fontSize: 15, fontFamily: "Helvetica-Bold", color: DARK, letterSpacing: 1 }}>SCOPE OF WORK</Text>
+          <Text style={{ fontSize: 12, fontFamily: "Helvetica-Bold", color: DARK, letterSpacing: 1 }}>SCOPE OF WORK</Text>
           <View style={{ flex: 1, height: 1, backgroundColor: GOLD }} />
         </View>
 
         {/* Intro */}
-        <Text style={{ fontSize: 11, color: "#334155", lineHeight: 1.55, marginBottom: 8 }}>
+        <Text style={{ fontSize: 8.5, color: "#334155", lineHeight: 1.5, marginBottom: 6, textAlign: "justify" }}>
           We appreciate the opportunity to provide this proposal. MIBH Construction will deliver all labor, materials, equipment, and supervision required to complete your retail buildout in full compliance with Florida Building Code (FBC 2023), local municipal requirements, landlord criteria, and approved plans.
         </Text>
 
@@ -942,12 +942,12 @@ function RetailPage2({ client }: Pick<TemplatePdfProps, "client">) {
         <View style={{ flexDirection: "row", gap: 20 }}>
           <View style={{ flex: 1 }}>
             {SECTIONS.slice(0, 3).map((sec, si) => (
-              <View key={si} style={{ marginBottom: 11 }}>
-                <Text style={{ fontSize: 11, fontFamily: "Helvetica-Bold", color: DARK, marginBottom: 5, textTransform: "uppercase" }}>{sec.title}</Text>
+              <View key={si} style={{ marginBottom: 8 }}>
+                <Text style={{ fontSize: 8.5, fontFamily: "Helvetica-Bold", color: DARK, marginBottom: 4, textTransform: "uppercase" }}>{sec.title}</Text>
                 {sec.items.map((item, ii) => (
-                  <View key={ii} style={{ flexDirection: "row", alignItems: "flex-start", marginBottom: 3, gap: 7 }}>
-                    <Text style={{ fontSize: 11, color: GOLD, fontFamily: "Helvetica-Bold" }}>•</Text>
-                    <Text style={{ fontSize: 11, color: "#475569", flex: 1 }}>{item}</Text>
+                  <View key={ii} style={{ flexDirection: "row", alignItems: "flex-start", marginBottom: 2.5, gap: 5 }}>
+                    <Text style={{ fontSize: 8.5, color: GOLD, fontFamily: "Helvetica-Bold" }}>•</Text>
+                    <Text style={{ fontSize: 8.5, color: "#475569", flex: 1 }}>{item}</Text>
                   </View>
                 ))}
               </View>
@@ -955,12 +955,12 @@ function RetailPage2({ client }: Pick<TemplatePdfProps, "client">) {
           </View>
           <View style={{ flex: 1 }}>
             {SECTIONS.slice(3).map((sec, si) => (
-              <View key={si} style={{ marginBottom: 11 }}>
-                <Text style={{ fontSize: 11, fontFamily: "Helvetica-Bold", color: DARK, marginBottom: 5, textTransform: "uppercase" }}>{sec.title}</Text>
+              <View key={si} style={{ marginBottom: 8 }}>
+                <Text style={{ fontSize: 8.5, fontFamily: "Helvetica-Bold", color: DARK, marginBottom: 4, textTransform: "uppercase" }}>{sec.title}</Text>
                 {sec.items.map((item, ii) => (
-                  <View key={ii} style={{ flexDirection: "row", alignItems: "flex-start", marginBottom: 3, gap: 7 }}>
-                    <Text style={{ fontSize: 11, color: GOLD, fontFamily: "Helvetica-Bold" }}>•</Text>
-                    <Text style={{ fontSize: 11, color: "#475569", flex: 1 }}>{item}</Text>
+                  <View key={ii} style={{ flexDirection: "row", alignItems: "flex-start", marginBottom: 2.5, gap: 5 }}>
+                    <Text style={{ fontSize: 8.5, color: GOLD, fontFamily: "Helvetica-Bold" }}>•</Text>
+                    <Text style={{ fontSize: 8.5, color: "#475569", flex: 1 }}>{item}</Text>
                   </View>
                 ))}
               </View>
@@ -1041,7 +1041,7 @@ function TemplatePdfDocument({ companyName, template, client, divisions, showTer
     <>
       {/* Payment Schedule */}
       {(paymentSchedule ?? []).length > 0 && (
-        <View style={{ marginTop: 16 }}>
+        <View wrap={false} style={{ marginTop: 16 }}>
           <Text style={styles.sectionTitle}>Payment Schedule</Text>
           <View style={styles.payTable}>
             <View style={styles.payHeaderRow}>
