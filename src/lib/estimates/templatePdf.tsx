@@ -934,7 +934,7 @@ function RetailPage2({ client }: Pick<TemplatePdfProps, "client">) {
         </View>
 
         {/* Intro */}
-        <Text style={{ fontSize: 9.5, color: "#334155", lineHeight: 1.5, marginBottom: 6, textAlign: "justify" }}>
+        <Text style={{ fontSize: 10.5, color: "#334155", lineHeight: 1.5, marginBottom: 6, textAlign: "justify" }}>
           We appreciate the opportunity to provide this proposal. MIBH Construction will deliver all labor, materials, equipment, and supervision required to complete your retail buildout in full compliance with Florida Building Code (FBC 2023), local municipal requirements, landlord criteria, and approved plans.
         </Text>
 
@@ -943,11 +943,11 @@ function RetailPage2({ client }: Pick<TemplatePdfProps, "client">) {
           <View style={{ flex: 1 }}>
             {SECTIONS.slice(0, 3).map((sec, si) => (
               <View key={si} style={{ marginBottom: 8 }}>
-                <Text style={{ fontSize: 9.5, fontFamily: "Helvetica-Bold", color: DARK, marginBottom: 4, textTransform: "uppercase" }}>{sec.title}</Text>
+                <Text style={{ fontSize: 10.5, fontFamily: "Helvetica-Bold", color: DARK, marginBottom: 4, textTransform: "uppercase" }}>{sec.title}</Text>
                 {sec.items.map((item, ii) => (
                   <View key={ii} style={{ flexDirection: "row", alignItems: "flex-start", marginBottom: 2.5, gap: 5 }}>
-                    <Text style={{ fontSize: 9.5, color: GOLD, fontFamily: "Helvetica-Bold" }}>•</Text>
-                    <Text style={{ fontSize: 9.5, color: "#475569", flex: 1 }}>{item}</Text>
+                    <Text style={{ fontSize: 10.5, color: GOLD, fontFamily: "Helvetica-Bold" }}>•</Text>
+                    <Text style={{ fontSize: 10.5, color: "#475569", flex: 1 }}>{item}</Text>
                   </View>
                 ))}
               </View>
@@ -956,11 +956,11 @@ function RetailPage2({ client }: Pick<TemplatePdfProps, "client">) {
           <View style={{ flex: 1 }}>
             {SECTIONS.slice(3).map((sec, si) => (
               <View key={si} style={{ marginBottom: 8 }}>
-                <Text style={{ fontSize: 9.5, fontFamily: "Helvetica-Bold", color: DARK, marginBottom: 4, textTransform: "uppercase" }}>{sec.title}</Text>
+                <Text style={{ fontSize: 10.5, fontFamily: "Helvetica-Bold", color: DARK, marginBottom: 4, textTransform: "uppercase" }}>{sec.title}</Text>
                 {sec.items.map((item, ii) => (
                   <View key={ii} style={{ flexDirection: "row", alignItems: "flex-start", marginBottom: 2.5, gap: 5 }}>
-                    <Text style={{ fontSize: 9.5, color: GOLD, fontFamily: "Helvetica-Bold" }}>•</Text>
-                    <Text style={{ fontSize: 9.5, color: "#475569", flex: 1 }}>{item}</Text>
+                    <Text style={{ fontSize: 10.5, color: GOLD, fontFamily: "Helvetica-Bold" }}>•</Text>
+                    <Text style={{ fontSize: 10.5, color: "#475569", flex: 1 }}>{item}</Text>
                   </View>
                 ))}
               </View>
