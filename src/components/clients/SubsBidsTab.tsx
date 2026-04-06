@@ -448,7 +448,7 @@ export default function SubsBidsTab({ clientId, companyId, clientName, subBids: 
       {/* Commercial / Residential toggle */}
       <div className="flex items-center gap-3 mb-4">
         <span className="text-xs font-semibold" style={{ color: "#8b949e" }}>Project type:</span>
-        <div className="flex rounded-lg overflow-hidden" style={{ border: "1px solid #30373f" }}>
+        <div className="flex rounded-lg" style={{ border: "1px solid #30373f" }}>
           <button
             onClick={() => { void handleToggleCommercial(false); }}
             disabled={togglingCommercial}
@@ -466,7 +466,7 @@ export default function SubsBidsTab({ clientId, companyId, clientName, subBids: 
             Commercial
           </button>
         </div>
-        {displayIsCommercial && <span className="text-xs" style={{ color: "#C9A84C" }}>+ Div 11 Equipment · 13 Special Construction · 14 Conveying · 21 Fire Suppression · 27 Communications · 28 Electronic Safety · 31 Earthwork (Adv) · 32 Exterior Improvements · 33 Utilities</span>}
+        {displayIsCommercial && <span className="text-xs" style={{ color: "#C9A84C" }}>+ Div 13 Special Construction · 14 Conveying · 21 Fire Suppression · 27 Communications · 28 Electronic Safety · 33 Utilities</span>}
       </div>
 
 
@@ -655,14 +655,9 @@ export default function SubsBidsTab({ clientId, companyId, clientName, subBids: 
                         </select>
                       </div>
                     )}
-                    {offer.createdAt && (
+                    {(offer.bidDate || offer.createdAt) && (
                       <div className="text-xs mt-1.5 pl-5" style={{ color: "#6b7280" }} suppressHydrationWarning>
-                        Date received: {fmtDate(offer.createdAt)}
-                      </div>
-                    )}
-                    {!offer.createdAt && offer.bidDate && (
-                      <div className="text-xs mt-1.5 pl-5" style={{ color: "#6b7280" }} suppressHydrationWarning>
-                        {offer.bidDate}
+                        Date received: {offer.bidDate ?? fmtDate(offer.createdAt!)}
                       </div>
                     )}
                     </>
@@ -833,14 +828,9 @@ export default function SubsBidsTab({ clientId, companyId, clientName, subBids: 
                             )}
                           </div>
                         </div>
-                        {offer.createdAt && (
+                        {(offer.bidDate || offer.createdAt) && (
                           <div className="text-xs mt-1.5" style={{ color: "#6b7280" }} suppressHydrationWarning>
-                            Date received: {fmtDate(offer.createdAt)}
-                          </div>
-                        )}
-                        {!offer.createdAt && offer.bidDate && (
-                          <div className="text-xs mt-1.5" style={{ color: "#6b7280" }} suppressHydrationWarning>
-                            {offer.bidDate}
+                            Date received: {offer.bidDate ?? fmtDate(offer.createdAt!)}
                           </div>
                         )}
                       </div>

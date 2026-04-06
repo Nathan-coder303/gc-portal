@@ -59,7 +59,7 @@ function PartnerFormFields({ defaults }: { defaults?: Partner }) {
 }
 
 /** Inline add form — rendered in the page header area */
-export function AddPartnerInline({ onAdded }: { onAdded: (p: Partner) => void }) {
+export function AddPartnerInline({ onAdded: _onAdded }: { onAdded: (p: Partner) => void }) {
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
