@@ -195,8 +195,9 @@ export async function POST(
         string,
         { qty: number | null; unit: string | null; unitCost: number | null; markupPct: number | null; manualTotal: number | null }
       > | null) ?? null,
-    includeRoofUpgradesPage: page2 ? page2 === "ROOF" : template.name.toLowerCase().includes("roof"),
+    includeRoofUpgradesPage: page2 ? page2 === "ROOF" : (template.name.toLowerCase().includes("roof") && !template.name.toLowerCase().includes("retail")),
     includeAdditionPages: page2 ? page2 === "ADDITION" : template.name.toLowerCase().includes("addition"),
+    includeRetailPages: page2 ? page2 === "RETAIL" : template.name.toLowerCase().includes("retail"),
     includeCoverPage: true,
     insulationType: template.insulationType ?? "ISO",
     clientCoverPhotoType: coverType ?? template.client?.coverPhotoType ?? null,

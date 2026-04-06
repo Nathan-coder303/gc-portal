@@ -164,6 +164,7 @@ type TemplatePdfProps = {
   includeRoofUpgradesPage?: boolean;
   includeCoverPage?: boolean;
   includeAdditionPages?: boolean;
+  includeRetailPages?: boolean;
   insulationType?: string | null;
   clientCoverPhotoType?: string | null;
   clientCoverPhotoUrl?: string | null;
@@ -698,7 +699,290 @@ function AdditionPage2({ client }: Pick<TemplatePdfProps, "client">) {
   );
 }
 
-function TemplatePdfDocument({ companyName, template, client, divisions, showTerms, termsContent, paymentSchedule, gcFeePercent, summaryGroups, clientSignatureData, clientSignedByName, clientSignedAt, contractorSignatureData, contractorSignedAt, includeRoofUpgradesPage, includeCoverPage, includeAdditionPages, insulationType, clientCoverPhotoType, clientCoverPhotoUrl, clientCoverTitle }: TemplatePdfProps) {
+// ─── Retail Marketing Page (Page 1) ──────────────────────────────────────────
+function RetailPage1({ template, client, clientCoverPhotoType, clientCoverPhotoUrl, clientCoverTitle }: Pick<TemplatePdfProps, "template" | "client" | "clientCoverPhotoType" | "clientCoverPhotoUrl" | "clientCoverTitle">) {
+  const logoPath = path.join(process.cwd(), "public", "logo.png");
+  let coverImgSrc: string;
+  if (clientCoverPhotoType === "CUSTOM" && clientCoverPhotoUrl) {
+    coverImgSrc = clientCoverPhotoUrl;
+  } else if (clientCoverPhotoType === "FLAT_ROOFS" || clientCoverPhotoType === "RESIDENTIAL") {
+    coverImgSrc = path.join(process.cwd(), "public", "flat-roofs-cover.jpg");
+  } else if (clientCoverPhotoType === "SHINGLE_ROOFS") {
+    coverImgSrc = path.join(process.cwd(), "public", "shingle-roofs-cover.png");
+  } else if (clientCoverPhotoType === "LAUNDRY") {
+    coverImgSrc = path.join(process.cwd(), "public", "laundry-cover.png");
+  } else {
+    coverImgSrc = path.join(process.cwd(), "public", "additions.jpg");
+  }
+  const today = new Date().toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" });
+  const clientCity = [client?.city, client?.state, client?.zip].filter(Boolean).join(", ");
+
+  const WHY_ITEMS = [
+    { title: "Proven Retail Buildout Expertise", body: "Extensive experience delivering high-quality retail spaces designed for functionality, customer flow, and brand impact" },
+    { title: "Trusted by Recognized Brands", body: "Kids Story – Eden Prairie, MN · City Fashion – Margaritaville, Orlando, FL · Fridababy – Miami, FL" },
+    { title: "Over 20 Years of Construction Excellence", body: "Consistent track record of high-quality workmanship across South Florida and beyond" },
+    { title: "Licensed, Insured & Code-Compliant", body: "CGC1527069 — fully compliant with Florida Building Code (FBC 2023)" },
+    { title: "Turnkey Retail Solutions", body: "Design coordination, engineering, permitting, and construction handled under one roof" },
+    { title: "Brand-Focused Execution", body: "We translate your brand identity into a physical space that enhances customer experience and drives sales" },
+    { title: "Dedicated Project Management", body: "Single point of contact ensuring timelines, budgets, and quality standards are maintained from start to finish" },
+    { title: "Efficient Scheduling for Retail Deadlines", body: "Opening dates are critical — projects are delivered on time with minimal delays" },
+    { title: "Built for High-Traffic Commercial Use", body: "Durable materials and construction methods designed for longevity, safety, and heavy foot traffic" },
+    { title: "Customized, Transparent Approach", body: "Tailored solutions with clear communication, detailed budgeting, and no surprises" },
+    { title: "Strong Vendor & Supplier Network", body: "Access to premium materials and finishes aligned with retail brand standards" },
+  ];
+
+  return (
+    <Page size="LETTER" style={{ fontFamily: "Helvetica", padding: 0 }}>
+      {/* Header */}
+      <View style={{ flexDirection: "row", alignItems: "center", backgroundColor: DARK, paddingHorizontal: 24, paddingVertical: 10, gap: 14 }}>
+        {/* eslint-disable-next-line jsx-a11y/alt-text */}
+        <Image src={logoPath} style={{ width: 52, height: 52 }} />
+        <View>
+          <Text style={{ fontSize: 20, fontFamily: "Helvetica-Bold", color: GOLD, letterSpacing: 2 }}>MIBH CONSTRUCTION</Text>
+          <Text style={{ fontSize: 8, color: "#94a3b8", marginTop: 2 }}>Licensed &amp; Insured  |  CGC1527069  |  CCC1336817  |  2950 N 28 Terr, Hollywood, FL  |  (305) 746-7307</Text>
+        </View>
+      </View>
+      <View style={{ height: 3, backgroundColor: GOLD }} />
+
+      {/* Cover photo */}
+      <View style={{ paddingHorizontal: 18, paddingTop: 18, paddingBottom: 18 }}>
+        {/* eslint-disable-next-line jsx-a11y/alt-text */}
+        <Image src={coverImgSrc} style={{ width: 576, height: 270, objectFit: "cover" }} />
+      </View>
+
+      {/* Gold info rectangle */}
+      <View style={{ flexDirection: "row", backgroundColor: GOLD, paddingHorizontal: 28, paddingVertical: 22 }}>
+        <View style={{ flex: 1, justifyContent: "center" }}>
+          {client?.name ? <Text style={{ fontSize: 18, fontFamily: "Helvetica-Bold", color: "#fff", marginBottom: 6 }}>{client.name}</Text> : null}
+          {client?.address ? <Text style={{ fontSize: 10, color: "rgba(255,255,255,0.85)", marginBottom: 2 }}>{client.address}</Text> : null}
+          {clientCity ? <Text style={{ fontSize: 10, color: "rgba(255,255,255,0.85)", marginBottom: 2 }}>{clientCity}</Text> : null}
+          {client?.phone ? <Text style={{ fontSize: 10, color: "rgba(255,255,255,0.85)", marginBottom: 2 }}>{client.phone}</Text> : null}
+          {client?.email ? <Text style={{ fontSize: 10, color: "rgba(255,255,255,0.85)" }}>{client.email}</Text> : null}
+        </View>
+        <View style={{ width: 1, backgroundColor: "rgba(255,255,255,0.4)", marginVertical: 2, marginHorizontal: 24 }} />
+        <View style={{ flex: 1, justifyContent: "center" }}>
+          {(clientCoverTitle || template.name) ? (
+            <Text style={{ fontSize: 18, fontFamily: "Helvetica-Bold", color: "#fff", marginBottom: 8, lineHeight: 1.25 }}>{clientCoverTitle || template.name}</Text>
+          ) : null}
+          {clientCoverTitle && template.name ? (
+            <Text style={{ fontSize: 11, color: "rgba(255,255,255,0.75)", marginBottom: 6 }}>{template.name}</Text>
+          ) : null}
+          <Text style={{ fontSize: 11, color: "rgba(255,255,255,0.85)" }}>{today}</Text>
+        </View>
+      </View>
+
+      {/* Why Choose Us */}
+      <View style={{ paddingHorizontal: 28, paddingTop: 16, paddingBottom: 14, flex: 1 }}>
+        <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "center", marginBottom: 12, gap: 12 }}>
+          <View style={{ flex: 1, height: 2, backgroundColor: GOLD }} />
+          <Text style={{ fontSize: 14, fontFamily: "Helvetica-Bold", color: DARK, letterSpacing: 1.5 }}>WHY CHOOSE US</Text>
+          <View style={{ flex: 1, height: 2, backgroundColor: GOLD }} />
+        </View>
+        <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 6 }}>
+          {WHY_ITEMS.map((item, i) => (
+            <View key={i} style={{ flexDirection: "row", alignItems: "flex-start", gap: 6, width: "48%" }}>
+              <Text style={{ fontSize: 9, color: GOLD, fontFamily: "Helvetica-Bold", marginTop: 1 }}>•</Text>
+              <View style={{ flex: 1 }}>
+                <Text style={{ fontSize: 9, fontFamily: "Helvetica-Bold", color: DARK, marginBottom: 1 }}>{item.title}</Text>
+                <Text style={{ fontSize: 8.5, color: "#475569", lineHeight: 1.4 }}>{item.body}</Text>
+              </View>
+            </View>
+          ))}
+        </View>
+      </View>
+
+      {/* Footer */}
+      <View style={{ backgroundColor: DARK, paddingHorizontal: 24, paddingVertical: 9, flexDirection: "row", alignItems: "center", gap: 12 }}>
+        <Text style={{ fontSize: 8.5, color: GOLD, fontFamily: "Helvetica-Bold" }}>MIBH CONSTRUCTION</Text>
+        <Text style={{ fontSize: 7, color: "#94a3b8" }}>|</Text>
+        <Text style={{ fontSize: 8.5, color: "#94a3b8" }}>mike@mibhconstruction.com</Text>
+        <Text style={{ fontSize: 7, color: "#94a3b8" }}>|</Text>
+        <Text style={{ fontSize: 8.5, color: "#94a3b8" }}>Mike Baruh</Text>
+        <Text style={{ fontSize: 7, color: "#94a3b8" }}>|</Text>
+        <Text style={{ fontSize: 8.5, color: "#94a3b8" }}>(305) 746-7307</Text>
+        <View style={{ flex: 1 }} />
+        <Text style={{ fontSize: 8, color: "#94a3b8" }} render={({ pageNumber, totalPages }) => `Page ${pageNumber} of ${totalPages}`} />
+      </View>
+    </Page>
+  );
+}
+
+// ─── Retail Scope of Work Page (Page 2) ──────────────────────────────────────
+function RetailPage2({ client }: Pick<TemplatePdfProps, "client">) {
+  const logoPath = path.join(process.cwd(), "public", "logo.png");
+  const WHAT_ITEMS = [
+    "Retail Store Buildouts",
+    "Tenant Improvements (TI)",
+    "Flagship & Brand Experience Stores",
+    "Mall & Inline Retail Spaces",
+    "Restaurants & Food Service Buildouts",
+    "Interior Renovations & Reconfigurations",
+  ];
+  const SECTIONS: { title: string; items: string[] }[] = [
+    {
+      title: "1. PERMITTING & PRE-CONSTRUCTION",
+      items: [
+        "Preparation of architectural and engineering plans",
+        "MEP (mechanical, electrical, plumbing) coordination",
+        "Structural and code compliance documentation",
+        "Notice of Commencement",
+        "Submission to city/building department and landlord review",
+        "Coordination of revisions and approvals",
+        "Permit tracking through final approval",
+      ],
+    },
+    {
+      title: "2. MANPOWER PROVIDED",
+      items: [
+        "Licensed General Contractor supervision",
+        "Dedicated Project Manager (retail-focused execution)",
+        "Skilled trade crews (carpentry, electrical, plumbing, HVAC, millwork)",
+        "Fixture and display installation teams",
+        "OSHA-compliant workforce",
+        "Site protection and cleanup crew",
+      ],
+    },
+    {
+      title: "3. EQUIPMENT PROVIDED",
+      items: [
+        "Interior construction and demolition equipment",
+        "Concrete, flooring, and finishing tools",
+        "Framing and drywall systems",
+        "Ladders, scaffolding, and lifts (as required)",
+        "Safety equipment and compliance systems",
+        "Dumpsters and debris removal equipment",
+      ],
+    },
+    {
+      title: "4. MATERIALS & CONSTRUCTION STANDARDS",
+      items: [
+        "Florida Building Code (FBC 2023) compliance",
+        "Retail and commercial construction standards",
+        "Landlord and shopping center requirements",
+        "Manufacturer installation specifications",
+        "Miami-Dade product approvals (NOA where applicable)",
+        "High-traffic durability and finish standards",
+      ],
+    },
+    {
+      title: "5. SITE PROTECTION & JOB CONDITIONS",
+      items: [
+        "Protection of existing structure and adjacent tenants",
+        "Dust, noise, and debris control (retail environment sensitive)",
+        "Daily site cleanup",
+        "Safe and organized jobsite",
+        "Coordination with mall/center operating hours",
+        "Final cleaning prior to store opening",
+      ],
+    },
+    {
+      title: "6. PROJECT CLOSEOUT",
+      items: [
+        "Final inspections and approvals",
+        "Completion walkthrough with client and/or landlord",
+        "Punch list completion",
+        "Delivery of warranties and closeout documents",
+        "Final site cleanup and turnover ready for merchandising",
+      ],
+    },
+  ];
+  const clientName = client?.name ?? "";
+  return (
+    <Page size="LETTER" style={{ fontFamily: "Helvetica", padding: 0, paddingBottom: 96 }}>
+      {/* Footer pinned to bottom */}
+      <View fixed style={{ position: "absolute", bottom: 0, left: 0, right: 0, backgroundColor: DARK, paddingHorizontal: 24, paddingVertical: 9, flexDirection: "row", alignItems: "center", gap: 12 }}>
+        <Text style={{ fontSize: 8.5, color: GOLD, fontFamily: "Helvetica-Bold" }}>MIBH CONSTRUCTION</Text>
+        <Text style={{ fontSize: 7, color: "#94a3b8" }}>|</Text>
+        <Text style={{ fontSize: 8.5, color: "#94a3b8" }}>mike@mibhconstruction.com</Text>
+        <Text style={{ fontSize: 7, color: "#94a3b8" }}>|</Text>
+        <Text style={{ fontSize: 8.5, color: "#94a3b8" }}>Mike Baruh</Text>
+        <Text style={{ fontSize: 7, color: "#94a3b8" }}>|</Text>
+        <Text style={{ fontSize: 8.5, color: "#94a3b8" }}>(305) 746-7307</Text>
+        <View style={{ flex: 1 }} />
+        <Text style={{ fontSize: 8, color: "#94a3b8" }} render={({ pageNumber, totalPages }) => `Page ${pageNumber} of ${totalPages}`} />
+      </View>
+      {/* Header */}
+      <View style={{ flexDirection: "row", alignItems: "center", backgroundColor: DARK, paddingHorizontal: 24, paddingVertical: 10, gap: 14 }}>
+        {/* eslint-disable-next-line jsx-a11y/alt-text */}
+        <Image src={logoPath} style={{ width: 52, height: 52 }} />
+        <View style={{ flex: 1 }}>
+          <Text style={{ fontSize: 20, fontFamily: "Helvetica-Bold", color: GOLD, letterSpacing: 2 }}>MIBH CONSTRUCTION</Text>
+          <Text style={{ fontSize: 8, color: "#94a3b8", marginTop: 2 }}>Licensed &amp; Insured  |  CGC1527069  |  CCC1336817  |  2950 N 28 Terr, Hollywood, FL  |  (305) 746-7307</Text>
+        </View>
+        {clientName ? <Text style={{ fontSize: 10, color: "#94a3b8", textAlign: "right" }}>{clientName}</Text> : null}
+      </View>
+      <View style={{ height: 3, backgroundColor: GOLD }} />
+
+      {/* Main content */}
+      <View style={{ paddingHorizontal: 28, paddingTop: 8, paddingBottom: 8 }}>
+
+        {/* WHAT WE BUILD + OUR APPROACH side by side */}
+        <View style={{ flexDirection: "row", gap: 20, marginBottom: 10 }}>
+          <View style={{ flex: 1 }}>
+            <Text style={{ fontSize: 14, fontFamily: "Helvetica-Bold", color: DARK, letterSpacing: 0.5, marginBottom: 8 }}>WHAT WE BUILD</Text>
+            {WHAT_ITEMS.map((item, i) => (
+              <View key={i} style={{ flexDirection: "row", alignItems: "flex-start", marginBottom: 5, gap: 8 }}>
+                <Text style={{ fontSize: 12, color: GOLD, fontFamily: "Helvetica-Bold" }}>•</Text>
+                <Text style={{ fontSize: 12, color: "#334155", flex: 1 }}>{item}</Text>
+              </View>
+            ))}
+          </View>
+          <View style={{ width: 2, backgroundColor: GOLD, marginVertical: 2 }} />
+          <View style={{ flex: 1, paddingLeft: 6 }}>
+            <Text style={{ fontSize: 14, fontFamily: "Helvetica-Bold", color: DARK, letterSpacing: 0.5, marginBottom: 8 }}>OUR APPROACH</Text>
+            <Text style={{ fontSize: 12, color: "#334155", lineHeight: 1.6 }}>
+              We handle your retail project from concept to completion — including planning, engineering, permitting, and construction — ensuring a seamless process with one accountable team. You get a single point of contact, no subcontractor confusion, and full transparency from day one.{"\n\n"}We focus on delivering spaces that reflect your brand, maximize customer experience, and meet strict retail timelines.
+            </Text>
+          </View>
+        </View>
+
+        {/* Scope of Work title */}
+        <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "center", marginBottom: 8, gap: 12 }}>
+          <View style={{ flex: 1, height: 1, backgroundColor: GOLD }} />
+          <Text style={{ fontSize: 15, fontFamily: "Helvetica-Bold", color: DARK, letterSpacing: 1 }}>SCOPE OF WORK</Text>
+          <View style={{ flex: 1, height: 1, backgroundColor: GOLD }} />
+        </View>
+
+        {/* Intro */}
+        <Text style={{ fontSize: 11, color: "#334155", lineHeight: 1.55, marginBottom: 8 }}>
+          We appreciate the opportunity to provide this proposal. MIBH Construction will deliver all labor, materials, equipment, and supervision required to complete your retail buildout in full compliance with Florida Building Code (FBC 2023), local municipal requirements, landlord criteria, and approved plans.
+        </Text>
+
+        {/* Two-column sections */}
+        <View style={{ flexDirection: "row", gap: 20 }}>
+          <View style={{ flex: 1 }}>
+            {SECTIONS.slice(0, 3).map((sec, si) => (
+              <View key={si} style={{ marginBottom: 11 }}>
+                <Text style={{ fontSize: 11, fontFamily: "Helvetica-Bold", color: DARK, marginBottom: 5, textTransform: "uppercase" }}>{sec.title}</Text>
+                {sec.items.map((item, ii) => (
+                  <View key={ii} style={{ flexDirection: "row", alignItems: "flex-start", marginBottom: 3, gap: 7 }}>
+                    <Text style={{ fontSize: 11, color: GOLD, fontFamily: "Helvetica-Bold" }}>•</Text>
+                    <Text style={{ fontSize: 11, color: "#475569", flex: 1 }}>{item}</Text>
+                  </View>
+                ))}
+              </View>
+            ))}
+          </View>
+          <View style={{ flex: 1 }}>
+            {SECTIONS.slice(3).map((sec, si) => (
+              <View key={si} style={{ marginBottom: 11 }}>
+                <Text style={{ fontSize: 11, fontFamily: "Helvetica-Bold", color: DARK, marginBottom: 5, textTransform: "uppercase" }}>{sec.title}</Text>
+                {sec.items.map((item, ii) => (
+                  <View key={ii} style={{ flexDirection: "row", alignItems: "flex-start", marginBottom: 3, gap: 7 }}>
+                    <Text style={{ fontSize: 11, color: GOLD, fontFamily: "Helvetica-Bold" }}>•</Text>
+                    <Text style={{ fontSize: 11, color: "#475569", flex: 1 }}>{item}</Text>
+                  </View>
+                ))}
+              </View>
+            ))}
+          </View>
+        </View>
+      </View>
+    </Page>
+  );
+}
+
+function TemplatePdfDocument({ companyName, template, client, divisions, showTerms, termsContent, paymentSchedule, gcFeePercent, summaryGroups, clientSignatureData, clientSignedByName, clientSignedAt, contractorSignatureData, contractorSignedAt, includeRoofUpgradesPage, includeCoverPage, includeAdditionPages, includeRetailPages, insulationType, clientCoverPhotoType, clientCoverPhotoUrl, clientCoverTitle }: TemplatePdfProps) {
   const grouped = groupDivisions(divisions);
 
   // Compute raw totals per group label (or null for ungrouped)
@@ -852,11 +1136,13 @@ function TemplatePdfDocument({ companyName, template, client, divisions, showTer
 
   return (
     <Document title={`${template.name} — Estimate`} author={companyName}>
-      {(includeCoverPage || clientCoverPhotoType) && !includeAdditionPages && !includeRoofUpgradesPage && <CoverPages template={template} client={client} clientCoverPhotoType={clientCoverPhotoType} clientCoverPhotoUrl={clientCoverPhotoUrl} clientCoverTitle={clientCoverTitle} />}
+      {(includeCoverPage || clientCoverPhotoType) && !includeAdditionPages && !includeRoofUpgradesPage && !includeRetailPages && <CoverPages template={template} client={client} clientCoverPhotoType={clientCoverPhotoType} clientCoverPhotoUrl={clientCoverPhotoUrl} clientCoverTitle={clientCoverTitle} />}
       {includeRoofUpgradesPage && <CoverPages template={template} client={client} clientCoverPhotoType={clientCoverPhotoType} clientCoverPhotoUrl={clientCoverPhotoUrl} clientCoverTitle={clientCoverTitle} />}
       {includeRoofUpgradesPage && <RoofIntroPage template={template} client={client} />}
       {includeAdditionPages && <AdditionPage1 template={template} client={client} clientCoverPhotoType={clientCoverPhotoType} clientCoverPhotoUrl={clientCoverPhotoUrl} />}
       {includeAdditionPages && <AdditionPage2 client={client} />}
+      {includeRetailPages && <RetailPage1 template={template} client={client} clientCoverPhotoType={clientCoverPhotoType} clientCoverPhotoUrl={clientCoverPhotoUrl} clientCoverTitle={clientCoverTitle} />}
+      {includeRetailPages && <RetailPage2 client={client} />}
       <Page size="LETTER" style={styles.page}>
         {/* Fixed footer — renders on every page */}
         <View fixed style={{ position: "absolute", bottom: 0, left: 0, right: 0, backgroundColor: DARK, paddingHorizontal: 24, paddingVertical: 9, flexDirection: "row", alignItems: "center", gap: 12 }}>
