@@ -15,6 +15,7 @@ import ClientNotesTab from "@/components/clients/ClientNotesTab";
 import ClientTextNotes from "@/components/clients/ClientTextNotes";
 import ClientCoverPhotoSelector from "@/components/clients/ClientCoverPhotoSelector";
 import ClientInvoicesTab from "@/components/clients/ClientInvoicesTab";
+import NurturingEmailTab from "@/components/clients/NurturingEmailTab";
 
 export default async function ClientDetailPage({
   params,
@@ -125,6 +126,7 @@ export default async function ClientDetailPage({
     { key: "subs-bids", label: "Build an Estimate" },
     { key: "client-bid", label: "Client Bid" },
     { key: "files", label: `Files${clientFiles.length > 0 ? ` (${clientFiles.length})` : ""}` },
+    { key: "nurturing", label: "Nurturing" },
   ];
 
   return (
@@ -281,6 +283,15 @@ export default async function ClientDetailPage({
 
       {activeTab === "client-bid" && (
         <ClientBidTab subBids={subBids} clientName={safeClient.name} />
+      )}
+
+      {activeTab === "nurturing" && (
+        <NurturingEmailTab
+          companyId={params.companyId}
+          clientId={params.clientId}
+          clientName={safeClient.name}
+          clientEmail={safeClient.email ?? null}
+        />
       )}
 
       {activeTab === "files" && (
