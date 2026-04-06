@@ -229,28 +229,14 @@ export async function rescheduleTask(taskId: string, startDate: Date, endDate: D
   return { success: true };
 }
 
-const BATHROOM_TEMPLATE = [
-  { phase: "1 - Demo",         name: "Demolition & debris removal",      days: 2, trade: "Demo",       isMilestone: false },
-  { phase: "2 - Rough-In",     name: "Plumbing rough-in",                days: 2, trade: "Plumbing",   isMilestone: false },
-  { phase: "2 - Rough-In",     name: "Electrical rough-in",              days: 1, trade: "Electrical", isMilestone: false },
-  { phase: "2 - Rough-In",     name: "HVAC / exhaust fan rough-in",      days: 1, trade: "HVAC",       isMilestone: false },
-  { phase: "2 - Rough-In",     name: "Rough-in inspection",              days: 1, trade: null,         isMilestone: true  },
-  { phase: "3 - Waterproofing",name: "Backer board installation",        days: 1, trade: "Tile",       isMilestone: false },
-  { phase: "3 - Waterproofing",name: "Waterproofing membrane",           days: 1, trade: "Tile",       isMilestone: false },
-  { phase: "4 - Tile",         name: "Floor tile installation",          days: 2, trade: "Tile",       isMilestone: false },
-  { phase: "4 - Tile",         name: "Wall & shower tile installation",  days: 3, trade: "Tile",       isMilestone: false },
-  { phase: "4 - Tile",         name: "Grout & seal",                    days: 1, trade: "Tile",       isMilestone: false },
-  { phase: "5 - Fixtures",     name: "Vanity & plumbing fixtures",       days: 2, trade: "Plumbing",   isMilestone: false },
-  { phase: "5 - Fixtures",     name: "Electrical fixtures & lighting",   days: 1, trade: "Electrical", isMilestone: false },
-  { phase: "5 - Fixtures",     name: "Shower door / enclosure",         days: 1, trade: "Glass",      isMilestone: false },
-  { phase: "6 - Finishes",     name: "Paint & trim",                    days: 1, trade: "Paint",      isMilestone: false },
-  { phase: "6 - Finishes",     name: "Final inspection & punch list",   days: 1, trade: null,         isMilestone: true  },
-];
-
-export async function loadBathroomTemplate(projectId: string) {
+export async function loadScheduleTemplate(projectId: string, templateKey: string) {
   const session = await auth();
   if (!session) throw new Error("Unauthorized");
   requirePermission(session, "task:import");
+
+  const { SCHEDULE_TEMPLATES } = await import("@/lib/schedule/templates");
+  const template = SCHEDULE_TEMPLATES.find(t => t.key === templateKey);
+  if (!template) throw new Error("Template not found");
 
   const project = await prisma.project.findUnique({ where: { id: projectId } });
   if (!project) throw new Error("Project not found");
@@ -259,44 +245,41 @@ export async function loadBathroomTemplate(projectId: string) {
   await prisma.taskChangeLog.deleteMany({ where: { task: { projectId } } });
   await prisma.task.deleteMany({ where: { projectId } });
 
-  const start = new Date(project.startDate);
-  start.setHours(0, 0, 0, 0);
+  const projectStart = new Date(project.startDate);
+  projectStart.setHours(0, 0, 0, 0);
 
-  // Tasks run sequentially day-by-day
-  let cursor = new Date(start);
-  for (const t of BATHROOM_TEMPLATE) {
-    const taskStart = new Date(cursor);
-    // Skip weekends
-    while (taskStart.getDay() === 0 || taskStart.getDay() === 6) taskStart.setDate(taskStart.getDate() + 1);
+  for (const t of template.tasks) {
+    const taskStart = new Date(projectStart);
+    taskStart.setDate(taskStart.getDate() + t.offset);
     const taskEnd = new Date(taskStart);
-    taskEnd.setDate(taskEnd.getDate() + t.days - 1);
-    while (taskEnd.getDay() === 0 || taskEnd.getDay() === 6) taskEnd.setDate(taskEnd.getDate() + 1);
+    taskEnd.setDate(taskEnd.getDate() + t.duration - 1);
 
     await prisma.task.create({
       data: {
         projectId,
         phase: t.phase,
         name: t.name,
-        durationDays: t.days,
+        durationDays: t.duration,
         startDate: taskStart,
         endDate: taskEnd,
         predecessorIds: [],
-        trade: t.trade,
+        trade: t.trade ?? null,
         assignee: null,
-        isMilestone: t.isMilestone,
+        isMilestone: t.milestone,
         status: TaskStatus.NOT_STARTED,
         percentComplete: 0,
         createdBy: session.user.id,
       },
     });
-
-    // Next task starts day after this one ends
-    cursor = new Date(taskEnd);
-    cursor.setDate(cursor.getDate() + 1);
   }
 
   revalidatePath(`/${session.user.companyId}/${projectId}/schedule`);
-  return { success: true, count: BATHROOM_TEMPLATE.length };
+  return { success: true, count: template.tasks.length };
+}
+
+// Keep old name as alias for backwards compat
+export async function loadBathroomTemplate(projectId: string) {
+  return loadScheduleTemplate(projectId, "bathroom");
 }
 
 export async function exportScheduleCsv(projectId: string) {
