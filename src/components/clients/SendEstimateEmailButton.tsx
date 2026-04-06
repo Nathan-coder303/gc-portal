@@ -3,6 +3,7 @@
 import { useState } from "react";
 import CoverPagePickerModal, { CoverType, COVER_OPTIONS, PdfOptions, Page2Type } from "@/components/clients/CoverPagePickerModal";
 
+
 const MIKE_SIGNATURE = `Mike Baruh
 Founder/CEO | MIBH Construction
 Certified & Licensed General Contractor CGC 1527069
@@ -24,12 +25,13 @@ type Props = {
   description?: string | null;
   clientAddress?: string | null;
   isCommercial?: boolean;
+  clientCoverPhotoType?: string | null;
   clientCoverPhotoUrl?: string | null;
   clientCoverTitle?: string | null;
   hasInsertFile?: boolean;
 };
 
-export default function SendEstimateEmailButton({ templateId, companyId, templateName, clientName, clientEmail, estimateNumber, description, clientAddress, isCommercial, clientCoverPhotoUrl, clientCoverTitle, hasInsertFile }: Props) {
+export default function SendEstimateEmailButton({ templateId, companyId, templateName, clientName, clientEmail, estimateNumber, description, clientAddress, isCommercial, clientCoverPhotoType, clientCoverPhotoUrl, clientCoverTitle, hasInsertFile }: Props) {
   const firstName = clientName.split(" ")[0];
   const defaultBody = `Dear ${firstName},\n\nPlease find attached your estimate for the project.\n\nDo not hesitate to contact us with any questions.\n\n${MIKE_SIGNATURE}`;
 
@@ -41,7 +43,7 @@ export default function SendEstimateEmailButton({ templateId, companyId, templat
   if (clientAddress) subjectParts.push(`at ${clientAddress}`);
   const defaultSubject = subjectParts.join(" ");
 
-  const defaultCover: CoverType = isCommercial ? "ADDITIONS" : "FLAT_ROOFS";
+  const defaultCover: CoverType = (clientCoverPhotoType as CoverType) ?? (isCommercial ? "ADDITIONS" : "FLAT_ROOFS");
 
   const n = templateName.toLowerCase();
   const defaultPage2: Page2Type = n.includes("retail") ? "RETAIL" : n.includes("roof") ? "ROOF" : n.includes("addition") ? "ADDITION" : "NONE";
@@ -115,6 +117,7 @@ export default function SendEstimateEmailButton({ templateId, companyId, templat
       {step === "cover" && (
         <CoverPagePickerModal
           isCommercial={isCommercial}
+          initialCoverType={defaultCover}
           customCoverUrl={clientCoverPhotoUrl}
           customCoverLabel={clientCoverTitle}
           hasInsertFile={hasInsertFile}

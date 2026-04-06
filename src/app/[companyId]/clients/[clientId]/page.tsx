@@ -207,6 +207,7 @@ export default async function ClientDetailPage({
           canEdit={canEdit}
           canDelete={canDelete}
           isCommercial={isCommercial}
+          clientCoverPhotoType={safeClient.coverPhotoType ?? null}
           clientCoverPhotoUrl={safeClient.coverPhotoType === "CUSTOM" ? `/api/${params.companyId}/clients/${params.clientId}/cover` : null}
           clientCoverTitle={safeClient.coverTitle ?? null}
           hasInsertFile={hasInsertFile}

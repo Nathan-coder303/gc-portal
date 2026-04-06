@@ -25,6 +25,7 @@ export type PdfOptions = {
 
 export default function CoverPagePickerModal({
   isCommercial,
+  initialCoverType,
   customCoverUrl,
   customCoverLabel,
   hasInsertFile,
@@ -37,6 +38,7 @@ export default function CoverPagePickerModal({
   onClose,
 }: {
   isCommercial?: boolean;
+  initialCoverType?: CoverType | null;
   customCoverUrl?: string | null;
   customCoverLabel?: string | null;
   hasInsertFile?: boolean;
@@ -48,7 +50,7 @@ export default function CoverPagePickerModal({
   onSendEmail?: (opts: PdfOptions) => void;
   onClose: () => void;
 }) {
-  const defaultCover: CoverType = isCommercial ? "ADDITIONS" : "FLAT_ROOFS";
+  const defaultCover: CoverType = initialCoverType ?? (isCommercial ? "ADDITIONS" : "FLAT_ROOFS");
   const [cover, setCover]               = useState<CoverType>(defaultCover);
   const [page2, setPage2]               = useState<Page2Type>(initialPage2 === "NONE" ? "ROOF" : initialPage2);
   const [includeInsert, setIncludeInsert] = useState(true);

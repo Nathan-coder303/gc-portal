@@ -4,7 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import DeleteEstimateButton from "@/components/clients/DeleteEstimateButton";
 import EditEstimateModal from "@/components/clients/EditEstimateModal";
-import CoverPagePickerModal, { PdfOptions, Page2Type, COVER_OPTIONS } from "@/components/clients/CoverPagePickerModal";
+import CoverPagePickerModal, { PdfOptions, Page2Type, CoverType, COVER_OPTIONS } from "@/components/clients/CoverPagePickerModal";
 
 const MIKE_SIGNATURE = `Mike Baruh
 Founder/CEO | MIBH Construction
@@ -41,7 +41,7 @@ function fmt(n: number) {
 
 function EstimateCard({
   est, companyId, clientId, clientName, clientEmail, clientAddress, canEdit, canDelete,
-  isCommercial, clientCoverPhotoUrl, clientCoverTitle, hasInsertFile,
+  isCommercial, clientCoverPhotoType, clientCoverPhotoUrl, clientCoverTitle, hasInsertFile,
 }: {
   est: EstimateRow;
   companyId: string;
@@ -52,6 +52,7 @@ function EstimateCard({
   canEdit: boolean;
   canDelete: boolean;
   isCommercial?: boolean;
+  clientCoverPhotoType?: string | null;
   clientCoverPhotoUrl?: string | null;
   clientCoverTitle?: string | null;
   hasInsertFile?: boolean;
@@ -230,6 +231,7 @@ function EstimateCard({
       {step === "cover" && (
         <CoverPagePickerModal
           isCommercial={isCommercial}
+          initialCoverType={(clientCoverPhotoType as CoverType) ?? undefined}
           customCoverUrl={clientCoverPhotoUrl}
           customCoverLabel={clientCoverTitle}
           hasInsertFile={hasInsertFile}
@@ -355,7 +357,7 @@ function EstimateCard({
 
 export default function CollapsibleEstimateList({
   estimates, companyId, clientId, clientName, clientEmail, clientAddress, canEdit, canDelete,
-  isCommercial, clientCoverPhotoUrl, clientCoverTitle, hasInsertFile,
+  isCommercial, clientCoverPhotoType, clientCoverPhotoUrl, clientCoverTitle, hasInsertFile,
 }: {
   estimates: EstimateRow[];
   companyId: string;
@@ -366,6 +368,7 @@ export default function CollapsibleEstimateList({
   canEdit: boolean;
   canDelete: boolean;
   isCommercial?: boolean;
+  clientCoverPhotoType?: string | null;
   clientCoverPhotoUrl?: string | null;
   clientCoverTitle?: string | null;
   hasInsertFile?: boolean;
@@ -398,6 +401,7 @@ export default function CollapsibleEstimateList({
             canEdit={canEdit}
             canDelete={canDelete}
             isCommercial={isCommercial}
+            clientCoverPhotoType={clientCoverPhotoType}
             clientCoverPhotoUrl={clientCoverPhotoUrl}
             clientCoverTitle={clientCoverTitle}
             hasInsertFile={hasInsertFile}
