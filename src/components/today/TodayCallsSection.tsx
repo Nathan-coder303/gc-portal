@@ -151,7 +151,13 @@ function UrgentLeadCard({ lead, companyId, stages, onUpdate, onDelete }: {
 export default function TodayCallsSection({ companyId, initialLeads }: { companyId: string; initialLeads: UrgentLead[] }) {
   const [leads, setLeads] = useState<UrgentLead[]>(initialLeads);
   const [stages, setStages] = useState<PipelineStage[]>(BASE_STAGES);
+  const [sortDir, setSortDir] = useState<"desc" | "asc">("desc");
   useEffect(() => { setStages(loadStages()); }, []);
+
+  const sorted = [...leads].sort((a, b) => {
+    const diff = new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime();
+    return sortDir === "desc" ? -diff : diff;
+  });
 
   return (
     <div className="rounded-xl p-5 flex flex-col gap-3" style={{ background: "#161b22", border: `1px solid ${leads.length > 0 ? "#ef444455" : "#30373f"}` }}>
@@ -164,6 +170,15 @@ export default function TodayCallsSection({ companyId, initialLeads }: { company
           >
             {leads.length}
           </span>
+          {leads.length > 1 && (
+            <button
+              onClick={() => setSortDir(d => d === "desc" ? "asc" : "desc")}
+              className="text-xs px-2 py-0.5 rounded"
+              style={{ background: "#30373f", color: "#8b949e" }}
+            >
+              {sortDir === "desc" ? "Latest first" : "Earliest first"}
+            </button>
+          )}
         </div>
         <NsaCallReviewButton companyId={companyId} />
       </div>
@@ -171,7 +186,7 @@ export default function TodayCallsSection({ companyId, initialLeads }: { company
         <p className="text-xs" style={{ color: "#8b949e" }}>No urgent calls right now.</p>
       ) : (
         <div className="flex flex-col gap-2">
-          {leads.map(lead => (
+          {sorted.map(lead => (
             <UrgentLeadCard
               key={lead.id}
               lead={lead}
