@@ -12,6 +12,7 @@ export type UrgentLead = {
   notes: string | null;
   clientId: string | null;
   clientName: string | null;
+  phone: string | null;
   createdAt: string;
 };
 
@@ -105,6 +106,11 @@ function UrgentLeadCard({ lead, companyId, stages, onUpdate, onDelete }: {
         )}
         {lead.estimateValue != null && (
           <div className="text-xs font-medium" style={{ color: "#C9A84C" }}>${lead.estimateValue.toLocaleString()}</div>
+        )}
+        {lead.phone && (
+          <a href={`tel:${lead.phone}`} className="text-xs font-medium mt-0.5 block hover:underline" style={{ color: "#60a5fa" }}>
+            📞 {lead.phone}
+          </a>
         )}
         {lead.notes && <div className="text-xs mt-0.5" style={{ color: "#8b949e" }}>{lead.notes}</div>}
       </div>

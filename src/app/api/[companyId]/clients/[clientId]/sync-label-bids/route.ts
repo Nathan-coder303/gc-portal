@@ -83,9 +83,9 @@ export async function POST(
     const gmail = google.gmail({ version: "v1", auth: getOAuthClient() });
     const safeApiKey = (process.env.ANTHROPIC_API_KEY ?? "").replace(/[^\x20-\x7E]/g, "").trim();
 
-    // Get already-imported gmail msg IDs to deduplicate (exclude EXCLUDED placeholders so PDF emails can be retried)
+    // Get already-imported gmail msg IDs to deduplicate — include EXCLUDED so deleted bids never re-import
     const existingBids = await prisma.subBid.findMany({
-      where: { clientId: params.clientId, fileUrl: { startsWith: "gmail:" }, status: { not: "EXCLUDED" } },
+      where: { clientId: params.clientId, fileUrl: { startsWith: "gmail:" } },
       select: { fileUrl: true },
     });
     const processedMsgIds = new Set(

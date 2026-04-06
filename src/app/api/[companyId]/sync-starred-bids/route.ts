@@ -231,6 +231,45 @@ Respond ONLY with valid JSON, no markdown:
         continue;
       }
 
+      // If there's a PDF attachment, extract amount + date from it for accuracy
+      let bidDate: string | null = null;
+      if (pdfParts.length > 0 && pdfParts[0].body?.attachmentId) {
+        try {
+          const attRes = await gmail.users.messages.attachments.get({
+            userId: "me",
+            messageId: msg.id!,
+            id: pdfParts[0].body.attachmentId,
+          });
+          const pdfBase64 = (attRes.data.data ?? "").replace(/-/g, "+").replace(/_/g, "/");
+          if (pdfBase64) {
+            const pdfRes = await fetch("https://api.anthropic.com/v1/messages", {
+              method: "POST",
+              headers: {
+                "content-type": "application/json",
+                "x-api-key": process.env.ANTHROPIC_API_KEY ?? "",
+                "anthropic-version": "2023-06-01",
+                "anthropic-beta": "pdfs-2024-09-25",
+              },
+              body: JSON.stringify({
+                model: "claude-haiku-4-5-20251001",
+                max_tokens: 150,
+                messages: [{ role: "user", content: [
+                  { type: "document", source: { type: "base64", media_type: "application/pdf", data: pdfBase64 } },
+                  { type: "text", text: "Extract from this bid/proposal PDF. Respond ONLY with valid JSON: {\"amount\": <grand total as number or null>, \"date\": <proposal date as \"Mon DD, YYYY\" or null>}" },
+                ]}],
+              }),
+            });
+            const pdfJson = await pdfRes.json() as { content?: { type: string; text: string }[] };
+            const pdfText = pdfJson.content?.[0]?.type === "text" ? pdfJson.content[0].text.trim() : "{}";
+            const pdfData = JSON.parse(pdfText.replace(/```json\n?|\n?```/g, ""));
+            if (pdfData.amount != null && Number(pdfData.amount) > 0) parsed.amount = Number(pdfData.amount);
+            if (pdfData.date && pdfData.date !== "null") bidDate = String(pdfData.date);
+          }
+        } catch (e) {
+          errors.push(`[pdf] ${String(e).slice(0, 60)}`);
+        }
+      }
+
       // Resolve which client to use
       let clientId = parsed.existingClientId ?? null;
 
@@ -311,6 +350,7 @@ Respond ONLY with valid JSON, no markdown:
           status: "RECEIVED",
           emailSource: from,
           isPlaceholder: false,
+          bidDate: bidDate,
         },
       });
 

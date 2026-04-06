@@ -8,6 +8,7 @@ import TodayLeadCard from "@/components/leads/TodayLeadCard";
 import TodayTaskCard, { FollowUpItem } from "@/components/today/TodayTaskCard";
 import TodayCallsSection from "@/components/today/TodayCallsSection";
 import PendingCountersignsCard from "@/components/today/PendingCountersignsCard";
+import CountersignAlert from "@/components/today/CountersignAlert";
 
 const GOAL_2026 = 5_000_000;
 
@@ -93,8 +94,11 @@ export default async function TodayPage({
     // To Call ASAP pipeline cards
     prisma.pipelineCard.findMany({
       where: { companyId: params.companyId, stage: "TO_CALL_ASAP" },
-      orderBy: [{ sortOrder: "asc" }],
-      include: { client: { select: { id: true, name: true } } },
+      orderBy: [{ createdAt: "desc" }],
+      include: {
+        client: { select: { id: true, name: true, phone: true } },
+        lead: { select: { phone: true } },
+      },
     }),
     // Leads not yet in pipeline
     prisma.lead.count({
@@ -211,24 +215,19 @@ export default async function TodayPage({
         </div>
       </div>
 
-      {/* Pending countersign alert */}
-      {pendingCountersigns.length > 0 && (
-        <div
-          className="flex items-center gap-3 mb-3 px-4 py-3 rounded-xl"
-          style={{ background: "#1a2a1a", border: "1px solid #22c55e55" }}
-        >
-          <span style={{ fontSize: 18 }}>✍️</span>
-          <div className="flex-1">
-            <span className="text-sm font-semibold" style={{ color: "#22c55e" }}>
-              {pendingCountersigns.length} estimate{pendingCountersigns.length > 1 ? "s" : ""} awaiting your countersignature
-            </span>
-            <span className="text-xs ml-2" style={{ color: "#8b949e" }}>
-              {pendingCountersigns.map(e => e.estimateNumber ?? e.name).join(", ")}
-            </span>
-          </div>
-          <span className="text-xs font-semibold" style={{ color: "#22c55e" }}>↓ See card below</span>
-        </div>
-      )}
+      {/* Pending countersign alert — click to sign directly */}
+      <CountersignAlert
+        companyId={params.companyId}
+        estimates={pendingCountersigns.map(est => ({
+          id: est.id,
+          name: est.name,
+          estimateNumber: est.estimateNumber ?? null,
+          signedAt: est.signedAt!.toISOString(),
+          signedByName: est.signedByName ?? null,
+          clientName: est.client?.name ?? null,
+          clientId: est.client?.id ?? null,
+        }))}
+      />
 
       {/* Untriaged leads alert */}
       {untriaged > 0 && (
@@ -367,6 +366,7 @@ export default async function TodayPage({
               notes: c.notes,
               clientId: c.clientId,
               clientName: c.client?.name ?? null,
+              phone: c.lead?.phone ?? c.client?.phone ?? null,
               createdAt: c.createdAt.toISOString(),
             }))}
           />
