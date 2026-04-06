@@ -124,7 +124,7 @@ export default async function SchedulePage({
       {tasks.length === 0 ? (
         <div className="rounded-xl p-12 text-center" style={CARD}>
           <p style={{ color: "#8b949e" }}>No tasks yet.</p>
-          <p className="text-sm mt-2" style={{ color: "#484f58" }}>Use "🛁 Load Bathroom Template" above to get started, or import a CSV in Settings.</p>
+          <p className="text-sm mt-2" style={{ color: "#484f58" }}>Use the template dropdown above to get started, or import a CSV in Settings.</p>
         </div>
       ) : (
         <div className="space-y-6">
