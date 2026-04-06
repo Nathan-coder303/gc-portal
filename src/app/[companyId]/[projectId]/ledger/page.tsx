@@ -31,7 +31,7 @@ export default async function LedgerPage({
     }),
     prisma.account.findMany({ where: { projectId: params.projectId, archivedAt: null } }),
     prisma.partner.findMany({
-      where: { companyId: params.companyId, archivedAt: null },
+      where: { companyId: params.companyId, projectId: params.projectId, archivedAt: null },
       orderBy: { name: "asc" },
     }),
     prisma.project.findUnique({ where: { id: params.projectId }, select: { llcBeginningBalance: true, llcName: true } }),
@@ -138,7 +138,7 @@ export default async function LedgerPage({
           <p className="text-sm mt-0.5" style={{ color: "#8b949e" }}>{entries.length} journal entries</p>
         </div>
         <div className="flex items-center gap-3 flex-wrap">
-          {isAdmin && <AddPartnerInline />}
+          {isAdmin && <AddPartnerInline projectId={params.projectId} />}
           <a
             href={`/api/${params.companyId}/${params.projectId}/export/ledger`}
             className="px-3 py-1.5 text-sm rounded-lg font-medium"

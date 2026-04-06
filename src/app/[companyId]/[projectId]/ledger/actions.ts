@@ -319,12 +319,14 @@ export async function createPartner(formData: FormData) {
   const role = (formData.get("role") as string).trim() || null;
   const ownershipPctRaw = formData.get("ownershipPct") as string;
   const ownershipPct = ownershipPctRaw ? parseFloat(ownershipPctRaw) : null;
+  const projectId = (formData.get("projectId") as string) || null;
 
   if (!name) throw new Error("Name is required");
 
   const partner = await prisma.partner.create({
     data: {
       companyId: session.user.companyId,
+      projectId,
       name,
       email,
       role,
@@ -427,15 +429,16 @@ export async function archivePartner(id: string) {
   return { success: true };
 }
 
-export async function archiveAllPartners() {
+export async function archiveAllPartners(projectId?: string) {
   const session = await auth();
   if (!session) throw new Error("Unauthorized");
   requirePermission(session, "partner:archive");
 
-  const partners = await prisma.partner.findMany({
-    where: { companyId: session.user.companyId, archivedAt: null },
-    select: { id: true },
-  });
+  const where = projectId
+    ? { companyId: session.user.companyId, projectId, archivedAt: null }
+    : { companyId: session.user.companyId, archivedAt: null };
+
+  const partners = await prisma.partner.findMany({ where, select: { id: true } });
 
   for (const p of partners) {
     await prisma.partner.update({

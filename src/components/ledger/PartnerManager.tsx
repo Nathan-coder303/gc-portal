@@ -59,8 +59,7 @@ function PartnerFormFields({ defaults }: { defaults?: Partner }) {
 }
 
 /** Inline add form — rendered in the page header area */
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-export function AddPartnerInline({ onAdded }: { onAdded?: (p: Partner) => void }) {
+export function AddPartnerInline({ projectId }: { projectId: string }) {
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
@@ -74,7 +73,6 @@ export function AddPartnerInline({ onAdded }: { onAdded?: (p: Partner) => void }
       await createPartner(fd);
       setOpen(false);
       (e.target as HTMLFormElement).reset();
-      // Refresh to get new partner with id
       window.location.reload();
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : "Failed");
@@ -102,6 +100,7 @@ export function AddPartnerInline({ onAdded }: { onAdded?: (p: Partner) => void }
             </div>
           )}
           <form onSubmit={handleCreate}>
+            <input type="hidden" name="projectId" value={projectId} />
             <PartnerFormFields />
             <div className="flex gap-2 mt-3">
               <button type="submit" disabled={loading}
@@ -179,7 +178,7 @@ export default function PartnerManager({
   async function handleResetAll() {
     setResetting(true);
     try {
-      const result = await archiveAllPartners();
+      const result = await archiveAllPartners(projectId);
       setPartners([]);
       setSuccess(`Removed ${result.count} partner${result.count !== 1 ? "s" : ""}.`);
       setConfirmReset(false);
