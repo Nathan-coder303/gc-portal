@@ -59,7 +59,8 @@ function PartnerFormFields({ defaults }: { defaults?: Partner }) {
 }
 
 /** Inline add form — rendered in the page header area */
-export function AddPartnerInline({ onAdded: _onAdded }: { onAdded: (p: Partner) => void }) {
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+export function AddPartnerInline({ onAdded }: { onAdded?: (p: Partner) => void }) {
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
