@@ -2,6 +2,7 @@ import { prisma } from "@/lib/prisma";
 import { addDays, format } from "date-fns";
 import GanttChart from "@/components/schedule/GanttChart";
 import TaskTable from "@/components/schedule/TaskTable";
+import LoadTemplateButton from "@/components/schedule/LoadTemplateButton";
 import { computeCriticalPath } from "@/lib/schedule/gantt";
 import { auth } from "@/lib/auth";
 import { can } from "@/lib/auth/permissions";
@@ -77,13 +78,16 @@ export default async function SchedulePage({
             {project?.startDate.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
           </p>
         </div>
-        <a
-          href={`/api/${params.companyId}/${params.projectId}/export/schedule`}
-          className="px-3 py-1.5 text-sm rounded-lg font-medium"
-          style={{ background: "#C9A84C", color: "#0d1117" }}
-        >
-          Export CSV
-        </a>
+        <div className="flex items-center gap-2">
+          {canEdit && <LoadTemplateButton projectId={params.projectId} />}
+          <a
+            href={`/api/${params.companyId}/${params.projectId}/export/schedule`}
+            className="px-3 py-1.5 text-sm rounded-lg font-medium"
+            style={{ background: "#C9A84C", color: "#0d1117" }}
+          >
+            Export CSV
+          </a>
+        </div>
       </div>
 
       {totalTasks > 0 && (
@@ -119,7 +123,8 @@ export default async function SchedulePage({
 
       {tasks.length === 0 ? (
         <div className="rounded-xl p-12 text-center" style={CARD}>
-          <p style={{ color: "#8b949e" }}>No tasks yet. Import a schedule CSV in Settings.</p>
+          <p style={{ color: "#8b949e" }}>No tasks yet.</p>
+          <p className="text-sm mt-2" style={{ color: "#484f58" }}>Use "🛁 Load Bathroom Template" above to get started, or import a CSV in Settings.</p>
         </div>
       ) : (
         <div className="space-y-6">
@@ -129,7 +134,7 @@ export default async function SchedulePage({
               <p className="text-xs mt-0.5" style={{ color: "#8b949e" }}>Click phase headers to expand/collapse</p>
             </div>
             <div className="p-4">
-              <GanttChart tasks={ganttTasks} projectStart={project?.startDate ?? new Date()} />
+              <GanttChart tasks={ganttTasks} projectStart={project?.startDate ?? new Date()} canEdit={canEdit} />
             </div>
           </div>
 

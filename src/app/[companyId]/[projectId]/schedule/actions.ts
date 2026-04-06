@@ -210,6 +210,95 @@ export async function updateTask(formData: FormData) {
   return { success: true };
 }
 
+export async function rescheduleTask(taskId: string, startDate: Date, endDate: Date) {
+  const session = await auth();
+  if (!session) throw new Error("Unauthorized");
+  requirePermission(session, "task:edit");
+
+  const existing = await prisma.task.findUnique({ where: { id: taskId } });
+  if (!existing) throw new Error("Task not found");
+
+  const durationDays = Math.round((endDate.getTime() - startDate.getTime()) / 86400000);
+
+  await prisma.task.update({
+    where: { id: taskId },
+    data: { startDate, endDate, durationDays, updatedBy: session.user.id },
+  });
+
+  revalidatePath(`/${session.user.companyId}/${existing.projectId}/schedule`);
+  return { success: true };
+}
+
+const BATHROOM_TEMPLATE = [
+  { phase: "1 - Demo",         name: "Demolition & debris removal",      days: 2, trade: "Demo",       isMilestone: false },
+  { phase: "2 - Rough-In",     name: "Plumbing rough-in",                days: 2, trade: "Plumbing",   isMilestone: false },
+  { phase: "2 - Rough-In",     name: "Electrical rough-in",              days: 1, trade: "Electrical", isMilestone: false },
+  { phase: "2 - Rough-In",     name: "HVAC / exhaust fan rough-in",      days: 1, trade: "HVAC",       isMilestone: false },
+  { phase: "2 - Rough-In",     name: "Rough-in inspection",              days: 1, trade: null,         isMilestone: true  },
+  { phase: "3 - Waterproofing",name: "Backer board installation",        days: 1, trade: "Tile",       isMilestone: false },
+  { phase: "3 - Waterproofing",name: "Waterproofing membrane",           days: 1, trade: "Tile",       isMilestone: false },
+  { phase: "4 - Tile",         name: "Floor tile installation",          days: 2, trade: "Tile",       isMilestone: false },
+  { phase: "4 - Tile",         name: "Wall & shower tile installation",  days: 3, trade: "Tile",       isMilestone: false },
+  { phase: "4 - Tile",         name: "Grout & seal",                    days: 1, trade: "Tile",       isMilestone: false },
+  { phase: "5 - Fixtures",     name: "Vanity & plumbing fixtures",       days: 2, trade: "Plumbing",   isMilestone: false },
+  { phase: "5 - Fixtures",     name: "Electrical fixtures & lighting",   days: 1, trade: "Electrical", isMilestone: false },
+  { phase: "5 - Fixtures",     name: "Shower door / enclosure",         days: 1, trade: "Glass",      isMilestone: false },
+  { phase: "6 - Finishes",     name: "Paint & trim",                    days: 1, trade: "Paint",      isMilestone: false },
+  { phase: "6 - Finishes",     name: "Final inspection & punch list",   days: 1, trade: null,         isMilestone: true  },
+];
+
+export async function loadBathroomTemplate(projectId: string) {
+  const session = await auth();
+  if (!session) throw new Error("Unauthorized");
+  requirePermission(session, "task:import");
+
+  const project = await prisma.project.findUnique({ where: { id: projectId } });
+  if (!project) throw new Error("Project not found");
+
+  // Delete existing tasks
+  await prisma.taskChangeLog.deleteMany({ where: { task: { projectId } } });
+  await prisma.task.deleteMany({ where: { projectId } });
+
+  const start = new Date(project.startDate);
+  start.setHours(0, 0, 0, 0);
+
+  // Tasks run sequentially day-by-day
+  let cursor = new Date(start);
+  for (const t of BATHROOM_TEMPLATE) {
+    const taskStart = new Date(cursor);
+    // Skip weekends
+    while (taskStart.getDay() === 0 || taskStart.getDay() === 6) taskStart.setDate(taskStart.getDate() + 1);
+    const taskEnd = new Date(taskStart);
+    taskEnd.setDate(taskEnd.getDate() + t.days - 1);
+    while (taskEnd.getDay() === 0 || taskEnd.getDay() === 6) taskEnd.setDate(taskEnd.getDate() + 1);
+
+    await prisma.task.create({
+      data: {
+        projectId,
+        phase: t.phase,
+        name: t.name,
+        durationDays: t.days,
+        startDate: taskStart,
+        endDate: taskEnd,
+        predecessorIds: [],
+        trade: t.trade,
+        assignee: null,
+        isMilestone: t.isMilestone,
+        status: TaskStatus.NOT_STARTED,
+        percentComplete: 0,
+        createdBy: session.user.id,
+      },
+    });
+
+    // Next task starts day after this one ends
+    cursor = new Date(taskEnd);
+    cursor.setDate(cursor.getDate() + 1);
+  }
+
+  revalidatePath(`/${session.user.companyId}/${projectId}/schedule`);
+  return { success: true, count: BATHROOM_TEMPLATE.length };
+}
+
 export async function exportScheduleCsv(projectId: string) {
   const tasks = await prisma.task.findMany({
     where: { projectId },
