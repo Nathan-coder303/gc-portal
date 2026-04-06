@@ -125,6 +125,7 @@ export async function GET(
     insulationType: template.insulationType ?? "ISO",
     clientCoverPhotoType: coverTypeParam ?? template.client?.coverPhotoType ?? null,
     clientCoverPhotoUrl: await resolvePrivateCoverUrl(template.client?.coverPhotoUrl ?? null),
+    clientCoverTitle: template.client?.coverTitle ?? null,
   });
 
   // Insert client's marked PDF file as page 3 (if opted in and file exists)

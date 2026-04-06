@@ -605,6 +605,18 @@ export async function updateClientCoverPhoto(clientId: string, coverPhotoType: s
   return { success: true };
 }
 
+export async function updateClientCoverTitle(clientId: string, coverTitle: string | null) {
+  const session = await auth();
+  if (!session) throw new Error("Unauthorized");
+  requirePermission(session, "estimateTemplate:edit");
+  await prisma.client.update({
+    where: { id: clientId },
+    data: { coverTitle: coverTitle || null },
+  });
+  revalidatePath(`/${session.user.companyId}/clients/${clientId}`);
+  return { success: true };
+}
+
 export async function setTemplateClient(templateId: string, clientId: string | null) {
   const session = await auth();
   if (!session) throw new Error("Unauthorized");

@@ -155,6 +155,7 @@ export default async function ClientDetailPage({
         companyId={params.companyId}
         initialType={safeClient.coverPhotoType ?? null}
         initialUrl={safeClient.coverPhotoUrl ?? null}
+        initialTitle={safeClient.coverTitle ?? null}
       />
 
       {/* Tab bar */}

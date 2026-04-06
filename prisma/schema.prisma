@@ -142,6 +142,7 @@ model Client {
   updatedAt DateTime          @updatedAt
   coverPhotoType String?   // "FLAT_ROOFS" | "ADDITIONS" | "CUSTOM"
   coverPhotoUrl  String?   // Vercel Blob URL for CUSTOM uploads
+  coverTitle     String?   // Custom title shown on PDF cover page
   isCommercial   Boolean   @default(false)
   status         String    @default("PROSPECT") // "PROSPECT" | "ACTIVE"
   sortOrder      Int       @default(0)

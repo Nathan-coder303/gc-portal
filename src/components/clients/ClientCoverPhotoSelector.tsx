@@ -2,7 +2,7 @@
 
 import { useState, useRef, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { updateClientCoverPhoto } from "@/app/[companyId]/estimates/actions";
+import { updateClientCoverPhoto, updateClientCoverTitle } from "@/app/[companyId]/estimates/actions";
 
 const GOLD = "#C9A84C";
 
@@ -13,16 +13,50 @@ const PRESETS = [
   { key: "SHINGLE_ROOFS", label: "Shingle Roofs", thumb: "/shingle-roofs-cover.png" },
 ] as const;
 
+/** Compress an image File client-side to stay under 4MB (Vercel limit). */
+async function compressImage(file: File, maxPx = 1600, quality = 0.85): Promise<Blob> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const img = new Image();
+      img.onload = () => {
+        const scale = Math.min(1, maxPx / Math.max(img.width, img.height));
+        const w = Math.round(img.width * scale);
+        const h = Math.round(img.height * scale);
+        const canvas = document.createElement("canvas");
+        canvas.width = w;
+        canvas.height = h;
+        const ctx = canvas.getContext("2d")!;
+        ctx.drawImage(img, 0, 0, w, h);
+        canvas.toBlob(
+          (blob) => {
+            if (blob) resolve(blob);
+            else reject(new Error("Canvas toBlob failed"));
+          },
+          "image/jpeg",
+          quality
+        );
+      };
+      img.onerror = () => reject(new Error("Image load failed"));
+      img.src = e.target!.result as string;
+    };
+    reader.onerror = () => reject(new Error("FileReader failed"));
+    reader.readAsDataURL(file);
+  });
+}
+
 export default function ClientCoverPhotoSelector({
   clientId,
   companyId,
   initialType,
   initialUrl: _initialUrl, // eslint-disable-line @typescript-eslint/no-unused-vars
+  initialTitle,
 }: {
   clientId: string;
   companyId: string;
   initialType: string | null;
   initialUrl: string | null;
+  initialTitle?: string | null;
 }) {
   const proxyUrl = `/api/${companyId}/clients/${clientId}/cover`;
   const [selected, setSelected] = useState<string | null>(initialType);
@@ -31,6 +65,8 @@ export default function ClientCoverPhotoSelector({
   const [uploadError, setUploadError] = useState<string | null>(null);
   const [dragOver, setDragOver] = useState(false);
   const [isPending, startTransition] = useTransition();
+  const [coverTitle, setCoverTitle] = useState(initialTitle ?? "");
+  const [titleSaving, setTitleSaving] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
   const router = useRouter();
 
@@ -51,12 +87,23 @@ export default function ClientCoverPhotoSelector({
     });
   }
 
+  async function saveTitle() {
+    setTitleSaving(true);
+    try {
+      await updateClientCoverTitle(clientId, coverTitle || null);
+      router.refresh();
+    } finally {
+      setTitleSaving(false);
+    }
+  }
+
   async function uploadFile(file: File) {
     setUploading(true);
     setUploadError(null);
     try {
+      const compressed = await compressImage(file);
       const fd = new FormData();
-      fd.append("file", file);
+      fd.append("file", compressed, file.name.replace(/\.[^.]+$/, ".jpg"));
       const res = await fetch(`/api/${companyId}/clients/${clientId}/cover`, { method: "POST", body: fd });
       const text = await res.text();
       let data: { url?: string; error?: string } = {};
@@ -183,6 +230,30 @@ export default function ClientCoverPhotoSelector({
       {uploadError && (
         <p className="text-xs mt-2" style={{ color: "#ef4444" }}>⚠ {uploadError}</p>
       )}
+
+      {/* Cover page title */}
+      <div className="mt-4 pt-4" style={{ borderTop: "1px solid #30373f" }}>
+        <label className="block text-xs font-medium mb-1.5" style={{ color: "#8b949e" }}>Cover Page Title <span style={{ color: "#555" }}>(optional — appears on PDF cover)</span></label>
+        <div className="flex gap-2">
+          <input
+            type="text"
+            value={coverTitle}
+            onChange={(e) => setCoverTitle(e.target.value)}
+            onKeyDown={(e) => e.key === "Enter" && saveTitle()}
+            placeholder="e.g. Roof Replacement Project"
+            className="flex-1 rounded-lg px-3 py-2 text-sm focus:outline-none"
+            style={{ background: "#0d1117", border: "1px solid #30373f", color: "#e6edf3" }}
+          />
+          <button
+            onClick={saveTitle}
+            disabled={titleSaving}
+            className="px-3 py-2 rounded-lg text-xs font-semibold disabled:opacity-50"
+            style={{ background: GOLD, color: "#0d1117" }}
+          >
+            {titleSaving ? "Saving…" : "Save"}
+          </button>
+        </div>
+      </div>
     </div>
   );
 }

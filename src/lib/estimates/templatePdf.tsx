@@ -167,6 +167,7 @@ type TemplatePdfProps = {
   insulationType?: string | null;
   clientCoverPhotoType?: string | null;
   clientCoverPhotoUrl?: string | null;
+  clientCoverTitle?: string | null;
 };
 
 function ItemTableHeader({ showLineNum }: { showLineNum?: boolean }) {
@@ -219,7 +220,7 @@ function ItemRow({ item, index, lineNum }: { item: Item; index: number; lineNum?
 }
 
 // ─── Presentation Cover Page (single page) ────────────────────────────────────
-function CoverPages({ template, client, clientCoverPhotoType, clientCoverPhotoUrl }: Pick<TemplatePdfProps, "template" | "client" | "clientCoverPhotoType" | "clientCoverPhotoUrl">) {
+function CoverPages({ template, client, clientCoverPhotoType, clientCoverPhotoUrl, clientCoverTitle }: Pick<TemplatePdfProps, "template" | "client" | "clientCoverPhotoType" | "clientCoverPhotoUrl" | "clientCoverTitle">) {
   const logoPath = path.join(process.cwd(), "public", "logo.png");
   const templateNameLower = template.name?.toLowerCase() ?? "";
   const isKitchenLaundry = templateNameLower.includes("kitchen") || templateNameLower.includes("laundry");
@@ -275,10 +276,13 @@ function CoverPages({ template, client, clientCoverPhotoType, clientCoverPhotoUr
           {client?.email ? <Text style={{ fontSize: 10, color: "rgba(255,255,255,0.85)" }}>{client.email}</Text> : null}
         </View>
         <View style={{ width: 1, backgroundColor: "rgba(255,255,255,0.4)", marginVertical: 2, marginHorizontal: 24 }} />
-        {/* Right: estimate name + date — flex:1 prevents word hyphenation */}
+        {/* Right: cover title (or estimate name) + date — flex:1 prevents word hyphenation */}
         <View style={{ flex: 1, justifyContent: "center" }}>
-          {template.name ? (
-            <Text style={{ fontSize: 18, fontFamily: "Helvetica-Bold", color: "#fff", marginBottom: 8, lineHeight: 1.25 }}>{template.name}</Text>
+          {(clientCoverTitle || template.name) ? (
+            <Text style={{ fontSize: 18, fontFamily: "Helvetica-Bold", color: "#fff", marginBottom: 8, lineHeight: 1.25 }}>{clientCoverTitle || template.name}</Text>
+          ) : null}
+          {clientCoverTitle && template.name ? (
+            <Text style={{ fontSize: 11, color: "rgba(255,255,255,0.75)", marginBottom: 6 }}>{template.name}</Text>
           ) : null}
           <Text style={{ fontSize: 11, color: "rgba(255,255,255,0.85)" }}>{today}</Text>
         </View>
@@ -694,7 +698,7 @@ function AdditionPage2({ client }: Pick<TemplatePdfProps, "client">) {
   );
 }
 
-function TemplatePdfDocument({ companyName, template, client, divisions, showTerms, termsContent, paymentSchedule, gcFeePercent, summaryGroups, clientSignatureData, clientSignedByName, clientSignedAt, contractorSignatureData, contractorSignedAt, includeRoofUpgradesPage, includeCoverPage, includeAdditionPages, insulationType, clientCoverPhotoType, clientCoverPhotoUrl }: TemplatePdfProps) {
+function TemplatePdfDocument({ companyName, template, client, divisions, showTerms, termsContent, paymentSchedule, gcFeePercent, summaryGroups, clientSignatureData, clientSignedByName, clientSignedAt, contractorSignatureData, contractorSignedAt, includeRoofUpgradesPage, includeCoverPage, includeAdditionPages, insulationType, clientCoverPhotoType, clientCoverPhotoUrl, clientCoverTitle }: TemplatePdfProps) {
   const grouped = groupDivisions(divisions);
 
   // Compute raw totals per group label (or null for ungrouped)
@@ -848,8 +852,8 @@ function TemplatePdfDocument({ companyName, template, client, divisions, showTer
 
   return (
     <Document title={`${template.name} — Estimate`} author={companyName}>
-      {(includeCoverPage || clientCoverPhotoType) && !includeAdditionPages && !includeRoofUpgradesPage && <CoverPages template={template} client={client} clientCoverPhotoType={clientCoverPhotoType} clientCoverPhotoUrl={clientCoverPhotoUrl} />}
-      {includeRoofUpgradesPage && <CoverPages template={template} client={client} clientCoverPhotoType={clientCoverPhotoType} clientCoverPhotoUrl={clientCoverPhotoUrl} />}
+      {(includeCoverPage || clientCoverPhotoType) && !includeAdditionPages && !includeRoofUpgradesPage && <CoverPages template={template} client={client} clientCoverPhotoType={clientCoverPhotoType} clientCoverPhotoUrl={clientCoverPhotoUrl} clientCoverTitle={clientCoverTitle} />}
+      {includeRoofUpgradesPage && <CoverPages template={template} client={client} clientCoverPhotoType={clientCoverPhotoType} clientCoverPhotoUrl={clientCoverPhotoUrl} clientCoverTitle={clientCoverTitle} />}
       {includeRoofUpgradesPage && <RoofIntroPage template={template} client={client} />}
       {includeAdditionPages && <AdditionPage1 template={template} client={client} clientCoverPhotoType={clientCoverPhotoType} clientCoverPhotoUrl={clientCoverPhotoUrl} />}
       {includeAdditionPages && <AdditionPage2 client={client} />}
