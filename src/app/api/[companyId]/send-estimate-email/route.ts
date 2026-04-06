@@ -144,6 +144,7 @@ export async function POST(
         name: i.name,
         detail: i.detail,
         unit: i.unit,
+        csiCode: i.csiCode ?? null,
         defaultQty: i.defaultQty ? Number(i.defaultQty) : null,
         defaultUnitCost: i.defaultUnitCost ? Number(i.defaultUnitCost) : null,
         defaultMarkupPct: i.defaultMarkupPct ? Number(i.defaultMarkupPct) : null,

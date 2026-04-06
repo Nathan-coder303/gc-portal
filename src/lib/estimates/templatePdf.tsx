@@ -130,7 +130,7 @@ const styles = StyleSheet.create({
 // Defined outside StyleSheet.create to avoid any style inheritance/override issues
 const GRAND_TOTAL_VALUE_STYLE = { fontSize: 13 as const, fontFamily: "Helvetica-Bold" as const, color: "#C9A84C" as const };
 
-type Item = { id: string; name: string; detail: string | null; unit: string | null; defaultQty: number | null; defaultUnitCost: number | null; defaultMarkupPct: number | null; visibleInPdf: boolean; notes: string | null };
+type Item = { id: string; name: string; detail: string | null; unit: string | null; defaultQty: number | null; defaultUnitCost: number | null; defaultMarkupPct: number | null; visibleInPdf: boolean; notes: string | null; csiCode?: string | null };
 type Group = { id: string; name: string; items: Item[] };
 type Division = { id: string; csiCode: string | null; name: string; groups: Group[]; items: Item[] };
 
@@ -194,6 +194,7 @@ function ItemRow({ item, index, lineNum }: { item: Item; index: number; lineNum?
       <View style={[rowStyle, { borderBottomWidth: 0 }]}>
         {lineNum != null && <Text style={[styles.cellMuted, styles.colLineNum]}>{lineNum}</Text>}
         <View style={styles.colName}>
+          {item.csiCode ? <Text style={{ fontSize: 6.5, color: "#94a3b8", marginBottom: 1 }}>{item.csiCode}</Text> : null}
           {(item.name ?? "").split(/\n| (?=[A-C]\. [A-Z])/).map((part, pi) => (
             <Text key={pi} style={[styles.cellText, pi > 0 ? { marginTop: 3 } : {}]}>{part}</Text>
           ))}
@@ -699,7 +700,7 @@ function AdditionPage2({ client }: Pick<TemplatePdfProps, "client">) {
   );
 }
 
-// ─── Retail Marketing Page (Page 1) ──────────────────────────────────────────
+// ─── Retail Presentation Page (single page: cover + why choose us + scope) ─────
 function RetailPage1({ template, client, clientCoverPhotoType, clientCoverPhotoUrl, clientCoverTitle }: Pick<TemplatePdfProps, "template" | "client" | "clientCoverPhotoType" | "clientCoverPhotoUrl" | "clientCoverTitle">) {
   const logoPath = path.join(process.cwd(), "public", "logo.png");
   let coverImgSrc: string;
@@ -717,260 +718,156 @@ function RetailPage1({ template, client, clientCoverPhotoType, clientCoverPhotoU
   const today = new Date().toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" });
   const clientCity = [client?.city, client?.state, client?.zip].filter(Boolean).join(", ");
 
-  const WHY_ITEMS = [
-    { title: "Proven Retail Buildout Expertise", body: "Extensive experience delivering high-quality retail spaces designed for functionality, customer flow, and brand impact" },
-    { title: "Trusted by Recognized Brands", body: "Kids Story – Eden Prairie, MN · City Fashion – Margaritaville, Orlando, FL · Fridababy – Miami, FL" },
-    { title: "Over 20 Years of Construction Excellence", body: "Consistent track record of high-quality workmanship across South Florida and beyond" },
+  const WHY_LEFT = [
+    { title: "Proven Retail Buildout Expertise", body: "High-quality retail spaces for functionality, customer flow, and brand impact" },
+    { title: "Trusted by Recognized Brands", body: "Kids Story – Eden Prairie, MN · City Fashion – Orlando, FL · Fridababy – Miami, FL" },
+    { title: "Over 20 Years of Excellence", body: "Consistent track record of quality workmanship across South Florida and beyond" },
     { title: "Licensed, Insured & Code-Compliant", body: "CGC1527069 — fully compliant with Florida Building Code (FBC 2023)" },
-    { title: "Turnkey Retail Solutions", body: "Design coordination, engineering, permitting, and construction handled under one roof" },
-    { title: "Brand-Focused Execution", body: "We translate your brand identity into a physical space that enhances customer experience and drives sales" },
-    { title: "Dedicated Project Management", body: "Single point of contact ensuring timelines, budgets, and quality standards are maintained from start to finish" },
-    { title: "Efficient Scheduling for Retail Deadlines", body: "Opening dates are critical — projects are delivered on time with minimal delays" },
-    { title: "Built for High-Traffic Commercial Use", body: "Durable materials and construction methods designed for longevity, safety, and heavy foot traffic" },
-    { title: "Customized, Transparent Approach", body: "Tailored solutions with clear communication, detailed budgeting, and no surprises" },
-    { title: "Strong Vendor & Supplier Network", body: "Access to premium materials and finishes aligned with retail brand standards" },
+    { title: "Turnkey Retail Solutions", body: "Design coordination, engineering, permitting, and construction under one roof" },
+    { title: "Brand-Focused Execution", body: "We translate your brand identity into a space that drives sales" },
+  ];
+  const WHY_RIGHT = [
+    { title: "Dedicated Project Management", body: "Single point of contact — timelines, budgets, and quality from start to finish" },
+    { title: "Efficient Scheduling", body: "Opening dates are critical — projects delivered on time with minimal delays" },
+    { title: "Built for High-Traffic Use", body: "Durable materials designed for longevity, safety, and heavy foot traffic" },
+    { title: "Customized, Transparent Approach", body: "Tailored solutions with clear communication and detailed budgeting" },
+    { title: "Strong Vendor & Supplier Network", body: "Premium materials and finishes aligned with retail brand standards" },
+  ];
+
+  const WHAT_ITEMS = ["Retail Store Buildouts", "Tenant Improvements (TI)", "Flagship & Brand Experience Stores", "Mall & Inline Retail Spaces", "Restaurants & Food Service", "Interior Renovations"];
+
+  const SCOPE_LEFT = [
+    { title: "Permitting & Pre-Construction", items: ["Architectural & engineering plans", "MEP coordination", "Notice of Commencement", "City/landlord submission & approval"] },
+    { title: "Manpower Provided", items: ["Licensed GC supervision", "Dedicated Project Manager", "Trade crews: carpentry, electrical, plumbing, HVAC, millwork", "OSHA-compliant workforce"] },
+    { title: "Site Protection", items: ["Adjacent tenant protection", "Dust, noise & debris control", "Coordination with mall/center hours", "Final cleaning prior to opening"] },
+  ];
+  const SCOPE_RIGHT = [
+    { title: "Equipment Provided", items: ["Interior construction & demolition equipment", "Flooring, framing & drywall systems", "Ladders, scaffolding & lifts as required"] },
+    { title: "Materials & Standards", items: ["Florida Building Code (FBC 2023)", "Retail & commercial construction standards", "Landlord / shopping center requirements", "High-traffic durability & finish standards"] },
+    { title: "Project Closeout", items: ["Final inspections & approvals", "Punch list completion", "Warranties & closeout documents", "Site turnover ready for merchandising"] },
   ];
 
   return (
-    <Page size="LETTER" style={{ fontFamily: "Helvetica", padding: 0 }}>
+    <Page size="LETTER" style={{ fontFamily: "Helvetica", padding: 0, paddingBottom: 30 }}>
+      {/* Fixed footer */}
+      <View fixed style={{ position: "absolute", bottom: 0, left: 0, right: 0, backgroundColor: DARK, paddingHorizontal: 24, paddingVertical: 7, flexDirection: "row", alignItems: "center", gap: 10 }}>
+        <Text style={{ fontSize: 8, color: GOLD, fontFamily: "Helvetica-Bold" }}>MIBH CONSTRUCTION</Text>
+        <Text style={{ fontSize: 7, color: "#94a3b8" }}>|</Text>
+        <Text style={{ fontSize: 8, color: "#94a3b8" }}>mike@mibhconstruction.com</Text>
+        <Text style={{ fontSize: 7, color: "#94a3b8" }}>|</Text>
+        <Text style={{ fontSize: 8, color: "#94a3b8" }}>Mike Baruh  |  (305) 746-7307</Text>
+        <View style={{ flex: 1 }} />
+        <Text style={{ fontSize: 8, color: "#94a3b8" }} render={({ pageNumber, totalPages }) => `Page ${pageNumber} of ${totalPages}`} />
+      </View>
+
       {/* Header */}
-      <View style={{ flexDirection: "row", alignItems: "center", backgroundColor: DARK, paddingHorizontal: 24, paddingVertical: 10, gap: 14 }}>
+      <View style={{ flexDirection: "row", alignItems: "center", backgroundColor: DARK, paddingHorizontal: 20, paddingVertical: 8, gap: 12 }}>
         {/* eslint-disable-next-line jsx-a11y/alt-text */}
-        <Image src={logoPath} style={{ width: 52, height: 52 }} />
+        <Image src={logoPath} style={{ width: 44, height: 44 }} />
         <View>
-          <Text style={{ fontSize: 20, fontFamily: "Helvetica-Bold", color: GOLD, letterSpacing: 2 }}>MIBH CONSTRUCTION</Text>
-          <Text style={{ fontSize: 8, color: "#94a3b8", marginTop: 2 }}>Licensed &amp; Insured  |  CGC1527069  |  CCC1336817  |  2950 N 28 Terr, Hollywood, FL  |  (305) 746-7307</Text>
+          <Text style={{ fontSize: 17, fontFamily: "Helvetica-Bold", color: GOLD, letterSpacing: 1.5 }}>MIBH CONSTRUCTION</Text>
+          <Text style={{ fontSize: 7.5, color: "#94a3b8", marginTop: 1 }}>Licensed &amp; Insured  |  CGC1527069  |  CCC1336817  |  2950 N 28 Terr, Hollywood, FL  |  (305) 746-7307</Text>
         </View>
       </View>
-      <View style={{ height: 3, backgroundColor: GOLD }} />
+      <View style={{ height: 2, backgroundColor: GOLD }} />
 
-      {/* Cover photo */}
-      <View style={{ paddingHorizontal: 18, paddingTop: 18, paddingBottom: 18 }}>
+      {/* Cover photo — reduced height */}
+      <View style={{ paddingHorizontal: 14, paddingTop: 10, paddingBottom: 10 }}>
         {/* eslint-disable-next-line jsx-a11y/alt-text */}
-        <Image src={coverImgSrc} style={{ width: 576, height: 270, objectFit: "cover" }} />
+        <Image src={coverImgSrc} style={{ width: 584, height: 170, objectFit: "cover" }} />
       </View>
 
-      {/* Gold info rectangle */}
-      <View style={{ flexDirection: "row", backgroundColor: GOLD, paddingHorizontal: 28, paddingVertical: 22 }}>
+      {/* Gold info bar — compact */}
+      <View style={{ flexDirection: "row", backgroundColor: GOLD, paddingHorizontal: 22, paddingVertical: 10 }}>
         <View style={{ flex: 1, justifyContent: "center" }}>
-          {client?.name ? <Text style={{ fontSize: 18, fontFamily: "Helvetica-Bold", color: "#fff", marginBottom: 6 }}>{client.name}</Text> : null}
-          {client?.address ? <Text style={{ fontSize: 10, color: "rgba(255,255,255,0.85)", marginBottom: 2 }}>{client.address}</Text> : null}
-          {clientCity ? <Text style={{ fontSize: 10, color: "rgba(255,255,255,0.85)", marginBottom: 2 }}>{clientCity}</Text> : null}
-          {client?.phone ? <Text style={{ fontSize: 10, color: "rgba(255,255,255,0.85)", marginBottom: 2 }}>{client.phone}</Text> : null}
-          {client?.email ? <Text style={{ fontSize: 10, color: "rgba(255,255,255,0.85)" }}>{client.email}</Text> : null}
+          {client?.name ? <Text style={{ fontSize: 13, fontFamily: "Helvetica-Bold", color: "#fff", marginBottom: 3 }}>{client.name}</Text> : null}
+          {client?.address ? <Text style={{ fontSize: 8.5, color: "rgba(255,255,255,0.85)" }}>{client.address}{clientCity ? `  ·  ${clientCity}` : ""}</Text> : null}
+          {client?.phone ? <Text style={{ fontSize: 8.5, color: "rgba(255,255,255,0.85)", marginTop: 1 }}>{client.phone}{client?.email ? `  ·  ${client.email}` : ""}</Text> : null}
         </View>
-        <View style={{ width: 1, backgroundColor: "rgba(255,255,255,0.4)", marginVertical: 2, marginHorizontal: 24 }} />
+        <View style={{ width: 1, backgroundColor: "rgba(255,255,255,0.4)", marginHorizontal: 18 }} />
         <View style={{ flex: 1, justifyContent: "center" }}>
-          {(clientCoverTitle || template.name) ? (
-            <Text style={{ fontSize: 18, fontFamily: "Helvetica-Bold", color: "#fff", marginBottom: 8, lineHeight: 1.25 }}>{clientCoverTitle || template.name}</Text>
-          ) : null}
-          {clientCoverTitle && template.name ? (
-            <Text style={{ fontSize: 11, color: "rgba(255,255,255,0.75)", marginBottom: 6 }}>{template.name}</Text>
-          ) : null}
-          <Text style={{ fontSize: 11, color: "rgba(255,255,255,0.85)" }}>{today}</Text>
+          <Text style={{ fontSize: 13, fontFamily: "Helvetica-Bold", color: "#fff", marginBottom: 3, lineHeight: 1.2 }}>{clientCoverTitle || template.name}</Text>
+          {clientCoverTitle && template.name ? <Text style={{ fontSize: 8.5, color: "rgba(255,255,255,0.75)", marginBottom: 2 }}>{template.name}</Text> : null}
+          <Text style={{ fontSize: 8.5, color: "rgba(255,255,255,0.85)" }}>{today}</Text>
         </View>
       </View>
 
-      {/* Why Choose Us */}
-      <View style={{ paddingHorizontal: 28, paddingTop: 16, paddingBottom: 14, flex: 1 }}>
-        <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "center", marginBottom: 12, gap: 12 }}>
-          <View style={{ flex: 1, height: 2, backgroundColor: GOLD }} />
-          <Text style={{ fontSize: 14, fontFamily: "Helvetica-Bold", color: DARK, letterSpacing: 1.5 }}>WHY CHOOSE US</Text>
-          <View style={{ flex: 1, height: 2, backgroundColor: GOLD }} />
+      {/* Body: two sections side by side */}
+      <View style={{ paddingHorizontal: 14, paddingTop: 8 }}>
+
+        {/* WHY CHOOSE US — 2 columns */}
+        <View style={{ flexDirection: "row", alignItems: "center", marginBottom: 6, gap: 10 }}>
+          <View style={{ flex: 1, height: 1.5, backgroundColor: GOLD }} />
+          <Text style={{ fontSize: 11, fontFamily: "Helvetica-Bold", color: DARK, letterSpacing: 1.2 }}>WHY CHOOSE US</Text>
+          <View style={{ flex: 1, height: 1.5, backgroundColor: GOLD }} />
         </View>
-        <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 6 }}>
-          {WHY_ITEMS.map((item, i) => (
-            <View key={i} style={{ flexDirection: "row", alignItems: "flex-start", gap: 6, width: "48%" }}>
-              <Text style={{ fontSize: 9, color: GOLD, fontFamily: "Helvetica-Bold", marginTop: 1 }}>•</Text>
-              <View style={{ flex: 1 }}>
-                <Text style={{ fontSize: 9, fontFamily: "Helvetica-Bold", color: DARK, marginBottom: 1 }}>{item.title}</Text>
-                <Text style={{ fontSize: 8.5, color: "#475569", lineHeight: 1.4 }}>{item.body}</Text>
-              </View>
-            </View>
-          ))}
-        </View>
-      </View>
-
-      {/* Footer */}
-      <View style={{ backgroundColor: DARK, paddingHorizontal: 24, paddingVertical: 9, flexDirection: "row", alignItems: "center", gap: 12 }}>
-        <Text style={{ fontSize: 8.5, color: GOLD, fontFamily: "Helvetica-Bold" }}>MIBH CONSTRUCTION</Text>
-        <Text style={{ fontSize: 7, color: "#94a3b8" }}>|</Text>
-        <Text style={{ fontSize: 8.5, color: "#94a3b8" }}>mike@mibhconstruction.com</Text>
-        <Text style={{ fontSize: 7, color: "#94a3b8" }}>|</Text>
-        <Text style={{ fontSize: 8.5, color: "#94a3b8" }}>Mike Baruh</Text>
-        <Text style={{ fontSize: 7, color: "#94a3b8" }}>|</Text>
-        <Text style={{ fontSize: 8.5, color: "#94a3b8" }}>(305) 746-7307</Text>
-        <View style={{ flex: 1 }} />
-        <Text style={{ fontSize: 8, color: "#94a3b8" }} render={({ pageNumber, totalPages }) => `Page ${pageNumber} of ${totalPages}`} />
-      </View>
-    </Page>
-  );
-}
-
-// ─── Retail Scope of Work Page (Page 2) ──────────────────────────────────────
-function RetailPage2({ client }: Pick<TemplatePdfProps, "client">) {
-  const logoPath = path.join(process.cwd(), "public", "logo.png");
-  const WHAT_ITEMS = [
-    "Retail Store Buildouts",
-    "Tenant Improvements (TI)",
-    "Flagship & Brand Experience Stores",
-    "Mall & Inline Retail Spaces",
-    "Restaurants & Food Service Buildouts",
-    "Interior Renovations & Reconfigurations",
-  ];
-  const SECTIONS: { title: string; items: string[] }[] = [
-    {
-      title: "1. PERMITTING & PRE-CONSTRUCTION",
-      items: [
-        "Preparation of architectural and engineering plans",
-        "MEP (mechanical, electrical, plumbing) coordination",
-        "Structural and code compliance documentation",
-        "Notice of Commencement",
-        "Submission to city/building department and landlord review",
-        "Coordination of revisions and approvals",
-        "Permit tracking through final approval",
-      ],
-    },
-    {
-      title: "2. MANPOWER PROVIDED",
-      items: [
-        "Licensed General Contractor supervision",
-        "Dedicated Project Manager (retail-focused execution)",
-        "Skilled trade crews (carpentry, electrical, plumbing, HVAC, millwork)",
-        "Fixture and display installation teams",
-        "OSHA-compliant workforce",
-        "Site protection and cleanup crew",
-      ],
-    },
-    {
-      title: "3. EQUIPMENT PROVIDED",
-      items: [
-        "Interior construction and demolition equipment",
-        "Concrete, flooring, and finishing tools",
-        "Framing and drywall systems",
-        "Ladders, scaffolding, and lifts (as required)",
-        "Safety equipment and compliance systems",
-        "Dumpsters and debris removal equipment",
-      ],
-    },
-    {
-      title: "4. MATERIALS & CONSTRUCTION STANDARDS",
-      items: [
-        "Florida Building Code (FBC 2023) compliance",
-        "Retail and commercial construction standards",
-        "Landlord and shopping center requirements",
-        "Manufacturer installation specifications",
-        "Miami-Dade product approvals (NOA where applicable)",
-        "High-traffic durability and finish standards",
-      ],
-    },
-    {
-      title: "5. SITE PROTECTION & JOB CONDITIONS",
-      items: [
-        "Protection of existing structure and adjacent tenants",
-        "Dust, noise, and debris control (retail environment sensitive)",
-        "Daily site cleanup",
-        "Safe and organized jobsite",
-        "Coordination with mall/center operating hours",
-        "Final cleaning prior to store opening",
-      ],
-    },
-    {
-      title: "6. PROJECT CLOSEOUT",
-      items: [
-        "Final inspections and approvals",
-        "Completion walkthrough with client and/or landlord",
-        "Punch list completion",
-        "Delivery of warranties and closeout documents",
-        "Final site cleanup and turnover ready for merchandising",
-      ],
-    },
-  ];
-  const clientName = client?.name ?? "";
-  return (
-    <Page size="LETTER" style={{ fontFamily: "Helvetica", padding: 0, paddingBottom: 96 }}>
-      {/* Footer pinned to bottom */}
-      <View fixed style={{ position: "absolute", bottom: 0, left: 0, right: 0, backgroundColor: DARK, paddingHorizontal: 24, paddingVertical: 9, flexDirection: "row", alignItems: "center", gap: 12 }}>
-        <Text style={{ fontSize: 8.5, color: GOLD, fontFamily: "Helvetica-Bold" }}>MIBH CONSTRUCTION</Text>
-        <Text style={{ fontSize: 7, color: "#94a3b8" }}>|</Text>
-        <Text style={{ fontSize: 8.5, color: "#94a3b8" }}>mike@mibhconstruction.com</Text>
-        <Text style={{ fontSize: 7, color: "#94a3b8" }}>|</Text>
-        <Text style={{ fontSize: 8.5, color: "#94a3b8" }}>Mike Baruh</Text>
-        <Text style={{ fontSize: 7, color: "#94a3b8" }}>|</Text>
-        <Text style={{ fontSize: 8.5, color: "#94a3b8" }}>(305) 746-7307</Text>
-        <View style={{ flex: 1 }} />
-        <Text style={{ fontSize: 8, color: "#94a3b8" }} render={({ pageNumber, totalPages }) => `Page ${pageNumber} of ${totalPages}`} />
-      </View>
-      {/* Header */}
-      <View style={{ flexDirection: "row", alignItems: "center", backgroundColor: DARK, paddingHorizontal: 24, paddingVertical: 10, gap: 14 }}>
-        {/* eslint-disable-next-line jsx-a11y/alt-text */}
-        <Image src={logoPath} style={{ width: 52, height: 52 }} />
-        <View style={{ flex: 1 }}>
-          <Text style={{ fontSize: 20, fontFamily: "Helvetica-Bold", color: GOLD, letterSpacing: 2 }}>MIBH CONSTRUCTION</Text>
-          <Text style={{ fontSize: 8, color: "#94a3b8", marginTop: 2 }}>Licensed &amp; Insured  |  CGC1527069  |  CCC1336817  |  2950 N 28 Terr, Hollywood, FL  |  (305) 746-7307</Text>
-        </View>
-        {clientName ? <Text style={{ fontSize: 10, color: "#94a3b8", textAlign: "right" }}>{clientName}</Text> : null}
-      </View>
-      <View style={{ height: 3, backgroundColor: GOLD }} />
-
-      {/* Main content */}
-      <View style={{ paddingHorizontal: 28, paddingTop: 8, paddingBottom: 8 }}>
-
-        {/* WHAT WE BUILD + OUR APPROACH side by side */}
-        <View style={{ flexDirection: "row", gap: 20, marginBottom: 10 }}>
+        <View style={{ flexDirection: "row", gap: 12, marginBottom: 8 }}>
           <View style={{ flex: 1 }}>
-            <Text style={{ fontSize: 14, fontFamily: "Helvetica-Bold", color: DARK, letterSpacing: 0.5, marginBottom: 8 }}>WHAT WE BUILD</Text>
-            {WHAT_ITEMS.map((item, i) => (
-              <View key={i} style={{ flexDirection: "row", alignItems: "flex-start", marginBottom: 5, gap: 8 }}>
-                <Text style={{ fontSize: 12, color: GOLD, fontFamily: "Helvetica-Bold" }}>•</Text>
-                <Text style={{ fontSize: 12, color: "#334155", flex: 1 }}>{item}</Text>
+            {WHY_LEFT.map((item, i) => (
+              <View key={i} style={{ flexDirection: "row", gap: 4, marginBottom: 4 }}>
+                <Text style={{ fontSize: 7.5, color: GOLD, fontFamily: "Helvetica-Bold" }}>•</Text>
+                <View style={{ flex: 1 }}>
+                  <Text style={{ fontSize: 7.5, fontFamily: "Helvetica-Bold", color: DARK }}>{item.title}</Text>
+                  <Text style={{ fontSize: 7, color: "#475569", lineHeight: 1.3 }}>{item.body}</Text>
+                </View>
               </View>
             ))}
           </View>
-          <View style={{ width: 2, backgroundColor: GOLD, marginVertical: 2 }} />
-          <View style={{ flex: 1, paddingLeft: 6 }}>
-            <Text style={{ fontSize: 14, fontFamily: "Helvetica-Bold", color: DARK, letterSpacing: 0.5, marginBottom: 8 }}>OUR APPROACH</Text>
-            <Text style={{ fontSize: 12, color: "#334155", lineHeight: 1.6 }}>
-              We handle your retail project from concept to completion — including planning, engineering, permitting, and construction — ensuring a seamless process with one accountable team. You get a single point of contact, no subcontractor confusion, and full transparency from day one.{"\n\n"}We focus on delivering spaces that reflect your brand, maximize customer experience, and meet strict retail timelines.
-            </Text>
+          <View style={{ width: 1, backgroundColor: "#e2e8f0" }} />
+          <View style={{ flex: 1 }}>
+            {WHY_RIGHT.map((item, i) => (
+              <View key={i} style={{ flexDirection: "row", gap: 4, marginBottom: 4 }}>
+                <Text style={{ fontSize: 7.5, color: GOLD, fontFamily: "Helvetica-Bold" }}>•</Text>
+                <View style={{ flex: 1 }}>
+                  <Text style={{ fontSize: 7.5, fontFamily: "Helvetica-Bold", color: DARK }}>{item.title}</Text>
+                  <Text style={{ fontSize: 7, color: "#475569", lineHeight: 1.3 }}>{item.body}</Text>
+                </View>
+              </View>
+            ))}
+            {/* WHAT WE BUILD inline */}
+            <View style={{ marginTop: 4, paddingTop: 4, borderTopWidth: 1, borderTopColor: "#e2e8f0" }}>
+              <Text style={{ fontSize: 7.5, fontFamily: "Helvetica-Bold", color: DARK, marginBottom: 3 }}>WHAT WE BUILD</Text>
+              <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 3 }}>
+                {WHAT_ITEMS.map((w, i) => (
+                  <Text key={i} style={{ fontSize: 7, color: "#475569" }}>• {w}{"  "}</Text>
+                ))}
+              </View>
+            </View>
           </View>
         </View>
 
-        {/* Scope of Work title */}
-        <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "center", marginBottom: 8, gap: 12 }}>
+        {/* SCOPE OF WORK — 2 columns */}
+        <View style={{ flexDirection: "row", alignItems: "center", marginBottom: 5, gap: 10 }}>
           <View style={{ flex: 1, height: 1, backgroundColor: GOLD }} />
-          <Text style={{ fontSize: 15, fontFamily: "Helvetica-Bold", color: DARK, letterSpacing: 1 }}>SCOPE OF WORK</Text>
+          <Text style={{ fontSize: 10, fontFamily: "Helvetica-Bold", color: DARK, letterSpacing: 1 }}>SCOPE OF WORK</Text>
           <View style={{ flex: 1, height: 1, backgroundColor: GOLD }} />
         </View>
-
-        {/* Intro */}
-        <Text style={{ fontSize: 11, color: "#334155", lineHeight: 1.55, marginBottom: 8 }}>
-          We appreciate the opportunity to provide this proposal. MIBH Construction will deliver all labor, materials, equipment, and supervision required to complete your retail buildout in full compliance with Florida Building Code (FBC 2023), local municipal requirements, landlord criteria, and approved plans.
+        <Text style={{ fontSize: 7.5, color: "#334155", lineHeight: 1.4, marginBottom: 5 }}>
+          MIBH Construction will deliver all labor, materials, equipment, and supervision required to complete your retail buildout in full compliance with Florida Building Code (FBC 2023), local municipal requirements, landlord criteria, and approved plans.
         </Text>
-
-        {/* Two-column sections */}
-        <View style={{ flexDirection: "row", gap: 20 }}>
+        <View style={{ flexDirection: "row", gap: 12 }}>
           <View style={{ flex: 1 }}>
-            {SECTIONS.slice(0, 3).map((sec, si) => (
-              <View key={si} style={{ marginBottom: 11 }}>
-                <Text style={{ fontSize: 11, fontFamily: "Helvetica-Bold", color: DARK, marginBottom: 5, textTransform: "uppercase" }}>{sec.title}</Text>
+            {SCOPE_LEFT.map((sec, si) => (
+              <View key={si} style={{ marginBottom: 5 }}>
+                <Text style={{ fontSize: 7.5, fontFamily: "Helvetica-Bold", color: DARK, marginBottom: 2, textTransform: "uppercase" }}>{sec.title}</Text>
                 {sec.items.map((item, ii) => (
-                  <View key={ii} style={{ flexDirection: "row", alignItems: "flex-start", marginBottom: 3, gap: 7 }}>
-                    <Text style={{ fontSize: 11, color: GOLD, fontFamily: "Helvetica-Bold" }}>•</Text>
-                    <Text style={{ fontSize: 11, color: "#475569", flex: 1 }}>{item}</Text>
+                  <View key={ii} style={{ flexDirection: "row", gap: 4, marginBottom: 1.5 }}>
+                    <Text style={{ fontSize: 7, color: GOLD, fontFamily: "Helvetica-Bold" }}>•</Text>
+                    <Text style={{ fontSize: 7, color: "#475569", flex: 1 }}>{item}</Text>
                   </View>
                 ))}
               </View>
             ))}
           </View>
+          <View style={{ width: 1, backgroundColor: "#e2e8f0" }} />
           <View style={{ flex: 1 }}>
-            {SECTIONS.slice(3).map((sec, si) => (
-              <View key={si} style={{ marginBottom: 11 }}>
-                <Text style={{ fontSize: 11, fontFamily: "Helvetica-Bold", color: DARK, marginBottom: 5, textTransform: "uppercase" }}>{sec.title}</Text>
+            {SCOPE_RIGHT.map((sec, si) => (
+              <View key={si} style={{ marginBottom: 5 }}>
+                <Text style={{ fontSize: 7.5, fontFamily: "Helvetica-Bold", color: DARK, marginBottom: 2, textTransform: "uppercase" }}>{sec.title}</Text>
                 {sec.items.map((item, ii) => (
-                  <View key={ii} style={{ flexDirection: "row", alignItems: "flex-start", marginBottom: 3, gap: 7 }}>
-                    <Text style={{ fontSize: 11, color: GOLD, fontFamily: "Helvetica-Bold" }}>•</Text>
-                    <Text style={{ fontSize: 11, color: "#475569", flex: 1 }}>{item}</Text>
+                  <View key={ii} style={{ flexDirection: "row", gap: 4, marginBottom: 1.5 }}>
+                    <Text style={{ fontSize: 7, color: GOLD, fontFamily: "Helvetica-Bold" }}>•</Text>
+                    <Text style={{ fontSize: 7, color: "#475569", flex: 1 }}>{item}</Text>
                   </View>
                 ))}
               </View>
@@ -1142,7 +1039,6 @@ function TemplatePdfDocument({ companyName, template, client, divisions, showTer
       {includeAdditionPages && <AdditionPage1 template={template} client={client} clientCoverPhotoType={clientCoverPhotoType} clientCoverPhotoUrl={clientCoverPhotoUrl} />}
       {includeAdditionPages && <AdditionPage2 client={client} />}
       {includeRetailPages && <RetailPage1 template={template} client={client} clientCoverPhotoType={clientCoverPhotoType} clientCoverPhotoUrl={clientCoverPhotoUrl} clientCoverTitle={clientCoverTitle} />}
-      {includeRetailPages && <RetailPage2 client={client} />}
       <Page size="LETTER" style={styles.page}>
         {/* Fixed footer — renders on every page */}
         <View fixed style={{ position: "absolute", bottom: 0, left: 0, right: 0, backgroundColor: DARK, paddingHorizontal: 24, paddingVertical: 9, flexDirection: "row", alignItems: "center", gap: 12 }}>
