@@ -9,11 +9,12 @@ export const COVER_OPTIONS = [
 ] as const;
 
 export type CoverType = (typeof COVER_OPTIONS)[number]["type"] | "CUSTOM";
-export type Page2Type = "ROOF" | "ADDITION" | "NONE";
+export type Page2Type = "ROOF" | "ADDITION" | "RETAIL" | "NONE";
 
 const PAGE2_OPTIONS: { type: Page2Type; label: string; desc: string; icon: string }[] = [
   { type: "ROOF",     label: "Roof Presentation",        desc: "Roof upgrades & options pages", icon: "🏠" },
   { type: "ADDITION", label: "Construction Presentation", desc: "Addition / construction intro",  icon: "🏗️" },
+  { type: "RETAIL",   label: "Retail Presentation",       desc: "Retail buildout intro & scope",  icon: "🏪" },
 ];
 
 export type PdfOptions = {
@@ -25,6 +26,7 @@ export type PdfOptions = {
 export default function CoverPagePickerModal({
   isCommercial,
   customCoverUrl,
+  customCoverLabel,
   hasInsertFile,
   initialPage2 = "NONE",
   confirmLabel = "Download PDF",
@@ -36,6 +38,7 @@ export default function CoverPagePickerModal({
 }: {
   isCommercial?: boolean;
   customCoverUrl?: string | null;
+  customCoverLabel?: string | null;
   hasInsertFile?: boolean;
   initialPage2?: Page2Type;
   confirmLabel?: string;
@@ -50,10 +53,12 @@ export default function CoverPagePickerModal({
   const [page2, setPage2]               = useState<Page2Type>(initialPage2 === "NONE" ? "ROOF" : initialPage2);
   const [includeInsert, setIncludeInsert] = useState(true);
 
+  const coverLabel = customCoverLabel || "Custom";
+
   const coverOptions: { type: CoverType; label: string; img: string; desc: string }[] = [
     ...COVER_OPTIONS,
     ...(customCoverUrl
-      ? [{ type: "CUSTOM" as CoverType, label: "Custom", img: customCoverUrl, desc: "Uploaded for this client" }]
+      ? [{ type: "CUSTOM" as CoverType, label: coverLabel, img: customCoverUrl, desc: `Uploaded for this client` }]
       : []),
   ];
 
@@ -97,7 +102,7 @@ export default function CoverPagePickerModal({
         {/* ── Section 2: Presentation Page ── */}
         <div>
           <p className="text-xs font-semibold uppercase tracking-widest mb-2" style={{ color: "#8b949e" }}>Page 2 — Presentation</p>
-          <div className="grid grid-cols-2 gap-2">
+          <div className="grid grid-cols-3 gap-2">
             {PAGE2_OPTIONS.map((opt) => {
               const active = page2 === opt.type;
               return (

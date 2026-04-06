@@ -206,7 +206,7 @@ export default function ClientCoverPhotoSelector({
                 alt="Custom cover"
                 style={{ width: "100%", height: 68, objectFit: "cover", display: "block", borderRadius: "8px 8px 0 0" }}
               />
-              <span className="text-xs font-semibold pb-2" style={{ color: GOLD }}>✓ Custom</span>
+              <span className="text-xs font-semibold pb-2" style={{ color: GOLD }}>✓ {coverTitle || "Custom"}</span>
             </>
           ) : (
             <>

@@ -25,10 +25,11 @@ type Props = {
   clientAddress?: string | null;
   isCommercial?: boolean;
   clientCoverPhotoUrl?: string | null;
+  clientCoverTitle?: string | null;
   hasInsertFile?: boolean;
 };
 
-export default function SendEstimateEmailButton({ templateId, companyId, templateName, clientName, clientEmail, estimateNumber, description, clientAddress, isCommercial, clientCoverPhotoUrl, hasInsertFile }: Props) {
+export default function SendEstimateEmailButton({ templateId, companyId, templateName, clientName, clientEmail, estimateNumber, description, clientAddress, isCommercial, clientCoverPhotoUrl, clientCoverTitle, hasInsertFile }: Props) {
   const firstName = clientName.split(" ")[0];
   const defaultBody = `Dear ${firstName},\n\nPlease find attached your estimate for the project.\n\nDo not hesitate to contact us with any questions.\n\n${MIKE_SIGNATURE}`;
 
@@ -43,7 +44,7 @@ export default function SendEstimateEmailButton({ templateId, companyId, templat
   const defaultCover: CoverType = isCommercial ? "ADDITIONS" : "FLAT_ROOFS";
 
   const n = templateName.toLowerCase();
-  const defaultPage2: Page2Type = n.includes("roof") ? "ROOF" : n.includes("addition") ? "ADDITION" : "NONE";
+  const defaultPage2: Page2Type = n.includes("retail") ? "RETAIL" : n.includes("roof") ? "ROOF" : n.includes("addition") ? "ADDITION" : "NONE";
 
   const [step, setStep] = useState<"cover" | "email" | null>(null);
   const [coverType, setCoverType] = useState<CoverType>(defaultCover);
@@ -115,6 +116,7 @@ export default function SendEstimateEmailButton({ templateId, companyId, templat
         <CoverPagePickerModal
           isCommercial={isCommercial}
           customCoverUrl={clientCoverPhotoUrl}
+          customCoverLabel={clientCoverTitle}
           hasInsertFile={hasInsertFile}
           initialPage2={defaultPage2}
           confirmLabel="Next: Write Email →"
