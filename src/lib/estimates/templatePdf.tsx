@@ -1061,7 +1061,7 @@ function TemplatePdfDocument({ companyName, template, client, divisions, showTer
       )}
       {/* T&C */}
       {(showTerms || !!termsContent) && (
-        <View>
+        <>
           <View style={styles.sectionDivider} />
           <Text style={styles.sectionTitle}>Terms &amp; Conditions</Text>
           {termsContent
@@ -1069,7 +1069,7 @@ function TemplatePdfDocument({ companyName, template, client, divisions, showTer
                 <Text key={i} style={[styles.termsText, { marginBottom: 8 }]}>{para}</Text>
               ))
             : null}
-        </View>
+        </>
       )}
       {/* Signature Block */}
       <View style={styles.sigSection} wrap={false}>
