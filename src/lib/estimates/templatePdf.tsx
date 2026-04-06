@@ -759,9 +759,9 @@ function RetailPage1({ template, client, clientCoverPhotoType, clientCoverPhotoU
       <View style={{ height: 3, backgroundColor: GOLD }} />
 
       {/* Cover photo — full width, no crop */}
-      <View style={{ paddingTop: 10, paddingBottom: 10 }}>
+      <View style={{ paddingTop: 8, paddingBottom: 8 }}>
         {/* eslint-disable-next-line jsx-a11y/alt-text */}
-        <Image src={coverImgSrc} style={{ width: 612, height: 300, objectFit: "contain" }} />
+        <Image src={coverImgSrc} style={{ width: 612, height: 262, objectFit: "contain" }} />
       </View>
 
       {/* Gold info rectangle */}
@@ -789,9 +789,9 @@ function RetailPage1({ template, client, clientCoverPhotoType, clientCoverPhotoU
           <View style={{ flex: 1, height: 2, backgroundColor: GOLD }} />
         </View>
         {WHY_ITEMS.map((item, i) => (
-          <View key={i} style={{ flexDirection: "row", alignItems: "flex-start", marginBottom: 5, gap: 8 }}>
+          <View key={i} style={{ flexDirection: "row", alignItems: "flex-start", marginBottom: 4, gap: 8 }}>
             <Text style={{ fontSize: 9.5, color: GOLD, fontFamily: "Helvetica-Bold" }}>•</Text>
-            <Text style={{ fontSize: 9.5, color: "#334155", flex: 1, lineHeight: 1.35, textAlign: "justify" }}>{item}</Text>
+            <Text style={{ fontSize: 9.5, color: "#334155", flex: 1, lineHeight: 1.3, textAlign: "justify" }}>{item}</Text>
           </View>
         ))}
       </View>
