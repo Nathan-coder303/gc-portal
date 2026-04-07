@@ -1216,7 +1216,7 @@ function TemplatePdfDocument({ companyName, template, client, divisions, showTer
                   .reduce((s, i) => s + calcTotal(i.defaultQty, i.defaultUnitCost, i.defaultMarkupPct), 0);
 
                 return (
-                  <View key={div.id} minPresenceAhead={div.csiCode != null && /^06\b/.test(div.csiCode) ? 220 : 100}>
+                  <View key={div.id} minPresenceAhead={100} break={div.csiCode != null && /^06\b/.test(div.csiCode)}>
                     <View wrap={false} style={[styles.divisionHeader, groupLabel ? { marginTop: 6 } : {}]}>
                       <View style={styles.divisionLeft}>
                         {!isRoof && div.csiCode ? <Text style={styles.divisionCsi}>{div.csiCode}</Text> : null}

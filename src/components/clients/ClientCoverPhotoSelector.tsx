@@ -177,19 +177,38 @@ export default function ClientCoverPhotoSelector({
                   {isSelected ? "✓ " : ""}{preset.label}
                 </span>
                 {isSelected && (
-                  <button
-                    onClick={clear}
-                    className="text-xs leading-none ml-1"
-                    style={{ color: "#8b949e" }}
-                    title="Remove"
-                  >✕</button>
+                  <button onClick={clear} className="text-xs leading-none ml-1" style={{ color: "#8b949e" }} title="Remove">✕</button>
                 )}
               </div>
             </div>
           );
         })}
 
-        {/* Upload / drag-and-drop custom */}
+        {/* Custom cover thumbnail — only shown when a custom image is uploaded */}
+        {selected === "CUSTOM" && customUrl && (
+          <div
+            className="flex flex-col rounded-xl overflow-hidden transition-all"
+            style={{ border: `2px solid ${GOLD}`, background: "#0d1117", width: 120 }}
+          >
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src={customUrl}
+              alt="Custom cover"
+              onClick={() => fileRef.current?.click()}
+              style={{ width: "100%", height: 68, objectFit: "cover", display: "block", cursor: "pointer" }}
+              title="Click to replace"
+            />
+            <div className="flex items-center justify-between px-2 py-1.5">
+              <span className="text-xs font-semibold truncate" style={{ color: GOLD }}>✓ {coverTitle || "Custom"}</span>
+              <div className="flex gap-1.5 ml-1 shrink-0">
+                <button onClick={() => fileRef.current?.click()} className="text-xs leading-none" style={{ color: "#8b949e" }} title="Replace">✏</button>
+                <button onClick={clear} className="text-xs leading-none" style={{ color: "#8b949e" }} title="Delete">✕</button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Upload / drag-and-drop — always visible */}
         <div
           onDragOver={handleDragOver}
           onDragLeave={handleDragLeave}
@@ -197,46 +216,16 @@ export default function ClientCoverPhotoSelector({
           onClick={() => !uploading && !isPending && fileRef.current?.click()}
           className="flex flex-col items-center justify-center gap-2 rounded-xl transition-all cursor-pointer"
           style={{
-            border: `2px ${dragOver ? "solid" : "dashed"} ${selected === "CUSTOM" ? GOLD : dragOver ? GOLD : "#30373f"}`,
+            border: `2px ${dragOver ? "solid" : "dashed"} ${dragOver ? GOLD : "#30373f"}`,
             background: dragOver ? "#1a2a1a" : "#0d1117",
             width: 120,
             height: 108,
           }}
         >
-          {selected === "CUSTOM" && customUrl ? (
-            <>
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img
-                src={customUrl}
-                alt="Custom cover"
-                style={{ width: "100%", height: 68, objectFit: "cover", display: "block", borderRadius: "8px 8px 0 0" }}
-              />
-              <div className="flex items-center justify-between w-full px-2 pb-1.5">
-                <span className="text-xs font-semibold truncate" style={{ color: GOLD }}>✓ {coverTitle || "Custom"}</span>
-                <div className="flex gap-1.5 ml-1 shrink-0" onClick={e => e.stopPropagation()}>
-                  <button
-                    onClick={() => fileRef.current?.click()}
-                    className="text-xs leading-none"
-                    style={{ color: "#8b949e" }}
-                    title="Edit / re-upload"
-                  >✏</button>
-                  <button
-                    onClick={clear}
-                    className="text-xs leading-none"
-                    style={{ color: "#8b949e" }}
-                    title="Delete"
-                  >✕</button>
-                </div>
-              </div>
-            </>
-          ) : (
-            <>
-              <span style={{ fontSize: 24 }}>{uploading ? "⏳" : dragOver ? "📂" : "📷"}</span>
-              <span className="text-xs font-semibold text-center px-2" style={{ color: dragOver ? GOLD : "#8b949e" }}>
-                {uploading ? "Uploading…" : dragOver ? "Drop image" : "Upload or drag"}
-              </span>
-            </>
-          )}
+          <span style={{ fontSize: 24 }}>{uploading ? "⏳" : dragOver ? "📂" : "📷"}</span>
+          <span className="text-xs font-semibold text-center px-2" style={{ color: dragOver ? GOLD : "#8b949e" }}>
+            {uploading ? "Uploading…" : dragOver ? "Drop image" : selected === "CUSTOM" ? "Replace custom" : "Upload or drag"}
+          </span>
         </div>
 
         <input
