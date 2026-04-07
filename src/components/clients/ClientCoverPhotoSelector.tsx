@@ -191,11 +191,16 @@ export default function ClientCoverPhotoSelector({
 
         {/* Upload / drag-and-drop custom */}
         <div
-          className="flex flex-col rounded-xl overflow-hidden transition-all"
+          onDragOver={handleDragOver}
+          onDragLeave={handleDragLeave}
+          onDrop={handleDrop}
+          onClick={() => !uploading && !isPending && fileRef.current?.click()}
+          className="flex flex-col items-center justify-center gap-2 rounded-xl transition-all cursor-pointer"
           style={{
-            border: `2px ${selected === "CUSTOM" || dragOver ? "solid" : "dashed"} ${selected === "CUSTOM" ? GOLD : dragOver ? GOLD : "#30373f"}`,
-            background: "#0d1117",
+            border: `2px ${dragOver ? "solid" : "dashed"} ${selected === "CUSTOM" ? GOLD : dragOver ? GOLD : "#30373f"}`,
+            background: dragOver ? "#1a2a1a" : "#0d1117",
             width: 120,
+            height: 108,
           }}
         >
           {selected === "CUSTOM" && customUrl ? (
@@ -204,13 +209,11 @@ export default function ClientCoverPhotoSelector({
               <img
                 src={customUrl}
                 alt="Custom cover"
-                onClick={() => fileRef.current?.click()}
-                style={{ width: "100%", height: 68, objectFit: "cover", display: "block", cursor: "pointer" }}
-                title="Click to replace"
+                style={{ width: "100%", height: 68, objectFit: "cover", display: "block", borderRadius: "8px 8px 0 0" }}
               />
-              <div className="flex items-center justify-between px-2 py-1.5">
+              <div className="flex items-center justify-between w-full px-2 pb-1.5">
                 <span className="text-xs font-semibold truncate" style={{ color: GOLD }}>✓ {coverTitle || "Custom"}</span>
-                <div className="flex gap-1.5 ml-1 shrink-0">
+                <div className="flex gap-1.5 ml-1 shrink-0" onClick={e => e.stopPropagation()}>
                   <button
                     onClick={() => fileRef.current?.click()}
                     className="text-xs leading-none"
@@ -227,19 +230,12 @@ export default function ClientCoverPhotoSelector({
               </div>
             </>
           ) : (
-            <div
-              onDragOver={handleDragOver}
-              onDragLeave={handleDragLeave}
-              onDrop={handleDrop}
-              onClick={() => !uploading && !isPending && fileRef.current?.click()}
-              className="flex flex-col items-center justify-center gap-2 cursor-pointer"
-              style={{ height: 108, background: dragOver ? "#1a2a1a" : "transparent" }}
-            >
+            <>
               <span style={{ fontSize: 24 }}>{uploading ? "⏳" : dragOver ? "📂" : "📷"}</span>
               <span className="text-xs font-semibold text-center px-2" style={{ color: dragOver ? GOLD : "#8b949e" }}>
                 {uploading ? "Uploading…" : dragOver ? "Drop image" : "Upload or drag"}
               </span>
-            </div>
+            </>
           )}
         </div>
 
