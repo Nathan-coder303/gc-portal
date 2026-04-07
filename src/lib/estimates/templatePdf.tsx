@@ -790,8 +790,8 @@ function RetailPage1({ template, client, clientCoverPhotoType, clientCoverPhotoU
         </View>
         {WHY_ITEMS.map((item, i) => (
           <View key={i} style={{ flexDirection: "row", alignItems: "flex-start", marginBottom: 4, gap: 8 }}>
-            <Text style={{ fontSize: 9, color: GOLD, fontFamily: "Helvetica-Bold" }}>•</Text>
-            <Text style={{ fontSize: 9, color: "#334155", flex: 1, lineHeight: 1.3, textAlign: "justify" }}>{item}</Text>
+            <Text style={{ fontSize: 10, color: GOLD, fontFamily: "Helvetica-Bold" }}>•</Text>
+            <Text style={{ fontSize: 10, color: "#334155", flex: 1, lineHeight: 1.3, textAlign: "justify" }}>{item}</Text>
           </View>
         ))}
       </View>
@@ -909,18 +909,18 @@ function RetailPage2({ client }: Pick<TemplatePdfProps, "client">) {
         {/* WHAT WE BUILD + OUR APPROACH side by side */}
         <View style={{ flexDirection: "row", gap: 20, marginBottom: 8 }}>
           <View style={{ flex: 1 }}>
-            <Text style={{ fontSize: 12, fontFamily: "Helvetica-Bold", color: DARK, letterSpacing: 0.5, marginBottom: 6 }}>WHAT WE BUILD</Text>
+            <Text style={{ fontSize: 13, fontFamily: "Helvetica-Bold", color: DARK, letterSpacing: 0.5, marginBottom: 6 }}>WHAT WE BUILD</Text>
             {WHAT_ITEMS.map((item, i) => (
               <View key={i} style={{ flexDirection: "row", alignItems: "flex-start", marginBottom: 4, gap: 6 }}>
-                <Text style={{ fontSize: 10, color: GOLD, fontFamily: "Helvetica-Bold" }}>•</Text>
-                <Text style={{ fontSize: 10, color: "#334155", flex: 1 }}>{item}</Text>
+                <Text style={{ fontSize: 11, color: GOLD, fontFamily: "Helvetica-Bold" }}>•</Text>
+                <Text style={{ fontSize: 11, color: "#334155", flex: 1 }}>{item}</Text>
               </View>
             ))}
           </View>
           <View style={{ width: 2, backgroundColor: GOLD, marginVertical: 2 }} />
           <View style={{ flex: 1, paddingLeft: 6 }}>
-            <Text style={{ fontSize: 12, fontFamily: "Helvetica-Bold", color: DARK, letterSpacing: 0.5, marginBottom: 6 }}>OUR APPROACH</Text>
-            <Text style={{ fontSize: 10, color: "#334155", lineHeight: 1.55, textAlign: "justify" }}>
+            <Text style={{ fontSize: 13, fontFamily: "Helvetica-Bold", color: DARK, letterSpacing: 0.5, marginBottom: 6 }}>OUR APPROACH</Text>
+            <Text style={{ fontSize: 11, color: "#334155", lineHeight: 1.55, textAlign: "justify" }}>
               We handle your retail project from concept to completion — including planning, engineering, permitting, and construction — ensuring a seamless process with one accountable team. You get a single point of contact, no subcontractor confusion, and full transparency from day one.{"\n\n"}We focus on delivering spaces that reflect your brand, maximize customer experience, and meet strict retail timelines.
             </Text>
           </View>
@@ -929,12 +929,12 @@ function RetailPage2({ client }: Pick<TemplatePdfProps, "client">) {
         {/* Scope of Work title */}
         <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "center", marginBottom: 6, gap: 12 }}>
           <View style={{ flex: 1, height: 1, backgroundColor: GOLD }} />
-          <Text style={{ fontSize: 13, fontFamily: "Helvetica-Bold", color: DARK, letterSpacing: 1 }}>SCOPE OF WORK</Text>
+          <Text style={{ fontSize: 14, fontFamily: "Helvetica-Bold", color: DARK, letterSpacing: 1 }}>SCOPE OF WORK</Text>
           <View style={{ flex: 1, height: 1, backgroundColor: GOLD }} />
         </View>
 
         {/* Intro */}
-        <Text style={{ fontSize: 10.5, color: "#334155", lineHeight: 1.5, marginBottom: 6, textAlign: "justify" }}>
+        <Text style={{ fontSize: 11.5, color: "#334155", lineHeight: 1.5, marginBottom: 6, textAlign: "justify" }}>
           We appreciate the opportunity to provide this proposal. MIBH Construction will deliver all labor, materials, equipment, and supervision required to complete your retail buildout in full compliance with Florida Building Code (FBC 2023), local municipal requirements, landlord criteria, and approved plans.
         </Text>
 
@@ -943,11 +943,11 @@ function RetailPage2({ client }: Pick<TemplatePdfProps, "client">) {
           <View style={{ flex: 1 }}>
             {SECTIONS.slice(0, 3).map((sec, si) => (
               <View key={si} style={{ marginBottom: 8 }}>
-                <Text style={{ fontSize: 10.5, fontFamily: "Helvetica-Bold", color: DARK, marginBottom: 4, textTransform: "uppercase" }}>{sec.title}</Text>
+                <Text style={{ fontSize: 11.5, fontFamily: "Helvetica-Bold", color: DARK, marginBottom: 4, textTransform: "uppercase" }}>{sec.title}</Text>
                 {sec.items.map((item, ii) => (
                   <View key={ii} style={{ flexDirection: "row", alignItems: "flex-start", marginBottom: 2.5, gap: 5 }}>
-                    <Text style={{ fontSize: 10.5, color: GOLD, fontFamily: "Helvetica-Bold" }}>•</Text>
-                    <Text style={{ fontSize: 10.5, color: "#475569", flex: 1 }}>{item}</Text>
+                    <Text style={{ fontSize: 11.5, color: GOLD, fontFamily: "Helvetica-Bold" }}>•</Text>
+                    <Text style={{ fontSize: 11.5, color: "#475569", flex: 1 }}>{item}</Text>
                   </View>
                 ))}
               </View>
@@ -956,11 +956,11 @@ function RetailPage2({ client }: Pick<TemplatePdfProps, "client">) {
           <View style={{ flex: 1 }}>
             {SECTIONS.slice(3).map((sec, si) => (
               <View key={si} style={{ marginBottom: 8 }}>
-                <Text style={{ fontSize: 10.5, fontFamily: "Helvetica-Bold", color: DARK, marginBottom: 4, textTransform: "uppercase" }}>{sec.title}</Text>
+                <Text style={{ fontSize: 11.5, fontFamily: "Helvetica-Bold", color: DARK, marginBottom: 4, textTransform: "uppercase" }}>{sec.title}</Text>
                 {sec.items.map((item, ii) => (
                   <View key={ii} style={{ flexDirection: "row", alignItems: "flex-start", marginBottom: 2.5, gap: 5 }}>
-                    <Text style={{ fontSize: 10.5, color: GOLD, fontFamily: "Helvetica-Bold" }}>•</Text>
-                    <Text style={{ fontSize: 10.5, color: "#475569", flex: 1 }}>{item}</Text>
+                    <Text style={{ fontSize: 11.5, color: GOLD, fontFamily: "Helvetica-Bold" }}>•</Text>
+                    <Text style={{ fontSize: 11.5, color: "#475569", flex: 1 }}>{item}</Text>
                   </View>
                 ))}
               </View>
