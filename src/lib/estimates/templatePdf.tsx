@@ -761,7 +761,7 @@ function RetailPage1({ template, client, clientCoverPhotoType, clientCoverPhotoU
       {/* Cover photo — full width, no crop */}
       <View style={{ paddingTop: 8, paddingBottom: 8 }}>
         {/* eslint-disable-next-line jsx-a11y/alt-text */}
-        <Image src={coverImgSrc} style={{ width: 612, height: 295, objectFit: "contain" }} />
+        <Image src={coverImgSrc} style={{ width: 612, height: 268, objectFit: "contain" }} />
       </View>
 
       {/* Gold info rectangle */}

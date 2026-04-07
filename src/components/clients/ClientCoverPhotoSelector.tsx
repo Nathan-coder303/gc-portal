@@ -146,56 +146,56 @@ export default function ClientCoverPhotoSelector({
 
   return (
     <div className="rounded-2xl p-5 mb-4" style={{ background: "#1e2736", border: "1px solid #30373f" }}>
-      <div className="flex items-center justify-between mb-4">
-        <div>
-          <h3 className="text-sm font-semibold" style={{ color: "#e6edf3" }}>PDF Cover Photo</h3>
-          <p className="text-xs mt-0.5" style={{ color: "#8b949e" }}>Appears as page 1 when sending estimates</p>
-        </div>
-        {selected && (
-          <button onClick={clear} className="text-xs px-2 py-1 rounded-lg" style={{ color: "#8b949e", border: "1px solid #30373f" }}>
-            ✕ Remove
-          </button>
-        )}
+      <div className="mb-4">
+        <h3 className="text-sm font-semibold" style={{ color: "#e6edf3" }}>PDF Cover Photo</h3>
+        <p className="text-xs mt-0.5" style={{ color: "#8b949e" }}>Appears as page 1 when sending estimates</p>
       </div>
 
       <div className="flex gap-3 flex-wrap">
         {/* Preset options */}
-        {PRESETS.map(preset => (
-          <button
-            key={preset.key}
-            onClick={() => select(preset.key)}
-            disabled={isPending}
-            className="flex flex-col items-center gap-2 rounded-xl overflow-hidden transition-all hover:scale-105"
-            style={{
-              border: `2px solid ${selected === preset.key ? GOLD : "#30373f"}`,
-              background: "#0d1117",
-              width: 120,
-            }}
-          >
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
-              src={preset.thumb}
-              alt={preset.label}
-              style={{ width: "100%", height: 68, objectFit: "cover", display: "block" }}
-            />
-            <span className="text-xs font-semibold pb-2" style={{ color: selected === preset.key ? GOLD : "#8b949e" }}>
-              {selected === preset.key ? "✓ " : ""}{preset.label}
-            </span>
-          </button>
-        ))}
+        {PRESETS.map(preset => {
+          const isSelected = selected === preset.key;
+          return (
+            <div
+              key={preset.key}
+              className="flex flex-col rounded-xl overflow-hidden transition-all"
+              style={{ border: `2px solid ${isSelected ? GOLD : "#30373f"}`, background: "#0d1117", width: 120 }}
+            >
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src={preset.thumb}
+                alt={preset.label}
+                onClick={() => select(preset.key)}
+                style={{ width: "100%", height: 68, objectFit: "cover", display: "block", cursor: "pointer" }}
+              />
+              <div className="flex items-center justify-between px-2 py-1.5">
+                <span
+                  className="text-xs font-semibold cursor-pointer"
+                  style={{ color: isSelected ? GOLD : "#8b949e" }}
+                  onClick={() => select(preset.key)}
+                >
+                  {isSelected ? "✓ " : ""}{preset.label}
+                </span>
+                {isSelected && (
+                  <button
+                    onClick={clear}
+                    className="text-xs leading-none ml-1"
+                    style={{ color: "#8b949e" }}
+                    title="Remove"
+                  >✕</button>
+                )}
+              </div>
+            </div>
+          );
+        })}
 
         {/* Upload / drag-and-drop custom */}
         <div
-          onDragOver={handleDragOver}
-          onDragLeave={handleDragLeave}
-          onDrop={handleDrop}
-          onClick={() => !uploading && !isPending && fileRef.current?.click()}
-          className="flex flex-col items-center justify-center gap-2 rounded-xl transition-all cursor-pointer"
+          className="flex flex-col rounded-xl overflow-hidden transition-all"
           style={{
-            border: `2px ${dragOver ? "solid" : "dashed"} ${selected === "CUSTOM" ? GOLD : dragOver ? GOLD : "#30373f"}`,
-            background: dragOver ? "#1a2a1a" : "#0d1117",
+            border: `2px ${selected === "CUSTOM" || dragOver ? "solid" : "dashed"} ${selected === "CUSTOM" ? GOLD : dragOver ? GOLD : "#30373f"}`,
+            background: "#0d1117",
             width: 120,
-            height: 108,
           }}
         >
           {selected === "CUSTOM" && customUrl ? (
@@ -204,17 +204,42 @@ export default function ClientCoverPhotoSelector({
               <img
                 src={customUrl}
                 alt="Custom cover"
-                style={{ width: "100%", height: 68, objectFit: "cover", display: "block", borderRadius: "8px 8px 0 0" }}
+                onClick={() => fileRef.current?.click()}
+                style={{ width: "100%", height: 68, objectFit: "cover", display: "block", cursor: "pointer" }}
+                title="Click to replace"
               />
-              <span className="text-xs font-semibold pb-2" style={{ color: GOLD }}>✓ {coverTitle || "Custom"}</span>
+              <div className="flex items-center justify-between px-2 py-1.5">
+                <span className="text-xs font-semibold truncate" style={{ color: GOLD }}>✓ {coverTitle || "Custom"}</span>
+                <div className="flex gap-1.5 ml-1 shrink-0">
+                  <button
+                    onClick={() => fileRef.current?.click()}
+                    className="text-xs leading-none"
+                    style={{ color: "#8b949e" }}
+                    title="Edit / re-upload"
+                  >✏</button>
+                  <button
+                    onClick={clear}
+                    className="text-xs leading-none"
+                    style={{ color: "#8b949e" }}
+                    title="Delete"
+                  >✕</button>
+                </div>
+              </div>
             </>
           ) : (
-            <>
+            <div
+              onDragOver={handleDragOver}
+              onDragLeave={handleDragLeave}
+              onDrop={handleDrop}
+              onClick={() => !uploading && !isPending && fileRef.current?.click()}
+              className="flex flex-col items-center justify-center gap-2 cursor-pointer"
+              style={{ height: 108, background: dragOver ? "#1a2a1a" : "transparent" }}
+            >
               <span style={{ fontSize: 24 }}>{uploading ? "⏳" : dragOver ? "📂" : "📷"}</span>
               <span className="text-xs font-semibold text-center px-2" style={{ color: dragOver ? GOLD : "#8b949e" }}>
                 {uploading ? "Uploading…" : dragOver ? "Drop image" : "Upload or drag"}
               </span>
-            </>
+            </div>
           )}
         </div>
 
