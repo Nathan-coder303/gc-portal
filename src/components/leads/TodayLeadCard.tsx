@@ -77,7 +77,14 @@ export default function TodayLeadCard({
       )}
 
       {lead.phone && (
-        <span className="text-xs" style={{ color: "#8b949e" }}>{lead.phone}</span>
+        <a
+          href={`tel:${lead.phone}`}
+          onClick={e => e.stopPropagation()}
+          className="text-xs font-medium hover:underline"
+          style={{ color: "#60a5fa" }}
+        >
+          📞 {lead.phone}
+        </a>
       )}
 
       {(lead.city || lead.state) && (

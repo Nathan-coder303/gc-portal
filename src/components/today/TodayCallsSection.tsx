@@ -153,6 +153,8 @@ export default function TodayCallsSection({ companyId, initialLeads }: { company
   const [stages, setStages] = useState<PipelineStage[]>(BASE_STAGES);
   const [sortDir, setSortDir] = useState<"desc" | "asc">("desc");
   useEffect(() => { setStages(loadStages()); }, []);
+  // Re-sync when server re-renders after NSA review (router.refresh changes initialLeads)
+  useEffect(() => { setLeads(initialLeads); }, [initialLeads]);
 
   const sorted = [...leads].sort((a, b) => {
     const diff = new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime();
@@ -176,7 +178,7 @@ export default function TodayCallsSection({ companyId, initialLeads }: { company
               className="text-xs px-2 py-0.5 rounded"
               style={{ background: "#30373f", color: "#8b949e" }}
             >
-              {sortDir === "desc" ? "Latest first" : "Earliest first"}
+              {sortDir === "desc" ? "↕ Oldest first" : "↕ Latest first"}
             </button>
           )}
         </div>
