@@ -79,9 +79,12 @@ export default async function TodayPage({
       orderBy: { createdAt: "desc" },
       select: { id: true, name: true, project: { select: { id: true, name: true } } },
     }),
-    // All follow-ups for this company
+    // All follow-ups for this company — only show items due today or earlier (or with no due date)
     prisma.followUp.findMany({
-      where: { companyId: params.companyId },
+      where: {
+        companyId: params.companyId,
+        OR: [{ dueDate: null }, { dueDate: { lte: todayEnd } }],
+      },
       orderBy: { createdAt: "asc" },
       include: { client: { select: { id: true, name: true } } },
     }),

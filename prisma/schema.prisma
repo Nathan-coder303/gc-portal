@@ -705,10 +705,11 @@ model PipelineCard {
   source         String?  // Evolute, ADU Elite, NSA, FYRD UP, etc.
   estimateValue  Decimal? @db.Decimal(12, 2)
   notes          String?
-  pipelineType   String   @default("sales")
-  sortOrder      Int      @default(0)
-  createdAt      DateTime @default(now())
-  updatedAt      DateTime @updatedAt
+  pipelineType   String    @default("sales")
+  sortOrder      Int       @default(0)
+  stageChangedAt DateTime? // set when stage changes; null for legacy cards (use createdAt)
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
 
   @@index([companyId, stage])
   @@index([companyId, pipelineType])

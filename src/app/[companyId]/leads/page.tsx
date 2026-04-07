@@ -22,7 +22,7 @@ export default async function LeadsPage({
     prisma.pipelineCard.findMany({
       where: { companyId: params.companyId },
       include: {
-        lead: { select: { id: true } },
+        lead: { select: { id: true, phone: true } },
       },
     }),
   ]);
@@ -54,7 +54,9 @@ export default async function LeadsPage({
       estimateValue: c.estimateValue ? Number(c.estimateValue) : null,
       notes: c.notes,
       leadId: c.leadId,
+      phone: c.lead?.phone ?? null,
       sortOrder: c.sortOrder,
+      stageChangedAt: c.stageChangedAt?.toISOString() ?? null,
       createdAt: c.createdAt.toISOString(),
     }));
 

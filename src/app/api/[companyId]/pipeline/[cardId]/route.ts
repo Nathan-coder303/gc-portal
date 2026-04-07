@@ -71,10 +71,13 @@ export async function PATCH(
   const body = await req.json();
   const { stage, displayName, estimateValue, notes, sortOrder, clientId, source, stageLabel } = body;
 
+  const stageChanging = stage !== undefined && stage !== card.stage;
+
   const updated = await prisma.pipelineCard.update({
     where: { id: params.cardId },
     data: {
       ...(stage !== undefined ? { stage } : {}),
+      ...(stageChanging ? { stageChangedAt: new Date() } : {}),
       ...(displayName !== undefined ? { displayName } : {}),
       ...(estimateValue !== undefined ? { estimateValue: estimateValue != null ? estimateValue : null } : {}),
       ...(notes !== undefined ? { notes: notes || null } : {}),
@@ -87,6 +90,22 @@ export async function PATCH(
       lead: { select: { id: true, name: true, email: true, phone: true, projectType: true, receivedAt: true } },
     },
   });
+
+  // When moved TO na1, create a follow-up reminder for the next day
+  if (stageChanging && stage === "NA1") {
+    const tomorrow = new Date();
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    const dateStr = tomorrow.toISOString().split("T")[0]; // YYYY-MM-DD
+    await prisma.followUp.create({
+      data: {
+        companyId: params.companyId,
+        category: "TASK",
+        text: `📞 Call ${card.displayName} — moved to NA1 today`,
+        dueDate: new Date(dateStr),
+        createdBy: session.user.id,
+      },
+    });
+  }
 
   // Send email notification when a note is added to a project pipeline card
   if (notes && notes !== card.notes && card.pipelineType === "project") {

@@ -83,6 +83,7 @@ export async function POST(
       notes: notes || null,
       source: source || null,
       pipelineType: pipelineType || "sales",
+      stageChangedAt: new Date(),
     },
     include: {
       client: { select: { id: true, name: true } },

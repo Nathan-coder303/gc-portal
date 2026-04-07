@@ -24,7 +24,9 @@ type StagedCard = {
   estimateValue: number | null;
   notes: string | null;
   leadId: string | null;
+  phone: string | null;
   sortOrder: number;
+  stageChangedAt: string | null;
   createdAt: string;
 };
 
@@ -362,8 +364,8 @@ function StageCard({
         position: "relative",
       }}
     >
-      {/* Edit + Notes + Remove buttons */}
-      <div style={{ position: "absolute", top: 6, right: 6, display: "flex", gap: 2, opacity: hovered ? 1 : 0, transition: "opacity 0.1s" }}>
+      {/* Action buttons — always visible for mobile access */}
+      <div style={{ position: "absolute", top: 6, right: 6, display: "flex", gap: 2 }}>
         {card.leadId && (
           <button
             onClick={(e) => { e.stopPropagation(); onEdit(card.leadId!); }}
@@ -394,7 +396,7 @@ function StageCard({
         }}>
           {initials(card.displayName)}
         </div>
-        <div style={{ flex: 1, minWidth: 0 }}>
+        <div style={{ flex: 1, minWidth: 0, paddingRight: 52 }}>
           <div style={{ color: "#e6edf3", fontWeight: 600, fontSize: 13, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
             {card.displayName}
           </div>
@@ -405,6 +407,16 @@ function StageCard({
           )}
         </div>
       </div>
+
+      {card.phone && (
+        <a
+          href={`tel:${card.phone}`}
+          onClick={(e) => e.stopPropagation()}
+          style={{ color: "#60a5fa", fontSize: 11, marginTop: 4, display: "block" }}
+        >
+          📞 {card.phone}
+        </a>
+      )}
 
       {/* Source dropdown */}
       <SourceSelector
@@ -429,7 +441,11 @@ function StageCard({
           {card.notes}
         </div>
       )}
-      <div style={{ color: "#484f58", fontSize: 10, marginTop: 5 }}>{relTime(card.createdAt)}</div>
+      <div style={{ color: "#484f58", fontSize: 10, marginTop: 5 }}>
+        {card.stageChangedAt
+          ? `In stage ${relTime(card.stageChangedAt)}`
+          : `Added ${relTime(card.createdAt)}`}
+      </div>
     </div>
   );
 }
@@ -644,7 +660,9 @@ export default function LeadsPipeline({ companyId, triageLeads, stagedCards }: P
         estimateValue: null,
         notes: null,
         leadId: lead.id,
+        phone: lead.phone,
         sortOrder: 0,
+        stageChangedAt: new Date().toISOString(),
         createdAt: new Date().toISOString(),
       };
       setTriage((prev) => prev.filter((l) => l.id !== payload.leadId));
@@ -670,7 +688,9 @@ export default function LeadsPipeline({ companyId, triageLeads, stagedCards }: P
           estimateValue: created.estimateValue != null ? Number(created.estimateValue) : null,
           notes: created.notes,
           leadId: created.leadId,
+          phone: created.lead?.phone ?? lead.phone,
           sortOrder: created.sortOrder,
+          stageChangedAt: created.stageChangedAt ?? new Date().toISOString(),
           createdAt: created.createdAt,
         } : c));
       } catch {
@@ -707,7 +727,8 @@ export default function LeadsPipeline({ companyId, triageLeads, stagedCards }: P
       const card = cards.find((c) => c.id === payload.cardId);
       if (!card || card.stage === targetStage) return;
 
-      setCards((prev) => prev.map((c) => c.id === payload.cardId ? { ...c, stage: targetStage } : c));
+      const now = new Date().toISOString();
+      setCards((prev) => prev.map((c) => c.id === payload.cardId ? { ...c, stage: targetStage, stageChangedAt: now } : c));
       try {
         await fetch(`/api/${companyId}/pipeline/${payload.cardId}`, {
           method: "PATCH",
@@ -715,7 +736,7 @@ export default function LeadsPipeline({ companyId, triageLeads, stagedCards }: P
           body: JSON.stringify({ stage: targetStage }),
         });
       } catch {
-        setCards((prev) => prev.map((c) => c.id === payload.cardId ? { ...c, stage: card.stage } : c));
+        setCards((prev) => prev.map((c) => c.id === payload.cardId ? { ...c, stage: card.stage, stageChangedAt: card.stageChangedAt } : c));
       }
     }
   }, [triage, cards, companyId, triageLeads]);
@@ -773,6 +794,7 @@ export default function LeadsPipeline({ companyId, triageLeads, stagedCards }: P
     const tempCard: StagedCard = {
       id: `temp-${Date.now()}`, displayName: lead.name, stage: targetStage,
       source: null, estimateValue: null, notes: null, leadId: lead.id, sortOrder: 0, createdAt: new Date().toISOString(),
+      phone: lead.phone ?? null, stageChangedAt: new Date().toISOString(),
     };
     setTriage((prev) => prev.filter((l) => l.id !== leadId));
     setCards((prev) => [...prev, tempCard]);
@@ -787,6 +809,7 @@ export default function LeadsPipeline({ companyId, triageLeads, stagedCards }: P
         id: created.id, displayName: created.displayName, stage: created.stage,
         source: created.source, estimateValue: created.estimateValue != null ? Number(created.estimateValue) : null,
         notes: created.notes, leadId: created.leadId, sortOrder: created.sortOrder, createdAt: created.createdAt,
+        phone: created.lead?.phone ?? null, stageChangedAt: created.stageChangedAt ?? null,
       } : c));
     } catch {
       setCards((prev) => prev.filter((c) => c.id !== tempCard.id));
