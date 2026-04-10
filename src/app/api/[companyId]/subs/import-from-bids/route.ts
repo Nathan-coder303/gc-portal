@@ -1,10 +1,50 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { auth } from "@/lib/auth";
+// eslint-disable-next-line @typescript-eslint/no-require-imports
+const pdfParse = require("pdf-parse");
 
-export async function POST(_req: NextRequest, { params }: { params: { companyId: string } }) {
+export const runtime = "nodejs";
+
+const PLANHUB_EMAIL = "projectnotification@planhub.com";
+const EMAIL_REGEX = /[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}/g;
+
+/** Fetch a PDF from a Vercel Blob URL and extract all email addresses from its text */
+async function extractEmailsFromPdf(fileUrl: string): Promise<string[]> {
+  try {
+    const res = await fetch(fileUrl, {
+      headers: { Authorization: `Bearer ${process.env.BLOB_READ_WRITE_TOKEN}` },
+    });
+    if (!res.ok) return [];
+    const buf = Buffer.from(await res.arrayBuffer());
+    const data = await pdfParse(buf);
+    const matches: string[] = data.text.match(EMAIL_REGEX) ?? [];
+    const seen = new Set<string>();
+    return matches.filter(e => {
+      const l = e.toLowerCase();
+      if (l.includes("planhub") || seen.has(l)) return false;
+      seen.add(l);
+      return true;
+    });
+  } catch {
+    return [];
+  }
+}
+
+async function resolveEmail(emailSource: string | null, fileUrl: string | null): Promise<string | null> {
+  let email = emailSource ?? null;
+  if (email?.toLowerCase() === PLANHUB_EMAIL && fileUrl) {
+    const found = await extractEmailsFromPdf(fileUrl);
+    email = found.length > 0 ? found[0] : null;
+  }
+  return email;
+}
+
+export async function POST(req: NextRequest, { params }: { params: { companyId: string } }) {
   const session = await auth();
   if (!session || session.user.companyId !== params.companyId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
+  const refresh = req.nextUrl.searchParams.get("refresh") === "1";
 
   // Get all non-placeholder sub bids with a contractor name for this company
   const bids = await prisma.subBid.findMany({
@@ -13,46 +53,54 @@ export async function POST(_req: NextRequest, { params }: { params: { companyId:
       isPlaceholder: false,
       contractorName: { not: null },
     },
-    select: { contractorName: true, divisionCode: true, divisionName: true, emailSource: true },
+    select: { contractorName: true, divisionCode: true, divisionName: true, emailSource: true, fileUrl: true },
   });
 
-  // Get existing subs to avoid duplicates
+  // Get existing subs
   const existing = await prisma.subContractor.findMany({
     where: { companyId: params.companyId },
-    select: { name: true, divisionCode: true },
+    select: { id: true, name: true, divisionCode: true, email: true },
   });
-  const existingSet = new Set(existing.map(s => `${s.name}||${s.divisionCode}`));
+  const existingMap = new Map(existing.map(s => [`${s.name}||${s.divisionCode}`, s]));
 
-  // Deduplicate bids by contractorName + divisionCode
   const seen = new Set<string>();
-  const toCreate: { name: string; email: string | null; divisionCode: string; divisionName: string }[] = [];
+  let imported = 0;
+  let refreshed = 0;
 
   for (const bid of bids) {
     if (!bid.contractorName) continue;
     const key = `${bid.contractorName}||${bid.divisionCode}`;
-    if (seen.has(key) || existingSet.has(key)) continue;
+    if (seen.has(key)) continue;
     seen.add(key);
-    toCreate.push({
-      name: bid.contractorName,
-      email: bid.emailSource ?? null,
-      divisionCode: bid.divisionCode,
-      divisionName: bid.divisionName,
-    });
+
+    const existingSub = existingMap.get(key);
+
+    if (existingSub) {
+      // Refresh: re-resolve PlanHub email if current email is null or still planhub
+      if (refresh && (!existingSub.email || existingSub.email.toLowerCase() === PLANHUB_EMAIL)) {
+        const email = await resolveEmail(bid.emailSource, bid.fileUrl);
+        if (email && email !== existingSub.email) {
+          await prisma.subContractor.update({ where: { id: existingSub.id }, data: { email } });
+          refreshed++;
+        }
+      }
+    } else {
+      // New — import
+      const email = await resolveEmail(bid.emailSource, bid.fileUrl);
+      await prisma.subContractor.create({
+        data: {
+          companyId: params.companyId,
+          name: bid.contractorName,
+          email,
+          phone: null,
+          divisionCode: bid.divisionCode,
+          divisionName: bid.divisionName,
+          notes: null,
+        },
+      });
+      imported++;
+    }
   }
 
-  if (toCreate.length === 0) return NextResponse.json({ imported: 0 });
-
-  await prisma.subContractor.createMany({
-    data: toCreate.map(s => ({
-      companyId: params.companyId,
-      name: s.name,
-      email: s.email,
-      phone: null,
-      divisionCode: s.divisionCode,
-      divisionName: s.divisionName,
-      notes: null,
-    })),
-  });
-
-  return NextResponse.json({ imported: toCreate.length });
+  return NextResponse.json({ imported, refreshed });
 }
