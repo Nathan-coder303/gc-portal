@@ -31,6 +31,7 @@ export default function SubsDatabase({ companyId, initialSubs }: { companyId: st
   const [showAdd, setShowAdd] = useState(false);
   const [editId, setEditId] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
+  const [importing, setImporting] = useState(false);
 
   // Form state
   const [form, setForm] = useState({ name: "", email: "", phone: "", divisionCode: ALL_DIVISIONS[0].code, divisionName: ALL_DIVISIONS[0].name, notes: "" });
@@ -85,6 +86,25 @@ export default function SubsDatabase({ companyId, initialSubs }: { companyId: st
     }
   }
 
+  async function handleImportFromBids() {
+    setImporting(true);
+    try {
+      const res = await fetch(`/api/${companyId}/subs/import-from-bids`, { method: "POST" });
+      const { imported } = await res.json();
+      if (imported > 0) {
+        // Reload subs from server
+        const fresh = await fetch(`/api/${companyId}/subs`);
+        const data = await fresh.json();
+        setSubs(data.map((s: Sub) => ({ ...s, email: s.email ?? null, phone: s.phone ?? null, notes: s.notes ?? null })));
+        alert(`Imported ${imported} sub${imported !== 1 ? "s" : ""} from existing bids.`);
+      } else {
+        alert("No new subs to import — all existing bid contractors are already in your database.");
+      }
+    } finally {
+      setImporting(false);
+    }
+  }
+
   async function handleDelete(id: string) {
     if (!confirm("Delete this sub?")) return;
     await fetch(`/api/${companyId}/subs/${id}`, { method: "DELETE" });
@@ -121,13 +141,23 @@ export default function SubsDatabase({ companyId, initialSubs }: { companyId: st
           <h1 className="text-2xl font-bold" style={{ color: "#e6edf3" }}>Sub Database</h1>
           <p className="text-sm mt-1" style={{ color: "#8b949e" }}>{subs.length} contractors across {usedDivCodes.size} divisions</p>
         </div>
-        <button
-          onClick={openAdd}
-          className="px-4 py-2 rounded-xl text-sm font-semibold transition-all hover:scale-105"
-          style={{ background: "#C9A84C", color: "#0d1117" }}
-        >
-          + Add Sub
-        </button>
+        <div className="flex gap-2">
+          <button
+            onClick={handleImportFromBids}
+            disabled={importing}
+            className="px-4 py-2 rounded-xl text-sm font-semibold transition-all hover:scale-105 disabled:opacity-50"
+            style={{ background: "#1e2736", border: "1px solid #58a6ff44", color: "#58a6ff" }}
+          >
+            {importing ? "Importing…" : "⬇ Import from Bids"}
+          </button>
+          <button
+            onClick={openAdd}
+            className="px-4 py-2 rounded-xl text-sm font-semibold transition-all hover:scale-105"
+            style={{ background: "#C9A84C", color: "#0d1117" }}
+          >
+            + Add Sub
+          </button>
+        </div>
       </div>
 
       {/* Division filter */}
