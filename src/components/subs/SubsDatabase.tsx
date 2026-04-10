@@ -44,27 +44,12 @@ function formatPhone(p: string | null): string {
   return p;
 }
 
-// ─── SubCard: individual row with inline phone + tags ────────────────────────
-function SubCard({ sub, idx, total, companyId, onEdit, onDelete, onPhoneUpdate }: {
-  sub: Sub; idx: number; total: number; companyId: string;
-  onEdit: () => void; onDelete: () => void; onPhoneUpdate: (phone: string | null) => void;
+// ─── SubCard: individual row ──────────────────────────────────────────────────
+function SubCard({ sub, idx, total, onEdit, onDelete }: {
+  sub: Sub; idx: number; total: number;
+  onEdit: () => void; onDelete: () => void;
 }) {
-  const [phoneInput, setPhoneInput] = useState(sub.phone ?? "");
-  const [phoneSaving, setPhoneSaving] = useState(false);
   const tags = parseTags(sub.notes);
-
-  async function savePhone() {
-    const val = phoneInput.trim() || null;
-    if (val === sub.phone) return;
-    setPhoneSaving(true);
-    await fetch(`/api/${companyId}/subs/${sub.id}`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ name: sub.name, email: sub.email, phone: val, divisionCode: sub.divisionCode, divisionName: sub.divisionName, notes: sub.notes }),
-    });
-    onPhoneUpdate(val);
-    setPhoneSaving(false);
-  }
 
   return (
     <div
@@ -73,23 +58,13 @@ function SubCard({ sub, idx, total, companyId, onEdit, onDelete, onPhoneUpdate }
     >
       <div className="flex-1 min-w-0">
         <span className="text-sm font-semibold" style={{ color: "#e6edf3" }}>{sub.name}</span>
+        {sub.phone && (
+          <div className="text-base font-bold mt-0.5" style={{ color: "#e6edf3" }}>{formatPhone(sub.phone)}</div>
+        )}
         <div className="flex items-center gap-2 mt-1 flex-wrap">
           {sub.email && (
             <a href={`mailto:${sub.email}`} className="text-xs hover:underline" style={{ color: "#58a6ff" }}>{sub.email}</a>
           )}
-          <div className="flex items-center gap-1">
-            <input
-              type="tel"
-              value={phoneInput}
-              onChange={e => setPhoneInput(e.target.value)}
-              onBlur={savePhone}
-              onKeyDown={e => { if (e.key === "Enter") (e.target as HTMLInputElement).blur(); }}
-              placeholder={formatPhone(sub.phone) || "Add phone…"}
-              className="text-xs rounded px-1.5 py-0.5"
-              style={{ background: "#0d1117", border: "1px solid #30373f", color: phoneInput ? "#e6edf3" : "#484f58", width: 118 }}
-            />
-            {phoneSaving && <span className="text-[10px]" style={{ color: "#8b949e" }}>…</span>}
-          </div>
           {tags.map(tag => {
             const c = tagColor(tag);
             return (
@@ -319,10 +294,8 @@ export default function SubsDatabase({ companyId, initialSubs }: { companyId: st
                   sub={sub}
                   idx={idx}
                   total={group.subs.length}
-                  companyId={companyId}
                   onEdit={() => openEdit(sub)}
                   onDelete={() => handleDelete(sub.id)}
-                  onPhoneUpdate={(phone) => setSubs(prev => prev.map(s => s.id === sub.id ? { ...s, phone } : s))}
                 />
               ))}
             </div>
