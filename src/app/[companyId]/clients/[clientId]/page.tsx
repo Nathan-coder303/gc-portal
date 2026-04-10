@@ -16,6 +16,7 @@ import ClientTextNotes from "@/components/clients/ClientTextNotes";
 import ClientCoverPhotoSelector from "@/components/clients/ClientCoverPhotoSelector";
 import ClientInvoicesTab from "@/components/clients/ClientInvoicesTab";
 import NurturingEmailTab from "@/components/clients/NurturingEmailTab";
+import ChangeOrdersTab from "@/components/clients/ChangeOrdersTab";
 
 export default async function ClientDetailPage({
   params,
@@ -114,13 +115,21 @@ export default async function ClientDetailPage({
     orderBy: { createdAt: "desc" },
   });
 
-  const clientInvoices = await prisma.invoice.findMany({
-    where: { clientId: params.clientId, companyId: params.companyId },
-    orderBy: { createdAt: "asc" },
-  });
+  const [clientInvoices, changeOrders] = await Promise.all([
+    prisma.invoice.findMany({
+      where: { clientId: params.clientId, companyId: params.companyId },
+      orderBy: { createdAt: "asc" },
+    }),
+    prisma.changeOrder.findMany({
+      where: { clientId: params.clientId, companyId: params.companyId },
+      orderBy: { createdAt: "desc" },
+      include: { items: { orderBy: { sortOrder: "asc" } } },
+    }),
+  ]);
 
   const tabs = [
     { key: "estimates", label: "Estimates" },
+    { key: "change-orders", label: `Change Orders${changeOrders.length > 0 ? ` (${changeOrders.length})` : ""}` },
     { key: "invoices", label: `Invoices${clientInvoices.length > 0 ? ` (${clientInvoices.length})` : ""}` },
     { key: "notes", label: `Notes${clientNotes.length > 0 ? ` (${clientNotes.length})` : ""}` },
     { key: "subs-bids", label: "Build an Estimate" },
@@ -211,6 +220,34 @@ export default async function ClientDetailPage({
           clientCoverPhotoUrl={safeClient.coverPhotoType === "CUSTOM" ? `/api/${params.companyId}/clients/${params.clientId}/cover` : null}
           clientCoverTitle={safeClient.coverTitle ?? null}
           hasInsertFile={hasInsertFile}
+        />
+      )}
+
+      {activeTab === "change-orders" && (
+        <ChangeOrdersTab
+          companyId={params.companyId}
+          clientId={params.clientId}
+          canEdit={canEdit}
+          initialOrders={changeOrders.map(co => ({
+            id: co.id,
+            title: co.title,
+            orderNumber: co.orderNumber,
+            status: co.status,
+            notes: co.notes,
+            createdAt: co.createdAt.toISOString(),
+            items: co.items.map(it => ({
+              id: it.id,
+              csiCode: it.csiCode,
+              divisionName: it.divisionName,
+              name: it.name,
+              description: it.description,
+              qty: it.qty != null ? String(it.qty) : null,
+              unit: it.unit,
+              unitCost: it.unitCost != null ? String(it.unitCost) : null,
+              markupPct: it.markupPct != null ? String(it.markupPct) : null,
+              sortOrder: it.sortOrder,
+            })),
+          }))}
         />
       )}
 
