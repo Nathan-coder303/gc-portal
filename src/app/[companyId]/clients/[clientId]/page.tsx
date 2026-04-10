@@ -140,9 +140,13 @@ export default async function ClientDetailPage({
 
   return (
     <div className="max-w-5xl mx-auto px-4 md:px-8 py-6 md:py-8">
-      <Link href={`/${params.companyId}/clients`} className="inline-flex items-center gap-1.5 text-sm mb-5 transition-colors hover:opacity-80" style={{ color: "#8b949e" }}>
-        ← Clients
-      </Link>
+      <a
+        href={`/${params.companyId}/clients`}
+        className="inline-flex items-center gap-2 mb-5 px-4 py-2 rounded-xl text-sm font-semibold transition-all hover:scale-105"
+        style={{ background: "#1e2736", border: "1px solid #30373f", color: "#C9A84C" }}
+      >
+        <span style={{ fontSize: 16 }}>←</span> Clients
+      </a>
       <ClientDetailHeader
         client={{
           id: safeClient.id,

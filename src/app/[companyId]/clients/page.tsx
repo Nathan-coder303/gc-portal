@@ -18,15 +18,22 @@ function calcRaw(divisions: DivisionLike[]): number {
   }, 0);
 }
 
+function calcMarkupTotal(divisions: DivisionLike[]): number {
+  return divisions.reduce((sum, div) => {
+    const allItems = [...div.items, ...div.groups.flatMap(g => g.items)];
+    return sum + allItems.reduce((s, i) => {
+      const qty = i.defaultQty ? Number(i.defaultQty) : 0;
+      const cost = i.defaultUnitCost ? Number(i.defaultUnitCost) : 0;
+      const markup = i.defaultMarkupPct ? Number(i.defaultMarkupPct) : 0;
+      return s + qty * cost * (markup / 100);
+    }, 0);
+  }, 0);
+}
+
 function calcEstimateTotal(divisions: DivisionLike[], gcFeePercent: unknown): number {
   const raw = calcRaw(divisions);
   const fee = gcFeePercent ? raw * Number(gcFeePercent) / 100 : 0;
   return raw + fee;
-}
-
-function calcGcFee(divisions: DivisionLike[], gcFeePercent: unknown): number {
-  if (!gcFeePercent) return 0;
-  return calcRaw(divisions) * Number(gcFeePercent) / 100;
 }
 
 export default async function ClientsPage({ params }: { params: { companyId: string } }) {
@@ -44,6 +51,7 @@ export default async function ClientsPage({ params }: { params: { companyId: str
         where: { type: "CLIENT_ESTIMATE", archivedAt: null },
         select: {
           gcFeePercent: true,
+          internalProfitOverride: true,
           divisions: {
             where: { archivedAt: null },
             select: {
@@ -77,7 +85,10 @@ export default async function ClientsPage({ params }: { params: { companyId: str
           phone: c.phone,
           estimateCount: c._count.templates,
           estimateTotal: c.templates.reduce((sum, t) => sum + calcEstimateTotal(t.divisions, t.gcFeePercent), 0),
-          gcFee: c.templates.reduce((sum, t) => sum + calcGcFee(t.divisions, t.gcFeePercent), 0),
+          internalProfit: c.templates.reduce((sum, t) => {
+            if (t.internalProfitOverride != null) return sum + Number(t.internalProfitOverride);
+            return sum + calcMarkupTotal(t.divisions);
+          }, 0),
           status: c.status,
           sortOrder: c.sortOrder,
         }))}

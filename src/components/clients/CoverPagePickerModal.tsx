@@ -21,6 +21,7 @@ export type PdfOptions = {
   coverType: CoverType;
   page2: Page2Type;
   includeInsert: boolean;
+  includeDivisionSummary: boolean;
 };
 
 export default function CoverPagePickerModal({
@@ -54,6 +55,7 @@ export default function CoverPagePickerModal({
   const [cover, setCover]               = useState<CoverType>(defaultCover);
   const [page2, setPage2]               = useState<Page2Type>(initialPage2 === "NONE" ? "ROOF" : initialPage2);
   const [includeInsert, setIncludeInsert] = useState(true);
+  const [includeDivisionSummary, setIncludeDivisionSummary] = useState(false);
 
   const coverLabel = customCoverLabel || "Custom";
 
@@ -64,7 +66,7 @@ export default function CoverPagePickerModal({
       : []),
   ];
 
-  const opts: PdfOptions = { coverType: cover, page2, includeInsert };
+  const opts: PdfOptions = { coverType: cover, page2, includeInsert, includeDivisionSummary };
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ background: "rgba(0,0,0,0.8)" }} onClick={onClose}>
@@ -145,6 +147,33 @@ export default function CoverPagePickerModal({
                 <div className="text-2xl mb-1">⊘</div>
                 <div className="text-xs font-semibold" style={{ color: !includeInsert ? "#C9A84C" : "#e6edf3" }}>No</div>
                 <div className="text-[10px] mt-0.5" style={{ color: "#8b949e" }}>Skip — avoid blank page</div>
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* ── Section: Division Summary Page ── */}
+        {page2 !== "ROOF" && (
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-widest mb-2" style={{ color: "#8b949e" }}>Division Summary Page</p>
+            <div className="grid grid-cols-2 gap-2">
+              <button
+                onClick={() => setIncludeDivisionSummary(true)}
+                className="rounded-xl p-3 text-left transition-all"
+                style={{ border: `2px solid ${includeDivisionSummary ? "#C9A84C" : "#30373f"}`, background: includeDivisionSummary ? "#1e2a12" : "#1e2736", outline: "none" }}
+              >
+                <div className="text-2xl mb-1">📋</div>
+                <div className="text-xs font-semibold" style={{ color: includeDivisionSummary ? "#C9A84C" : "#e6edf3" }}>Include</div>
+                <div className="text-[10px] mt-0.5" style={{ color: "#8b949e" }}>All divisions + totals on one page</div>
+              </button>
+              <button
+                onClick={() => setIncludeDivisionSummary(false)}
+                className="rounded-xl p-3 text-left transition-all"
+                style={{ border: `2px solid ${!includeDivisionSummary ? "#C9A84C" : "#30373f"}`, background: !includeDivisionSummary ? "#1e2a12" : "#1e2736", outline: "none" }}
+              >
+                <div className="text-2xl mb-1">⊘</div>
+                <div className="text-xs font-semibold" style={{ color: !includeDivisionSummary ? "#C9A84C" : "#e6edf3" }}>Skip</div>
+                <div className="text-[10px] mt-0.5" style={{ color: "#8b949e" }}>Go straight to detailed line items</div>
               </button>
             </div>
           </div>

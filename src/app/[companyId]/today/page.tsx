@@ -26,9 +26,16 @@ function calcRaw(divisions: DivisionLike[]): number {
   }, 0);
 }
 
-function calcGcFee(divisions: DivisionLike[], gcFeePercent: unknown): number {
-  if (!gcFeePercent) return 0;
-  return calcRaw(divisions) * Number(gcFeePercent) / 100;
+function calcMarkupTotal(divisions: DivisionLike[]): number {
+  return divisions.reduce((sum, div) => {
+    const allItems = [...div.items, ...div.groups.flatMap(g => g.items)];
+    return sum + allItems.reduce((s, i) => {
+      const qty = i.defaultQty ? Number(i.defaultQty) : 0;
+      const cost = i.defaultUnitCost ? Number(i.defaultUnitCost) : 0;
+      const markup = i.defaultMarkupPct ? Number(i.defaultMarkupPct) : 0;
+      return s + qty * cost * (markup / 100);
+    }, 0);
+  }, 0);
 }
 
 function calcEstimateTotal(divisions: DivisionLike[], gcFeePercent: unknown): number {
@@ -130,6 +137,7 @@ export default async function TodayPage({
           where: { type: "CLIENT_ESTIMATE", archivedAt: null },
           select: {
             gcFeePercent: true,
+            internalProfitOverride: true,
             divisions: {
               where: { archivedAt: null },
               select: {
@@ -147,10 +155,13 @@ export default async function TodayPage({
     weekday: "long", year: "numeric", month: "long", day: "numeric",
   });
 
-  // Compute MIBH Income barometer
-  const activeGcFeeTotal = activeClients.reduce((sum, c) => sum + c.templates.reduce((s, t) => s + calcGcFee(t.divisions, t.gcFeePercent), 0), 0);
+  // Compute MIBH Income barometer (use internalProfit: override if set, else auto markup total)
+  const activeInternalProfitTotal = activeClients.reduce((sum, c) => sum + c.templates.reduce((s, t) => {
+    if (t.internalProfitOverride != null) return s + Number(t.internalProfitOverride);
+    return s + calcMarkupTotal(t.divisions);
+  }, 0), 0);
   const activeTotalFallback = activeClients.reduce((sum, c) => sum + c.templates.reduce((s, t) => s + calcEstimateTotal(t.divisions, t.gcFeePercent), 0), 0);
-  const mibhIncome = activeGcFeeTotal > 0 ? activeGcFeeTotal : activeTotalFallback;
+  const mibhIncome = activeInternalProfitTotal > 0 ? activeInternalProfitTotal : activeTotalFallback;
   const goalPct = Math.min(100, (mibhIncome / GOAL_2026) * 100);
 
   // Map follow-ups to FollowUpItem shape for each category
@@ -364,7 +375,31 @@ export default async function TodayPage({
           clients={clients}
         />
 
-        {/* Card 7 — To Call ASAP (full-width) */}
+        {/* Card 7 — Sub Database */}
+        <Link
+          href={`/${params.companyId}/subs`}
+          className="rounded-xl p-5 flex flex-col gap-3 transition-all hover:border-[#C9A84C55] hover:scale-[1.01] block"
+          style={{ background: "#161b22", border: "1px solid #30373f" }}
+        >
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-semibold uppercase tracking-wider" style={{ color: "#8b949e" }}>
+              Sub Database
+            </span>
+            <span className="text-xs" style={{ color: "#C9A84C" }}>Open →</span>
+          </div>
+          <div className="mt-1">
+            <div className="text-2xl font-black" style={{ color: "#e6edf3" }}>Subs & Emails</div>
+            <p className="text-xs mt-1" style={{ color: "#8b949e" }}>
+              All subcontractors by division. Click to view and copy emails for new projects.
+            </p>
+          </div>
+          <div className="mt-auto pt-2 flex items-center gap-2">
+            <span className="text-xs px-2 py-0.5 rounded" style={{ background: "#1e2736", color: "#58a6ff", border: "1px solid #58a6ff33" }}>By Division</span>
+            <span className="text-xs px-2 py-0.5 rounded" style={{ background: "#1e2736", color: "#22c55e", border: "1px solid #22c55e33" }}>Copy Emails</span>
+          </div>
+        </Link>
+
+        {/* Card 8 — To Call ASAP (full-width) */}
         <div className="sm:col-span-2 lg:col-span-3">
           <TodayCallsSection
             companyId={params.companyId}

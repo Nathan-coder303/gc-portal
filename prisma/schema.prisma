@@ -78,6 +78,7 @@ model Company {
   backupFileDate       String?
   invoices          Invoice[]
   changeOrders      ChangeOrder[]
+  subContractors    SubContractor[]
 }
 
 model Lead {
@@ -523,6 +524,7 @@ model EstimateTemplate {
   counterSignedAt        DateTime?
   hasSkylights           Boolean                    @default(true)
   hasRoofDrains          Boolean                    @default(true)
+  internalProfitOverride Decimal?                   @db.Decimal(12, 2) // Manual lump-sum internal profit (overrides auto markup sum)
   insulationType         String?                    @default("ISO")
   combinationType        String?
   divisions       EstimateTemplateDivision[]
@@ -798,4 +800,23 @@ model ChangeOrderItem {
   createdAt     DateTime    @default(now())
 
   @@index([changeOrderId])
+}
+
+// ─── Sub Contractor Database ──────────────────────────────────────────────────
+
+model SubContractor {
+  id           String   @id @default(cuid())
+  companyId    String
+  company      Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  name         String
+  email        String?
+  phone        String?
+  divisionCode String
+  divisionName String
+  notes        String?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@index([companyId])
+  @@index([companyId, divisionCode])
 }

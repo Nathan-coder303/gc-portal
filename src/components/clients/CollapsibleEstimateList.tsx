@@ -102,7 +102,7 @@ function EstimateCard({
   const initialPage2: Page2Type = n.includes("retail") ? "RETAIL" : n.includes("roof") ? "ROOF" : n.includes("addition") ? "ADDITION" : "NONE";
 
   function buildPdfUrl(opts: PdfOptions, preview = false) {
-    return `/api/${companyId}/estimates/${est.id}/pdf?cover=1&coverType=${opts.coverType}&page2=${opts.page2}&includeInsert=${opts.includeInsert ? 1 : 0}${preview ? "&preview=1" : ""}`;
+    return `/api/${companyId}/estimates/${est.id}/pdf?cover=1&coverType=${opts.coverType}&page2=${opts.page2}&includeInsert=${opts.includeInsert ? 1 : 0}&divSummary=${opts.includeDivisionSummary ? 1 : 0}${preview ? "&preview=1" : ""}`;
   }
 
   function handlePdfConfirm(opts: PdfOptions) {

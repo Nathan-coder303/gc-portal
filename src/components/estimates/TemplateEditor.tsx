@@ -25,6 +25,7 @@ import {
   updateTemplateShowTerms,
   updateTemplateTermsContent,
   updateTemplateGcFee,
+  updateTemplateInternalProfit,
   updateTemplateSqFt,
   updateTemplateDurationMonths,
   moveItemBetweenDivisions,
@@ -55,7 +56,7 @@ type Item = {
 type Group = { id: string; name: string; items: Item[] };
 type Division = { id: string; csiCode: string | null; name: string; groups: Group[]; items: Item[] };
 type PaymentRow = { payment: string; trigger: string; pct: number };
-type Template = { id: string; name: string; description: string | null; companyId: string; estimateNumber: string | null; estimateDate: string | null; paymentSchedule: PaymentRow[] | null; showTerms: boolean; termsContent: string | null; type: string; gcFeePercent: number | null; sqFt: number | null; durationMonths: number | null; hasSkylights: boolean | null; hasRoofDrains: boolean | null; insulationType: string | null; combinationType: string | null };
+type Template = { id: string; name: string; description: string | null; companyId: string; estimateNumber: string | null; estimateDate: string | null; paymentSchedule: PaymentRow[] | null; showTerms: boolean; termsContent: string | null; type: string; gcFeePercent: number | null; internalProfitOverride: number | null; sqFt: number | null; durationMonths: number | null; hasSkylights: boolean | null; hasRoofDrains: boolean | null; insulationType: string | null; combinationType: string | null };
 
 const INPUT = "rounded px-2 py-1 text-xs" as const;
 const inputStyle = { background: "#0d1117", border: "1px solid #30373f", color: "#e6edf3" };
@@ -1084,6 +1085,19 @@ export default function TemplateEditor({
   const [gcFeePercent, setGcFeePercent] = useState<number | "">(template.gcFeePercent ?? "");
   const gcFeeAmount = typeof gcFeePercent === "number" && gcFeePercent > 0 ? subtotal * gcFeePercent / 100 : 0;
   const total = subtotal + gcFeeAmount;
+
+  // Internal profit: auto-computed from item markups, with optional lump-sum override
+  const autoMarkupTotal = divisions.reduce((sum, div) => {
+    const allItems = [...div.items, ...div.groups.flatMap(g => g.items)];
+    return sum + allItems.reduce((s, i) => {
+      const qty = i.defaultQty ?? 0;
+      const cost = i.defaultUnitCost ?? 0;
+      const markup = i.defaultMarkupPct ?? 0;
+      return s + qty * cost * (markup / 100);
+    }, 0);
+  }, 0);
+  const [internalProfitOverride, setInternalProfitOverride] = useState<number | "">(template.internalProfitOverride ?? "");
+  const internalProfit = typeof internalProfitOverride === "number" ? internalProfitOverride : autoMarkupTotal;
   const [sqFt, setSqFt] = useState<number | "">(template.sqFt ?? "");
   const [durationMonths, setDurationMonths] = useState<number | "">(template.durationMonths ?? "");
   useEffect(() => { setSqFt(template.sqFt ?? ""); }, [template.sqFt]);
@@ -1342,6 +1356,34 @@ export default function TemplateEditor({
                         <span style={{ color: "#C9A84C" }}>${fmt(gcFeeAmount)}</span>
                       </div>
                     )}
+                    {/* Internal Profit row */}
+                    <div className="border-t pt-2 mt-1" style={{ borderColor: "#1e3520" }}>
+                      <div className="flex items-center justify-between gap-2 mb-1">
+                        <span className="text-xs shrink-0 font-semibold" style={{ color: "#22c55e88" }}>Internal Profit</span>
+                        <input
+                          type="number"
+                          min="0"
+                          step="100"
+                          value={internalProfitOverride}
+                          onChange={e => setInternalProfitOverride(e.target.value === "" ? "" : Number(e.target.value))}
+                          onBlur={() => {
+                            const val = internalProfitOverride === "" ? null : Number(internalProfitOverride);
+                            startTransition(async () => { await updateTemplateInternalProfit(template.id, val); });
+                          }}
+                          placeholder={fmt(autoMarkupTotal)}
+                          className="rounded px-2 py-1 text-xs text-right w-24"
+                          style={{ background: "#0a1a0f", border: "1px solid #22c55e44", color: "#22c55e" }}
+                        />
+                      </div>
+                      {typeof internalProfitOverride === "number" && autoMarkupTotal > 0 && (
+                        <div className="text-[10px] text-right" style={{ color: "#484f58" }}>
+                          auto: ${fmt(autoMarkupTotal)}
+                        </div>
+                      )}
+                      <div className="text-lg font-bold text-right" style={{ color: "#22c55e" }}>
+                        ${fmt(internalProfit)}
+                      </div>
+                    </div>
                     <div className="border-t pt-2" style={{ borderColor: "#30373f" }}>
                       <div className="text-xs font-semibold uppercase tracking-widest mb-1 text-center" style={{ color: "#8b949e" }}>Total</div>
                       <div className="text-4xl font-bold leading-none text-center" style={{ color: "#C9A84C" }}>${fmt(total)}</div>

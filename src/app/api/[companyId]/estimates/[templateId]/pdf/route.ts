@@ -45,6 +45,7 @@ export async function GET(
   const coverTypeParam = req.nextUrl.searchParams.get("coverType");
   const page2Param = req.nextUrl.searchParams.get("page2"); // "ROOF" | "ADDITION" | "NONE" | null (auto)
   const isPreview = req.nextUrl.searchParams.get("preview") === "1";
+  const includeDivisionSummary = req.nextUrl.searchParams.get("divSummary") === "1";
 
   const [template, company] = await Promise.all([
     prisma.estimateTemplate.findFirst({
@@ -125,6 +126,7 @@ export async function GET(
     includeAdditionPages: page2Param ? page2Param === "ADDITION" : template.name.toLowerCase().includes("addition"),
     includeRetailPages: page2Param ? page2Param === "RETAIL" : template.name.toLowerCase().includes("retail"),
     includeCoverPage: cover,
+    includeDivisionSummary,
     insulationType: template.insulationType ?? "ISO",
     clientCoverPhotoType: coverTypeParam ?? template.client?.coverPhotoType ?? null,
     clientCoverPhotoUrl: await resolvePrivateCoverUrl(template.client?.coverPhotoUrl ?? null),

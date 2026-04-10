@@ -165,6 +165,7 @@ type TemplatePdfProps = {
   includeCoverPage?: boolean;
   includeAdditionPages?: boolean;
   includeRetailPages?: boolean;
+  includeDivisionSummary?: boolean;
   insulationType?: string | null;
   clientCoverPhotoType?: string | null;
   clientCoverPhotoUrl?: string | null;
@@ -972,7 +973,102 @@ function RetailPage2({ client }: Pick<TemplatePdfProps, "client">) {
   );
 }
 
-function TemplatePdfDocument({ companyName, template, client, divisions, showTerms, termsContent, paymentSchedule, gcFeePercent, summaryGroups, clientSignatureData, clientSignedByName, clientSignedAt, contractorSignatureData, contractorSignedAt, includeRoofUpgradesPage, includeCoverPage, includeAdditionPages, includeRetailPages, insulationType, clientCoverPhotoType, clientCoverPhotoUrl, clientCoverTitle }: TemplatePdfProps) {
+// ─── Division Summary Page ────────────────────────────────────────────────────
+function DivisionSummaryPage({ template, client, divisions, gcFeePercent }: Pick<TemplatePdfProps, "template" | "client" | "divisions" | "gcFeePercent">) {
+  const logoPath = path.join(process.cwd(), "public", "logo.png");
+
+  // Compute division totals (only divisions with items having a total)
+  const divTotals: { name: string; total: number }[] = [];
+  for (const div of divisions) {
+    const allItems = [
+      ...div.items.filter(isItemFilled),
+      ...div.groups.flatMap(g => g.items.filter(isItemFilled)),
+    ];
+    if (allItems.length === 0) continue;
+    const total = allItems.reduce((s, i) => s + calcTotal(i.defaultQty, i.defaultUnitCost, i.defaultMarkupPct), 0);
+    if (total > 0) divTotals.push({ name: div.name, total });
+  }
+
+  const subtotal = divTotals.reduce((s, d) => s + d.total, 0);
+  const gcFeeAmount = gcFeePercent && gcFeePercent > 0 ? subtotal * gcFeePercent / 100 : 0;
+  const grandTotal = subtotal + gcFeeAmount;
+  const dateDisplay = fmtDate(template.estimateDate);
+
+  return (
+    <Page size="LETTER" style={{ fontFamily: "Helvetica", paddingTop: 0, paddingBottom: 0 }}>
+      {/* Header bar */}
+      <View style={{ flexDirection: "row", alignItems: "center", backgroundColor: DARK, paddingHorizontal: 24, paddingVertical: 10, gap: 14 }}>
+        {/* eslint-disable-next-line jsx-a11y/alt-text */}
+        <Image src={logoPath} style={{ width: 48, height: 48 }} />
+        <View style={{ flex: 1 }}>
+          <Text style={{ fontSize: 18, fontFamily: "Helvetica-Bold", color: GOLD, letterSpacing: 2 }}>MIBH CONSTRUCTION</Text>
+          <Text style={{ fontSize: 8, color: "#94a3b8", marginTop: 2 }}>Licensed &amp; Insured  |  CGC1527069  |  CCC1336817  |  (305) 746-7307</Text>
+        </View>
+        {client ? <Text style={{ fontSize: 10, color: "#94a3b8", textAlign: "right" }}>{client.name}</Text> : null}
+      </View>
+      <View style={{ height: 3, backgroundColor: GOLD }} />
+
+      {/* Main centered content */}
+      <View style={{ flex: 1, paddingHorizontal: 48, paddingTop: 32, paddingBottom: 32, justifyContent: "center" }}>
+        {/* Title */}
+        <Text style={{ fontSize: 18, fontFamily: "Helvetica-Bold", color: DARK, textAlign: "center", letterSpacing: 1, marginBottom: 6 }}>
+          ESTIMATE SUMMARY
+        </Text>
+        <Text style={{ fontSize: 10, color: "#94a3b8", textAlign: "center", marginBottom: 4 }}>{template.name}</Text>
+        {dateDisplay ? <Text style={{ fontSize: 9, color: "#94a3b8", textAlign: "center", marginBottom: 24 }}>{dateDisplay}</Text> : <View style={{ height: 24 }} />}
+
+        {/* Gold divider */}
+        <View style={{ height: 2, backgroundColor: GOLD, marginBottom: 20 }} />
+
+        {/* Division rows */}
+        {divTotals.map((d, idx) => (
+          <View key={idx} style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", paddingVertical: 7, paddingHorizontal: 16, borderBottomWidth: 1, borderBottomColor: "#e2e8f0", backgroundColor: idx % 2 === 0 ? "#f8fafc" : "#ffffff" }}>
+            <Text style={{ fontSize: 11, color: "#334155", fontFamily: "Helvetica-Bold" }}>{d.name}</Text>
+            <Text style={{ fontSize: 11, color: "#0f172a", fontFamily: "Helvetica-Bold" }}>${fmt(d.total)}</Text>
+          </View>
+        ))}
+
+        {/* GC Fee row */}
+        {gcFeeAmount > 0 && (
+          <>
+            <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", paddingVertical: 7, paddingHorizontal: 16, borderBottomWidth: 1, borderBottomColor: "#e2e8f0", backgroundColor: divTotals.length % 2 === 0 ? "#f8fafc" : "#ffffff" }}>
+              <Text style={{ fontSize: 11, color: "#334155" }}>GC Overhead &amp; Profit ({fmt(gcFeePercent!)}%)</Text>
+              <Text style={{ fontSize: 11, color: "#0f172a", fontFamily: "Helvetica-Bold" }}>${fmt(gcFeeAmount)}</Text>
+            </View>
+          </>
+        )}
+
+        {/* Gold divider */}
+        <View style={{ height: 2, backgroundColor: GOLD, marginTop: 20, marginBottom: 0 }} />
+
+        {/* Grand total */}
+        <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", backgroundColor: DARK, paddingHorizontal: 16, paddingVertical: 12, borderRadius: 4, marginTop: 0 }}>
+          <Text style={{ fontSize: 14, fontFamily: "Helvetica-Bold", color: GOLD }}>ESTIMATE TOTAL</Text>
+          <Text style={{ fontSize: 16, fontFamily: "Helvetica-Bold", color: GOLD }}>${fmt(grandTotal)}</Text>
+        </View>
+
+        <Text style={{ fontSize: 8, color: "#94a3b8", textAlign: "center", marginTop: 20 }}>
+          Detailed scope of work and line items follow on the next pages.
+        </Text>
+      </View>
+
+      {/* Footer */}
+      <View style={{ backgroundColor: DARK, paddingHorizontal: 24, paddingVertical: 9, flexDirection: "row", alignItems: "center", gap: 12 }}>
+        <Text style={{ fontSize: 8.5, color: GOLD, fontFamily: "Helvetica-Bold" }}>MIBH CONSTRUCTION</Text>
+        <Text style={{ fontSize: 7, color: "#94a3b8" }}>|</Text>
+        <Text style={{ fontSize: 8.5, color: "#94a3b8" }}>mike@mibhconstruction.com</Text>
+        <Text style={{ fontSize: 7, color: "#94a3b8" }}>|</Text>
+        <Text style={{ fontSize: 8.5, color: "#94a3b8" }}>Mike Baruh</Text>
+        <Text style={{ fontSize: 7, color: "#94a3b8" }}>|</Text>
+        <Text style={{ fontSize: 8.5, color: "#94a3b8" }}>(305) 746-7307</Text>
+        <View style={{ flex: 1 }} />
+        <Text style={{ fontSize: 8, color: "#94a3b8" }} render={({ pageNumber, totalPages }) => `Page ${pageNumber} of ${totalPages}`} />
+      </View>
+    </Page>
+  );
+}
+
+function TemplatePdfDocument({ companyName, template, client, divisions, showTerms, termsContent, paymentSchedule, gcFeePercent, summaryGroups, clientSignatureData, clientSignedByName, clientSignedAt, contractorSignatureData, contractorSignedAt, includeRoofUpgradesPage, includeCoverPage, includeAdditionPages, includeRetailPages, includeDivisionSummary, insulationType, clientCoverPhotoType, clientCoverPhotoUrl, clientCoverTitle }: TemplatePdfProps) {
   const grouped = groupDivisions(divisions);
 
   // Compute raw totals per group label (or null for ungrouped)
@@ -1133,6 +1229,9 @@ function TemplatePdfDocument({ companyName, template, client, divisions, showTer
       {includeAdditionPages && <AdditionPage2 client={client} />}
       {includeRetailPages && <RetailPage1 template={template} client={client} clientCoverPhotoType={clientCoverPhotoType} clientCoverPhotoUrl={clientCoverPhotoUrl} clientCoverTitle={clientCoverTitle} />}
       {includeRetailPages && <RetailPage2 client={client} />}
+      {includeDivisionSummary && !includeRoofUpgradesPage && (
+        <DivisionSummaryPage template={template} client={client} divisions={divisions} gcFeePercent={gcFeePercent} />
+      )}
       <Page size="LETTER" style={styles.page}>
         {/* Fixed footer — renders on every page */}
         <View fixed style={{ position: "absolute", bottom: 0, left: 0, right: 0, backgroundColor: DARK, paddingHorizontal: 24, paddingVertical: 9, flexDirection: "row", alignItems: "center", gap: 12 }}>

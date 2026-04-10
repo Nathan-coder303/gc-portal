@@ -803,6 +803,20 @@ export async function updateTemplateGcFee(templateId: string, gcFeePercent: numb
   return { success: true };
 }
 
+export async function updateTemplateInternalProfit(templateId: string, internalProfitOverride: number | null) {
+  const session = await auth();
+  if (!session) throw new Error("Unauthorized");
+  requirePermission(session, "estimateTemplate:edit");
+
+  await prisma.estimateTemplate.update({
+    where: { id: templateId },
+    data: { internalProfitOverride: internalProfitOverride ?? null, updatedBy: session.user.id },
+  });
+
+  revalidatePath(`/${session.user.companyId}/estimates`);
+  return { success: true };
+}
+
 export async function updateTemplateSqFt(templateId: string, sqFt: number | null) {
   const session = await auth();
   if (!session) throw new Error("Unauthorized");

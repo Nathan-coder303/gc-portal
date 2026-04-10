@@ -8,7 +8,7 @@ import { TrashIcon, PencilIcon } from "@/components/ui/icons";
 type Client = {
   id: string; name: string; address: string | null; city: string | null;
   state: string | null; zip: string | null; email: string | null; phone: string | null;
-  estimateCount: number; estimateTotal: number; gcFee: number; status: string; sortOrder: number;
+  estimateCount: number; estimateTotal: number; internalProfit: number; status: string; sortOrder: number;
 };
 
 const GOAL_2026 = 5_000_000;
@@ -142,11 +142,11 @@ function ClientCard({
               {client.estimateTotal > 0 ? `$${client.estimateTotal.toLocaleString("en-US", { maximumFractionDigits: 0 })}` : "—"}
             </div>
             <div className="text-xs mt-0.5" style={{ color: "#8b949e" }}>{client.estimateCount} est.</div>
-            {client.status === "ACTIVE" && client.gcFee > 0 && (
+            {client.status === "ACTIVE" && client.internalProfit > 0 && (
               <div className="mt-1.5">
-                <div className="text-xs font-semibold uppercase tracking-wide" style={{ color: "#22c55e88" }}>MIBH Income</div>
+                <div className="text-xs font-semibold uppercase tracking-wide" style={{ color: "#22c55e88" }}>Internal Profit</div>
                 <div className="text-base font-bold leading-none" style={{ color: "#22c55e" }}>
-                  ${client.gcFee.toLocaleString("en-US", { maximumFractionDigits: 0 })}
+                  ${client.internalProfit.toLocaleString("en-US", { maximumFractionDigits: 0 })}
                 </div>
               </div>
             )}
@@ -320,9 +320,9 @@ export default function ClientsManager({ companyId, clients: initialClients, isA
 
   const prospects = clients.filter(c => c.status === "PROSPECT");
   const actives = clients.filter(c => c.status === "ACTIVE");
-  const activeGcFeeTotal = actives.reduce((sum, c) => sum + c.gcFee, 0);
-  // Fall back to estimateTotal if no gcFeePercent is set on any estimate
-  const mibhIncome = activeGcFeeTotal > 0 ? activeGcFeeTotal : actives.reduce((sum, c) => sum + c.estimateTotal, 0);
+  const activeInternalProfitTotal = actives.reduce((sum, c) => sum + c.internalProfit, 0);
+  // Fall back to estimateTotal if no internal profit is set on any estimate
+  const mibhIncome = activeInternalProfitTotal > 0 ? activeInternalProfitTotal : actives.reduce((sum, c) => sum + c.estimateTotal, 0);
   const goalPct = Math.min(100, (mibhIncome / GOAL_2026) * 100);
 
   function handleDragStart(clientId: string) {
