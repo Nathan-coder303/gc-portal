@@ -290,7 +290,7 @@ export default function SubsDatabase({ companyId, initialSubs }: { companyId: st
       {groups.length === 0 && (
         <div className="text-center py-16" style={{ color: "#8b949e" }}>
           <p className="text-lg mb-2">No subs yet</p>
-          <p className="text-sm">Click "Import from Bids" to pull your existing contractors, or add one manually.</p>
+          <p className="text-sm">Click &quot;Import from Bids&quot; to pull your existing contractors, or add one manually.</p>
         </div>
       )}
 
