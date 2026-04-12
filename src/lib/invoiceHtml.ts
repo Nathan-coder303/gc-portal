@@ -2,6 +2,8 @@ function fmt(n: number) {
   return n.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 }
 
+type PaymentEntry = { amount: number; method: string; paidDate: Date | string; notes?: string | null };
+
 export function buildInvoiceHtml(opts: {
   invoiceNumber: string;
   phase: string;
@@ -13,10 +15,15 @@ export function buildInvoiceHtml(opts: {
   dueDate: Date | null;
   notes: string | null;
   customBody?: string | null;
+  payments?: PaymentEntry[];
 }) {
   const due = opts.dueDate
     ? new Date(opts.dueDate).toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" })
     : null;
+
+  const payments = opts.payments ?? [];
+  const totalPaid = payments.reduce((s, p) => s + p.amount, 0);
+  const balance = opts.amount - totalPaid;
 
   const intro = opts.customBody
     ? opts.customBody.replace(/\n/g, "<br>")
@@ -36,6 +43,13 @@ export function buildInvoiceHtml(opts: {
   .amount-box .label { font-size: 11px; text-transform: uppercase; letter-spacing: .08em; color: #6b7280; margin-bottom: 6px; }
   .amount-box .amount { font-size: 36px; font-weight: 700; font-family: monospace; color: #111; }
   .amount-box .pct { font-size: 13px; color: #6b7280; margin-top: 4px; }
+  .balance-box { background: #f0fdf4; border: 2px solid #16a34a; border-radius: 8px; padding: 14px 20px; margin: 12px 0; display: flex; justify-content: space-between; align-items: center; }
+  .balance-box .bl { font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: .06em; color: #15803d; }
+  .balance-box .bv { font-size: 24px; font-weight: 700; font-family: monospace; color: #15803d; }
+  .payment-history { margin: 16px 0; }
+  .payment-history .ph-title { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .08em; color: #6b7280; margin-bottom: 8px; }
+  .ph-row { display: flex; justify-content: space-between; align-items: center; padding: 6px 10px; border-radius: 6px; background: #f9fafb; margin-bottom: 4px; font-size: 13px; }
+  .ph-row .ph-meta { color: #6b7280; font-size: 11px; }
   .zelle-box { background: #fff8ed; border: 1px solid #f59e0b44; border-radius: 8px; padding: 16px 20px; margin: 20px 0; }
   .zelle-box .zt { font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: .06em; color: #92400e; margin-bottom: 8px; }
   .zelle-row { display: flex; align-items: center; gap: 8px; font-size: 13px; margin-bottom: 4px; }
@@ -66,16 +80,32 @@ export function buildInvoiceHtml(opts: {
     <p style="font-size:14px;line-height:1.6">${intro}</p>
 
     <div class="amount-box">
-      <div class="label">Amount Due</div>
+      <div class="label">Invoice Amount</div>
       <div class="amount">$${fmt(opts.amount)}</div>
       <div class="pct">${opts.pct}% of project total</div>
     </div>
+
+    ${payments.length > 0 ? `
+    <div class="payment-history">
+      <div class="ph-title">Payments Received</div>
+      ${payments.map(p => {
+        const d = new Date(p.paidDate).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
+        return `<div class="ph-row"><div><span style="font-weight:600;color:#111">$${fmt(p.amount)}</span> <span class="ph-meta">via ${p.method}${p.notes ? ` · ${p.notes}` : ""}</span></div><span class="ph-meta">${d}</span></div>`;
+      }).join("")}
+    </div>
+    <div class="balance-box">
+      <span class="bl">${balance <= 0 ? "Paid in Full" : "Balance Due"}</span>
+      <span class="bv" style="${balance <= 0 ? "" : "color:#dc2626"}">${balance <= 0 ? "✓ $0.00" : `$${fmt(balance)}`}</span>
+    </div>
+    ` : ""}
 
     <table>
       <tr><td>Invoice #</td><td>${opts.invoiceNumber}</td></tr>
       <tr><td>Phase</td><td>${opts.phase}</td></tr>
       ${opts.trigger ? `<tr><td>Milestone</td><td>${opts.trigger}</td></tr>` : ""}
       ${due ? `<tr><td>Due Date</td><td>${due}</td></tr>` : ""}
+      ${payments.length > 0 ? `<tr><td>Total Paid</td><td style="color:#16a34a;font-weight:700">$${fmt(totalPaid)}</td></tr>` : ""}
+      ${payments.length > 0 && balance > 0 ? `<tr><td>Balance Due</td><td style="color:#dc2626;font-weight:700">$${fmt(balance)}</td></tr>` : ""}
     </table>
 
     ${opts.notes ? `<p style="font-size:13px;color:#374151;background:#f9fafb;padding:10px 14px;border-radius:6px"><strong>Notes:</strong> ${opts.notes}</p>` : ""}

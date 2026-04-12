@@ -13,7 +13,17 @@ const INPUT_STYLE = {
   width: "100%",
 };
 
+const PAYMENT_METHODS = ["Zelle", "Check", "Cash", "Credit Card", "ACH", "Wire"];
+
 type PaymentRow = { payment: string; trigger: string; pct: number };
+
+type Payment = {
+  id: string;
+  amount: number;
+  method: string;
+  paidDate: string;
+  notes: string | null;
+};
 
 type Estimate = {
   id: string;
@@ -37,6 +47,7 @@ type Invoice = {
   sentAt: string | null;
   paidAt: string | null;
   createdAt: string;
+  payments: Payment[];
 };
 
 const DEFAULT_SCHEDULE: PaymentRow[] = [
@@ -55,6 +66,16 @@ function fmtDate(iso: string) {
   return new Date(iso).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
 }
 
+function todayStr() {
+  return new Date().toISOString().slice(0, 10);
+}
+
+function plusDaysStr(days: number) {
+  const d = new Date();
+  d.setDate(d.getDate() + days);
+  return d.toISOString().slice(0, 10);
+}
+
 const STATUS_COLORS: Record<string, string> = {
   DRAFT: "#6b7280",
   SENT: "#3b82f6",
@@ -68,6 +89,23 @@ function StatusBadge({ status }: { status: string }) {
       background: STATUS_COLORS[status] + "22", color: STATUS_COLORS[status], textTransform: "uppercase",
     }}>
       {status}
+    </span>
+  );
+}
+
+function PaymentMethodBadge({ method }: { method: string }) {
+  const colors: Record<string, string> = {
+    Zelle: "#8b5cf6",
+    Check: "#f59e0b",
+    Cash: "#22c55e",
+    "Credit Card": "#3b82f6",
+    ACH: "#06b6d4",
+    Wire: "#f97316",
+  };
+  const color = colors[method] ?? "#8b949e";
+  return (
+    <span style={{ fontSize: 10, fontWeight: 700, padding: "1px 6px", borderRadius: 10, background: color + "22", color }}>
+      {method}
     </span>
   );
 }
@@ -88,13 +126,24 @@ export default function ClientInvoicesTab({
   initialInvoices: Invoice[];
 }) {
   const [invoices, setInvoices] = useState<Invoice[]>(initialInvoices);
+
+  // Create invoice state
   const [creating, setCreating] = useState(false);
   const [selectedEstId, setSelectedEstId] = useState(estimates[0]?.id ?? "");
   const [selectedPhase, setSelectedPhase] = useState<PaymentRow | null>(null);
   const [customAmount, setCustomAmount] = useState("");
-  const [dueDate, setDueDate] = useState("");
+  const [invoiceDate, setInvoiceDate] = useState(todayStr());
+  const [dueDate, setDueDate] = useState(plusDaysStr(30));
   const [notes, setNotes] = useState("");
   const [saving, setSaving] = useState(false);
+
+  // Payment recording state
+  const [payingInvoice, setPayingInvoice] = useState<Invoice | null>(null);
+  const [payAmount, setPayAmount] = useState("");
+  const [payMethod, setPayMethod] = useState("Zelle");
+  const [payDate, setPayDate] = useState(todayStr());
+  const [payNotes, setPayNotes] = useState("");
+  const [payingSaving, setPayingSaving] = useState(false);
 
   // Send modal state
   const [sendInvoice, setSendInvoice] = useState<Invoice | null>(null);
@@ -112,6 +161,11 @@ export default function ClientInvoicesTab({
     ? selectedEst.paymentSchedule
     : DEFAULT_SCHEDULE;
 
+  // Summary across all invoices
+  const totalInvoiced = invoices.reduce((s, i) => s + i.amount, 0);
+  const totalPaid = invoices.reduce((s, i) => s + i.payments.reduce((ps, p) => ps + p.amount, 0), 0);
+  const totalBalance = totalInvoiced - totalPaid;
+
   function openSend(inv: Invoice) {
     const est = estimates.find(e => e.id === inv.estimateId);
     setSendInvoice(inv);
@@ -122,6 +176,15 @@ export default function ClientInvoicesTab({
     setSendBody(`Dear ${clientName},\n\nPlease find below your invoice for the ${inv.phase} phase of your project. We appreciate your continued trust in MIBH Construction and look forward to delivering exceptional results.\n\nPayment can be made via Zelle to mikebaruh@gmail.com or by check payable to MIBH Construction. Please include Invoice #${inv.invoiceNumber} in the memo.\n\nDon't hesitate to reach out if you have any questions.`);
     setSendResult(null);
     setPreviewOpen(false);
+  }
+
+  function openPayment(inv: Invoice) {
+    const balance = inv.amount - inv.payments.reduce((s, p) => s + p.amount, 0);
+    setPayingInvoice(inv);
+    setPayAmount(balance > 0 ? balance.toFixed(2) : "");
+    setPayMethod("Zelle");
+    setPayDate(todayStr());
+    setPayNotes("");
   }
 
   async function createInvoice() {
@@ -138,30 +201,66 @@ export default function ClientInvoicesTab({
           trigger: selectedPhase.trigger,
           pct: selectedPhase.pct,
           amount,
+          invoiceDate: invoiceDate || null,
           dueDate: dueDate || null,
           notes: notes || null,
         }),
       });
       const inv = await res.json();
-      setInvoices((prev) => [...prev, inv]);
+      setInvoices((prev) => [...prev, { ...inv, payments: [] }]);
       setCreating(false);
       setSelectedPhase(null);
       setCustomAmount("");
-      setDueDate("");
+      setInvoiceDate(todayStr());
+      setDueDate(plusDaysStr(30));
       setNotes("");
     } finally {
       setSaving(false);
     }
   }
 
-  async function markPaid(inv: Invoice) {
-    const res = await fetch(`/api/${companyId}/clients/${clientId}/invoices/${inv.id}`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ status: "PAID", paidAt: new Date().toISOString() }),
-    });
-    const updated = await res.json();
-    setInvoices((prev) => prev.map((i) => (i.id === updated.id ? updated : i)));
+  async function recordPayment() {
+    if (!payingInvoice || !payAmount || !payMethod) return;
+    setPayingSaving(true);
+    try {
+      const res = await fetch(`/api/${companyId}/clients/${clientId}/invoices/${payingInvoice.id}/payments`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ amount: payAmount, method: payMethod, paidDate: payDate, notes: payNotes || null }),
+      });
+      const payment = await res.json();
+
+      // Update invoice payments + possibly status
+      setInvoices(prev => prev.map(inv => {
+        if (inv.id !== payingInvoice.id) return inv;
+        const newPayments = [...inv.payments, payment];
+        const paid = newPayments.reduce((s, p) => s + p.amount, 0);
+        return {
+          ...inv,
+          payments: newPayments,
+          status: paid >= inv.amount ? "PAID" : inv.status,
+          paidAt: paid >= inv.amount ? new Date().toISOString() : inv.paidAt,
+        };
+      }));
+      setPayingInvoice(null);
+    } finally {
+      setPayingSaving(false);
+    }
+  }
+
+  async function deletePayment(invoiceId: string, paymentId: string) {
+    await fetch(`/api/${companyId}/clients/${clientId}/invoices/${invoiceId}/payments/${paymentId}`, { method: "DELETE" });
+    setInvoices(prev => prev.map(inv => {
+      if (inv.id !== invoiceId) return inv;
+      const newPayments = inv.payments.filter(p => p.id !== paymentId);
+      const paid = newPayments.reduce((s, p) => s + p.amount, 0);
+      return {
+        ...inv,
+        payments: newPayments,
+        status: paid >= inv.amount ? "PAID" : (inv.sentAt ? "SENT" : "DRAFT"),
+        paidAt: paid >= inv.amount ? inv.paidAt : null,
+      };
+    }));
   }
 
   async function deleteInvoice(id: string) {
@@ -202,13 +301,22 @@ export default function ClientInvoicesTab({
 
   return (
     <div className="space-y-6">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <h2 className="text-base font-semibold" style={{ color: "#e6edf3" }}>Invoices</h2>
+      {/* Header + summary */}
+      <div className="flex items-start justify-between gap-4">
+        <div>
+          <h2 className="text-base font-semibold" style={{ color: "#e6edf3" }}>Invoices</h2>
+          {invoices.length > 0 && (
+            <div className="flex gap-4 mt-1">
+              <span className="text-xs" style={{ color: "#8b949e" }}>Invoiced: <strong style={{ color: "#e6edf3" }}>${fmt(totalInvoiced)}</strong></span>
+              <span className="text-xs" style={{ color: "#8b949e" }}>Received: <strong style={{ color: "#22c55e" }}>${fmt(totalPaid)}</strong></span>
+              <span className="text-xs" style={{ color: "#8b949e" }}>Balance: <strong style={{ color: totalBalance > 0 ? "#f87171" : "#22c55e" }}>${fmt(totalBalance)}</strong></span>
+            </div>
+          )}
+        </div>
         {estimates.length > 0 && (
           <button
-            onClick={() => { setCreating(true); setSelectedEstId(estimates[0].id); setSelectedPhase(null); }}
-            className="text-xs font-semibold px-3 py-1.5 rounded-lg"
+            onClick={() => { setCreating(true); setSelectedEstId(estimates[0].id); setSelectedPhase(null); setInvoiceDate(todayStr()); setDueDate(plusDaysStr(30)); }}
+            className="text-xs font-semibold px-3 py-1.5 rounded-lg shrink-0"
             style={{ background: GOLD, color: "#0d1117" }}
           >
             + New Invoice
@@ -220,11 +328,11 @@ export default function ClientInvoicesTab({
         <p className="text-sm" style={{ color: "#8b949e" }}>No estimates found for this client. Create an estimate first.</p>
       )}
 
-      {/* Create modal */}
+      {/* Create invoice modal */}
       {creating && (
         <div style={{ position: "fixed", inset: 0, zIndex: 60, background: "rgba(0,0,0,0.7)", display: "flex", alignItems: "center", justifyContent: "center", padding: 16 }}
           onClick={() => setCreating(false)}>
-          <div style={{ background: "#161b22", border: "1px solid #30373f", borderRadius: 14, padding: 24, width: "100%", maxWidth: 480 }}
+          <div style={{ background: "#161b22", border: "1px solid #30373f", borderRadius: 14, padding: 24, width: "100%", maxWidth: 480, maxHeight: "90vh", overflowY: "auto" }}
             onClick={(e) => e.stopPropagation()}>
             <h3 className="text-sm font-bold mb-4" style={{ color: "#e6edf3" }}>Create Invoice</h3>
 
@@ -274,9 +382,15 @@ export default function ClientInvoicesTab({
                     <label className="block text-[11px] mb-1" style={{ color: "#8b949e" }}>Amount ($)</label>
                     <input type="number" step="0.01" value={customAmount} onChange={(e) => setCustomAmount(e.target.value)} style={INPUT_STYLE} />
                   </div>
-                  <div>
-                    <label className="block text-[11px] mb-1" style={{ color: "#8b949e" }}>Due Date (optional)</label>
-                    <input type="date" value={dueDate} onChange={(e) => setDueDate(e.target.value)} style={INPUT_STYLE} />
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className="block text-[11px] mb-1" style={{ color: "#8b949e" }}>Invoice Date</label>
+                      <input type="date" value={invoiceDate} onChange={(e) => setInvoiceDate(e.target.value)} style={INPUT_STYLE} />
+                    </div>
+                    <div>
+                      <label className="block text-[11px] mb-1" style={{ color: "#8b949e" }}>Due Date</label>
+                      <input type="date" value={dueDate} onChange={(e) => setDueDate(e.target.value)} style={INPUT_STYLE} />
+                    </div>
                   </div>
                   <div>
                     <label className="block text-[11px] mb-1" style={{ color: "#8b949e" }}>Notes (optional)</label>
@@ -300,6 +414,64 @@ export default function ClientInvoicesTab({
         </div>
       )}
 
+      {/* Record payment modal */}
+      {payingInvoice && (
+        <div style={{ position: "fixed", inset: 0, zIndex: 60, background: "rgba(0,0,0,0.75)", display: "flex", alignItems: "center", justifyContent: "center", padding: 16 }}
+          onClick={() => setPayingInvoice(null)}>
+          <div style={{ background: "#161b22", border: "1px solid #22c55e44", borderRadius: 14, padding: 24, width: "100%", maxWidth: 400 }}
+            onClick={(e) => e.stopPropagation()}>
+            <h3 className="text-sm font-bold mb-1" style={{ color: "#e6edf3" }}>Record Payment</h3>
+            <p className="text-xs mb-4" style={{ color: "#8b949e" }}>
+              Invoice #{payingInvoice.invoiceNumber} · {payingInvoice.phase} · <strong style={{ color: GOLD }}>${fmt(payingInvoice.amount)}</strong>
+            </p>
+
+            <div className="space-y-3">
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-[11px] mb-1" style={{ color: "#8b949e" }}>Amount ($) *</label>
+                  <input type="number" step="0.01" value={payAmount} onChange={e => setPayAmount(e.target.value)} style={INPUT_STYLE} autoFocus />
+                </div>
+                <div>
+                  <label className="block text-[11px] mb-1" style={{ color: "#8b949e" }}>Date *</label>
+                  <input type="date" value={payDate} onChange={e => setPayDate(e.target.value)} style={INPUT_STYLE} />
+                </div>
+              </div>
+              <div>
+                <label className="block text-[11px] mb-1" style={{ color: "#8b949e" }}>Form of Payment *</label>
+                <div className="flex flex-wrap gap-2">
+                  {PAYMENT_METHODS.map(m => (
+                    <button key={m} onClick={() => setPayMethod(m)}
+                      className="text-xs px-3 py-1.5 rounded-lg font-semibold"
+                      style={{
+                        background: payMethod === m ? "#22c55e22" : "#1e2736",
+                        border: `1px solid ${payMethod === m ? "#22c55e" : "#30373f"}`,
+                        color: payMethod === m ? "#22c55e" : "#8b949e",
+                      }}>
+                      {m}
+                    </button>
+                  ))}
+                </div>
+              </div>
+              <div>
+                <label className="block text-[11px] mb-1" style={{ color: "#8b949e" }}>Notes (optional)</label>
+                <input type="text" value={payNotes} onChange={e => setPayNotes(e.target.value)} style={INPUT_STYLE} placeholder="Check #1234, etc." />
+              </div>
+            </div>
+
+            <div className="flex gap-2 mt-4">
+              <button onClick={recordPayment} disabled={!payAmount || payingSaving}
+                className="flex-1 py-2 text-xs font-semibold rounded-lg disabled:opacity-50"
+                style={{ background: "#22c55e", color: "#fff" }}>
+                {payingSaving ? "Saving…" : "✓ Record Payment"}
+              </button>
+              <button onClick={() => setPayingInvoice(null)}
+                className="px-4 py-2 text-xs rounded-lg"
+                style={{ background: "#30373f", color: "#8b949e" }}>Cancel</button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Send modal */}
       {sendInvoice && (
         <div style={{ position: "fixed", inset: 0, zIndex: 60, background: "rgba(0,0,0,0.8)", display: "flex", alignItems: "center", justifyContent: "center", padding: 16 }}
@@ -312,16 +484,13 @@ export default function ClientInvoicesTab({
                 <h3 className="text-sm font-bold" style={{ color: "#e6edf3" }}>Send Invoice #{sendInvoice.invoiceNumber}</h3>
                 <p className="text-[11px] mt-0.5" style={{ color: "#8b949e" }}>{sendInvoice.phase} — <strong style={{ color: GOLD }}>${fmt(sendInvoice.amount)}</strong></p>
               </div>
-              {/* Preview + Download */}
               <div className="flex gap-2 shrink-0">
-                <button
-                  onClick={() => setPreviewOpen(v => !v)}
+                <button onClick={() => setPreviewOpen(v => !v)}
                   className="text-[11px] px-2 py-1 rounded-lg font-semibold"
                   style={{ background: "#3b82f622", color: "#3b82f6", border: "1px solid #3b82f644" }}>
                   👁 Preview
                 </button>
-                <a
-                  href={`/api/${companyId}/clients/${clientId}/invoices/${sendInvoice.id}/preview${sendBody ? `?body=${encodeURIComponent(sendBody)}` : ""}`}
+                <a href={`/api/${companyId}/clients/${clientId}/invoices/${sendInvoice.id}/preview${sendBody ? `?body=${encodeURIComponent(sendBody)}` : ""}`}
                   target="_blank" rel="noopener noreferrer"
                   className="text-[11px] px-2 py-1 rounded-lg font-semibold"
                   style={{ background: "#22c55e22", color: "#22c55e", border: "1px solid #22c55e44" }}>
@@ -330,7 +499,6 @@ export default function ClientInvoicesTab({
               </div>
             </div>
 
-            {/* Preview iframe */}
             {previewOpen && (
               <div className="mb-4 rounded-lg overflow-hidden" style={{ border: "1px solid #30373f", height: 320 }}>
                 <iframe
@@ -368,7 +536,7 @@ export default function ClientInvoicesTab({
                   style={{ ...INPUT_STYLE, resize: "vertical", lineHeight: 1.5 }} />
               </div>
               <div className="rounded-lg px-3 py-2 text-[11px]" style={{ background: "#1a2a1a", color: "#22c55e" }}>
-                ✓ Zelle payment info (mikebaruh@gmail.com) and full signature will be included automatically in the email.
+                ✓ Payment history and balance due are included automatically in the invoice.
               </div>
             </div>
 
@@ -399,56 +567,97 @@ export default function ClientInvoicesTab({
             <div className="text-[11px] font-semibold uppercase tracking-wider mb-2" style={{ color: "#8b949e" }}>
               {est.estimateNumber ? `#${est.estimateNumber} — ` : ""}{est.name}
             </div>
-            <div className="space-y-2">
-              {estInvoices.map((inv) => (
-                <div key={inv.id} className="rounded-xl px-4 py-3 flex flex-col gap-1.5" style={{ background: "#0d1117", border: "1px solid #30373f" }}>
-                  <div className="flex items-center justify-between gap-2">
-                    <div>
-                      <span className="text-xs font-bold" style={{ color: GOLD }}>#{inv.invoiceNumber}</span>
-                      <span className="text-xs ml-2 font-medium" style={{ color: "#e6edf3" }}>{inv.phase}</span>
-                      <span className="ml-2"><StatusBadge status={inv.status} /></span>
+            <div className="space-y-3">
+              {estInvoices.map((inv) => {
+                const invPaid = inv.payments.reduce((s, p) => s + p.amount, 0);
+                const balance = inv.amount - invPaid;
+
+                return (
+                  <div key={inv.id} className="rounded-xl p-4 flex flex-col gap-2" style={{ background: "#0d1117", border: "1px solid #30373f" }}>
+                    {/* Invoice header row */}
+                    <div className="flex items-center justify-between gap-2">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className="text-xs font-bold" style={{ color: GOLD }}>#{inv.invoiceNumber}</span>
+                        <span className="text-xs font-medium" style={{ color: "#e6edf3" }}>{inv.phase}</span>
+                        <StatusBadge status={inv.status} />
+                      </div>
+                      <span className="text-sm font-mono font-bold" style={{ color: "#e6edf3" }}>${fmt(inv.amount)}</span>
                     </div>
-                    <span className="text-sm font-mono font-bold" style={{ color: "#e6edf3" }}>${fmt(inv.amount)}</span>
-                  </div>
 
-                  {inv.trigger && (
-                    <div className="text-[11px]" style={{ color: "#8b949e" }}>{inv.trigger}</div>
-                  )}
-
-                  <div className="flex flex-wrap gap-3 text-[10px]" style={{ color: "#6b7280" }}>
-                    <span>Created {fmtDate(inv.createdAt)}</span>
-                    {inv.dueDate && <span>Due {fmtDate(inv.dueDate)}</span>}
-                    {inv.sentAt && <span>Sent {fmtDate(inv.sentAt)}</span>}
-                    {inv.paidAt && <span style={{ color: "#22c55e" }}>Paid {fmtDate(inv.paidAt)}</span>}
-                  </div>
-
-                  {inv.notes && (
-                    <div className="text-[11px] rounded px-2 py-1" style={{ background: "#1e2736", color: "#8b949e" }}>{inv.notes}</div>
-                  )}
-
-                  <div className="flex gap-2 mt-1">
-                    {inv.status !== "PAID" && (
-                      <button onClick={() => openSend(inv)}
-                        className="text-[10px] px-2 py-1 rounded font-semibold"
-                        style={{ background: "#C9A84C22", color: GOLD, border: `1px solid ${GOLD}44` }}>
-                        ✉ Send
-                      </button>
+                    {inv.trigger && (
+                      <div className="text-[11px]" style={{ color: "#8b949e" }}>{inv.trigger}</div>
                     )}
-                    {inv.status !== "PAID" && (
-                      <button onClick={() => markPaid(inv)}
-                        className="text-[10px] px-2 py-1 rounded font-semibold"
-                        style={{ background: "#22c55e22", color: "#22c55e", border: "1px solid #22c55e44" }}>
-                        ✓ Mark Paid
-                      </button>
+
+                    <div className="flex flex-wrap gap-3 text-[10px]" style={{ color: "#6b7280" }}>
+                      <span>Created {fmtDate(inv.createdAt)}</span>
+                      {inv.dueDate && <span style={{ color: balance > 0 && new Date(inv.dueDate) < new Date() ? "#f87171" : undefined }}>Due {fmtDate(inv.dueDate)}</span>}
+                      {inv.sentAt && <span>Sent {fmtDate(inv.sentAt)}</span>}
+                      {inv.paidAt && <span style={{ color: "#22c55e" }}>Paid in full {fmtDate(inv.paidAt)}</span>}
+                    </div>
+
+                    {inv.notes && (
+                      <div className="text-[11px] rounded px-2 py-1" style={{ background: "#1e2736", color: "#8b949e" }}>{inv.notes}</div>
                     )}
-                    <button onClick={() => deleteInvoice(inv.id)}
-                      className="text-[10px] px-2 py-1 rounded"
-                      style={{ background: "#2d1b1b", color: "#f87171" }}>
-                      ✕
-                    </button>
+
+                    {/* Payment history */}
+                    {inv.payments.length > 0 && (
+                      <div className="rounded-lg overflow-hidden" style={{ border: "1px solid #1a2a1a" }}>
+                        <div className="px-3 py-1.5 text-[10px] font-semibold uppercase tracking-wider" style={{ background: "#0a1a0a", color: "#22c55e88" }}>
+                          Payments Received
+                        </div>
+                        {inv.payments.map((p) => (
+                          <div key={p.id} className="flex items-center justify-between px-3 py-2 gap-2" style={{ borderTop: "1px solid #1a2a1a" }}>
+                            <div className="flex items-center gap-2">
+                              <span className="text-xs font-bold font-mono" style={{ color: "#22c55e" }}>${fmt(p.amount)}</span>
+                              <PaymentMethodBadge method={p.method} />
+                              {p.notes && <span className="text-[10px]" style={{ color: "#8b949e" }}>{p.notes}</span>}
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <span className="text-[10px]" style={{ color: "#6b7280" }}>{fmtDate(p.paidDate)}</span>
+                              <button onClick={() => deletePayment(inv.id, p.id)}
+                                className="text-[10px] px-1.5 py-0.5 rounded"
+                                style={{ background: "#2d1b1b", color: "#f87171" }} title="Remove payment">
+                                ✕
+                              </button>
+                            </div>
+                          </div>
+                        ))}
+                        <div className="flex items-center justify-between px-3 py-2" style={{ background: balance <= 0 ? "#0a1a0a" : "#1a0a0a", borderTop: "1px solid #1a2a1a" }}>
+                          <span className="text-[11px] font-semibold" style={{ color: balance <= 0 ? "#22c55e" : "#f87171" }}>
+                            {balance <= 0 ? "✓ Paid in Full" : "Balance Due"}
+                          </span>
+                          <span className="text-sm font-bold font-mono" style={{ color: balance <= 0 ? "#22c55e" : "#f87171" }}>
+                            {balance <= 0 ? "$0.00" : `$${fmt(balance)}`}
+                          </span>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Actions */}
+                    <div className="flex gap-2 flex-wrap mt-0.5">
+                      {inv.status !== "PAID" && (
+                        <button onClick={() => openSend(inv)}
+                          className="text-[10px] px-2 py-1 rounded font-semibold"
+                          style={{ background: "#C9A84C22", color: GOLD, border: `1px solid ${GOLD}44` }}>
+                          ✉ Send
+                        </button>
+                      )}
+                      {balance > 0 && (
+                        <button onClick={() => openPayment(inv)}
+                          className="text-[10px] px-2 py-1 rounded font-semibold"
+                          style={{ background: "#22c55e22", color: "#22c55e", border: "1px solid #22c55e44" }}>
+                          $ Record Payment
+                        </button>
+                      )}
+                      <button onClick={() => deleteInvoice(inv.id)}
+                        className="text-[10px] px-2 py-1 rounded"
+                        style={{ background: "#2d1b1b", color: "#f87171" }}>
+                        ✕
+                      </button>
+                    </div>
                   </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           </div>
         );

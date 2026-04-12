@@ -15,6 +15,7 @@ export async function GET(
   const invoices = await prisma.invoice.findMany({
     where: { companyId: params.companyId, clientId: params.clientId },
     orderBy: { createdAt: "asc" },
+    include: { payments: { orderBy: { paidDate: "asc" } } },
   });
   return NextResponse.json(invoices);
 }

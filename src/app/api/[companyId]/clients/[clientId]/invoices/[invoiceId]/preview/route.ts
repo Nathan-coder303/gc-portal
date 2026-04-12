@@ -20,6 +20,7 @@ export async function GET(
     include: {
       client: { select: { name: true } },
       estimate: { select: { name: true, estimateNumber: true } },
+      payments: { orderBy: { paidDate: "asc" } },
     },
   });
   if (!invoice) return NextResponse.json({ error: "Not found" }, { status: 404 });
@@ -35,6 +36,7 @@ export async function GET(
     dueDate: invoice.dueDate,
     notes: invoice.notes,
     customBody,
+    payments: invoice.payments.map(p => ({ amount: p.amount, method: p.method, paidDate: p.paidDate, notes: p.notes })),
   });
 
   return new NextResponse(html, {

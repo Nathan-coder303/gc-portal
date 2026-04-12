@@ -33,6 +33,7 @@ export async function POST(
     include: {
       client: { select: { name: true } },
       estimate: { select: { name: true, estimateNumber: true } },
+      payments: { orderBy: { paidDate: "asc" } },
     },
   });
   if (!invoice) return NextResponse.json({ error: "Invoice not found" }, { status: 404 });
@@ -48,6 +49,7 @@ export async function POST(
     dueDate: invoice.dueDate,
     notes: invoice.notes,
     customBody: bodyText ?? null,
+    payments: invoice.payments.map(p => ({ amount: p.amount, method: p.method, paidDate: p.paidDate, notes: p.notes })),
   });
 
   // Build MIME message

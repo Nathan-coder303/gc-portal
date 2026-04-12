@@ -758,10 +758,26 @@ model Invoice {
   paidAt        DateTime?
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
+  payments      Payment[]
 
   @@index([companyId])
   @@index([clientId])
   @@index([estimateId])
+}
+
+model Payment {
+  id        String   @id @default(cuid())
+  invoiceId String
+  invoice   Invoice  @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+  companyId String
+  amount    Float
+  method    String   // "Cash" | "Check" | "Zelle" | "Credit Card" | "ACH" | "Wire"
+  paidDate  DateTime @default(now())
+  notes     String?
+  createdAt DateTime @default(now())
+
+  @@index([invoiceId])
+  @@index([companyId])
 }
 
 // ─── Change Orders ─────────────────────────────────────────────────────────────

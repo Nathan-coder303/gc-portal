@@ -32,11 +32,13 @@ export default function ClientDetailHeader({
   estimateCount,
   estimateTotal,
   canEdit,
+  paymentSummary,
 }: {
   client: Client;
   estimateCount: number;
   estimateTotal: number;
   canEdit: boolean;
+  paymentSummary?: { totalInvoiced: number; totalPaid: number; balance: number } | null;
 }) {
   const [editing, setEditing] = useState(false);
   const [isPending, startTransition] = useTransition();
@@ -133,7 +135,7 @@ export default function ClientDetailHeader({
           {/* Info */}
           <div className="flex-1 min-w-0">
             <div className="flex items-start justify-between gap-3">
-              <div>
+              <div className="flex-1 min-w-0">
                 <h1 className="text-2xl font-bold leading-tight" style={{ color: "#e6edf3" }}>{client.name}</h1>
                 <div className="flex flex-wrap gap-x-4 gap-y-0.5 mt-1.5">
                   {(client.address || cityLine) && (
@@ -152,6 +154,33 @@ export default function ClientDetailHeader({
                     </span>
                   )}
                 </div>
+
+                {/* Payment summary */}
+                {paymentSummary && paymentSummary.totalInvoiced > 0 && (
+                  <div className="flex flex-wrap gap-3 mt-3">
+                    <div className="rounded-lg px-3 py-2 text-center" style={{ background: "#0d1117", border: "1px solid #30373f" }}>
+                      <div className="text-[10px] uppercase tracking-wide font-semibold" style={{ color: "#8b949e" }}>Invoiced</div>
+                      <div className="text-sm font-bold font-mono" style={{ color: "#e6edf3" }}>
+                        {paymentSummary.totalInvoiced.toLocaleString("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 0 })}
+                      </div>
+                    </div>
+                    <div className="rounded-lg px-3 py-2 text-center" style={{ background: "#0a1a0a", border: "1px solid #22c55e33" }}>
+                      <div className="text-[10px] uppercase tracking-wide font-semibold" style={{ color: "#22c55e88" }}>Received</div>
+                      <div className="text-sm font-bold font-mono" style={{ color: "#22c55e" }}>
+                        {paymentSummary.totalPaid.toLocaleString("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 0 })}
+                      </div>
+                    </div>
+                    <div className="rounded-lg px-3 py-2 text-center" style={{
+                      background: paymentSummary.balance <= 0 ? "#0a1a0a" : "#1a0a0a",
+                      border: `1px solid ${paymentSummary.balance <= 0 ? "#22c55e33" : "#f8514933"}`,
+                    }}>
+                      <div className="text-[10px] uppercase tracking-wide font-semibold" style={{ color: paymentSummary.balance <= 0 ? "#22c55e88" : "#f8514988" }}>Balance</div>
+                      <div className="text-sm font-bold font-mono" style={{ color: paymentSummary.balance <= 0 ? "#22c55e" : "#f87171" }}>
+                        {paymentSummary.balance <= 0 ? "✓ Paid" : paymentSummary.balance.toLocaleString("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 0 })}
+                      </div>
+                    </div>
+                  </div>
+                )}
               </div>
 
               {/* Stats + edit */}

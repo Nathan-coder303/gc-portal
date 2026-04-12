@@ -119,6 +119,7 @@ export default async function ClientDetailPage({
     prisma.invoice.findMany({
       where: { clientId: params.clientId, companyId: params.companyId },
       orderBy: { createdAt: "asc" },
+      include: { payments: { orderBy: { paidDate: "asc" } } },
     }),
     prisma.changeOrder.findMany({
       where: { clientId: params.clientId, companyId: params.companyId },
@@ -161,6 +162,11 @@ export default async function ClientDetailPage({
         estimateCount={safeClient.templates.length}
         estimateTotal={safeClient.templates.reduce((sum, est) => sum + calcEstimateTotal(est.divisions, est.gcFeePercent), 0)}
         canEdit={canEdit}
+        paymentSummary={(() => {
+          const totalInvoiced = clientInvoices.reduce((s, inv) => s + inv.amount, 0);
+          const totalPaid = clientInvoices.reduce((s, inv) => s + inv.payments.reduce((ps, p) => ps + p.amount, 0), 0);
+          return totalInvoiced > 0 ? { totalInvoiced, totalPaid, balance: totalInvoiced - totalPaid } : null;
+        })()}
       />
 
       <ClientCoverPhotoSelector
@@ -282,6 +288,13 @@ export default async function ClientDetailPage({
             sentAt: inv.sentAt?.toISOString() ?? null,
             paidAt: inv.paidAt?.toISOString() ?? null,
             createdAt: inv.createdAt.toISOString(),
+            payments: inv.payments.map(p => ({
+              id: p.id,
+              amount: p.amount,
+              method: p.method,
+              paidDate: p.paidDate.toISOString(),
+              notes: p.notes,
+            })),
           }))}
         />
       )}
