@@ -27,6 +27,7 @@ export default async function SubsDatabasePage({ params }: { params: { companyId
       </Link>
       <SubsDatabase
         companyId={params.companyId}
+        userEmail={session.user.email ?? null}
         initialSubs={subs.map(s => ({
           id: s.id,
           name: s.name,

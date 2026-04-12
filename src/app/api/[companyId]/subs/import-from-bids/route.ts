@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { auth } from "@/lib/auth";
 import { google } from "googleapis";
+import { STANDARD_TEMPLATE_DIVISIONS } from "@/lib/standardTemplateData";
 // eslint-disable-next-line @typescript-eslint/no-require-imports
 const pdfParse = require("pdf-parse");
 
@@ -9,6 +10,20 @@ export const runtime = "nodejs";
 export const maxDuration = 120;
 
 const PLANHUB_EMAIL = "projectnotification@planhub.com";
+
+const CANONICAL_DIVISIONS = STANDARD_TEMPLATE_DIVISIONS.map(d => ({ code: d.csiCode, name: d.name }));
+
+/** Normalize a divisionCode to the canonical "XX 00 00" format */
+function normalizeDivision(code: string, name: string): { code: string; name: string } {
+  const exact = CANONICAL_DIVISIONS.find(d => d.code === code);
+  if (exact) return { code: exact.code, name: exact.name };
+  // Match by first two digits
+  const digits = code.replace(/\D/g, "");
+  const prefix = digits.slice(0, 2).padStart(2, "0");
+  const byPrefix = CANONICAL_DIVISIONS.find(d => d.code.startsWith(prefix + " "));
+  if (byPrefix) return { code: byPrefix.code, name: byPrefix.name };
+  return { code, name };
+}
 const EMAIL_REGEX = /[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}/g;
 const PHONE_REGEX = /(?:\+?1[-.\s]?)?\(?(\d{3})\)?[-.\s]?(\d{3})[-.\s]?(\d{4})/g;
 
@@ -97,7 +112,8 @@ export async function POST(req: NextRequest, { params }: { params: { companyId: 
 
   for (const bid of bids) {
     if (!bid.contractorName) continue;
-    const key = `${bid.contractorName}||${bid.divisionCode}`;
+    const { code: divCode, name: divName } = normalizeDivision(bid.divisionCode, bid.divisionName);
+    const key = `${bid.contractorName}||${divCode}`;
     if (seen.has(key)) continue;
     seen.add(key);
 
@@ -140,7 +156,7 @@ export async function POST(req: NextRequest, { params }: { params: { companyId: 
       }
 
       await prisma.subContractor.create({
-        data: { companyId: params.companyId, name: bid.contractorName, email, phone, divisionCode: bid.divisionCode, divisionName: bid.divisionName, notes: null },
+        data: { companyId: params.companyId, name: bid.contractorName, email, phone, divisionCode: divCode, divisionName: divName, notes: null },
       });
       imported++;
     }

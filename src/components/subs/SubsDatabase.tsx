@@ -16,6 +16,17 @@ type Sub = {
 
 const ALL_DIVISIONS = STANDARD_TEMPLATE_DIVISIONS.map(d => ({ code: d.csiCode, name: d.name }));
 
+/** Normalize a divisionCode to canonical "XX 00 00" format */
+function normalizeDivision(code: string, name: string): { code: string; name: string } {
+  const exact = ALL_DIVISIONS.find(d => d.code === code);
+  if (exact) return { code: exact.code, name: exact.name };
+  const digits = code.replace(/\D/g, "");
+  const prefix = digits.slice(0, 2).padStart(2, "0");
+  const byPrefix = ALL_DIVISIONS.find(d => d.code.startsWith(prefix + " "));
+  if (byPrefix) return { code: byPrefix.code, name: byPrefix.name };
+  return { code, name };
+}
+
 const inputStyle = { background: "#0d1117", border: "1px solid #30373f", color: "#e6edf3" };
 
 const TAG_COLORS = [
@@ -121,13 +132,28 @@ function TagInput({ tags, onChange }: { tags: string[]; onChange: (tags: string[
 }
 
 // ─── Main component ───────────────────────────────────────────────────────────
-export default function SubsDatabase({ companyId, initialSubs }: { companyId: string; initialSubs: Sub[] }) {
-  const [subs, setSubs] = useState<Sub[]>(initialSubs);
+export default function SubsDatabase({
+  companyId,
+  initialSubs,
+  userEmail,
+}: {
+  companyId: string;
+  initialSubs: Sub[];
+  userEmail?: string | null;
+}) {
+  // Normalize division codes on load so existing data is grouped correctly
+  const normalizedInitial = initialSubs.map(s => {
+    const { code, name } = normalizeDivision(s.divisionCode, s.divisionName);
+    return { ...s, divisionCode: code, divisionName: name };
+  });
+
+  const [subs, setSubs] = useState<Sub[]>(normalizedInitial);
   const [filterDiv, setFilterDiv] = useState<string>("ALL");
   const [showAdd, setShowAdd] = useState(false);
   const [editId, setEditId] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [importing, setImporting] = useState(false);
+  const [importingSheet, setImportingSheet] = useState(false);
 
   type FormState = { name: string; email: string; phone: string; divisionCode: string; divisionName: string; tags: string[] };
   const [form, setForm] = useState<FormState>({ name: "", email: "", phone: "", divisionCode: ALL_DIVISIONS[0].code, divisionName: ALL_DIVISIONS[0].name, tags: [] });
@@ -184,7 +210,10 @@ export default function SubsDatabase({ companyId, initialSubs }: { companyId: st
       const { imported, refreshed } = await res.json();
       const fresh = await fetch(`/api/${companyId}/subs`);
       const data: Sub[] = await fresh.json();
-      setSubs(data.map(s => ({ ...s, email: s.email ?? null, phone: s.phone ?? null, notes: s.notes ?? null })));
+      setSubs(data.map(s => {
+        const { code, name } = normalizeDivision(s.divisionCode, s.divisionName);
+        return { ...s, divisionCode: code, divisionName: name, email: s.email ?? null, phone: s.phone ?? null, notes: s.notes ?? null };
+      }));
       const parts = [];
       if (imported > 0) parts.push(`${imported} new sub${imported !== 1 ? "s" : ""} imported`);
       if (refreshed > 0) parts.push(`${refreshed} email${refreshed !== 1 ? "s" : ""} updated`);
@@ -194,9 +223,35 @@ export default function SubsDatabase({ companyId, initialSubs }: { companyId: st
     }
   }
 
+  async function handleImportFromSheet() {
+    setImportingSheet(true);
+    try {
+      const res = await fetch(`/api/${companyId}/subs/import-from-sheet`, { method: "POST" });
+      const { imported, skipped } = await res.json();
+      const fresh = await fetch(`/api/${companyId}/subs`);
+      const data: Sub[] = await fresh.json();
+      setSubs(data.map(s => {
+        const { code, name } = normalizeDivision(s.divisionCode, s.divisionName);
+        return { ...s, divisionCode: code, divisionName: name, email: s.email ?? null, phone: s.phone ?? null, notes: s.notes ?? null };
+      }));
+      alert(imported > 0 ? `${imported} contractors imported from Google Sheet (${skipped} skipped/duplicates).` : `Nothing new to import (${skipped} already exist).`);
+    } finally {
+      setImportingSheet(false);
+    }
+  }
+
   function copyEmails(divCode: string) {
     const emails = subs.filter(s => s.divisionCode === divCode && s.email).map(s => s.email!).join(", ");
     if (emails) navigator.clipboard.writeText(emails);
+  }
+
+  function sendEmailToDivision(divCode: string, divName: string) {
+    const emails = subs.filter(s => s.divisionCode === divCode && s.email).map(s => s.email!);
+    if (emails.length === 0) return;
+    const bcc = emails.join(",");
+    const subject = encodeURIComponent(`Request for Quote – ${divName}`);
+    const to = userEmail ? encodeURIComponent(userEmail) : "";
+    window.open(`mailto:${to}?bcc=${encodeURIComponent(bcc)}&subject=${subject}`);
   }
 
   const filtered = filterDiv === "ALL" ? subs : subs.filter(s => s.divisionCode === filterDiv);
@@ -210,12 +265,12 @@ export default function SubsDatabase({ companyId, initialSubs }: { companyId: st
 
   return (
     <div>
-      <div className="flex items-center justify-between mb-6">
+      <div className="flex items-center justify-between mb-6 flex-wrap gap-3">
         <div>
           <h1 className="text-2xl font-bold" style={{ color: "#e6edf3" }}>Sub Database</h1>
           <p className="text-sm mt-1" style={{ color: "#8b949e" }}>{subs.length} contractors across {usedDivCodes.size} divisions</p>
         </div>
-        <div className="flex gap-2">
+        <div className="flex gap-2 flex-wrap">
           <button
             onClick={() => handleImport(true)}
             disabled={importing}
@@ -231,6 +286,14 @@ export default function SubsDatabase({ companyId, initialSubs }: { companyId: st
             style={{ background: "#1e2736", border: "1px solid #58a6ff44", color: "#58a6ff" }}
           >
             {importing ? "Importing…" : "⬇ Import from Bids"}
+          </button>
+          <button
+            onClick={handleImportFromSheet}
+            disabled={importingSheet}
+            className="px-3 py-2 rounded-xl text-sm font-semibold transition-all hover:scale-105 disabled:opacity-50"
+            style={{ background: "#1e2736", border: "1px solid #a78bfa44", color: "#a78bfa" }}
+          >
+            {importingSheet ? "Importing…" : "📋 Import from Sheet"}
           </button>
           <button
             onClick={openAdd}
@@ -265,7 +328,7 @@ export default function SubsDatabase({ companyId, initialSubs }: { companyId: st
       {groups.length === 0 && (
         <div className="text-center py-16" style={{ color: "#8b949e" }}>
           <p className="text-lg mb-2">No subs yet</p>
-          <p className="text-sm">Click &quot;Import from Bids&quot; to pull your existing contractors, or add one manually.</p>
+          <p className="text-sm">Click &quot;Import from Bids&quot; or &quot;Import from Sheet&quot; to pull contractors, or add one manually.</p>
         </div>
       )}
 
@@ -273,18 +336,25 @@ export default function SubsDatabase({ companyId, initialSubs }: { companyId: st
         const groupEmails = group.subs.filter(s => s.email).length;
         return (
           <div key={group.code} className="mb-6 rounded-xl overflow-hidden" style={{ border: "1px solid #30373f" }}>
-            <div className="flex items-center justify-between px-4 py-3" style={{ background: "#161b22", borderBottom: "1px solid #30373f" }}>
+            <div className="flex items-center justify-between px-4 py-3 flex-wrap gap-2" style={{ background: "#161b22", borderBottom: "1px solid #30373f" }}>
               <div>
                 <span className="text-xs font-mono font-semibold mr-2" style={{ color: "#C9A84C" }}>{group.code}</span>
                 <span className="text-sm font-semibold" style={{ color: "#e6edf3" }}>{group.name}</span>
                 <span className="text-xs ml-2" style={{ color: "#8b949e" }}>{group.subs.length} subs</span>
               </div>
               {groupEmails > 0 && (
-                <button onClick={() => copyEmails(group.code)}
-                  className="px-3 py-1 rounded text-xs font-semibold transition-all hover:scale-105"
-                  style={{ background: "#1e2736", border: "1px solid #58a6ff44", color: "#58a6ff" }}>
-                  Copy {groupEmails} Email{groupEmails !== 1 ? "s" : ""}
-                </button>
+                <div className="flex gap-2">
+                  <button onClick={() => copyEmails(group.code)}
+                    className="px-3 py-1 rounded text-xs font-semibold transition-all hover:scale-105"
+                    style={{ background: "#1e2736", border: "1px solid #58a6ff44", color: "#58a6ff" }}>
+                    Copy {groupEmails} Email{groupEmails !== 1 ? "s" : ""}
+                  </button>
+                  <button onClick={() => sendEmailToDivision(group.code, group.name)}
+                    className="px-3 py-1 rounded text-xs font-semibold transition-all hover:scale-105"
+                    style={{ background: "#0a1a0f", border: "1px solid #22c55e44", color: "#22c55e" }}>
+                    ✉ Send Email
+                  </button>
+                </div>
               )}
             </div>
             <div>
