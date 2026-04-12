@@ -974,7 +974,7 @@ function RetailPage2({ client }: Pick<TemplatePdfProps, "client">) {
 }
 
 // ─── Division Summary Page ────────────────────────────────────────────────────
-function DivisionSummaryPage({ template, client, divisions, gcFeePercent }: Pick<TemplatePdfProps, "template" | "client" | "divisions" | "gcFeePercent">) {
+function DivisionSummaryPage({ template, client, divisions }: Pick<TemplatePdfProps, "template" | "client" | "divisions" | "gcFeePercent">) {
   const logoPath = path.join(process.cwd(), "public", "logo.png");
 
   // Compute division totals (only divisions with items having a total)
