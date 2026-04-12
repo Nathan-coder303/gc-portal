@@ -11,8 +11,6 @@ import PendingCountersignsCard from "@/components/today/PendingCountersignsCard"
 import CountersignAlert from "@/components/today/CountersignAlert";
 import BarometerSection, { type ClientIncomeSummary } from "@/components/today/BarometerSection";
 
-const GOAL_2026 = 5_000_000;
-
 type DivisionLike = { items: { defaultQty: unknown; defaultUnitCost: unknown; defaultMarkupPct: unknown }[]; groups: { items: { defaultQty: unknown; defaultUnitCost: unknown; defaultMarkupPct: unknown }[] }[] };
 
 function calcRaw(divisions: DivisionLike[]): number {
@@ -42,13 +40,6 @@ function calcMarkupTotal(divisions: DivisionLike[]): number {
 function calcGcFeeAmt(divisions: DivisionLike[], gcFeePercent: unknown): number {
   if (!gcFeePercent) return 0;
   return calcRaw(divisions) * Number(gcFeePercent) / 100;
-}
-
-/** MIBH Income per template = internalProfit (override or auto markup) + GC fee */
-function calcTemplateIncome(t: { internalProfitOverride: unknown; gcFeePercent: unknown; divisions: DivisionLike[] }): number {
-  const internalProfit = t.internalProfitOverride != null ? Number(t.internalProfitOverride) : calcMarkupTotal(t.divisions);
-  const gcFee = calcGcFeeAmt(t.divisions, t.gcFeePercent);
-  return internalProfit + gcFee;
 }
 
 function calcEstimateTotal(divisions: DivisionLike[], gcFeePercent: unknown): number {
