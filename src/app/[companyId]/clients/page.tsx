@@ -36,6 +36,11 @@ function calcEstimateTotal(divisions: DivisionLike[], gcFeePercent: unknown): nu
   return raw + fee;
 }
 
+function calcGcFeeAmt(divisions: DivisionLike[], gcFeePercent: unknown): number {
+  if (!gcFeePercent) return 0;
+  return calcRaw(divisions) * Number(gcFeePercent) / 100;
+}
+
 export default async function ClientsPage({ params }: { params: { companyId: string } }) {
   const session = await auth();
   if (!session) redirect("/login");
@@ -89,6 +94,7 @@ export default async function ClientsPage({ params }: { params: { companyId: str
             if (t.internalProfitOverride != null) return sum + Number(t.internalProfitOverride);
             return sum + calcMarkupTotal(t.divisions);
           }, 0),
+          gcFee: c.templates.reduce((sum, t) => sum + calcGcFeeAmt(t.divisions, t.gcFeePercent), 0),
           status: c.status,
           sortOrder: c.sortOrder,
         }))}

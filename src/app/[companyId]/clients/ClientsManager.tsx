@@ -4,14 +4,13 @@ import { useState, useTransition, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { upsertClient, deleteClient } from "@/app/[companyId]/estimates/actions";
 import { TrashIcon, PencilIcon } from "@/components/ui/icons";
+import BarometerSection, { type ClientIncomeSummary } from "@/components/today/BarometerSection";
 
 type Client = {
   id: string; name: string; address: string | null; city: string | null;
   state: string | null; zip: string | null; email: string | null; phone: string | null;
-  estimateCount: number; estimateTotal: number; internalProfit: number; status: string; sortOrder: number;
+  estimateCount: number; estimateTotal: number; internalProfit: number; gcFee: number; status: string; sortOrder: number;
 };
-
-const GOAL_2026 = 5_000_000;
 
 const inputStyle = { background: "#0d1117", border: "1px solid #30373f", color: "#e6edf3", width: "100%" };
 
@@ -320,10 +319,21 @@ export default function ClientsManager({ companyId, clients: initialClients, isA
 
   const prospects = clients.filter(c => c.status === "PROSPECT");
   const actives = clients.filter(c => c.status === "ACTIVE");
-  const activeInternalProfitTotal = actives.reduce((sum, c) => sum + c.internalProfit, 0);
-  // Fall back to estimateTotal if no internal profit is set on any estimate
-  const mibhIncome = activeInternalProfitTotal > 0 ? activeInternalProfitTotal : actives.reduce((sum, c) => sum + c.estimateTotal, 0);
-  const goalPct = Math.min(100, (mibhIncome / GOAL_2026) * 100);
+  const completed = clients.filter(c => c.status === "COMPLETED");
+
+  // Build ClientIncomeSummary array for BarometerSection
+  const clientIncomeSummaries: ClientIncomeSummary[] = [...actives, ...completed].map(c => ({
+    id: c.id,
+    name: c.name,
+    status: c.status,
+    estimateTotal: c.estimateTotal,
+    internalProfit: c.internalProfit,
+    gcFee: c.gcFee,
+    mibhIncome: c.internalProfit + c.gcFee,
+    companyId,
+  }));
+  const mibhIncome = actives.reduce((sum, c) => sum + c.internalProfit + c.gcFee, 0)
+    || actives.reduce((sum, c) => sum + c.estimateTotal, 0);
 
   function handleDragStart(clientId: string) {
     dragIdRef.current = clientId;
@@ -372,37 +382,13 @@ export default function ClientsManager({ companyId, clients: initialClients, isA
 
   return (
     <div>
-      {/* MIBH Income 2026 Barometer */}
-      <div className="rounded-2xl px-6 py-5 mb-6" style={{ background: "#0a1a0f", border: "1px solid #22c55e33" }}>
-        <div className="flex items-end justify-between mb-3">
-          <div>
-            <div className="text-xs font-semibold uppercase tracking-widest mb-1" style={{ color: "#22c55e88" }}>MIBH Income 2026</div>
-            <div className="text-5xl font-black leading-none" style={{ color: "#22c55e" }}>
-              ${mibhIncome.toLocaleString("en-US", { maximumFractionDigits: 0 })}
-            </div>
-          </div>
-          <div className="text-right">
-            <div className="text-xs font-semibold uppercase tracking-widest mb-1" style={{ color: "#8b949e" }}>Goal 2026</div>
-            <div className="text-2xl font-bold" style={{ color: "#8b949e" }}>$5,000,000</div>
-            <div className="text-sm font-semibold mt-0.5" style={{ color: "#22c55e" }}>{goalPct.toFixed(1)}% there</div>
-          </div>
-        </div>
-        <div className="rounded-full overflow-hidden" style={{ height: 18, background: "#1a2a1a", border: "1px solid #22c55e22" }}>
-          <div
-            className="h-full rounded-full transition-all duration-700"
-            style={{ width: `${Math.max(goalPct, 0.5)}%`, background: goalPct >= 100 ? "#C9A84C" : "linear-gradient(90deg, #16a34a, #22c55e)", minWidth: 4 }}
-          />
-        </div>
-        <div className="flex justify-between mt-1.5">
-          <span className="text-xs" style={{ color: "#22c55e88" }}>{actives.length} active client{actives.length !== 1 ? "s" : ""}</span>
-          <span className="text-xs" style={{ color: "#8b949e" }}>${(GOAL_2026 - mibhIncome).toLocaleString("en-US", { maximumFractionDigits: 0 })} remaining</span>
-        </div>
-      </div>
+      {/* MIBH Income 2026 Barometer — clickable, shows open + closed breakdown */}
+      <BarometerSection mibhIncome={mibhIncome} clients={clientIncomeSummaries} />
 
       <div className="flex items-center justify-between mb-4">
         <div>
           <h1 className="text-xl font-bold" style={{ color: "#e6edf3" }}>Clients</h1>
-          <p className="text-sm mt-0.5" style={{ color: "#8b949e" }}>{prospects.length} prospect{prospects.length !== 1 ? "s" : ""} · {actives.length} active</p>
+          <p className="text-sm mt-0.5" style={{ color: "#8b949e" }}>{prospects.length} prospect{prospects.length !== 1 ? "s" : ""} · {actives.length} active · {completed.length} closed</p>
         </div>
       </div>
 
@@ -432,6 +418,20 @@ export default function ClientsManager({ companyId, clients: initialClients, isA
           onCancelAdd={() => setAddingIn(null)}
           accentColor="#22c55e"
           bgColor="#0a1a0f"
+          onDragStart={handleDragStart}
+          onDrop={handleDrop}
+        />
+        <ClientColumn
+          title="Closed Jobs"
+          status="COMPLETED"
+          clients={completed}
+          companyId={companyId}
+          isAdmin={isAdmin}
+          adding={addingIn === "COMPLETED"}
+          onAdd={() => setAddingIn("COMPLETED")}
+          onCancelAdd={() => setAddingIn(null)}
+          accentColor="#8b949e"
+          bgColor="#0d1117"
           onDragStart={handleDragStart}
           onDrop={handleDrop}
         />

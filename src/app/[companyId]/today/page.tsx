@@ -9,6 +9,7 @@ import TodayTaskCard, { FollowUpItem } from "@/components/today/TodayTaskCard";
 import TodayCallsSection from "@/components/today/TodayCallsSection";
 import PendingCountersignsCard from "@/components/today/PendingCountersignsCard";
 import CountersignAlert from "@/components/today/CountersignAlert";
+import BarometerSection, { type ClientIncomeSummary } from "@/components/today/BarometerSection";
 
 const GOAL_2026 = 5_000_000;
 
@@ -36,6 +37,18 @@ function calcMarkupTotal(divisions: DivisionLike[]): number {
       return s + qty * cost * (markup / 100);
     }, 0);
   }, 0);
+}
+
+function calcGcFeeAmt(divisions: DivisionLike[], gcFeePercent: unknown): number {
+  if (!gcFeePercent) return 0;
+  return calcRaw(divisions) * Number(gcFeePercent) / 100;
+}
+
+/** MIBH Income per template = internalProfit (override or auto markup) + GC fee */
+function calcTemplateIncome(t: { internalProfitOverride: unknown; gcFeePercent: unknown; divisions: DivisionLike[] }): number {
+  const internalProfit = t.internalProfitOverride != null ? Number(t.internalProfitOverride) : calcMarkupTotal(t.divisions);
+  const gcFee = calcGcFeeAmt(t.divisions, t.gcFeePercent);
+  return internalProfit + gcFee;
 }
 
 function calcEstimateTotal(divisions: DivisionLike[], gcFeePercent: unknown): number {
@@ -129,10 +142,13 @@ export default async function TodayPage({
         client: { select: { id: true, name: true } },
       },
     }),
-    // Active clients with template data for MIBH Income barometer
+    // Active + Completed clients with template data for MIBH Income barometer
     prisma.client.findMany({
-      where: { companyId: params.companyId, status: "ACTIVE" },
-      include: {
+      where: { companyId: params.companyId, status: { in: ["ACTIVE", "COMPLETED"] } },
+      select: {
+        id: true,
+        name: true,
+        status: true,
         templates: {
           where: { type: "CLIENT_ESTIMATE", archivedAt: null },
           select: {
@@ -155,14 +171,15 @@ export default async function TodayPage({
     weekday: "long", year: "numeric", month: "long", day: "numeric",
   });
 
-  // Compute MIBH Income barometer (use internalProfit: override if set, else auto markup total)
-  const activeInternalProfitTotal = activeClients.reduce((sum, c) => sum + c.templates.reduce((s, t) => {
-    if (t.internalProfitOverride != null) return s + Number(t.internalProfitOverride);
-    return s + calcMarkupTotal(t.divisions);
-  }, 0), 0);
-  const activeTotalFallback = activeClients.reduce((sum, c) => sum + c.templates.reduce((s, t) => s + calcEstimateTotal(t.divisions, t.gcFeePercent), 0), 0);
-  const mibhIncome = activeInternalProfitTotal > 0 ? activeInternalProfitTotal : activeTotalFallback;
-  const goalPct = Math.min(100, (mibhIncome / GOAL_2026) * 100);
+  // MIBH Income = sum of (internalProfit + gcFee) across active + completed clients
+  const clientIncomeSummaries: ClientIncomeSummary[] = activeClients.map(c => {
+    const internalProfit = c.templates.reduce((s, t) => s + (t.internalProfitOverride != null ? Number(t.internalProfitOverride) : calcMarkupTotal(t.divisions)), 0);
+    const gcFee = c.templates.reduce((s, t) => s + calcGcFeeAmt(t.divisions, t.gcFeePercent), 0);
+    const estimateTotal = c.templates.reduce((s, t) => s + calcEstimateTotal(t.divisions, t.gcFeePercent), 0);
+    return { id: c.id, name: c.name, status: c.status, estimateTotal, internalProfit, gcFee, mibhIncome: internalProfit + gcFee, companyId: params.companyId };
+  });
+  const mibhIncome = clientIncomeSummaries.filter(c => c.status === "ACTIVE").reduce((s, c) => s + c.mibhIncome, 0)
+    || activeClients.filter(c => c.status === "ACTIVE").reduce((sum, c) => sum + c.templates.reduce((s, t) => s + calcEstimateTotal(t.divisions, t.gcFeePercent), 0), 0);
 
   // Map follow-ups to FollowUpItem shape for each category
   function toItems(category: "TASK" | "FOLLOW_UP" | "ESTIMATE"): FollowUpItem[] {
@@ -199,35 +216,7 @@ export default async function TodayPage({
       </div>
 
       {/* MIBH Income 2026 Barometer */}
-      <div className="mt-6 mb-6 rounded-2xl px-6 py-5" style={{ background: "#0a1a0f", border: "1px solid #22c55e33" }}>
-        <div className="flex items-end justify-between mb-3">
-          <div>
-            <div className="text-xs font-semibold uppercase tracking-widest mb-1" style={{ color: "#22c55e88" }}>MIBH Income 2026</div>
-            <div className="text-5xl font-black leading-none" style={{ color: "#22c55e" }}>
-              ${mibhIncome.toLocaleString("en-US", { maximumFractionDigits: 0 })}
-            </div>
-          </div>
-          <div className="text-right">
-            <div className="text-xs font-semibold uppercase tracking-widest mb-1" style={{ color: "#8b949e" }}>Goal 2026</div>
-            <div className="text-2xl font-bold" style={{ color: "#8b949e" }}>$5,000,000</div>
-            <div className="text-sm font-semibold mt-0.5" style={{ color: "#22c55e" }}>{goalPct.toFixed(1)}% there</div>
-          </div>
-        </div>
-        <div className="rounded-full overflow-hidden" style={{ height: 18, background: "#1a2a1a", border: "1px solid #22c55e22" }}>
-          <div
-            className="h-full rounded-full transition-all duration-700"
-            style={{
-              width: `${Math.max(goalPct, 0.5)}%`,
-              background: goalPct >= 100 ? "#C9A84C" : "linear-gradient(90deg, #16a34a, #22c55e)",
-              minWidth: 4,
-            }}
-          />
-        </div>
-        <div className="flex justify-between mt-1.5">
-          <span className="text-xs" style={{ color: "#22c55e88" }}>{activeClients.length} active client{activeClients.length !== 1 ? "s" : ""}</span>
-          <span className="text-xs" style={{ color: "#8b949e" }}>${(GOAL_2026 - mibhIncome).toLocaleString("en-US", { maximumFractionDigits: 0 })} remaining</span>
-        </div>
-      </div>
+      <BarometerSection mibhIncome={mibhIncome} clients={clientIncomeSummaries} />
 
       {/* Pending countersign alert — click to sign directly */}
       <CountersignAlert
