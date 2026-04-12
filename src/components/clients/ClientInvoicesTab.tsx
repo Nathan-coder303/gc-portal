@@ -490,11 +490,11 @@ export default function ClientInvoicesTab({
                   style={{ background: "#3b82f622", color: "#3b82f6", border: "1px solid #3b82f644" }}>
                   👁 Preview
                 </button>
-                <a href={`/api/${companyId}/clients/${clientId}/invoices/${sendInvoice.id}/preview${sendBody ? `?body=${encodeURIComponent(sendBody)}` : ""}`}
+                <a href={`/api/${companyId}/clients/${clientId}/invoices/${sendInvoice.id}/preview?print=1${sendBody ? `&body=${encodeURIComponent(sendBody)}` : ""}`}
                   target="_blank" rel="noopener noreferrer"
                   className="text-[11px] px-2 py-1 rounded-lg font-semibold"
                   style={{ background: "#22c55e22", color: "#22c55e", border: "1px solid #22c55e44" }}>
-                  ⬇ Download
+                  ⬇ PDF
                 </a>
               </div>
             </div>

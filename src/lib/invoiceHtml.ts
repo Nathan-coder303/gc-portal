@@ -16,6 +16,7 @@ export function buildInvoiceHtml(opts: {
   notes: string | null;
   customBody?: string | null;
   payments?: PaymentEntry[];
+  printMode?: boolean;
 }) {
   const due = opts.dueDate
     ? new Date(opts.dueDate).toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" })
@@ -32,9 +33,12 @@ export function buildInvoiceHtml(opts: {
   return `<!DOCTYPE html>
 <html>
 <head><meta charset="utf-8"><title>Invoice #${opts.invoiceNumber}</title>
+${opts.printMode ? `<script>window.addEventListener('load', function(){ setTimeout(function(){ window.print(); }, 500); });<\/script>` : ""}
 <style>
   body { font-family: Arial, sans-serif; color: #111; max-width: 660px; margin: 0 auto; padding: 40px 20px; }
-  .header { background: #0d1117; color: #e6edf3; padding: 28px 32px; border-radius: 10px 10px 0 0; display: flex; justify-content: space-between; align-items: flex-start; }
+  .header { background: #0d1117; color: #e6edf3; padding: 28px 32px; border-radius: 10px 10px 0 0; }
+  .header table { width: 100%; border-collapse: collapse; }
+  .header td { vertical-align: top; padding: 0; }
   .header h1 { margin: 0 0 4px; font-size: 22px; color: #C9A84C; }
   .header p { margin: 0; font-size: 13px; color: #8b949e; }
   .header .logo { font-size: 11px; text-align: right; color: #8b949e; line-height: 1.6; }
@@ -66,15 +70,17 @@ export function buildInvoiceHtml(opts: {
 </head>
 <body>
   <div class="header">
-    <div>
-      <h1>Invoice #${opts.invoiceNumber}</h1>
-      <p>${opts.estimateName}</p>
-    </div>
-    <div class="logo">
-      MIBH Construction<br>
-      CGC 1527069 | CCC 1336817<br>
-      Hollywood, FL
-    </div>
+    <table><tr>
+      <td>
+        <h1>Invoice #${opts.invoiceNumber}</h1>
+        <p>${opts.estimateName}</p>
+      </td>
+      <td class="logo">
+        MIBH Construction<br>
+        CGC 1527069 | CCC 1336817<br>
+        Hollywood, FL
+      </td>
+    </tr></table>
   </div>
   <div class="body">
     <p style="font-size:14px;line-height:1.6">${intro}</p>

@@ -85,17 +85,17 @@ export default function NurturingEmailTab({
           style={INPUT_STYLE}
         >
           <option value="">— Choose a nurturing email —</option>
-          <optgroup label="🏠 Roofing (12 emails)">
+          <optgroup label="🏠 Roofing">
             {roofTemplates.map((t) => (
               <option key={t.id} value={t.id}>
-                {t.id} — {t.name}
+                {t.step}. {t.name}
               </option>
             ))}
           </optgroup>
-          <optgroup label="🏗 Home Addition (20 emails)">
+          <optgroup label="🏗 Home Addition">
             {additionTemplates.map((t) => (
               <option key={t.id} value={t.id}>
-                {t.id} — {t.name}
+                {t.step}. {t.name}
               </option>
             ))}
           </optgroup>

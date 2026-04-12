@@ -1028,15 +1028,7 @@ function DivisionSummaryPage({ template, client, divisions, gcFeePercent }: Pick
           </View>
         ))}
 
-        {/* GC Fee row */}
-        {gcFeeAmount > 0 && (
-          <>
-            <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", paddingVertical: 7, paddingHorizontal: 16, borderBottomWidth: 1, borderBottomColor: "#e2e8f0", backgroundColor: divTotals.length % 2 === 0 ? "#f8fafc" : "#ffffff" }}>
-              <Text style={{ fontSize: 11, color: "#334155" }}>GC Overhead &amp; Profit ({fmt(gcFeePercent!)}%)</Text>
-              <Text style={{ fontSize: 11, color: "#0f172a", fontFamily: "Helvetica-Bold" }}>${fmt(gcFeeAmount)}</Text>
-            </View>
-          </>
-        )}
+        {/* GC Fee row intentionally omitted from summary page */}
 
         {/* Gold divider */}
         <View style={{ height: 2, backgroundColor: GOLD, marginTop: 20, marginBottom: 0 }} />
@@ -1044,7 +1036,7 @@ function DivisionSummaryPage({ template, client, divisions, gcFeePercent }: Pick
         {/* Grand total */}
         <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", backgroundColor: DARK, paddingHorizontal: 16, paddingVertical: 12, borderRadius: 4, marginTop: 0 }}>
           <Text style={{ fontSize: 14, fontFamily: "Helvetica-Bold", color: GOLD }}>ESTIMATE TOTAL</Text>
-          <Text style={{ fontSize: 16, fontFamily: "Helvetica-Bold", color: GOLD }}>${fmt(grandTotal)}</Text>
+          <Text style={{ fontSize: 16, fontFamily: "Helvetica-Bold", color: GOLD }}>${fmt(subtotal)}</Text>
         </View>
 
         <Text style={{ fontSize: 8, color: "#94a3b8", textAlign: "center", marginTop: 20 }}>

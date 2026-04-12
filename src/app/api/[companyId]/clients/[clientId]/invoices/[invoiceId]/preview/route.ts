@@ -14,6 +14,7 @@ export async function GET(
 
   const { searchParams } = new URL(req.url);
   const customBody = searchParams.get("body") ?? null;
+  const printMode = searchParams.get("print") === "1";
 
   const invoice = await prisma.invoice.findFirst({
     where: { id: params.invoiceId, companyId: params.companyId },
@@ -36,6 +37,7 @@ export async function GET(
     dueDate: invoice.dueDate,
     notes: invoice.notes,
     customBody,
+    printMode,
     payments: invoice.payments.map(p => ({ amount: p.amount, method: p.method, paidDate: p.paidDate, notes: p.notes })),
   });
 

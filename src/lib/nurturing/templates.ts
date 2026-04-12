@@ -647,7 +647,30 @@ Best,
 
 export const NURTURING_TEMPLATES: NurturingTemplate[] = [...ROOF, ...ADDITION];
 
+const FULL_SIGNATURE = `Best Regards,
+Mike Baruh
+Founder/CEO · MIBH Construction
+CGC 1527069 | CCC 1336817
+📱 305.746.7307  ·  📧 mike@mibhconstruction.com
+📍 2950 N 28 Terr, Hollywood, FL 33020  ·  🌐 mibhconstruction.com`;
+
 export function fillTemplate(template: NurturingTemplate, clientName: string, companyName = "MIBH Construction"): { subject: string; body: string } {
-  const replace = (s: string) => s.replace(/\[Client Name\]/g, clientName).replace(/\[Company Name\]/g, companyName);
-  return { subject: replace(template.subject), body: replace(template.body) };
+  let body = template.body
+    .replace(/\[Client Name\]/g, clientName)
+    .replace(/\[Company Name\]/g, companyName)
+    // Remove PM line
+    .replace(/\nYour project manager: \[PM Name \+ Phone\]\n/g, "\n")
+    // Replace any closing line + company name with full signature
+    .replace(
+      /\n(Best,|Best Regards,|Thank you for your patience,|Thank you again,|Thank you for trusting us with your home\.)\n[^\n]+$/,
+      "\n" + FULL_SIGNATURE
+    );
+
+  // Fallback: if body ends with company name but no signature yet, append it
+  if (body.endsWith(companyName)) {
+    body = body.slice(0, body.lastIndexOf(companyName)).trimEnd() + "\n\n" + FULL_SIGNATURE;
+  }
+
+  const subject = template.subject.replace(/\[Client Name\]/g, clientName).replace(/\[Company Name\]/g, companyName);
+  return { subject, body };
 }

@@ -52,30 +52,36 @@ export async function POST(
     payments: invoice.payments.map(p => ({ amount: p.amount, method: p.method, paidDate: p.paidDate, notes: p.notes })),
   });
 
-  // Build MIME message
+  // Encode subject for non-ASCII characters (RFC 2047)
+  function encodeSubject(s: string): string {
+    if (/^[\x20-\x7E]*$/.test(s)) return s;
+    return `=?UTF-8?B?${Buffer.from(s, "utf-8").toString("base64")}?=`;
+  }
+
+  // Build MIME message — keep blank lines as MIME section separators
   const boundary = "inv_boundary_mibh";
   const mime = [
     `To: ${to}`,
-    cc ? `Cc: ${cc}` : "",
-    bcc ? `Bcc: ${bcc}` : "",
-    `Subject: ${subject}`,
+    ...(cc ? [`Cc: ${cc}`] : []),
+    ...(bcc ? [`Bcc: ${bcc}`] : []),
+    `Subject: ${encodeSubject(subject)}`,
     "MIME-Version: 1.0",
     `Content-Type: multipart/alternative; boundary="${boundary}"`,
     "",
     `--${boundary}`,
     "Content-Type: text/plain; charset=UTF-8",
+    "Content-Transfer-Encoding: quoted-printable",
     "",
-    `Invoice #${invoice.invoiceNumber} — ${invoice.phase} — $${Number(invoice.amount).toFixed(2)}\n\nZelle: mikebaruh@gmail.com | Phone: 305-746-7307`,
+    `Invoice #${invoice.invoiceNumber} - ${invoice.phase} - $${Number(invoice.amount).toFixed(2)}\r\n\r\nZelle: mikebaruh@gmail.com | Phone: 305-746-7307`,
     "",
     `--${boundary}`,
     "Content-Type: text/html; charset=UTF-8",
+    "Content-Transfer-Encoding: quoted-printable",
     "",
     html,
     "",
     `--${boundary}--`,
-  ]
-    .filter((l) => l !== undefined && l !== "")
-    .join("\r\n");
+  ].join("\r\n");
 
   const raw = Buffer.from(mime).toString("base64url");
 

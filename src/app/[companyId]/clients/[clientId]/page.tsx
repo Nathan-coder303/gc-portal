@@ -139,8 +139,8 @@ export default async function ClientDetailPage({
     { key: "change-orders", label: `Change Orders${changeOrders.length > 0 ? ` (${changeOrders.length})` : ""}` },
     { key: "invoices", label: `Invoices${clientInvoices.length > 0 ? ` (${clientInvoices.length})` : ""}` },
     { key: "notes", label: `Notes${clientNotes.length > 0 ? ` (${clientNotes.length})` : ""}` },
-    { key: "subs-bids", label: "Build an Estimate" },
-    { key: "client-bid", label: "Client Bid" },
+    // { key: "subs-bids", label: "Build an Estimate" },  // hidden per user request
+    // { key: "client-bid", label: "Client Bid" },        // hidden per user request
     { key: "files", label: `Files${clientFiles.length > 0 ? ` (${clientFiles.length})` : ""}` },
     { key: "nurturing", label: "Nurturing" },
   ];

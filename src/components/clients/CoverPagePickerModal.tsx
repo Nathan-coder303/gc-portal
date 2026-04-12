@@ -59,11 +59,15 @@ export default function CoverPagePickerModal({
 
   const coverLabel = customCoverLabel || "Custom";
 
-  const coverOptions: { type: CoverType; label: string; img: string; desc: string }[] = [
+  const coverOptions: { type: CoverType; label: string; img: string; desc: string; placeholder?: boolean }[] = [
     ...COVER_OPTIONS,
-    ...(customCoverUrl
-      ? [{ type: "CUSTOM" as CoverType, label: coverLabel, img: customCoverUrl, desc: `Uploaded for this client` }]
-      : []),
+    {
+      type: "CUSTOM" as CoverType,
+      label: coverLabel,
+      img: customCoverUrl ?? "",
+      desc: customCoverUrl ? "Uploaded for this client" : "Upload a custom cover photo",
+      placeholder: !customCoverUrl,
+    },
   ];
 
   const opts: PdfOptions = { coverType: cover, page2, includeInsert, includeDivisionSummary };
@@ -91,8 +95,14 @@ export default function CoverPagePickerModal({
                   className="rounded-xl overflow-hidden text-left transition-all"
                   style={{ border: `2px solid ${active ? "#C9A84C" : "#30373f"}`, outline: "none" }}
                 >
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img src={opt.img} alt={opt.label} style={{ width: "100%", height: 72, objectFit: "cover", display: "block" }} />
+                  {opt.placeholder ? (
+                    <div style={{ width: "100%", height: 72, background: "#0d1117", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                      <span style={{ color: "#484f58", fontSize: 22 }}>🖼</span>
+                    </div>
+                  ) : (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img src={opt.img} alt={opt.label} style={{ width: "100%", height: 72, objectFit: "cover", display: "block" }} />
+                  )}
                   <div className="px-2 py-1.5" style={{ background: active ? "#1e2a12" : "#1e2736" }}>
                     <div className="text-xs font-semibold" style={{ color: active ? "#C9A84C" : "#e6edf3" }}>{opt.label}</div>
                     <div className="text-[10px]" style={{ color: "#8b949e" }}>{opt.desc}</div>
