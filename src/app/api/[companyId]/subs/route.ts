@@ -27,7 +27,22 @@ export async function POST(req: NextRequest, { params }: { params: { companyId: 
       divisionCode: body.divisionCode,
       divisionName: body.divisionName,
       notes: body.notes ?? null,
+      source: "manual",
     },
   });
   return NextResponse.json(sub, { status: 201 });
+}
+
+/** DELETE /api/[companyId]/subs?source=sheet  — delete all subs with that source */
+export async function DELETE(req: NextRequest, { params }: { params: { companyId: string } }) {
+  const session = await auth();
+  if (!session || session.user.companyId !== params.companyId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
+  const source = req.nextUrl.searchParams.get("source");
+  const where = source
+    ? { companyId: params.companyId, source }
+    : { companyId: params.companyId };
+
+  const { count } = await prisma.subContractor.deleteMany({ where });
+  return NextResponse.json({ deleted: count });
 }

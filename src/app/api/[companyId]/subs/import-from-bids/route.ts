@@ -156,7 +156,7 @@ export async function POST(req: NextRequest, { params }: { params: { companyId: 
       }
 
       await prisma.subContractor.create({
-        data: { companyId: params.companyId, name: bid.contractorName, email, phone, divisionCode: divCode, divisionName: divName, notes: null },
+        data: { companyId: params.companyId, name: bid.contractorName, email, phone, divisionCode: divCode, divisionName: divName, notes: null, source: "bid" },
       });
       imported++;
     }

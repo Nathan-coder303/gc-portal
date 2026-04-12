@@ -256,6 +256,7 @@ export default function SubsDatabase({
   const [modal, setModal] = useState<{ mode: "add" | "edit"; sub?: Sub } | null>(null);
   const [importing, setImporting] = useState(false);
   const [importingSheet, setImportingSheet] = useState(false);
+  const [clearing, setClearing] = useState(false);
   const dragIdRef = useRef<string | null>(null);
   const [dragOverDiv, setDragOverDiv] = useState<string | null>(null);
   const [dragOverSubId, setDragOverSubId] = useState<string | null>(null);
@@ -331,6 +332,15 @@ export default function SubsDatabase({
     } finally { setImportingSheet(false); }
   }
 
+  async function handleClearAll() {
+    if (!confirm(`Delete ALL ${subs.length} subs? This cannot be undone.\n\nAfter clearing, re-import from Sheet and Bids.`)) return;
+    setClearing(true);
+    try {
+      await fetch(`/api/${companyId}/subs`, { method: "DELETE" });
+      setSubs([]);
+    } finally { setClearing(false); }
+  }
+
   async function reloadSubs() {
     const fresh = await fetch(`/api/${companyId}/subs`);
     const data: Sub[] = await fresh.json();
@@ -390,6 +400,10 @@ export default function SubsDatabase({
           <button onClick={handleImportFromSheet} disabled={importingSheet} className="px-3 py-2 rounded-xl text-sm font-semibold transition-all hover:scale-105 disabled:opacity-50"
             style={{ background: "#1e2736", border: "1px solid #a78bfa44", color: "#a78bfa" }}>
             {importingSheet ? "Importing…" : "📋 From Sheet"}
+          </button>
+          <button onClick={handleClearAll} disabled={clearing || subs.length === 0} className="px-3 py-2 rounded-xl text-sm font-semibold transition-all hover:scale-105 disabled:opacity-40"
+            style={{ background: "#1a0a0a", border: "1px solid #ef444444", color: "#ef4444" }}>
+            {clearing ? "Clearing…" : "🗑 Clear All"}
           </button>
           <button onClick={() => setModal({ mode: "add" })} className="px-4 py-2 rounded-xl text-sm font-semibold transition-all hover:scale-105"
             style={{ background: "#C9A84C", color: "#0d1117" }}>

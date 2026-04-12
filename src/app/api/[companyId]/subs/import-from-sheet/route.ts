@@ -134,6 +134,7 @@ export async function POST(_req: NextRequest, { params }: { params: { companyId:
         divisionCode: div.code,
         divisionName: div.name,
         notes: null,
+        source: "sheet",
       },
     });
     imported++;

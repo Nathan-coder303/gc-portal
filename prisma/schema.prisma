@@ -858,9 +858,11 @@ model SubContractor {
   divisionCode String
   divisionName String
   notes        String?
+  source       String   @default("manual") // "sheet" | "bid" | "manual"
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 
   @@index([companyId])
   @@index([companyId, divisionCode])
+  @@index([companyId, source])
 }
