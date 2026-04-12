@@ -189,17 +189,16 @@ export default async function TodayPage({
   }
 
   return (
-    <div className="max-w-6xl mx-auto px-4 py-8">
-      <div className="flex items-start justify-between mb-1">
-        <div>
-          <h1 className="text-2xl font-bold" style={{ color: "#e6edf3" }}>
+    <div className="max-w-6xl mx-auto px-3 sm:px-4 py-4 sm:py-8">
+      {/* Header */}
+      <div className="flex items-center justify-between mb-1 gap-2">
+        <div className="min-w-0">
+          <h1 className="text-xl sm:text-2xl font-bold leading-tight" style={{ color: "#e6edf3" }}>
             Today&apos;s Overview
           </h1>
-          <p className="text-sm mt-1" style={{ color: "#8b949e" }}>
-            {today}
-          </p>
+          <p className="text-xs sm:text-sm mt-0.5 truncate" style={{ color: "#8b949e" }}>{today}</p>
         </div>
-        <div className="flex items-start gap-3 shrink-0">
+        <div className="flex items-center gap-2 shrink-0">
           <SyncBidsButton companyId={params.companyId} />
           <SyncLeadsButton companyId={params.companyId} />
         </div>
@@ -226,55 +225,41 @@ export default async function TodayPage({
       {untriaged > 0 && (
         <Link
           href={`/${params.companyId}/leads`}
-          className="flex items-center justify-between gap-3 mb-5 px-4 py-3 rounded-xl transition-all hover:scale-[1.01]"
+          className="flex items-center justify-between gap-3 mb-3 px-4 py-3 rounded-2xl transition-all active:scale-[0.99]"
           style={{ background: "#2d1a1a", border: "1px solid #ef444455" }}
         >
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2.5">
             <span style={{ fontSize: 18 }}>🎯</span>
             <div>
-              <span className="text-sm font-semibold" style={{ color: "#ef4444" }}>
-                {untriaged} lead{untriaged > 1 ? "s" : ""} need{untriaged === 1 ? "s" : ""} triaging
+              <span className="text-sm font-bold" style={{ color: "#ef4444" }}>
+                {untriaged} lead{untriaged > 1 ? "s" : ""} need triaging
               </span>
-              <span className="text-xs ml-2" style={{ color: "#8b949e" }}>
-                Drag them into the pipeline stages
-              </span>
+              <p className="text-[11px] hidden sm:block" style={{ color: "#8b949e" }}>Drag into pipeline stages</p>
             </div>
           </div>
-          <span className="text-xs font-semibold" style={{ color: "#ef4444" }}>Go to Leads →</span>
+          <span className="text-xs font-bold px-3 py-1 rounded-full" style={{ background: "#ef444422", color: "#ef4444", border: "1px solid #ef444444" }}>Go →</span>
         </Link>
       )}
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+      <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 gap-3">
         {/* Card 1 — New Leads of the Day */}
         <div
-          className="rounded-xl p-5 flex flex-col gap-3"
+          className="rounded-2xl p-4 flex flex-col gap-2"
           style={{ background: "#161b22", border: "1px solid #30373f" }}
         >
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold uppercase tracking-wider" style={{ color: "#8b949e" }}>
-              New Leads of the Day
-            </span>
-            <div className="flex items-center gap-2">
-              <span className="text-xs" style={{ color: "#8b949e" }}>{allLeadsCount} total</span>
-              <span
-                className="text-xs font-bold px-2 py-0.5 rounded"
-                style={{ background: "#C9A84C", color: "#0d1117" }}
-              >
+          <div className="flex items-center justify-between gap-1">
+            <span className="text-[10px] font-bold uppercase tracking-wider" style={{ color: "#8b949e" }}>New Leads</span>
+            <div className="flex items-center gap-1.5">
+              <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full" style={{ background: "#C9A84C", color: "#0d1117" }}>
                 {todayLeads.length} today
               </span>
-              <Link
-                href={`/${params.companyId}/leads`}
-                className="text-xs font-medium hover:underline"
-                style={{ color: "#58a6ff" }}
-              >
-                View →
-              </Link>
+              <Link href={`/${params.companyId}/leads`} className="text-[10px] font-semibold" style={{ color: "#58a6ff" }}>View →</Link>
             </div>
           </div>
-          {todayLeads.length === 0 ? (
-            <p className="text-xs" style={{ color: "#8b949e" }}>No new leads today.</p>
-          ) : (
-            <ul className="space-y-3">
+          <div className="text-2xl font-black leading-none" style={{ color: "#e6edf3" }}>{todayLeads.length}</div>
+          <div className="text-[11px]" style={{ color: "#484f58" }}>{allLeadsCount} total all time</div>
+          {todayLeads.length > 0 && (
+            <ul className="space-y-2 mt-1">
               {todayLeads.map((lead) => (
                 <TodayLeadCard key={lead.id} lead={lead} companyId={params.companyId} />
               ))}
@@ -285,28 +270,22 @@ export default async function TodayPage({
         {/* Card 2 — Estimates to be Sent Today */}
         <Link
           href={`/${params.companyId}/estimates`}
-          className="rounded-xl p-5 flex flex-col gap-3 transition-all hover:border-[#C9A84C55] hover:scale-[1.01] block"
+          className="rounded-2xl p-4 flex flex-col gap-2 transition-all active:scale-[0.98]"
           style={{ background: "#161b22", border: "1px solid #30373f" }}
         >
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold uppercase tracking-wider" style={{ color: "#8b949e" }}>
-              Estimates to be Sent Today
-            </span>
-            <span
-              className="text-xs font-bold px-2 py-0.5 rounded"
-              style={{ background: "#C9A84C", color: "#0d1117" }}
-            >
+          <div className="flex items-center justify-between gap-1">
+            <span className="text-[10px] font-bold uppercase tracking-wider" style={{ color: "#8b949e" }}>Estimates</span>
+            <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full" style={{ background: "#C9A84C", color: "#0d1117" }}>
               {estimatesToSend.length}
             </span>
           </div>
-          {estimatesToSend.length === 0 ? (
-            <p className="text-xs" style={{ color: "#8b949e" }}>No draft estimates created today.</p>
-          ) : (
-            <ul className="space-y-2">
+          <div className="text-2xl font-black leading-none" style={{ color: "#e6edf3" }}>{estimatesToSend.length}</div>
+          <div className="text-[11px]" style={{ color: "#484f58" }}>to send today</div>
+          {estimatesToSend.length > 0 && (
+            <ul className="space-y-1.5 mt-1">
               {estimatesToSend.map((est) => (
                 <li key={est.id}>
-                  <span className="text-sm font-medium" style={{ color: "#58a6ff" }}>{est.name}</span>
-                  <div className="text-xs" style={{ color: "#8b949e" }}>{est.project.name}</div>
+                  <span className="text-xs font-medium" style={{ color: "#58a6ff" }}>{est.name}</span>
                 </li>
               ))}
             </ul>
@@ -357,29 +336,20 @@ export default async function TodayPage({
         {/* Card 7 — Sub Database */}
         <Link
           href={`/${params.companyId}/subs`}
-          className="rounded-xl p-5 flex flex-col gap-3 transition-all hover:border-[#C9A84C55] hover:scale-[1.01] block"
+          className="rounded-2xl p-4 flex flex-col gap-2 transition-all active:scale-[0.98]"
           style={{ background: "#161b22", border: "1px solid #30373f" }}
         >
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold uppercase tracking-wider" style={{ color: "#8b949e" }}>
-              Sub Database
-            </span>
-            <span className="text-xs" style={{ color: "#C9A84C" }}>Open →</span>
-          </div>
-          <div className="mt-1">
-            <div className="text-2xl font-black" style={{ color: "#e6edf3" }}>Subs & Emails</div>
-            <p className="text-xs mt-1" style={{ color: "#8b949e" }}>
-              All subcontractors by division. Click to view and copy emails for new projects.
-            </p>
-          </div>
-          <div className="mt-auto pt-2 flex items-center gap-2">
-            <span className="text-xs px-2 py-0.5 rounded" style={{ background: "#1e2736", color: "#58a6ff", border: "1px solid #58a6ff33" }}>By Division</span>
-            <span className="text-xs px-2 py-0.5 rounded" style={{ background: "#1e2736", color: "#22c55e", border: "1px solid #22c55e33" }}>Copy Emails</span>
+          <span className="text-[10px] font-bold uppercase tracking-wider" style={{ color: "#8b949e" }}>Sub Database</span>
+          <div className="text-2xl font-black leading-none" style={{ color: "#e6edf3" }}>Subs</div>
+          <div className="text-[11px]" style={{ color: "#484f58" }}>By division · copy emails</div>
+          <div className="mt-auto pt-2 flex items-center gap-1.5">
+            <span className="text-[10px] px-2 py-0.5 rounded-full" style={{ background: "#1e2736", color: "#58a6ff", border: "1px solid #58a6ff33" }}>Divisions</span>
+            <span className="text-[10px] px-2 py-0.5 rounded-full" style={{ background: "#1e2736", color: "#22c55e", border: "1px solid #22c55e33" }}>Emails</span>
           </div>
         </Link>
 
         {/* Card 8 — To Call ASAP (full-width) */}
-        <div className="sm:col-span-2 lg:col-span-3">
+        <div className="col-span-2 lg:col-span-3">
           <TodayCallsSection
             companyId={params.companyId}
             initialLeads={urgentLeads.map(c => ({
