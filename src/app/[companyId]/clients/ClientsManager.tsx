@@ -141,12 +141,17 @@ function ClientCard({
               {client.estimateTotal > 0 ? `$${client.estimateTotal.toLocaleString("en-US", { maximumFractionDigits: 0 })}` : "—"}
             </div>
             <div className="text-xs mt-0.5" style={{ color: "#8b949e" }}>{client.estimateCount} est.</div>
-            {client.status === "ACTIVE" && client.internalProfit > 0 && (
+            {client.status === "ACTIVE" && (client.internalProfit > 0 || client.gcFee > 0) && (
               <div className="mt-1.5">
-                <div className="text-xs font-semibold uppercase tracking-wide" style={{ color: "#22c55e88" }}>Internal Profit</div>
+                <div className="text-xs font-semibold uppercase tracking-wide" style={{ color: "#22c55e88" }}>MIBH Income</div>
                 <div className="text-base font-bold leading-none" style={{ color: "#22c55e" }}>
-                  ${client.internalProfit.toLocaleString("en-US", { maximumFractionDigits: 0 })}
+                  ${(client.internalProfit + client.gcFee).toLocaleString("en-US", { maximumFractionDigits: 0 })}
                 </div>
+                {client.gcFee > 0 && (
+                  <div className="text-[10px] mt-0.5" style={{ color: "#C9A84C" }}>
+                    incl. ${client.gcFee.toLocaleString("en-US", { maximumFractionDigits: 0 })} GC fee
+                  </div>
+                )}
               </div>
             )}
           </div>

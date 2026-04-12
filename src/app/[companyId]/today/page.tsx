@@ -169,8 +169,7 @@ export default async function TodayPage({
     const estimateTotal = c.templates.reduce((s, t) => s + calcEstimateTotal(t.divisions, t.gcFeePercent), 0);
     return { id: c.id, name: c.name, status: c.status, estimateTotal, internalProfit, gcFee, mibhIncome: internalProfit + gcFee, companyId: params.companyId };
   });
-  const mibhIncome = clientIncomeSummaries.filter(c => c.status === "ACTIVE").reduce((s, c) => s + c.mibhIncome, 0)
-    || activeClients.filter(c => c.status === "ACTIVE").reduce((sum, c) => sum + c.templates.reduce((s, t) => s + calcEstimateTotal(t.divisions, t.gcFeePercent), 0), 0);
+  const mibhIncome = clientIncomeSummaries.filter(c => c.status === "ACTIVE").reduce((s, c) => s + c.mibhIncome, 0);
 
   // Map follow-ups to FollowUpItem shape for each category
   function toItems(category: "TASK" | "FOLLOW_UP" | "ESTIMATE"): FollowUpItem[] {
