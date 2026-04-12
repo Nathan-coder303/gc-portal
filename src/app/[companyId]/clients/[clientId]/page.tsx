@@ -17,6 +17,7 @@ import ClientCoverPhotoSelector from "@/components/clients/ClientCoverPhotoSelec
 import ClientInvoicesTab from "@/components/clients/ClientInvoicesTab";
 import NurturingEmailTab from "@/components/clients/NurturingEmailTab";
 import ChangeOrdersTab from "@/components/clients/ChangeOrdersTab";
+import ClientScheduleTab from "@/components/clients/ClientScheduleTab";
 
 export default async function ClientDetailPage({
   params,
@@ -115,7 +116,7 @@ export default async function ClientDetailPage({
     orderBy: { createdAt: "desc" },
   });
 
-  const [clientInvoices, changeOrders] = await Promise.all([
+  const [clientInvoices, changeOrders, clientScheduleTasks] = await Promise.all([
     prisma.invoice.findMany({
       where: { clientId: params.clientId, companyId: params.companyId },
       orderBy: { createdAt: "asc" },
@@ -126,10 +127,15 @@ export default async function ClientDetailPage({
       orderBy: { createdAt: "desc" },
       include: { items: { orderBy: { sortOrder: "asc" } } },
     }),
+    prisma.clientTask.findMany({
+      where: { clientId: params.clientId, companyId: params.companyId },
+      orderBy: [{ phase: "asc" }, { startDate: "asc" }],
+    }),
   ]);
 
   const tabs = [
     { key: "estimates", label: "Estimates" },
+    { key: "schedule", label: `Schedule${clientScheduleTasks.length > 0 ? ` (${clientScheduleTasks.length})` : ""}` },
     { key: "change-orders", label: `Change Orders${changeOrders.length > 0 ? ` (${changeOrders.length})` : ""}` },
     { key: "invoices", label: `Invoices${clientInvoices.length > 0 ? ` (${clientInvoices.length})` : ""}` },
     { key: "notes", label: `Notes${clientNotes.length > 0 ? ` (${clientNotes.length})` : ""}` },
@@ -230,6 +236,30 @@ export default async function ClientDetailPage({
           clientCoverPhotoUrl={safeClient.coverPhotoType === "CUSTOM" ? `/api/${params.companyId}/clients/${params.clientId}/cover` : null}
           clientCoverTitle={safeClient.coverTitle ?? null}
           hasInsertFile={hasInsertFile}
+        />
+      )}
+
+      {activeTab === "schedule" && (
+        <ClientScheduleTab
+          companyId={params.companyId}
+          clientId={params.clientId}
+          canEdit={canEdit}
+          initialTasks={clientScheduleTasks.map(t => ({
+            id: t.id,
+            phase: t.phase,
+            name: t.name,
+            durationDays: t.durationDays,
+            startDate: t.startDate ? t.startDate.toISOString().slice(0, 10) : null,
+            endDate: t.endDate ? t.endDate.toISOString().slice(0, 10) : null,
+            predecessorIds: t.predecessorIds,
+            parentId: t.parentId,
+            trade: t.trade,
+            assignee: t.assignee,
+            isMilestone: t.isMilestone,
+            status: t.status,
+            percentComplete: t.percentComplete,
+            notes: t.notes,
+          }))}
         />
       )}
 

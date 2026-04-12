@@ -41,7 +41,7 @@ export default function TaskEditModal({
     }
   }
 
-  const field = "w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500";
+  const field = "w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white text-slate-900";
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center">

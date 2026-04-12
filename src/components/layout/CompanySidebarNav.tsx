@@ -16,8 +16,6 @@ const NAV = [
 ];
 
 const SOON = [
-  { label: "Discord", icon: "💬" },
-  { label: "Telegram", icon: "✈️" },
   { label: "Teams", icon: "👥" },
 ];
 
