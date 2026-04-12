@@ -990,8 +990,6 @@ function DivisionSummaryPage({ template, client, divisions, gcFeePercent }: Pick
   }
 
   const subtotal = divTotals.reduce((s, d) => s + d.total, 0);
-  const gcFeeAmount = gcFeePercent && gcFeePercent > 0 ? subtotal * gcFeePercent / 100 : 0;
-  const grandTotal = subtotal + gcFeeAmount;
   const dateDisplay = fmtDate(template.estimateDate);
 
   return (
