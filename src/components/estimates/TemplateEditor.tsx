@@ -1524,7 +1524,7 @@ export default function TemplateEditor({
               </div>
             </div>
             {/* Action Cards — full width row */}
-            <div className={`grid gap-3 mt-4 ${canEdit ? "grid-cols-4" : "grid-cols-3"}`}>
+            <div className={`grid gap-2 mt-4 ${canEdit ? "grid-cols-4" : "grid-cols-3"}`}>
               {/* Card 0 — Save Template */}
               {canEdit && (
                 <button
@@ -1533,14 +1533,14 @@ export default function TemplateEditor({
                     setTemplateSaved(true);
                     setTimeout(() => setTemplateSaved(false), 2500);
                   }}
-                  className="text-left rounded-2xl p-5 transition-all"
+                  className="text-left rounded-2xl p-3 sm:p-5 transition-all"
                   style={{ background: templateSaved ? "#0a1f12" : "#0d1117", border: `2px solid ${templateSaved ? "#22c55e" : "#C9A84C"}` }}
                 >
-                  <div className="text-2xl mb-2">{templateSaved ? "✅" : "💾"}</div>
-                  <div className="text-sm font-bold mb-1" style={{ color: templateSaved ? "#22c55e" : "#C9A84C" }}>
+                  <div className="text-2xl mb-1 sm:mb-2">{templateSaved ? "✅" : "💾"}</div>
+                  <div className="text-xs sm:text-sm font-bold sm:mb-1" style={{ color: templateSaved ? "#22c55e" : "#C9A84C" }}>
                     {templateSaved ? "Template Saved!" : "Save Template"}
                   </div>
-                  <div className="text-xs leading-relaxed" style={{ color: "#8b949e" }}>
+                  <div className="hidden sm:block text-xs leading-relaxed" style={{ color: "#8b949e" }}>
                     {templateSaved ? "All changes saved to this template" : "Save all open edits to this template"}
                   </div>
                 </button>
@@ -1549,14 +1549,14 @@ export default function TemplateEditor({
               <button
                 disabled={!canEdit || !currentClient || isPending || savedToClient || template.type !== "TEMPLATE"}
                 onClick={canEdit && currentClient && !savedToClient ? handleSaveToClient : undefined}
-                className="text-left rounded-2xl p-5 transition-all disabled:opacity-40 group"
+                className="text-left rounded-2xl p-3 sm:p-5 transition-all disabled:opacity-40 group"
                 style={{ background: savedToClient ? "#0a2e1a" : "#0d2318", border: `2px solid ${savedToClient ? "#16a34a" : currentClient ? "#22c55e" : "#1a3320"}` }}
               >
-                <div className="text-2xl mb-2">📋</div>
-                <div className="text-sm font-bold mb-1" style={{ color: savedToClient ? "#16a34a" : "#22c55e" }}>
+                <div className="text-2xl mb-1 sm:mb-2">📋</div>
+                <div className="text-xs sm:text-sm font-bold sm:mb-1" style={{ color: savedToClient ? "#16a34a" : "#22c55e" }}>
                   {savedToClient ? "✓ Estimate Created" : isPending ? "Creating…" : "Create Client Estimate"}
                 </div>
-                <div className="text-xs leading-relaxed" style={{ color: "#8b949e" }}>
+                <div className="hidden sm:block text-xs leading-relaxed" style={{ color: "#8b949e" }}>
                   {savedToClient ? `Saved for ${currentClient?.name}` : currentClient ? `Save a copy tied to ${currentClient.name}` : "Assign a client below first"}
                 </div>
               </button>
@@ -1565,12 +1565,12 @@ export default function TemplateEditor({
               <button
                 disabled={!canEdit}
                 onClick={canEdit ? () => setSaveAsNew(v => !v) : undefined}
-                className="text-left rounded-2xl p-5 transition-all disabled:opacity-40"
+                className="text-left rounded-2xl p-3 sm:p-5 transition-all disabled:opacity-40"
                 style={{ background: saveAsNew ? "#0d1a2e" : "#0d1117", border: `2px solid ${saveAsNew ? "#60a5fa" : "#30373f"}` }}
               >
-                <div className="text-2xl mb-2">📄</div>
-                <div className="text-sm font-bold mb-1" style={{ color: "#60a5fa" }}>Save as New Template</div>
-                <div className="text-xs leading-relaxed" style={{ color: "#8b949e" }}>Fork this template with a different name to create a new variant</div>
+                <div className="text-2xl mb-1 sm:mb-2">📄</div>
+                <div className="text-xs sm:text-sm font-bold sm:mb-1" style={{ color: "#60a5fa" }}>Save as New Template</div>
+                <div className="hidden sm:block text-xs leading-relaxed" style={{ color: "#8b949e" }}>Fork this template with a different name to create a new variant</div>
               </button>
 
               {/* Card 3 — Export PDF */}
@@ -1578,12 +1578,12 @@ export default function TemplateEditor({
                 href={`/api/${template.companyId}/estimates/${template.id}/pdf`}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="block rounded-2xl p-5 transition-all"
+                className="block rounded-2xl p-3 sm:p-5 transition-all"
                 style={{ background: "#1a1508", border: "2px solid #C9A84C" }}
               >
-                <div className="text-2xl mb-2">📊</div>
-                <div className="text-sm font-bold mb-1" style={{ color: "#C9A84C" }}>Export PDF</div>
-                <div className="text-xs leading-relaxed" style={{ color: "#8b949e" }}>Download a ready-to-send PDF of the current estimate</div>
+                <div className="text-2xl mb-1 sm:mb-2">📊</div>
+                <div className="text-xs sm:text-sm font-bold sm:mb-1" style={{ color: "#C9A84C" }}>Export PDF</div>
+                <div className="hidden sm:block text-xs leading-relaxed" style={{ color: "#8b949e" }}>Download a ready-to-send PDF of the current estimate</div>
               </a>
 
               {/* Card 4 — Export PDF with Cover */}
@@ -1591,12 +1591,12 @@ export default function TemplateEditor({
                 href={`/api/${template.companyId}/estimates/${template.id}/pdf?cover=1`}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="block rounded-2xl p-5 transition-all"
+                className="block rounded-2xl p-3 sm:p-5 transition-all"
                 style={{ background: "#0d1a1a", border: "2px solid #C9A84C66" }}
               >
-                <div className="text-2xl mb-2">📋</div>
-                <div className="text-sm font-bold mb-1" style={{ color: "#C9A84C" }}>Export PDF + Cover</div>
-                <div className="text-xs leading-relaxed" style={{ color: "#8b949e" }}>Includes MIBH presentation cover pages before the estimate</div>
+                <div className="text-2xl mb-1 sm:mb-2">📋</div>
+                <div className="text-xs sm:text-sm font-bold sm:mb-1" style={{ color: "#C9A84C" }}>Export PDF + Cover</div>
+                <div className="hidden sm:block text-xs leading-relaxed" style={{ color: "#8b949e" }}>Includes MIBH presentation cover pages before the estimate</div>
               </a>
             </div>
 
