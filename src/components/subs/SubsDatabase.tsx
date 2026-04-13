@@ -134,10 +134,7 @@ function SubCard({
 }) {
   const tags = parseTags(sub.notes);
   const [showMoveMenu, setShowMoveMenu] = useState(false);
-  const otherDivisions = usedDivisions.filter(d => {
-    const n = parseInt(d.code.slice(0, 2), 10);
-    return d.code !== sub.divisionCode && n >= 21 && n <= 32;
-  });
+  const otherDivisions = usedDivisions.filter(d => d.code !== sub.divisionCode);
 
   return (
     <div
@@ -818,10 +815,7 @@ export default function SubsDatabase({
                 {selCount > 0 && (
                   <MoveSelectedDropdown
                     label={`Move ${selCount} →`}
-                    divisions={usedDivisions.filter(d => {
-                      const n = parseInt(d.code.slice(0, 2), 10);
-                      return d.code !== group.code && n >= 21 && n <= 32;
-                    })}
+                    divisions={usedDivisions.filter(d => d.code !== group.code)}
                     onMove={(code, name) => moveSelectedToDivision(group.code, code, name)}
                   />
                 )}
