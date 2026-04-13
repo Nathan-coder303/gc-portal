@@ -103,24 +103,7 @@ export default function SyncLeadsButton({ companyId }: { companyId: string }) {
       >
         {status === "syncing" ? "Syncing…" : "Sync Leads"}
       </button>
-      <button
-        onClick={() => sync(true)}
-        disabled={isBusy}
-        title="Import all historical leads from Gmail"
-        className="text-xs px-3 py-1.5 rounded-lg font-medium transition-opacity disabled:opacity-50 whitespace-nowrap"
-        style={{ background: "#161b22", border: "1px solid #30373f", color: "#8b949e" }}
-      >
-        {status === "backfilling" ? "Importing…" : "Backfill All"}
-      </button>
-      <button
-        onClick={dedup}
-        disabled={isBusy}
-        title="Merge duplicate leads with same name"
-        className="text-xs px-3 py-1.5 rounded-lg font-medium transition-opacity disabled:opacity-50 whitespace-nowrap"
-        style={{ background: "#161b22", border: "1px solid #30373f", color: "#8b949e" }}
-      >
-        {status === "deduping" ? "Merging…" : "Merge Dupes"}
-      </button>
+      {/* Backfill All and Merge Dupes hidden — one-time tools, not needed daily */}
     </div>
   );
 }
