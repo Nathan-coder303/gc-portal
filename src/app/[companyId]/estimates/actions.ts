@@ -827,20 +827,25 @@ export async function updateTemplateSqFt(templateId: string, sqFt: number | null
     data: { sqFt: sqFt ?? null, updatedBy: session.user.id },
   });
 
-  if (sqFt && sqFt > 0) {
-    const template = await prisma.estimateTemplate.findUnique({ where: { id: templateId }, select: { name: true } });
-    const isRoof = template?.name?.toLowerCase().includes("roof") ?? false;
-    const effectiveQty = isRoof ? Math.ceil(sqFt / 100) : sqFt;
-
-    const sfItems = await prisma.estimateTemplateItem.findMany({
-      where: { archivedAt: null, division: { templateId } },
-      select: { id: true, unit: true },
-    });
-    const matchIds = sfItems.filter(i => isSfItem(i.unit)).map(i => i.id);
-    if (matchIds.length > 0) {
+  const sfItems = await prisma.estimateTemplateItem.findMany({
+    where: { archivedAt: null, division: { templateId } },
+    select: { id: true, unit: true },
+  });
+  const matchIds = sfItems.filter(i => isSfItem(i.unit)).map(i => i.id);
+  if (matchIds.length > 0) {
+    if (sqFt && sqFt > 0) {
+      const template = await prisma.estimateTemplate.findUnique({ where: { id: templateId }, select: { name: true } });
+      const isRoof = template?.name?.toLowerCase().includes("roof") ?? false;
+      const effectiveQty = isRoof ? Math.ceil(sqFt / 100) : sqFt;
       await prisma.estimateTemplateItem.updateMany({
         where: { id: { in: matchIds } },
         data: { defaultQty: effectiveQty },
+      });
+    } else {
+      // sqFt cleared — reset SF items to no qty
+      await prisma.estimateTemplateItem.updateMany({
+        where: { id: { in: matchIds } },
+        data: { defaultQty: null },
       });
     }
   }
@@ -859,16 +864,22 @@ export async function updateTemplateDurationMonths(templateId: string, months: n
     data: { durationMonths: months ?? null, updatedBy: session.user.id },
   });
 
-  if (months && months > 0) {
-    const allItems = await prisma.estimateTemplateItem.findMany({
-      where: { archivedAt: null, division: { templateId } },
-      select: { id: true, name: true, unit: true },
-    });
-    const matchIds = allItems.filter(i => isDurationItem(i.name, i.unit)).map(i => i.id);
-    if (matchIds.length > 0) {
+  const allItems = await prisma.estimateTemplateItem.findMany({
+    where: { archivedAt: null, division: { templateId } },
+    select: { id: true, name: true, unit: true },
+  });
+  const matchIds = allItems.filter(i => isDurationItem(i.name, i.unit)).map(i => i.id);
+  if (matchIds.length > 0) {
+    if (months && months > 0) {
       await prisma.estimateTemplateItem.updateMany({
         where: { id: { in: matchIds } },
         data: { defaultQty: months },
+      });
+    } else {
+      // duration cleared — reset duration items to no qty
+      await prisma.estimateTemplateItem.updateMany({
+        where: { id: { in: matchIds } },
+        data: { defaultQty: null },
       });
     }
   }
