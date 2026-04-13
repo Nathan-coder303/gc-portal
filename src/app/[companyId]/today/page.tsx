@@ -171,6 +171,15 @@ export default async function TodayPage({
   });
   const mibhIncome = clientIncomeSummaries.filter(c => c.status === "ACTIVE").reduce((s, c) => s + c.mibhIncome, 0);
 
+  // Today's appointments: TASK items starting with "📅 Appointment" due today
+  const appointments = followUps.filter(f =>
+    f.category === "TASK" &&
+    f.text.startsWith("📅 Appointment") &&
+    !f.completedAt &&
+    f.dueDate &&
+    f.dueDate.toISOString().slice(0, 10) === etDateStr
+  );
+
   // Map follow-ups to FollowUpItem shape for each category
   function toItems(category: "TASK" | "FOLLOW_UP" | "ESTIMATE"): FollowUpItem[] {
     return followUps
@@ -206,6 +215,42 @@ export default async function TodayPage({
 
       {/* MIBH Income 2026 Barometer */}
       <BarometerSection mibhIncome={mibhIncome} clients={clientIncomeSummaries} />
+
+      {/* Today's Appointments — full-width, barometer-scale */}
+      <div
+        className="mb-4 rounded-2xl px-4 py-4 sm:px-6 sm:py-5"
+        style={{ background: "#0a0e1a", border: "1px solid #C9A84C33" }}
+      >
+        <div className="text-[52px] sm:text-6xl font-black leading-none tracking-tight mb-2" style={{ color: "#C9A84C" }}>
+          TODAY&apos;S APPOINTMENTS
+        </div>
+        {appointments.length === 0 ? (
+          <p className="text-base" style={{ color: "#484f58" }}>No appointments scheduled for today</p>
+        ) : (
+          <div className="space-y-3 mt-3">
+            {appointments.map(appt => {
+              // Parse "📅 Appointment – Name · Project · Address · Time · Phone · Email"
+              const raw = appt.text.replace(/^📅 Appointment\s*[–-]\s*/, "");
+              const parts = raw.split(" · ");
+              const name = parts[0] ?? "";
+              const rest = parts.slice(1);
+              return (
+                <div key={appt.id} className="flex items-start gap-3 p-4 rounded-xl" style={{ background: "#161b22", border: "1px solid #C9A84C22" }}>
+                  <span className="text-2xl shrink-0">📅</span>
+                  <div>
+                    <div className="text-lg font-black leading-tight" style={{ color: "#e6edf3" }}>{name}</div>
+                    <div className="flex flex-wrap gap-x-3 gap-y-0.5 mt-1">
+                      {rest.map((p, i) => (
+                        <span key={i} className="text-sm" style={{ color: "#8b949e" }}>{p}</span>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </div>
 
       {/* Pending countersign alert — click to sign directly */}
       <CountersignAlert
@@ -248,7 +293,7 @@ export default async function TodayPage({
           style={{ background: "#161b22", border: "1px solid #30373f" }}
         >
           <div className="flex items-center justify-between gap-1">
-            <span className="text-[10px] font-bold uppercase tracking-wider" style={{ color: "#8b949e" }}>New Leads</span>
+            <span className="text-[10px] font-bold uppercase tracking-wider" style={{ color: "#C9A84C" }}>New Leads</span>
             <div className="flex items-center gap-1.5">
               <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full" style={{ background: "#C9A84C", color: "#0d1117" }}>
                 {todayLeads.length} today
@@ -256,7 +301,7 @@ export default async function TodayPage({
               <Link href={`/${params.companyId}/leads`} className="text-[10px] font-semibold" style={{ color: "#58a6ff" }}>View →</Link>
             </div>
           </div>
-          <div className="text-2xl font-black leading-none" style={{ color: "#e6edf3" }}>{todayLeads.length}</div>
+          <div className="text-[26px] sm:text-3xl font-black leading-none" style={{ color: "#e6edf3" }}>{todayLeads.length}</div>
           <div className="text-[11px]" style={{ color: "#484f58" }}>{allLeadsCount} total all time</div>
           {todayLeads.length > 0 && (
             <ul className="space-y-2 mt-1">
@@ -274,12 +319,12 @@ export default async function TodayPage({
           style={{ background: "#161b22", border: "1px solid #30373f" }}
         >
           <div className="flex items-center justify-between gap-1">
-            <span className="text-[10px] font-bold uppercase tracking-wider" style={{ color: "#8b949e" }}>Estimates</span>
+            <span className="text-[10px] font-bold uppercase tracking-wider" style={{ color: "#C9A84C" }}>Estimates</span>
             <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full" style={{ background: "#C9A84C", color: "#0d1117" }}>
               {estimatesToSend.length}
             </span>
           </div>
-          <div className="text-2xl font-black leading-none" style={{ color: "#e6edf3" }}>{estimatesToSend.length}</div>
+          <div className="text-[26px] sm:text-3xl font-black leading-none" style={{ color: "#e6edf3" }}>{estimatesToSend.length}</div>
           <div className="text-[11px]" style={{ color: "#484f58" }}>to send today</div>
           {estimatesToSend.length > 0 && (
             <ul className="space-y-1.5 mt-1">
@@ -339,8 +384,8 @@ export default async function TodayPage({
           className="rounded-2xl p-4 flex flex-col gap-2 transition-all active:scale-[0.98]"
           style={{ background: "#161b22", border: "1px solid #30373f" }}
         >
-          <span className="text-[10px] font-bold uppercase tracking-wider" style={{ color: "#8b949e" }}>Sub Database</span>
-          <div className="text-2xl font-black leading-none" style={{ color: "#e6edf3" }}>Subs</div>
+          <span className="text-[10px] font-bold uppercase tracking-wider" style={{ color: "#C9A84C" }}>Sub Database</span>
+          <div className="text-[26px] sm:text-3xl font-black leading-none" style={{ color: "#e6edf3" }}>Subs</div>
           <div className="text-[11px]" style={{ color: "#484f58" }}>By division · copy emails</div>
           <div className="mt-auto pt-2 flex items-center gap-1.5">
             <span className="text-[10px] px-2 py-0.5 rounded-full" style={{ background: "#1e2736", color: "#58a6ff", border: "1px solid #58a6ff33" }}>Divisions</span>

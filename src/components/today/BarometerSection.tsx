@@ -62,12 +62,17 @@ export default function BarometerSection({ mibhIncome, clients }: { mibhIncome: 
         style={{ background: "#0a1a0f", border: "1px solid #22c55e33" }}
         onClick={() => setOpen(true)}
       >
-        {/* Top row: label + goal badge */}
-        <div className="flex items-center justify-between mb-2">
-          <span className="text-[10px] font-bold uppercase tracking-widest" style={{ color: "#22c55e66" }}>
-            MIBH INCOME 2026
-          </span>
-          <div className="flex items-center gap-2">
+        {/* Label — same size/font as income number */}
+        <div className="text-[52px] sm:text-6xl font-black leading-none tracking-tight mb-1" style={{ color: "#C9A84C" }}>
+          MIBH INCOME 2026
+        </div>
+
+        {/* Income number + goal badge row */}
+        <div className="flex items-end justify-between gap-2 flex-wrap">
+          <div className="text-[52px] sm:text-6xl font-black leading-none tracking-tight" style={{ color: "#22c55e" }}>
+            ${fmt(mibhIncome)}
+          </div>
+          <div className="flex items-center gap-2 pb-1">
             <span className="text-[10px] font-semibold uppercase tracking-widest" style={{ color: "#8b949e" }}>
               GOAL
             </span>
@@ -81,11 +86,6 @@ export default function BarometerSection({ mibhIncome, clients }: { mibhIncome: 
               {goalPct.toFixed(1)}%
             </span>
           </div>
-        </div>
-
-        {/* Income number — full width, massive on mobile */}
-        <div className="text-[52px] sm:text-6xl font-black leading-none tracking-tight" style={{ color: "#22c55e" }}>
-          ${fmt(mibhIncome)}
         </div>
 
         {/* Progress bar */}
