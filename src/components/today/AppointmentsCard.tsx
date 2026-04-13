@@ -58,7 +58,7 @@ export default function AppointmentsCard({
           className="flex-1 text-center text-[52px] sm:text-6xl font-black leading-none tracking-tight"
           style={{ color: "#C9A84C" }}
         >
-          TODAY&apos;S APPOINTMENTS
+          Today&apos;s appointments
         </div>
         <button
           onClick={() => { setShowAdd(v => !v); setError(""); }}

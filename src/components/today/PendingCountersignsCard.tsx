@@ -41,7 +41,7 @@ export default function PendingCountersignsCard({
       >
         <div className="flex items-center justify-between">
           <span className="text-[26px] sm:text-3xl font-black leading-none" style={{ color: "#C9A84C" }}>
-            Pending Countersignatures
+            Pending countersignatures
           </span>
           <span
             className="text-xs font-bold px-2 py-0.5 rounded shrink-0"

@@ -229,7 +229,7 @@ export default async function TodayPage({
           className="col-span-2 lg:col-span-3 rounded-2xl p-4 sm:p-5"
           style={{ background: "#161b22", border: "1px solid #30373f" }}
         >
-          <span className="text-[26px] sm:text-3xl font-black leading-none" style={{ color: "#C9A84C" }}>LEADS</span>
+          <span className="text-[26px] sm:text-3xl font-black leading-none" style={{ color: "#C9A84C" }}>Leads</span>
           <div className="grid grid-cols-2 gap-4 mt-3">
             {/* Triaging */}
             <Link
@@ -248,7 +248,7 @@ export default async function TodayPage({
               style={{ background: "#0d1117", border: "1px solid #30373f" }}
             >
               <div className="flex items-center gap-2">
-                <span className="text-xs font-semibold uppercase tracking-wider" style={{ color: "#8b949e" }}>New Leads</span>
+                <span className="text-xs font-semibold uppercase tracking-wider" style={{ color: "#8b949e" }}>New leads</span>
                 {todayLeads.length > 0 && (
                   <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full" style={{ background: "#C9A84C", color: "#0d1117" }}>
                     {todayLeads.length} today
@@ -275,7 +275,7 @@ export default async function TodayPage({
           style={{ background: "#161b22", border: "1px solid #30373f" }}
         >
           <div className="flex items-center justify-between gap-1">
-            <span className="text-[26px] sm:text-3xl font-black leading-none" style={{ color: "#C9A84C" }}>ESTIMATES</span>
+            <span className="text-[26px] sm:text-3xl font-black leading-none" style={{ color: "#C9A84C" }}>Estimates</span>
             <span className="text-xs font-bold px-1.5 py-0.5 rounded-full shrink-0" style={{ background: "#C9A84C", color: "#0d1117" }}>
               {estimatesToSend.length}
             </span>
@@ -296,7 +296,7 @@ export default async function TodayPage({
         <TodayTaskCard
           companyId={params.companyId}
           category="TASK"
-          label="Today's Tasks"
+          label="Today's tasks"
           initialItems={toItems("TASK")}
           clients={clients}
         />
@@ -306,6 +306,7 @@ export default async function TodayPage({
           companyId={params.companyId}
           category="FOLLOW_UP"
           label="Follow-ups"
+
           initialItems={toItems("FOLLOW_UP")}
           clients={clients}
         />
@@ -328,7 +329,7 @@ export default async function TodayPage({
         <TodayTaskCard
           companyId={params.companyId}
           category="ESTIMATE"
-          label="Estimate Notes"
+          label="Estimate notes"
           initialItems={toItems("ESTIMATE")}
           clients={clients}
         />
@@ -339,7 +340,7 @@ export default async function TodayPage({
           className="rounded-2xl p-4 flex flex-col gap-2 transition-all active:scale-[0.98]"
           style={{ background: "#161b22", border: "1px solid #30373f" }}
         >
-          <span className="text-[26px] sm:text-3xl font-black leading-none" style={{ color: "#C9A84C" }}>SUB DATABASE</span>
+          <span className="text-[26px] sm:text-3xl font-black leading-none" style={{ color: "#C9A84C" }}>Sub database</span>
           <div className="text-[11px]" style={{ color: "#484f58" }}>By division · copy emails</div>
           <div className="mt-auto pt-2 flex items-center gap-1.5">
             <span className="text-[10px] px-2 py-0.5 rounded-full" style={{ background: "#1e2736", color: "#58a6ff", border: "1px solid #58a6ff33" }}>Divisions</span>
