@@ -1352,12 +1352,9 @@ function TemplatePdfDocument({ companyName, template, client, divisions, showTer
                 <Text style={[styles.headerText, { fontSize: 8, color: "#475569" }]}>SUBTOTAL</Text>
                 <Text style={[styles.cellBold, { fontSize: 9 }]}>${fmt(grandTotal)}</Text>
               </View>
-              {/* GC line item row */}
+              {/* GC fee row — amount only, no % shown */}
               <View style={[styles.tableRow, { marginTop: 0 }]}>
                 <Text style={[styles.cellText, styles.colName]}>01 10 00 – GC Overhead &amp; Profit</Text>
-                <Text style={[{ fontSize: 7, color: "#475569", textAlign: "center" }, styles.colDetail]}>%</Text>
-                <Text style={[styles.cellText, styles.colQty]}>{fmt(gcFee)}</Text>
-                <Text style={[styles.cellMuted, styles.colUnit]}>%</Text>
                 <Text style={[styles.cellBold, styles.colTotal]}>${fmt(gcFeeAmount)}</Text>
               </View>
             </>
