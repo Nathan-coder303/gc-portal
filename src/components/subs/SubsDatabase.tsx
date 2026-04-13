@@ -33,8 +33,8 @@ const ALL_DIVISIONS = [
   { code: "23 00 00", name: "Heating, Ventilating, and Air Conditioning" },
   { code: "26 00 00", name: "Electrical" },
   { code: "27 00 00", name: "Communications" },
-  { code: "31 00 00", name: "Earthwork" },
-  { code: "32 00 00", name: "Exterior Improvements" },
+  { code: "31 00 00", name: "Pavers" },
+  { code: "32 00 00", name: "Landscaping" },
   { code: "35 00 00", name: "Waterway and Marine Construction" },
 ];
 
@@ -561,7 +561,7 @@ export default function SubsDatabase({
 
   const [subs, setSubs] = useState<Sub[]>(normalizedInit);
   const [filterDiv, setFilterDiv] = useState("ALL");
-  const [modal, setModal] = useState<{ mode: "add" | "edit"; sub?: Sub } | null>(null);
+  const [modal, setModal] = useState<{ mode: "add" | "edit"; sub?: Sub; prefillDiv?: { code: string; name: string } } | null>(null);
   const [emailModal, setEmailModal] = useState<{ emails: string[]; divName: string } | null>(null);
   const [importing, setImporting] = useState(false);
   const [importingSheet, setImportingSheet] = useState(false);
@@ -727,7 +727,7 @@ export default function SubsDatabase({
   const defaultDivision = ALL_DIVISIONS[0];
   const modalInitial = modal?.mode === "edit" && modal.sub
     ? { name: modal.sub.name, email: modal.sub.email ?? "", phone: modal.sub.phone ?? "", divisionCode: modal.sub.divisionCode, divisionName: modal.sub.divisionName, tags: parseTags(modal.sub.notes) }
-    : { name: "", email: "", phone: "", divisionCode: defaultDivision.code, divisionName: defaultDivision.name, tags: [] };
+    : { name: "", email: "", phone: "", divisionCode: modal?.prefillDiv?.code ?? defaultDivision.code, divisionName: modal?.prefillDiv?.name ?? defaultDivision.name, tags: [] };
 
   return (
     <div>
@@ -820,7 +820,17 @@ export default function SubsDatabase({
                 )}
               </div>
 
-              <div className="flex gap-2 flex-wrap">
+              <div className="flex gap-2 flex-wrap items-center">
+                {/* Add sub to this division */}
+                <button
+                  onClick={() => setModal({ mode: "add", prefillDiv: { code: group.code, name: group.name } })}
+                  className="w-7 h-7 flex items-center justify-center rounded-full text-base font-bold transition-all hover:scale-110"
+                  style={{ background: "#C9A84C22", border: "1px solid #C9A84C66", color: "#C9A84C" }}
+                  title={`Add sub to ${group.name}`}
+                >
+                  +
+                </button>
+
                 {/* Move selected */}
                 {selCount > 0 && (
                   <MoveSelectedDropdown
