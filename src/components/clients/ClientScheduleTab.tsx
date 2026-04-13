@@ -922,7 +922,6 @@ function ClientGanttChart({ tasks, projectStart, companyId, clientId, canEdit, o
 
   async function handleSetParent(child: ClientTask, parentId: string | null) {
     const parentTask = parentId ? tasks.find(t => t.id === parentId) : null;
-    const updated = { ...child, parentId };
     const res = await fetch(`/api/${companyId}/clients/${clientId}/schedule/${child.id}`, {
       method: "PATCH", headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ name: child.name, phase: child.phase, durationDays: child.durationDays, startDate: child.startDate, endDate: child.endDate, trade: child.trade, assignee: child.assignee, status: child.status, percentComplete: child.percentComplete, isMilestone: child.isMilestone, predecessorIds: child.predecessorIds, notes: child.notes, parentId }),
