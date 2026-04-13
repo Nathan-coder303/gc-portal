@@ -718,9 +718,10 @@ function EditModal({
 
 // ── Add Task Modal ─────────────────────────────────────────────────────────────
 
-function AddTaskModal({ companyId, clientId, phases, onCreate, onClose }: {
+function AddTaskModal({ companyId, clientId, phases, onCreate, onClose, defaultParentId, defaultParentName }: {
   companyId: string; clientId: string; phases: string[];
   onCreate: (task: ClientTask) => void; onClose: () => void;
+  defaultParentId?: string; defaultParentName?: string;
 }) {
   const [form, setForm] = useState({ name: "", phase: phases[0] ?? "General", durationDays: "5", startDate: todayStr(), trade: "", assignee: "" });
   const [saving, setSaving] = useState(false);
@@ -734,7 +735,7 @@ function AddTaskModal({ companyId, clientId, phases, onCreate, onClose }: {
     try {
       const res = await fetch(`/api/${companyId}/clients/${clientId}/schedule`, {
         method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name: form.name.trim(), phase: form.phase.trim() || "General", durationDays: dur, startDate: toDateStr(start), endDate: toDateStr(end), trade: form.trade.trim() || null, assignee: form.assignee.trim() || null }),
+        body: JSON.stringify({ name: form.name.trim(), phase: form.phase.trim() || "General", durationDays: dur, startDate: toDateStr(start), endDate: toDateStr(end), trade: form.trade.trim() || null, assignee: form.assignee.trim() || null, parentId: defaultParentId ?? null }),
       });
       const task = await res.json();
       onCreate(task);
@@ -746,7 +747,8 @@ function AddTaskModal({ companyId, clientId, phases, onCreate, onClose }: {
       onClick={onClose}>
       <div style={{ background: "#161b22", border: "1px solid #30373f", borderRadius: 14, padding: 24, width: "100%", maxWidth: 440 }}
         onClick={e => e.stopPropagation()}>
-        <h3 className="text-sm font-bold mb-4" style={{ color: "#e6edf3" }}>Add Task</h3>
+        <h3 className="text-sm font-bold mb-1" style={{ color: "#e6edf3" }}>{defaultParentId ? "Add Sub-task" : "Add Task"}</h3>
+        {defaultParentName && <p className="text-xs mb-4" style={{ color: "#8b949e" }}>Child of: <span style={{ color: GOLD }}>{defaultParentName}</span></p>}
         <div className="space-y-3">
           <div>
             <label className="block text-[11px] mb-1" style={{ color: "#8b949e" }}>Task Name *</label>
@@ -792,6 +794,9 @@ function ClientGanttChart({ tasks, projectStart, companyId, clientId, canEdit, o
   const [drag, setDrag] = useState<DragState | null>(null);
   const [saving, setSaving] = useState<string | null>(null);
   const [editTask, setEditTask] = useState<ClientTask | null>(null);
+  const [addChildFor, setAddChildFor] = useState<ClientTask | null>(null);
+  const [setParentFor, setSetParentFor] = useState<ClientTask | null>(null);
+  const [contextMenu, setContextMenu] = useState<{ x: number; y: number; task: ClientTask } | null>(null);
   const svgRef = useRef<SVGSVGElement>(null);
 
   // Track last click for double-click detection
@@ -909,6 +914,39 @@ function ClientGanttChart({ tasks, projectStart, companyId, clientId, canEdit, o
     }
   }, []);
 
+  const handleBarContextMenu = useCallback((e: React.MouseEvent, task: ClientTask) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setContextMenu({ x: e.clientX, y: e.clientY, task });
+  }, []);
+
+  async function handleSetParent(child: ClientTask, parentId: string | null) {
+    const parentTask = parentId ? tasks.find(t => t.id === parentId) : null;
+    const updated = { ...child, parentId };
+    const res = await fetch(`/api/${companyId}/clients/${clientId}/schedule/${child.id}`, {
+      method: "PATCH", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ name: child.name, phase: child.phase, durationDays: child.durationDays, startDate: child.startDate, endDate: child.endDate, trade: child.trade, assignee: child.assignee, status: child.status, percentComplete: child.percentComplete, isMilestone: child.isMilestone, predecessorIds: child.predecessorIds, notes: child.notes, parentId }),
+    });
+    const saved = await res.json();
+    onTasksChange(tasks.map(t => t.id === child.id ? { ...t, ...saved } : t));
+    setSetParentFor(null);
+    void parentTask;
+  }
+
+  async function handleDuplicate(task: ClientTask) {
+    const res = await fetch(`/api/${companyId}/clients/${clientId}/schedule`, {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ name: task.name + " (copy)", phase: task.phase, durationDays: task.durationDays, startDate: task.startDate, endDate: task.endDate, trade: task.trade, assignee: task.assignee, isMilestone: task.isMilestone, parentId: task.parentId, notes: task.notes }),
+    });
+    const created = await res.json();
+    onTasksChange([...tasks, { ...created, predecessorIds: [], parentId: created.parentId ?? null, notes: created.notes ?? null }]);
+  }
+
+  async function handleDeleteTask(task: ClientTask) {
+    await fetch(`/api/${companyId}/clients/${clientId}/schedule/${task.id}`, { method: "DELETE" });
+    onTasksChange(tasks.filter(t => t.id !== task.id));
+  }
+
   return (
     <>
       <div className="overflow-x-auto select-none" style={{ cursor: drag ? "grabbing" : "default" }}>
@@ -1011,6 +1049,7 @@ function ClientGanttChart({ tasks, projectStart, companyId, clientId, canEdit, o
                     fill="#7c3aed" opacity={isSaving ? 0.4 : 1}
                     style={{ cursor: "pointer" }}
                     onClick={() => handleBarClick(task)}
+                    onContextMenu={e => handleBarContextMenu(e, task)}
                   />
                 ) : (
                   <g>
@@ -1027,6 +1066,7 @@ function ClientGanttChart({ tasks, projectStart, companyId, clientId, canEdit, o
                       style={{ cursor: canEdit ? "grab" : "pointer" }}
                       onMouseDown={e => handleBarMouseDown(e, task, "move")}
                       onClick={() => handleBarClick(task)}
+                      onContextMenu={e => handleBarContextMenu(e, task)}
                     />
                     {task.percentComplete > 0 && (
                       <rect x={barX} y={y + 9} width={(barW * task.percentComplete) / 100} height={ROW_HEIGHT - 18} rx={4} fill={barColor} opacity={0.95} style={{ pointerEvents: "none" }} />
@@ -1078,11 +1118,116 @@ function ClientGanttChart({ tasks, projectStart, companyId, clientId, canEdit, o
           onClose={() => setEditTask(null)}
         />
       )}
+
+      {/* Right-click context menu */}
+      {contextMenu && (
+        <div
+          style={{ position: "fixed", top: contextMenu.y, left: contextMenu.x, zIndex: 200, minWidth: 180, background: "#161b22", border: "1px solid #30373f", borderRadius: 10, boxShadow: "0 8px 32px rgba(0,0,0,0.5)", overflow: "hidden" }}
+          onClick={e => e.stopPropagation()}
+          onContextMenu={e => e.preventDefault()}
+        >
+          {/* Close on outside click */}
+          <div style={{ position: "fixed", inset: 0, zIndex: -1 }} onClick={() => setContextMenu(null)} />
+          {[
+            { label: "✏️  Edit task", action: () => { setEditTask(contextMenu.task); setContextMenu(null); } },
+            { label: "➕  Add sub-task", action: () => { setAddChildFor(contextMenu.task); setContextMenu(null); } },
+            { label: "🔗  Set parent…", action: () => { setSetParentFor(contextMenu.task); setContextMenu(null); } },
+            ...(contextMenu.task.parentId ? [{ label: "🔓  Remove parent", action: () => { handleSetParent(contextMenu.task, null); setContextMenu(null); } }] : []),
+            { label: "⧉  Duplicate", action: () => { handleDuplicate(contextMenu.task); setContextMenu(null); } },
+            { label: "🗑  Delete", action: () => { handleDeleteTask(contextMenu.task); setContextMenu(null); }, danger: true },
+          ].map((item, i) => (
+            <button
+              key={i}
+              onClick={item.action}
+              className="w-full text-left px-4 py-2 text-sm transition-colors hover:bg-[#1e2736]"
+              style={{ color: (item as { danger?: boolean }).danger ? "#f87171" : "#e6edf3", borderTop: i === 0 ? "none" : "1px solid #21262d" }}
+            >
+              {item.label}
+            </button>
+          ))}
+        </div>
+      )}
+
+      {/* Add child task modal */}
+      {addChildFor && (
+        <AddTaskModal
+          companyId={companyId} clientId={clientId}
+          phases={Array.from(new Set(tasks.map(t => t.phase)))}
+          defaultParentId={addChildFor.id}
+          defaultParentName={addChildFor.name}
+          onCreate={task => { onTasksChange([...tasks, task]); setAddChildFor(null); }}
+          onClose={() => setAddChildFor(null)}
+        />
+      )}
+
+      {/* Set parent modal */}
+      {setParentFor && (
+        <div style={{ position: "fixed", inset: 0, zIndex: 80, background: "rgba(0,0,0,0.8)", display: "flex", alignItems: "center", justifyContent: "center", padding: 16 }}
+          onClick={() => setSetParentFor(null)}>
+          <div style={{ background: "#161b22", border: "1px solid #30373f", borderRadius: 14, padding: 20, width: "100%", maxWidth: 400, maxHeight: "70vh", overflowY: "auto" }}
+            onClick={e => e.stopPropagation()}>
+            <h3 className="text-sm font-bold mb-3" style={{ color: "#e6edf3" }}>
+              Set parent for <span style={{ color: GOLD }}>{setParentFor.name}</span>
+            </h3>
+            <div className="space-y-1">
+              {tasks.filter(t => t.id !== setParentFor.id && !t.parentId).map(t => (
+                <button
+                  key={t.id}
+                  onClick={() => handleSetParent(setParentFor, t.id)}
+                  className="w-full text-left px-3 py-2 rounded-lg text-sm transition-colors hover:bg-[#1e2736]"
+                  style={{ color: "#e6edf3", background: setParentFor.parentId === t.id ? "#1e2736" : "transparent" }}
+                >
+                  {setParentFor.parentId === t.id ? "✓ " : ""}{t.name}
+                  <span className="ml-2 text-[10px]" style={{ color: "#484f58" }}>{t.phase}</span>
+                </button>
+              ))}
+            </div>
+            <button onClick={() => setSetParentFor(null)} className="mt-3 text-xs w-full py-2 rounded-lg" style={{ background: "#30373f", color: "#8b949e" }}>Cancel</button>
+          </div>
+        </div>
+      )}
     </>
   );
 }
 
 // ── Main Tab ───────────────────────────────────────────────────────────────────
+
+function printScheduleHtml(tasks: ClientTask[]) {
+  const phases = Array.from(new Set(tasks.map(t => t.phase)));
+  const rows = phases.flatMap(phase => {
+    const phaseTasks = tasks.filter(t => t.phase === phase);
+    return [
+      `<tr style="background:#f0f0f0"><td colspan="7" style="font-weight:bold;padding:6px 8px;font-size:12px">${phase}</td></tr>`,
+      ...phaseTasks.map(t => `
+        <tr style="${t.status === "DONE" ? "color:#888;text-decoration:line-through" : ""}">
+          <td style="padding:4px 8px;${t.parentId ? "padding-left:22px" : ""}">${t.parentId ? "↳ " : ""}${t.name}${t.isMilestone ? " 🔷" : ""}</td>
+          <td style="padding:4px 8px">${t.startDate ?? "–"}</td>
+          <td style="padding:4px 8px">${t.endDate ?? "–"}</td>
+          <td style="padding:4px 8px">${t.durationDays}d</td>
+          <td style="padding:4px 8px">${t.trade ?? "–"}</td>
+          <td style="padding:4px 8px">${t.assignee ?? "–"}</td>
+          <td style="padding:4px 8px">${t.status.replace(/_/g, " ")}</td>
+        </tr>
+      `),
+    ];
+  });
+  const html = `<!DOCTYPE html><html><head><title>Schedule</title><style>
+    body{font-family:Arial,sans-serif;font-size:11px;color:#000;margin:20px}
+    h1{font-size:16px;margin-bottom:4px}
+    table{width:100%;border-collapse:collapse}
+    th{background:#eee;padding:5px 8px;border:1px solid #ccc;text-align:left;font-size:11px}
+    td{border:1px solid #eee}
+    @media print{body{print-color-adjust:exact;-webkit-print-color-adjust:exact}}
+  </style></head><body>
+    <h1>Project Schedule</h1>
+    <p style="color:#666;font-size:10px;margin-bottom:12px">Printed ${new Date().toLocaleDateString("en-US",{month:"short",day:"numeric",year:"numeric"})}</p>
+    <table><thead><tr>
+      <th>Task</th><th>Start</th><th>End</th><th>Duration</th><th>Trade</th><th>Assignee</th><th>Status</th>
+    </tr></thead><tbody>${rows.join("")}</tbody></table>
+  </body></html>`;
+  const win = window.open("", "_blank");
+  if (win) { win.document.write(html); win.document.close(); win.print(); }
+}
 
 export default function ClientScheduleTab({ companyId, clientId, initialTasks, canEdit }: {
   companyId: string; clientId: string; initialTasks: ClientTask[]; canEdit: boolean;
@@ -1117,18 +1262,30 @@ export default function ClientScheduleTab({ companyId, clientId, initialTasks, c
             </div>
           )}
         </div>
-        {canEdit && (
-          <div className="flex gap-2">
-            <button onClick={() => setLoadingTemplate(true)} className="text-xs font-semibold px-3 py-1.5 rounded-lg"
-              style={{ background: "#1e2736", border: "1px solid #30373f", color: "#8b949e" }}>
-              📋 Load Template
+        <div className="flex gap-2 flex-wrap">
+          {tasks.length > 0 && (
+            <button
+              onClick={() => printScheduleHtml(tasks)}
+              className="text-xs font-semibold px-3 py-1.5 rounded-lg"
+              style={{ background: "#1e2736", border: "1px solid #30373f", color: "#8b949e" }}
+              title="Print or save as PDF"
+            >
+              🖨 Print / PDF
             </button>
-            <button onClick={() => setAdding(true)} className="text-xs font-semibold px-3 py-1.5 rounded-lg"
-              style={{ background: GOLD, color: "#0d1117" }}>
-              + Add Task
-            </button>
-          </div>
-        )}
+          )}
+          {canEdit && (
+            <>
+              <button onClick={() => setLoadingTemplate(true)} className="text-xs font-semibold px-3 py-1.5 rounded-lg"
+                style={{ background: "#1e2736", border: "1px solid #30373f", color: "#8b949e" }}>
+                📋 Load Template
+              </button>
+              <button onClick={() => setAdding(true)} className="text-xs font-semibold px-3 py-1.5 rounded-lg"
+                style={{ background: GOLD, color: "#0d1117" }}>
+                + Add Task
+              </button>
+            </>
+          )}
+        </div>
       </div>
 
       {tasks.length === 0 ? (
