@@ -20,7 +20,7 @@ const ALL_DIVISIONS = [
   { code: "03 00 00", name: "Concrete" },
   { code: "04 00 00", name: "Masonry" },
   { code: "05 00 00", name: "Structural Steel" },
-  { code: "06 00 00", name: "Rough Carpentry" },
+  { code: "06 00 00", name: "Wood & Plastics" },
   { code: "07 00 00", name: "Roofing & Waterproofing" },
   { code: "08 00 00", name: "Doors & Windows" },
   { code: "09 00 00", name: "Finishes" },
