@@ -127,28 +127,35 @@ function ClientCard({
       onMouseLeave={() => setHovered(false)}
     >
       <div className="px-5 py-5 flex flex-col flex-1">
-        <div className="flex items-center gap-3 mb-3">
+        <div className="flex items-center gap-3 mb-2">
           {/* Drag handle */}
           <div className="cursor-grab text-lg leading-none shrink-0" style={{ color: "#30373f" }} title="Drag to reorder or change status">⠿</div>
-          <div className="w-10 h-10 rounded-full flex items-center justify-center shrink-0 font-bold text-sm" style={{ background: "#C9A84C1a", color: "#C9A84C" }}>
+          <div className="w-8 h-8 rounded-full flex items-center justify-center shrink-0 font-bold text-xs" style={{ background: "#C9A84C1a", color: "#C9A84C" }}>
             {client.name.slice(0, 2).toUpperCase()}
           </div>
           <div className="min-w-0 flex-1">
-            <div className="font-bold text-base leading-tight" style={{ color: "#e6edf3" }}>{client.name}</div>
+            <div className="font-bold text-sm leading-tight" style={{ color: "#e6edf3" }}>{client.name}</div>
           </div>
-          <div className="text-right shrink-0">
-            <div className="text-lg font-bold leading-none" style={{ color: "#22c55e" }}>
-              {client.estimateTotal > 0 ? `$${client.estimateTotal.toLocaleString("en-US", { maximumFractionDigits: 0 })}` : "—"}
+        </div>
+
+        {/* Numbers row */}
+        <div className="mb-2">
+          {client.estimateTotal > 0 && (
+            <div className="text-2xl font-black leading-none tracking-tight" style={{ color: "#22c55e" }}>
+              ${client.estimateTotal.toLocaleString("en-US", { maximumFractionDigits: 0 })}
             </div>
-            <div className="text-xs mt-0.5" style={{ color: "#8b949e" }}>{client.estimateCount} est.</div>
-            {client.status === "ACTIVE" && (client.internalProfit > 0 || client.gcFee > 0) && (
-              <div className="mt-1.5">
-                <div className="text-base font-bold leading-none" style={{ color: "#C9A84C" }}>
-                  ${(client.internalProfit + client.gcFee).toLocaleString("en-US", { maximumFractionDigits: 0 })}
-                </div>
-              </div>
-            )}
-          </div>
+          )}
+          {(client.internalProfit > 0 || client.gcFee > 0) && (
+            <div className="text-xl font-black leading-none tracking-tight mt-1" style={{ color: "#C9A84C" }}>
+              ${(client.internalProfit + client.gcFee).toLocaleString("en-US", { maximumFractionDigits: 0 })}
+            </div>
+          )}
+          {client.estimateTotal === 0 && client.internalProfit === 0 && client.gcFee === 0 && (
+            <div className="text-2xl font-black leading-none" style={{ color: "#30373f" }}>—</div>
+          )}
+          {client.estimateCount > 0 && (
+            <div className="text-[10px] mt-0.5" style={{ color: "#484f58" }}>{client.estimateCount} estimate{client.estimateCount !== 1 ? "s" : ""}</div>
+          )}
         </div>
 
         <div className="space-y-0.5 mb-3 pl-9">
@@ -319,6 +326,7 @@ export default function ClientsManager({ companyId, clients: initialClients, isA
   const prospects = clients.filter(c => c.status === "PROSPECT");
   const actives = clients.filter(c => c.status === "ACTIVE");
   const completed = clients.filter(c => c.status === "COMPLETED");
+  const dead = clients.filter(c => c.status === "DEAD");
 
   // Build ClientIncomeSummary array for BarometerSection
   const clientIncomeSummaries: ClientIncomeSummary[] = [...actives, ...completed].map(c => ({
@@ -387,11 +395,11 @@ export default function ClientsManager({ companyId, clients: initialClients, isA
       <div className="flex items-center justify-between mb-4">
         <div>
           <h1 className="text-xl font-bold" style={{ color: "#e6edf3" }}>Clients</h1>
-          <p className="text-sm mt-0.5" style={{ color: "#8b949e" }}>{prospects.length} prospect{prospects.length !== 1 ? "s" : ""} · {actives.length} active · {completed.length} closed</p>
+          <p className="text-sm mt-0.5" style={{ color: "#8b949e" }}>{prospects.length} prospect{prospects.length !== 1 ? "s" : ""} · {actives.length} active · {completed.length} closed · {dead.length} dead</p>
         </div>
       </div>
 
-      <div className="flex gap-4">
+      <div className="flex gap-4 overflow-x-auto pb-2">
         <ClientColumn
           title="Prospects"
           status="PROSPECT"
@@ -431,6 +439,20 @@ export default function ClientsManager({ companyId, clients: initialClients, isA
           onCancelAdd={() => setAddingIn(null)}
           accentColor="#8b949e"
           bgColor="#0d1117"
+          onDragStart={handleDragStart}
+          onDrop={handleDrop}
+        />
+        <ClientColumn
+          title="Dead Clients"
+          status="DEAD"
+          clients={dead}
+          companyId={companyId}
+          isAdmin={isAdmin}
+          adding={false}
+          onAdd={() => {}}
+          onCancelAdd={() => {}}
+          accentColor="#ef4444"
+          bgColor="#1a0a0a"
           onDragStart={handleDragStart}
           onDrop={handleDrop}
         />
