@@ -170,9 +170,20 @@ function SubCard({
         <div className="text-xs font-bold" style={{ color: "#94a3b8" }}>{formatPhone(sub.phone)}</div>
       )}
 
-      {/* Email */}
+      {/* Email — shrink font for long addresses, truncate as fallback */}
       {sub.email && (
-        <a href={`mailto:${sub.email}`} onClick={e => e.stopPropagation()} className="text-xs hover:underline truncate" style={{ color: "#58a6ff" }}>{sub.email}</a>
+        <a
+          href={`mailto:${sub.email}`}
+          onClick={e => e.stopPropagation()}
+          title={sub.email}
+          className="block w-full min-w-0 truncate hover:underline"
+          style={{
+            color: "#58a6ff",
+            fontSize: sub.email.length > 35 ? "9px" : sub.email.length > 25 ? "10px" : "11px",
+          }}
+        >
+          {sub.email}
+        </a>
       )}
 
       {/* Tags */}
