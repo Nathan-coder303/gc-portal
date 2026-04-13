@@ -71,8 +71,8 @@ export default function BarometerSection({ mibhIncome, clients }: { mibhIncome: 
             <span className="text-[10px] font-semibold uppercase tracking-widest" style={{ color: "#8b949e" }}>
               GOAL
             </span>
-            <span className="text-sm font-bold" style={{ color: "#8b949e" }}>
-              $5M
+            <span className="text-sm sm:text-2xl font-black" style={{ color: "#C9A84C" }}>
+              $5,000,000
             </span>
             <span
               className="text-[11px] font-bold px-2 py-0.5 rounded-full"
