@@ -647,7 +647,7 @@ Best,
 
 export const NURTURING_TEMPLATES: NurturingTemplate[] = [...ROOF, ...ADDITION];
 
-const FULL_SIGNATURE = `Best Regards,
+export const FULL_SIGNATURE = `Best Regards,
 Mike Baruh
 Founder/CEO · MIBH Construction
 CGC 1527069 | CCC 1336817

@@ -119,16 +119,23 @@ function TagInput({ tags, onChange }: { tags: string[]; onChange: (t: string[]) 
 
 // ─── Sub Card ─────────────────────────────────────────────────────────────────
 function SubCard({
-  sub, isDragOver,
+  sub, isDragOver, isSelected,
+  usedDivisions,
   onDragStart, onDragOver, onDrop, onDragEnd,
-  onEdit, onDelete, onDuplicate,
+  onEdit, onDelete, onDuplicate, onMoveToDiv, onToggleSelect,
 }: {
-  sub: Sub; isDragOver: boolean;
+  sub: Sub; isDragOver: boolean; isSelected: boolean;
+  usedDivisions: { code: string; name: string }[];
   onDragStart: () => void; onDragOver: (e: React.DragEvent) => void;
   onDrop: () => void; onDragEnd: () => void;
   onEdit: () => void; onDelete: () => void; onDuplicate: () => void;
+  onMoveToDiv: (code: string, name: string) => void;
+  onToggleSelect: () => void;
 }) {
   const tags = parseTags(sub.notes);
+  const [showMoveMenu, setShowMoveMenu] = useState(false);
+  const otherDivisions = usedDivisions.filter(d => d.code !== sub.divisionCode);
+
   return (
     <div
       draggable
@@ -136,16 +143,27 @@ function SubCard({
       onDragOver={onDragOver}
       onDrop={onDrop}
       onDragEnd={onDragEnd}
-      className="rounded-xl flex flex-col gap-2 p-3 select-none transition-all"
+      className="rounded-xl flex flex-col gap-2 p-3 select-none transition-all relative"
       style={{
-        background: isDragOver ? "#1a2a3a" : "#1e2736",
-        border: `1px solid ${isDragOver ? "#C9A84C" : "#30373f"}`,
+        background: isSelected ? "#1a2a3a" : isDragOver ? "#1a2a3a" : "#1e2736",
+        border: `1px solid ${isSelected ? "#58a6ff" : isDragOver ? "#C9A84C" : "#30373f"}`,
         cursor: "grab",
-        opacity: 1,
       }}
     >
+      {/* Select checkbox */}
+      <button
+        onClick={e => { e.stopPropagation(); onToggleSelect(); }}
+        className="absolute top-2 right-2 w-5 h-5 rounded flex items-center justify-center transition-all"
+        style={{
+          background: isSelected ? "#58a6ff" : "transparent",
+          border: `1px solid ${isSelected ? "#58a6ff" : "#30373f"}`,
+        }}
+      >
+        {isSelected && <span className="text-[10px] font-bold" style={{ color: "#0d1117" }}>✓</span>}
+      </button>
+
       {/* Name */}
-      <div className="font-semibold text-sm leading-tight" style={{ color: "#e6edf3" }}>{sub.name}</div>
+      <div className="font-semibold text-sm leading-tight pr-6" style={{ color: "#e6edf3" }}>{sub.name}</div>
 
       {/* Phone */}
       {sub.phone && (
@@ -169,9 +187,64 @@ function SubCard({
 
       {/* Actions */}
       <div className="flex gap-1.5 mt-auto pt-1" onClick={e => e.stopPropagation()}>
-        <button onClick={onEdit} className="flex-1 text-xs py-1 rounded-lg font-medium transition-all hover:opacity-80" style={{ background: "#0d1117", border: "1px solid #30373f", color: "#8b949e" }}>Edit</button>
-        <button onClick={onDuplicate} className="flex-1 text-xs py-1 rounded-lg font-medium transition-all hover:opacity-80" style={{ background: "#1e2736", border: "1px solid #C9A84C44", color: "#C9A84C" }}>Copy</button>
-        <button onClick={onDelete} className="px-2 text-xs py-1 rounded-lg transition-all hover:opacity-80" style={{ background: "#1a0a0a", border: "1px solid #ef444444", color: "#ef4444" }}>×</button>
+        {/* Edit icon */}
+        <button
+          onClick={onEdit}
+          title="Edit"
+          className="w-8 h-8 flex items-center justify-center rounded-lg transition-all hover:opacity-80"
+          style={{ background: "#0d1117", border: "1px solid #30373f", color: "#8b949e", fontSize: 14 }}
+        >
+          ✏️
+        </button>
+        {/* Duplicate icon */}
+        <button
+          onClick={onDuplicate}
+          title="Duplicate"
+          className="w-8 h-8 flex items-center justify-center rounded-lg transition-all hover:opacity-80"
+          style={{ background: "#1e2736", border: "1px solid #C9A84C44", color: "#C9A84C", fontSize: 14 }}
+        >
+          ⧉
+        </button>
+        {/* Delete icon */}
+        <button
+          onClick={onDelete}
+          title="Delete"
+          className="w-8 h-8 flex items-center justify-center rounded-lg transition-all hover:opacity-80"
+          style={{ background: "#1a0a0a", border: "1px solid #ef444444", color: "#ef4444", fontSize: 14 }}
+        >
+          🗑
+        </button>
+
+        {/* Move to — text label, dropdown */}
+        {otherDivisions.length > 0 && (
+          <div className="relative flex-1">
+            <button
+              onClick={() => setShowMoveMenu(v => !v)}
+              className="w-full h-8 px-2 rounded-lg text-[11px] font-semibold transition-all hover:opacity-80"
+              style={{ background: "#0a1a0f", border: "1px solid #22c55e44", color: "#22c55e" }}
+            >
+              Move to ▾
+            </button>
+            {showMoveMenu && (
+              <div
+                className="absolute bottom-9 left-0 z-50 rounded-xl overflow-hidden shadow-xl min-w-[160px]"
+                style={{ background: "#161b22", border: "1px solid #30373f" }}
+              >
+                {otherDivisions.map(d => (
+                  <button
+                    key={d.code}
+                    onClick={() => { setShowMoveMenu(false); onMoveToDiv(d.code, d.name); }}
+                    className="w-full text-left px-3 py-2 text-xs hover:bg-[#1e2736] transition-colors"
+                    style={{ color: "#e6edf3" }}
+                  >
+                    <span className="font-mono" style={{ color: "#C9A84C" }}>{d.code.slice(0, 2)}</span>
+                    {" – "}{d.name}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
       </div>
     </div>
   );
@@ -240,11 +313,235 @@ function SubModal({
   );
 }
 
+// ─── Bid Email Compose Modal ───────────────────────────────────────────────────
+const SIGNATURE = `Best regards,
+
+Mike Baruh
+Founder/CEO · MIBH Construction
+CGC 1527069 | CCC 1336817
+📱 305.746.7307  ·  📧 mike@mibhconstruction.com
+📍 2950 N 28 Terr, Hollywood, FL 33020  ·  🌐 mibhconstruction.com`;
+
+function buildDefaultBody(divName: string) {
+  return `Good morning,
+
+We are inviting you to submit a bid for the upcoming project outlined below.
+
+Project:
+Location:
+Scope of Work (${divName}):
+Bid Due Date:
+
+Please review the attached plans and specifications. If you have any questions, feel free to reach out directly.
+
+${SIGNATURE}`;
+}
+
+function BidEmailModal({
+  emails, divName, companyId, onClose,
+}: {
+  emails: string[];
+  divName: string;
+  companyId: string;
+  onClose: () => void;
+}) {
+  const [bcc, setBcc] = useState(emails.join(", "));
+  const [subject, setSubject] = useState("Invitation to Bid (ITB) \u2013 Request for Proposal");
+  const [body, setBody] = useState(() => buildDefaultBody(divName));
+  const [attachments, setAttachments] = useState<File[]>([]);
+  const [sending, setSending] = useState(false);
+  const [sent, setSent] = useState(false);
+  const [dragOver, setDragOver] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  function addFiles(newFiles: FileList | File[]) {
+    const arr = Array.from(newFiles);
+    setAttachments(prev => [
+      ...prev,
+      ...arr.filter(f => !prev.some(p => p.name === f.name && p.size === f.size)),
+    ]);
+  }
+
+  async function handleSend() {
+    setSending(true);
+    try {
+      const fd = new FormData();
+      fd.append("to", "mikebaruh@gmail.com");
+      if (bcc.trim()) fd.append("bcc", bcc);
+      fd.append("subject", subject);
+      fd.append("bodyText", body);
+      attachments.forEach(f => fd.append("files", f));
+
+      const res = await fetch(`/api/${companyId}/subs/send-email`, { method: "POST", body: fd });
+      const data = await res.json();
+      if (data.error) { alert("Send failed: " + data.error); return; }
+      setSent(true);
+      setTimeout(onClose, 1800);
+    } finally {
+      setSending(false);
+    }
+  }
+
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-end sm:items-center justify-center sm:p-4"
+      style={{ background: "rgba(0,0,0,0.88)" }}
+      onClick={onClose}
+      onDragOver={e => { e.preventDefault(); setDragOver(true); }}
+      onDragLeave={e => { if (!e.currentTarget.contains(e.relatedTarget as Node)) setDragOver(false); }}
+      onDrop={e => { e.preventDefault(); setDragOver(false); addFiles(e.dataTransfer.files); }}
+    >
+      <div
+        className="w-full sm:max-w-2xl rounded-t-3xl sm:rounded-2xl overflow-hidden flex flex-col relative"
+        style={{
+          background: "#1c1f26",
+          border: dragOver ? "2px dashed #58a6ff" : "1px solid #30373f",
+          maxHeight: "92vh",
+          boxShadow: "0 24px 80px rgba(0,0,0,0.6)",
+        }}
+        onClick={e => e.stopPropagation()}
+      >
+        {/* Drag handle (mobile) */}
+        <div className="flex justify-center pt-3 pb-1 sm:hidden">
+          <div className="w-10 h-1 rounded-full" style={{ background: "#30373f" }} />
+        </div>
+
+        {/* Header bar */}
+        <div
+          className="flex items-center justify-between px-5 py-3"
+          style={{ background: "#252830", borderBottom: "1px solid #30373f" }}
+        >
+          <div className="flex items-center gap-3">
+            <span className="text-sm font-semibold" style={{ color: "#e6edf3" }}>New Message</span>
+            <span
+              className="text-[11px] px-2 py-0.5 rounded-full"
+              style={{ background: "#1e2736", color: "#8b949e", border: "1px solid #30373f" }}
+            >
+              {emails.length} recipient{emails.length !== 1 ? "s" : ""} · {divName}
+            </span>
+          </div>
+          <button onClick={onClose} className="text-xl leading-none hover:opacity-70" style={{ color: "#8b949e" }}>×</button>
+        </div>
+
+        <div className="overflow-y-auto flex-1">
+          {/* From */}
+          <div className="flex items-center px-5 py-2.5" style={{ borderBottom: "1px solid #21262d" }}>
+            <span className="text-xs w-14 shrink-0 font-medium" style={{ color: "#8b949e" }}>From</span>
+            <span className="text-sm font-medium" style={{ color: "#58a6ff" }}>mikebaruh@gmail.com</span>
+          </div>
+
+          {/* BCC */}
+          <div className="flex items-start px-5 py-2.5" style={{ borderBottom: "1px solid #21262d" }}>
+            <span className="text-xs w-14 shrink-0 font-medium pt-1" style={{ color: "#8b949e" }}>BCC</span>
+            <textarea
+              value={bcc}
+              onChange={e => setBcc(e.target.value)}
+              rows={Math.min(4, Math.ceil(emails.length / 2) + 1)}
+              className="flex-1 text-xs outline-none resize-none bg-transparent leading-relaxed"
+              style={{ color: "#e6edf3" }}
+            />
+          </div>
+
+          {/* Subject */}
+          <div className="flex items-center px-5 py-2.5" style={{ borderBottom: "1px solid #21262d" }}>
+            <span className="text-xs w-14 shrink-0 font-medium" style={{ color: "#8b949e" }}>Subject</span>
+            <input
+              type="text"
+              value={subject}
+              onChange={e => setSubject(e.target.value)}
+              className="flex-1 text-sm outline-none bg-transparent font-medium"
+              style={{ color: "#e6edf3" }}
+            />
+          </div>
+
+          {/* Body */}
+          <div className="px-5 py-4">
+            <textarea
+              value={body}
+              onChange={e => setBody(e.target.value)}
+              rows={16}
+              className="w-full text-sm outline-none resize-none bg-transparent"
+              style={{ color: "#c9d1d9", lineHeight: 1.65 }}
+            />
+          </div>
+
+          {/* Drag-over hint */}
+          {dragOver && (
+            <div className="mx-5 mb-4 py-6 rounded-xl flex items-center justify-center"
+              style={{ border: "2px dashed #58a6ff", background: "#0d1829" }}>
+              <span className="text-sm font-semibold" style={{ color: "#58a6ff" }}>📎 Drop files to attach</span>
+            </div>
+          )}
+
+          {/* Attachment chips */}
+          {attachments.length > 0 && (
+            <div className="px-5 pb-4 flex flex-wrap gap-2">
+              {attachments.map((f, i) => (
+                <div key={i} className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs"
+                  style={{ background: "#1e2736", border: "1px solid #30373f" }}>
+                  <span>📎</span>
+                  <span style={{ color: "#e6edf3" }}>{f.name}</span>
+                  <span style={{ color: "#484f58" }}>({(f.size / 1024).toFixed(0)} KB)</span>
+                  <button
+                    onClick={() => setAttachments(prev => prev.filter((_, j) => j !== i))}
+                    className="ml-0.5 hover:opacity-70"
+                    style={{ color: "#ef4444" }}
+                  >×</button>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* Bottom action bar */}
+        <div
+          className="flex items-center gap-3 px-5 py-3 flex-wrap"
+          style={{ borderTop: "1px solid #30373f", background: "#161b22" }}
+        >
+          <button
+            onClick={handleSend}
+            disabled={sending || sent}
+            className="px-5 py-2 rounded-full text-sm font-semibold disabled:opacity-60 transition-all"
+            style={{ background: sent ? "#22c55e" : "#1a73e8", color: "#fff", minWidth: 120 }}
+          >
+            {sent ? "✓ Sent!" : sending ? "Sending…" : `Send  (${emails.length})`}
+          </button>
+
+          <button
+            onClick={() => fileInputRef.current?.click()}
+            className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-medium transition-all hover:opacity-80"
+            style={{ background: "#1e2736", border: "1px solid #30373f", color: "#8b949e" }}
+          >
+            📎 Attach files
+          </button>
+          <input
+            ref={fileInputRef}
+            type="file"
+            multiple
+            className="hidden"
+            onChange={e => e.target.files && addFiles(e.target.files)}
+          />
+
+          {attachments.length === 0 && (
+            <span className="text-xs" style={{ color: "#484f58" }}>or drag & drop here</span>
+          )}
+
+          <div className="flex-1" />
+
+          <button onClick={onClose} className="text-xs hover:opacity-70" style={{ color: "#8b949e" }}>
+            Discard
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ─── Main Component ───────────────────────────────────────────────────────────
 export default function SubsDatabase({
-  companyId, initialSubs, userEmail,
+  companyId, initialSubs,
 }: {
-  companyId: string; initialSubs: Sub[]; userEmail?: string | null;
+  companyId: string; initialSubs: Sub[];
 }) {
   const normalizedInit = initialSubs.map(s => {
     const { code, name } = normalizeDivision(s.divisionCode, s.divisionName);
@@ -254,14 +551,58 @@ export default function SubsDatabase({
   const [subs, setSubs] = useState<Sub[]>(normalizedInit);
   const [filterDiv, setFilterDiv] = useState("ALL");
   const [modal, setModal] = useState<{ mode: "add" | "edit"; sub?: Sub } | null>(null);
+  const [emailModal, setEmailModal] = useState<{ emails: string[]; divName: string } | null>(null);
   const [importing, setImporting] = useState(false);
   const [importingSheet, setImportingSheet] = useState(false);
   const [clearing, setClearing] = useState(false);
   const dragIdRef = useRef<string | null>(null);
   const [dragOverDiv, setDragOverDiv] = useState<string | null>(null);
   const [dragOverSubId, setDragOverSubId] = useState<string | null>(null);
+  // Multi-select: keyed by divisionCode → Set of sub IDs
+  const [selected, setSelected] = useState<Map<string, Set<string>>>(new Map());
 
-  // ── CRUD ────────────────────────────────────────────────────────────────────
+  // ── Selection helpers ──────────────────────────────────────────────────────
+  function toggleSelect(divCode: string, subId: string) {
+    setSelected(prev => {
+      const next = new Map(prev);
+      const set = new Set(next.get(divCode) ?? []);
+      if (set.has(subId)) set.delete(subId); else set.add(subId);
+      next.set(divCode, set);
+      return next;
+    });
+  }
+
+  function toggleSelectAll(divCode: string, subIds: string[]) {
+    setSelected(prev => {
+      const next = new Map(prev);
+      const cur = next.get(divCode) ?? new Set<string>();
+      const allSelected = subIds.every(id => cur.has(id));
+      next.set(divCode, allSelected ? new Set() : new Set(subIds));
+      return next;
+    });
+  }
+
+  function clearSelection(divCode: string) {
+    setSelected(prev => { const next = new Map(prev); next.set(divCode, new Set()); return next; });
+  }
+
+  async function moveSelectedToDivision(fromCode: string, targetCode: string, targetName: string) {
+    const ids = Array.from(selected.get(fromCode) ?? []);
+    if (!ids.length) return;
+    setSubs(prev => prev.map(s =>
+      ids.includes(s.id) ? { ...s, divisionCode: targetCode, divisionName: targetName } : s
+    ));
+    clearSelection(fromCode);
+    await Promise.all(ids.map(id => {
+      const sub = subs.find(s => s.id === id)!;
+      return fetch(`/api/${companyId}/subs/${id}`, {
+        method: "PATCH", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name: sub.name, email: sub.email, phone: sub.phone, divisionCode: targetCode, divisionName: targetName, notes: sub.notes }),
+      });
+    }));
+  }
+
+  // ── CRUD ──────────────────────────────────────────────────────────────────
   async function handleSave(
     form: { name: string; email: string; phone: string; divisionCode: string; divisionName: string; tags: string[] },
     editId?: string
@@ -295,7 +636,7 @@ export default function SubsDatabase({
     setSubs(prev => [...prev, { ...created, email: created.email ?? null, phone: created.phone ?? null, notes: created.notes ?? null }]);
   }
 
-  // ── Drag between divisions ──────────────────────────────────────────────────
+  // ── Drag between divisions ────────────────────────────────────────────────
   async function handleDropOnDivision(targetCode: string, targetName: string) {
     const id = dragIdRef.current;
     if (!id) return;
@@ -308,7 +649,7 @@ export default function SubsDatabase({
     });
   }
 
-  // ── Import ──────────────────────────────────────────────────────────────────
+  // ── Import ────────────────────────────────────────────────────────────────
   async function handleImport(refresh = false) {
     setImporting(true);
     try {
@@ -350,22 +691,19 @@ export default function SubsDatabase({
     }));
   }
 
-  // ── Email helpers ───────────────────────────────────────────────────────────
+  // ── Email helpers ─────────────────────────────────────────────────────────
   function copyEmails(code: string) {
     const emails = subs.filter(s => s.divisionCode === code && s.email).map(s => s.email!).join(", ");
     if (emails) navigator.clipboard.writeText(emails);
   }
 
-  function sendEmail(code: string, divName: string) {
+  function openEmailModal(code: string, divName: string) {
     const emails = subs.filter(s => s.divisionCode === code && s.email).map(s => s.email!);
     if (!emails.length) return;
-    const to = userEmail ? encodeURIComponent(userEmail) : "";
-    const bcc = encodeURIComponent(emails.join(","));
-    const subject = encodeURIComponent(`Request for Quote – ${divName}`);
-    window.open(`mailto:${to}?bcc=${bcc}&subject=${subject}`);
+    setEmailModal({ emails, divName });
   }
 
-  // ── Derived data ────────────────────────────────────────────────────────────
+  // ── Derived data ──────────────────────────────────────────────────────────
   const filtered = filterDiv === "ALL" ? subs : subs.filter(s => s.divisionCode === filterDiv);
   const grouped = new Map<string, { code: string; name: string; subs: Sub[] }>();
   for (const sub of filtered) {
@@ -374,6 +712,7 @@ export default function SubsDatabase({
   }
   const groups = Array.from(grouped.values()).sort((a, b) => a.code.localeCompare(b.code));
   const usedCodes = new Set(subs.map(s => s.divisionCode));
+  const usedDivisions = ALL_DIVISIONS.filter(d => usedCodes.has(d.code));
 
   const defaultDivision = ALL_DIVISIONS[0];
   const modalInitial = modal?.mode === "edit" && modal.sub
@@ -437,6 +776,11 @@ export default function SubsDatabase({
       {groups.map(group => {
         const isDivDragOver = dragOverDiv === group.code;
         const emailCount = group.subs.filter(s => s.email).length;
+        const groupSubIds = group.subs.map(s => s.id);
+        const selSet = selected.get(group.code) ?? new Set<string>();
+        const selCount = selSet.size;
+        const allSelected = groupSubIds.length > 0 && groupSubIds.every(id => selSet.has(id));
+
         return (
           <div key={group.code} className="mb-8 rounded-xl overflow-hidden transition-all"
             style={{ border: `1px solid ${isDivDragOver ? "#C9A84C" : "#30373f"}` }}
@@ -447,22 +791,48 @@ export default function SubsDatabase({
             {/* Division header */}
             <div className="flex items-center justify-between px-4 py-3 flex-wrap gap-2" style={{ background: "#161b22", borderBottom: "1px solid #30373f" }}>
               <div className="flex items-center gap-2">
+                {/* Select all checkbox */}
+                <button
+                  onClick={() => toggleSelectAll(group.code, groupSubIds)}
+                  className="w-5 h-5 rounded flex items-center justify-center transition-all"
+                  style={{ background: allSelected ? "#58a6ff" : "transparent", border: `1px solid ${allSelected ? "#58a6ff" : "#30373f"}` }}
+                  title="Select all"
+                >
+                  {allSelected && <span className="text-[10px] font-bold" style={{ color: "#0d1117" }}>✓</span>}
+                </button>
                 <span className="text-xs font-mono font-bold px-2 py-0.5 rounded" style={{ background: "#C9A84C22", color: "#C9A84C" }}>{group.code}</span>
                 <span className="text-sm font-bold" style={{ color: "#e6edf3" }}>{group.name}</span>
                 <span className="text-xs" style={{ color: "#8b949e" }}>{group.subs.length} sub{group.subs.length !== 1 ? "s" : ""}</span>
+                {selCount > 0 && (
+                  <span className="text-xs font-semibold px-2 py-0.5 rounded-full" style={{ background: "#1e2736", color: "#58a6ff", border: "1px solid #58a6ff44" }}>
+                    {selCount} selected
+                  </span>
+                )}
               </div>
-              {emailCount > 0 && (
-                <div className="flex gap-2">
-                  <button onClick={() => copyEmails(group.code)} className="px-3 py-1 rounded text-xs font-semibold transition-all hover:scale-105"
-                    style={{ background: "#1e2736", border: "1px solid #58a6ff44", color: "#58a6ff" }}>
-                    Copy {emailCount} Email{emailCount !== 1 ? "s" : ""}
-                  </button>
-                  <button onClick={() => sendEmail(group.code, group.name)} className="px-3 py-1 rounded text-xs font-semibold transition-all hover:scale-105"
-                    style={{ background: "#0a1a0f", border: "1px solid #22c55e44", color: "#22c55e" }}>
-                    ✉ Send Email
-                  </button>
-                </div>
-              )}
+
+              <div className="flex gap-2 flex-wrap">
+                {/* Move selected */}
+                {selCount > 0 && (
+                  <MoveSelectedDropdown
+                    label={`Move ${selCount} →`}
+                    divisions={usedDivisions.filter(d => d.code !== group.code)}
+                    onMove={(code, name) => moveSelectedToDivision(group.code, code, name)}
+                  />
+                )}
+
+                {emailCount > 0 && (
+                  <>
+                    <button onClick={() => copyEmails(group.code)} className="px-3 py-1 rounded text-xs font-semibold transition-all hover:scale-105"
+                      style={{ background: "#1e2736", border: "1px solid #58a6ff44", color: "#58a6ff" }}>
+                      Copy {emailCount} Email{emailCount !== 1 ? "s" : ""}
+                    </button>
+                    <button onClick={() => openEmailModal(group.code, group.name)} className="px-3 py-1 rounded text-xs font-semibold transition-all hover:scale-105"
+                      style={{ background: "#0a1a0f", border: "1px solid #22c55e44", color: "#22c55e" }}>
+                      ✉ Send Email
+                    </button>
+                  </>
+                )}
+              </div>
             </div>
 
             {/* Card grid */}
@@ -472,6 +842,8 @@ export default function SubsDatabase({
                   key={sub.id}
                   sub={sub}
                   isDragOver={dragOverSubId === sub.id}
+                  isSelected={selSet.has(sub.id)}
+                  usedDivisions={usedDivisions}
                   onDragStart={() => { dragIdRef.current = sub.id; }}
                   onDragOver={e => { e.preventDefault(); e.stopPropagation(); setDragOverSubId(sub.id); }}
                   onDrop={() => { setDragOverSubId(null); }}
@@ -479,6 +851,14 @@ export default function SubsDatabase({
                   onEdit={() => setModal({ mode: "edit", sub })}
                   onDelete={() => handleDelete(sub.id)}
                   onDuplicate={() => handleDuplicate(sub)}
+                  onMoveToDiv={(code, name) => {
+                    setSubs(prev => prev.map(s => s.id === sub.id ? { ...s, divisionCode: code, divisionName: name } : s));
+                    fetch(`/api/${companyId}/subs/${sub.id}`, {
+                      method: "PATCH", headers: { "Content-Type": "application/json" },
+                      body: JSON.stringify({ name: sub.name, email: sub.email, phone: sub.phone, divisionCode: code, divisionName: name, notes: sub.notes }),
+                    });
+                  }}
+                  onToggleSelect={() => toggleSelect(group.code, sub.id)}
                 />
               ))}
             </div>
@@ -494,6 +874,56 @@ export default function SubsDatabase({
           onSave={form => handleSave(form, modal.sub?.id)}
           onClose={() => setModal(null)}
         />
+      )}
+
+      {/* Bid Email Compose Modal */}
+      {emailModal && (
+        <BidEmailModal
+          emails={emailModal.emails}
+          divName={emailModal.divName}
+          companyId={companyId}
+          onClose={() => setEmailModal(null)}
+        />
+      )}
+    </div>
+  );
+}
+
+// ─── Move Selected Dropdown ────────────────────────────────────────────────────
+function MoveSelectedDropdown({
+  label, divisions, onMove,
+}: {
+  label: string;
+  divisions: { code: string; name: string }[];
+  onMove: (code: string, name: string) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  return (
+    <div className="relative">
+      <button
+        onClick={() => setOpen(v => !v)}
+        className="px-3 py-1 rounded text-xs font-semibold transition-all hover:scale-105"
+        style={{ background: "#1e2736", border: "1px solid #58a6ff44", color: "#58a6ff" }}
+      >
+        {label} ▾
+      </button>
+      {open && (
+        <div
+          className="absolute right-0 top-8 z-50 rounded-xl overflow-hidden shadow-xl min-w-[170px]"
+          style={{ background: "#161b22", border: "1px solid #30373f" }}
+        >
+          {divisions.map(d => (
+            <button
+              key={d.code}
+              onClick={() => { setOpen(false); onMove(d.code, d.name); }}
+              className="w-full text-left px-3 py-2 text-xs hover:bg-[#1e2736] transition-colors"
+              style={{ color: "#e6edf3" }}
+            >
+              <span className="font-mono" style={{ color: "#C9A84C" }}>{d.code.slice(0, 2)}</span>
+              {" – "}{d.name}
+            </button>
+          ))}
+        </div>
       )}
     </div>
   );
