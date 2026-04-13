@@ -52,10 +52,13 @@ export async function POST(
     payments: invoice.payments.map(p => ({ amount: p.amount, method: p.method, paidDate: p.paidDate, notes: p.notes })),
   });
 
-  // Encode subject for non-ASCII characters (RFC 2047)
-  function encodeSubject(s: string): string {
-    if (/^[\x20-\x7E]*$/.test(s)) return s;
-    return `=?UTF-8?B?${Buffer.from(s, "utf-8").toString("base64")}?=`;
+  // Sanitize subject: replace typographic dashes/quotes with ASCII equivalents
+  function sanitizeSubject(s: string): string {
+    return s
+      .replace(/[\u2014\u2013]/g, " - ")   // em-dash / en-dash → " - "
+      .replace(/[\u2018\u2019]/g, "'")      // smart apostrophes
+      .replace(/[\u201C\u201D]/g, '"')      // smart quotes
+      .replace(/[^\x20-\x7E]/g, "?");       // anything else non-ASCII → ?
   }
 
   // Build MIME message — keep blank lines as MIME section separators
@@ -64,7 +67,7 @@ export async function POST(
     `To: ${to}`,
     ...(cc ? [`Cc: ${cc}`] : []),
     ...(bcc ? [`Bcc: ${bcc}`] : []),
-    `Subject: ${encodeSubject(subject)}`,
+    `Subject: ${sanitizeSubject(subject)}`,
     "MIME-Version: 1.0",
     `Content-Type: multipart/alternative; boundary="${boundary}"`,
     "",

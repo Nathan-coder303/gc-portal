@@ -225,7 +225,6 @@ export default function NurturingEmailTab({
 
   // ── Add email to section ──────────────────────────────────────────────────────
   function handleAddEmail(type: string) {
-    const section = sections.find(s => s.type === type);
     const sectionTpls = templates.filter(t => t.type === type);
     const step = Math.max(...sectionTpls.map(t => t.step), 0) + 1;
     const newTpl: NTemplate = {

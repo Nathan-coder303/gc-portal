@@ -33,7 +33,7 @@ export function buildInvoiceHtml(opts: {
   return `<!DOCTYPE html>
 <html>
 <head><meta charset="utf-8"><title>Invoice #${opts.invoiceNumber}</title>
-${opts.printMode ? `<script>window.addEventListener('load', function(){ setTimeout(function(){ window.print(); }, 500); });<\/script>` : ""}
+${opts.printMode ? `<style>@media print { #pdf-toolbar { display: none !important; } }</style>` : ""}
 <style>
   body { font-family: Arial, sans-serif; color: #111; max-width: 660px; margin: 0 auto; padding: 40px 20px; }
   .header { background: #0d1117; color: #e6edf3; padding: 28px 32px; border-radius: 10px 10px 0 0; }
@@ -69,13 +69,22 @@ ${opts.printMode ? `<script>window.addEventListener('load', function(){ setTimeo
 </style>
 </head>
 <body>
+  ${opts.printMode ? `<div id="pdf-toolbar" style="position:fixed;top:0;left:0;right:0;z-index:9999;background:#1a1a1a;padding:10px 20px;display:flex;align-items:center;justify-content:space-between;font-family:Arial,sans-serif;box-shadow:0 2px 8px rgba(0,0,0,0.4)">
+    <span style="color:#e6edf3;font-size:13px;font-weight:600">Invoice #${opts.invoiceNumber}</span>
+    <div style="display:flex;gap:10px;align-items:center">
+      <span style="color:#8b949e;font-size:12px">Save as PDF → File menu or:</span>
+      <button onclick="window.print()" style="background:#C9A84C;color:#0d1117;border:none;padding:8px 20px;border-radius:6px;font-size:13px;font-weight:700;cursor:pointer">⬇ Save as PDF</button>
+      <button onclick="window.close()" style="background:transparent;color:#8b949e;border:1px solid #30373f;padding:8px 14px;border-radius:6px;font-size:13px;cursor:pointer">✕ Close</button>
+    </div>
+  </div>
+  <div style="height:52px"></div>` : ""}
   <div class="header">
-    <table><tr>
-      <td>
+    <table width="100%" cellpadding="0" cellspacing="0"><tr>
+      <td width="60%" valign="top">
         <h1>Invoice #${opts.invoiceNumber}</h1>
         <p>${opts.estimateName}</p>
       </td>
-      <td class="logo">
+      <td width="40%" valign="top" align="right" class="logo">
         MIBH Construction<br>
         CGC 1527069 | CCC 1336817<br>
         Hollywood, FL
