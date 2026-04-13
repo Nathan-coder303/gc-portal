@@ -622,7 +622,6 @@ export default function SubsDatabase({
   }
 
   async function handleDelete(id: string) {
-    if (!confirm("Delete this sub?")) return;
     await fetch(`/api/${companyId}/subs/${id}`, { method: "DELETE" });
     setSubs(prev => prev.filter(s => s.id !== id));
   }
