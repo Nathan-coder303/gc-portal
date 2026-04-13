@@ -67,23 +67,22 @@ export default function BarometerSection({ mibhIncome, clients }: { mibhIncome: 
           MIBH INCOME 2026
         </div>
 
-        {/* Income number — gold */}
-        <div className="text-center text-[52px] sm:text-6xl font-black leading-none tracking-tight mt-1" style={{ color: "#C9A84C" }}>
-          ${fmt(mibhIncome)}
-        </div>
-
-        {/* Goal — green, same size */}
-        <div className="flex items-center justify-center gap-3 mt-1 flex-wrap">
-          <span className="text-[10px] font-semibold uppercase tracking-widest" style={{ color: "#8b949e" }}>GOAL</span>
-          <span className="text-[52px] sm:text-6xl font-black leading-none tracking-tight" style={{ color: "#22c55e" }}>
+        {/* Income left · % center · Goal right */}
+        <div className="grid grid-cols-3 items-center mt-1 gap-2">
+          <div className="text-[52px] sm:text-6xl font-black leading-none tracking-tight" style={{ color: "#C9A84C" }}>
+            ${fmt(mibhIncome)}
+          </div>
+          <div className="text-center">
+            <span
+              className="text-[52px] sm:text-6xl font-black leading-none tracking-tight"
+              style={{ color: "#22c55e" }}
+            >
+              {goalPct.toFixed(1)}%
+            </span>
+          </div>
+          <div className="text-[52px] sm:text-6xl font-black leading-none tracking-tight text-right" style={{ color: "#22c55e" }}>
             $5,000,000
-          </span>
-          <span
-            className="text-[11px] font-bold px-2 py-0.5 rounded-full"
-            style={{ background: "#22c55e18", border: "1px solid #22c55e44", color: "#22c55e" }}
-          >
-            {goalPct.toFixed(1)}%
-          </span>
+          </div>
         </div>
 
         {/* Progress bar */}
