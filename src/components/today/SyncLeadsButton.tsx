@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 
 export default function SyncLeadsButton({ companyId }: { companyId: string }) {
   const router = useRouter();
-  const [status, setStatus] = useState<"idle" | "syncing" | "backfilling" | "deduping" | "done" | "error">("idle");
+  const [status, setStatus] = useState<"idle" | "syncing" | "backfilling" | "done" | "error">("idle");
   const [result, setResult] = useState<string>("");
   const [lastSynced, setLastSynced] = useState<string>("");
 
@@ -62,27 +62,7 @@ export default function SyncLeadsButton({ companyId }: { companyId: string }) {
     }
   }
 
-  async function dedup() {
-    setStatus("deduping");
-    setResult("");
-    try {
-      const res = await fetch(`/api/${companyId}/dedup-leads`, { method: "POST" });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error ?? "Failed");
-      const parts: string[] = [];
-      if (data.merged > 0) parts.push(`${data.merged} groups merged`);
-      if (data.deleted > 0) parts.push(`${data.deleted} duplicates removed`);
-      if (parts.length === 0) parts.push("no duplicates found");
-      setResult(parts.join(" · "));
-      setStatus("done");
-      router.refresh();
-    } catch (e) {
-      setResult(String(e));
-      setStatus("error");
-    }
-  }
-
-  const isBusy = status === "syncing" || status === "backfilling" || status === "deduping";
+  const isBusy = status === "syncing" || status === "backfilling";
 
   return (
     <div className="flex items-center gap-2 flex-wrap justify-end">
