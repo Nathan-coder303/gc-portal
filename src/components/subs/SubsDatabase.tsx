@@ -15,14 +15,14 @@ type Sub = {
 
 // Full CSI division list (standard + extras from sheet)
 const ALL_DIVISIONS = [
-  { code: "01 00 00", name: "General Conditions" },
+  { code: "01 00 00", name: "General Requirements" },
   { code: "02 00 00", name: "Existing Conditions" },
   { code: "03 00 00", name: "Concrete" },
   { code: "04 00 00", name: "Masonry" },
   { code: "05 00 00", name: "Metals" },
-  { code: "06 00 00", name: "Wood & Plastics" },
-  { code: "07 00 00", name: "Roofing & Waterproofing" },
-  { code: "08 00 00", name: "Doors & Windows" },
+  { code: "06 00 00", name: "Wood, Plastics, and Composites" },
+  { code: "07 00 00", name: "Thermal and Moisture Protection" },
+  { code: "08 00 00", name: "Openings" },
   { code: "09 00 00", name: "Finishes" },
   { code: "10 00 00", name: "Specialties" },
   { code: "12 00 00", name: "Furnishings" },
@@ -30,12 +30,12 @@ const ALL_DIVISIONS = [
   { code: "14 00 00", name: "Conveying Equipment" },
   { code: "21 00 00", name: "Fire Suppression" },
   { code: "22 00 00", name: "Plumbing" },
-  { code: "23 00 00", name: "HVAC / Mechanical" },
+  { code: "23 00 00", name: "Heating, Ventilating, and Air Conditioning" },
   { code: "26 00 00", name: "Electrical" },
-  { code: "27 00 00", name: "Communications / Low Voltage" },
+  { code: "27 00 00", name: "Communications" },
   { code: "31 00 00", name: "Earthwork" },
-  { code: "32 00 00", name: "Site Work" },
-  { code: "35 00 00", name: "Waterway Construction" },
+  { code: "32 00 00", name: "Exterior Improvements" },
+  { code: "35 00 00", name: "Waterway and Marine Construction" },
 ];
 
 /** Normalize divisionCode to canonical "XX 00 00" format */
