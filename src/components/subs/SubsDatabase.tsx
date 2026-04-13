@@ -227,8 +227,8 @@ function SubCard({
             </button>
             {showMoveMenu && (
               <div
-                className="absolute bottom-9 left-0 z-50 rounded-xl overflow-hidden shadow-xl min-w-[160px]"
-                style={{ background: "#161b22", border: "1px solid #30373f" }}
+                className="absolute bottom-9 left-0 z-50 rounded-xl shadow-xl min-w-[160px] overflow-y-auto"
+                style={{ background: "#161b22", border: "1px solid #30373f", maxHeight: 280 }}
               >
                 {otherDivisions.map(d => (
                   <button
@@ -782,14 +782,14 @@ export default function SubsDatabase({
         const allSelected = groupSubIds.length > 0 && groupSubIds.every(id => selSet.has(id));
 
         return (
-          <div key={group.code} className="mb-8 rounded-xl overflow-hidden transition-all"
+          <div key={group.code} className="mb-8 rounded-xl transition-all"
             style={{ border: `1px solid ${isDivDragOver ? "#C9A84C" : "#30373f"}` }}
             onDragOver={e => { e.preventDefault(); setDragOverDiv(group.code); }}
             onDragLeave={e => { if (!e.currentTarget.contains(e.relatedTarget as Node)) setDragOverDiv(null); }}
             onDrop={e => { e.preventDefault(); setDragOverDiv(null); handleDropOnDivision(group.code, group.name); }}>
 
             {/* Division header */}
-            <div className="flex items-center justify-between px-4 py-3 flex-wrap gap-2" style={{ background: "#161b22", borderBottom: "1px solid #30373f" }}>
+            <div className="flex items-center justify-between px-4 py-3 flex-wrap gap-2 rounded-t-xl" style={{ background: "#161b22", borderBottom: "1px solid #30373f" }}>
               <div className="flex items-center gap-2">
                 {/* Select all checkbox */}
                 <button
@@ -836,7 +836,7 @@ export default function SubsDatabase({
             </div>
 
             {/* Card grid */}
-            <div className="p-4 grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3" style={{ background: isDivDragOver ? "#0d1a0d" : "#0d1117" }}>
+            <div className="p-4 grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 rounded-b-xl" style={{ background: isDivDragOver ? "#0d1a0d" : "#0d1117" }}>
               {group.subs.map(sub => (
                 <SubCard
                   key={sub.id}
