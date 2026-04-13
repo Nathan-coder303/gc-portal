@@ -8,7 +8,7 @@ import TodayLeadCard from "@/components/leads/TodayLeadCard";
 import TodayTaskCard, { FollowUpItem } from "@/components/today/TodayTaskCard";
 import TodayCallsSection from "@/components/today/TodayCallsSection";
 import PendingCountersignsCard from "@/components/today/PendingCountersignsCard";
-import CountersignAlert from "@/components/today/CountersignAlert";
+import AppointmentsCard from "@/components/today/AppointmentsCard";
 import BarometerSection, { type ClientIncomeSummary } from "@/components/today/BarometerSection";
 
 type DivisionLike = { items: { defaultQty: unknown; defaultUnitCost: unknown; defaultMarkupPct: unknown }[]; groups: { items: { defaultQty: unknown; defaultUnitCost: unknown; defaultMarkupPct: unknown }[] }[] };
@@ -216,116 +216,71 @@ export default async function TodayPage({
       {/* MIBH Income 2026 Barometer */}
       <BarometerSection mibhIncome={mibhIncome} clients={clientIncomeSummaries} />
 
-      {/* Today's Appointments — full-width, barometer-scale */}
-      <div
-        className="mb-4 rounded-2xl px-4 py-4 sm:px-6 sm:py-5"
-        style={{ background: "#0a0e1a", border: "1px solid #C9A84C33" }}
-      >
-        <div className="text-[52px] sm:text-6xl font-black leading-none tracking-tight mb-2" style={{ color: "#C9A84C" }}>
-          TODAY&apos;S APPOINTMENTS
-        </div>
-        {appointments.length === 0 ? (
-          <p className="text-base" style={{ color: "#484f58" }}>No appointments scheduled for today</p>
-        ) : (
-          <div className="space-y-3 mt-3">
-            {appointments.map(appt => {
-              // Parse "📅 Appointment – Name · Project · Address · Time · Phone · Email"
-              const raw = appt.text.replace(/^📅 Appointment\s*[–-]\s*/, "");
-              const parts = raw.split(" · ");
-              const name = parts[0] ?? "";
-              const rest = parts.slice(1);
-              return (
-                <div key={appt.id} className="flex items-start gap-3 p-4 rounded-xl" style={{ background: "#161b22", border: "1px solid #C9A84C22" }}>
-                  <span className="text-2xl shrink-0">📅</span>
-                  <div>
-                    <div className="text-lg font-black leading-tight" style={{ color: "#e6edf3" }}>{name}</div>
-                    <div className="flex flex-wrap gap-x-3 gap-y-0.5 mt-1">
-                      {rest.map((p, i) => (
-                        <span key={i} className="text-sm" style={{ color: "#8b949e" }}>{p}</span>
-                      ))}
-                    </div>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        )}
-      </div>
-
-      {/* Pending countersign alert — click to sign directly */}
-      <CountersignAlert
+      {/* Today's Appointments */}
+      <AppointmentsCard
         companyId={params.companyId}
-        estimates={pendingCountersigns.map(est => ({
-          id: est.id,
-          name: est.name,
-          estimateNumber: est.estimateNumber ?? null,
-          signedAt: est.signedAt!.toISOString(),
-          signedByName: est.signedByName ?? null,
-          clientName: est.client?.name ?? null,
-          clientId: est.client?.id ?? null,
-        }))}
+        initialAppointments={appointments.map(a => ({ id: a.id, text: a.text, dueDate: a.dueDate ? a.dueDate.toISOString() : null }))}
+        todayDateStr={etDateStr}
       />
 
-      {/* Untriaged leads alert */}
-      {untriaged > 0 && (
-        <Link
-          href={`/${params.companyId}/leads`}
-          className="flex items-center justify-between gap-3 mb-3 px-4 py-3 rounded-2xl transition-all active:scale-[0.99]"
-          style={{ background: "#2d1a1a", border: "1px solid #ef444455" }}
-        >
-          <div className="flex items-center gap-2.5">
-            <span style={{ fontSize: 18 }}>🎯</span>
-            <div>
-              <span className="text-sm font-bold" style={{ color: "#ef4444" }}>
-                {untriaged} lead{untriaged > 1 ? "s" : ""} need triaging
-              </span>
-              <p className="text-[11px] hidden sm:block" style={{ color: "#8b949e" }}>Drag into pipeline stages</p>
-            </div>
-          </div>
-          <span className="text-xs font-bold px-3 py-1 rounded-full" style={{ background: "#ef444422", color: "#ef4444", border: "1px solid #ef444444" }}>Go →</span>
-        </Link>
-      )}
-
       <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-        {/* Card 1 — New Leads of the Day */}
+        {/* LEADS card — full width, left=triaging right=new leads */}
         <div
-          className="rounded-2xl p-4 flex flex-col gap-2"
+          className="col-span-2 lg:col-span-3 rounded-2xl p-4 sm:p-5"
           style={{ background: "#161b22", border: "1px solid #30373f" }}
         >
-          <div className="flex items-center justify-between gap-1">
-            <span className="text-[10px] font-bold uppercase tracking-wider" style={{ color: "#C9A84C" }}>New Leads</span>
-            <div className="flex items-center gap-1.5">
-              <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full" style={{ background: "#C9A84C", color: "#0d1117" }}>
-                {todayLeads.length} today
-              </span>
-              <Link href={`/${params.companyId}/leads`} className="text-[10px] font-semibold" style={{ color: "#58a6ff" }}>View →</Link>
-            </div>
+          <span className="text-[26px] sm:text-3xl font-black leading-none" style={{ color: "#C9A84C" }}>LEADS</span>
+          <div className="grid grid-cols-2 gap-4 mt-3">
+            {/* Triaging */}
+            <Link
+              href={`/${params.companyId}/leads`}
+              className="flex flex-col gap-1 p-3 rounded-xl transition-opacity hover:opacity-80"
+              style={{ background: "#0d1117", border: `1px solid ${untriaged > 0 ? "#ef444433" : "#30373f"}` }}
+            >
+              <span className="text-xs font-semibold uppercase tracking-wider" style={{ color: "#8b949e" }}>Triaging</span>
+              <div className="text-[26px] sm:text-3xl font-black leading-none mt-1" style={{ color: untriaged > 0 ? "#ef4444" : "#e6edf3" }}>{untriaged}</div>
+              <div className="text-[11px] mt-1" style={{ color: "#484f58" }}>need pipeline stage</div>
+            </Link>
+            {/* New Leads */}
+            <Link
+              href={`/${params.companyId}/leads`}
+              className="flex flex-col gap-1 p-3 rounded-xl transition-opacity hover:opacity-80"
+              style={{ background: "#0d1117", border: "1px solid #30373f" }}
+            >
+              <div className="flex items-center gap-2">
+                <span className="text-xs font-semibold uppercase tracking-wider" style={{ color: "#8b949e" }}>New Leads</span>
+                {todayLeads.length > 0 && (
+                  <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full" style={{ background: "#C9A84C", color: "#0d1117" }}>
+                    {todayLeads.length} today
+                  </span>
+                )}
+              </div>
+              <div className="text-[26px] sm:text-3xl font-black leading-none mt-1" style={{ color: "#e6edf3" }}>{todayLeads.length}</div>
+              <div className="text-[11px] mt-1" style={{ color: "#484f58" }}>{allLeadsCount} total all time</div>
+              {todayLeads.length > 0 && (
+                <ul className="space-y-1.5 mt-2">
+                  {todayLeads.slice(0, 2).map((lead) => (
+                    <TodayLeadCard key={lead.id} lead={lead} companyId={params.companyId} />
+                  ))}
+                </ul>
+              )}
+            </Link>
           </div>
-          <div className="text-[26px] sm:text-3xl font-black leading-none" style={{ color: "#e6edf3" }}>{todayLeads.length}</div>
-          <div className="text-[11px]" style={{ color: "#484f58" }}>{allLeadsCount} total all time</div>
-          {todayLeads.length > 0 && (
-            <ul className="space-y-2 mt-1">
-              {todayLeads.map((lead) => (
-                <TodayLeadCard key={lead.id} lead={lead} companyId={params.companyId} />
-              ))}
-            </ul>
-          )}
         </div>
 
-        {/* Card 2 — Estimates to be Sent Today */}
+        {/* Estimates */}
         <Link
           href={`/${params.companyId}/estimates`}
           className="rounded-2xl p-4 flex flex-col gap-2 transition-all active:scale-[0.98]"
           style={{ background: "#161b22", border: "1px solid #30373f" }}
         >
           <div className="flex items-center justify-between gap-1">
-            <span className="text-[10px] font-bold uppercase tracking-wider" style={{ color: "#C9A84C" }}>Estimates</span>
-            <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full" style={{ background: "#C9A84C", color: "#0d1117" }}>
+            <span className="text-[26px] sm:text-3xl font-black leading-none" style={{ color: "#C9A84C" }}>ESTIMATES</span>
+            <span className="text-xs font-bold px-1.5 py-0.5 rounded-full shrink-0" style={{ background: "#C9A84C", color: "#0d1117" }}>
               {estimatesToSend.length}
             </span>
           </div>
-          <div className="text-[26px] sm:text-3xl font-black leading-none" style={{ color: "#e6edf3" }}>{estimatesToSend.length}</div>
-          <div className="text-[11px]" style={{ color: "#484f58" }}>to send today</div>
+          <div className="text-[11px] mt-1" style={{ color: "#484f58" }}>to send today</div>
           {estimatesToSend.length > 0 && (
             <ul className="space-y-1.5 mt-1">
               {estimatesToSend.map((est) => (
@@ -384,8 +339,7 @@ export default async function TodayPage({
           className="rounded-2xl p-4 flex flex-col gap-2 transition-all active:scale-[0.98]"
           style={{ background: "#161b22", border: "1px solid #30373f" }}
         >
-          <span className="text-[10px] font-bold uppercase tracking-wider" style={{ color: "#C9A84C" }}>Sub Database</span>
-          <div className="text-[26px] sm:text-3xl font-black leading-none" style={{ color: "#e6edf3" }}>Subs</div>
+          <span className="text-[26px] sm:text-3xl font-black leading-none" style={{ color: "#C9A84C" }}>SUB DATABASE</span>
           <div className="text-[11px]" style={{ color: "#484f58" }}>By division · copy emails</div>
           <div className="mt-auto pt-2 flex items-center gap-1.5">
             <span className="text-[10px] px-2 py-0.5 rounded-full" style={{ background: "#1e2736", color: "#58a6ff", border: "1px solid #58a6ff33" }}>Divisions</span>

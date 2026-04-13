@@ -62,30 +62,28 @@ export default function BarometerSection({ mibhIncome, clients }: { mibhIncome: 
         style={{ background: "#0a1a0f", border: "1px solid #22c55e33" }}
         onClick={() => setOpen(true)}
       >
-        {/* Label — same size/font as income number */}
-        <div className="text-[52px] sm:text-6xl font-black leading-none tracking-tight mb-1" style={{ color: "#C9A84C" }}>
+        {/* Label */}
+        <div className="text-center text-[52px] sm:text-6xl font-black leading-none tracking-tight" style={{ color: "#C9A84C" }}>
           MIBH INCOME 2026
         </div>
 
-        {/* Income number + goal badge row */}
-        <div className="flex items-end justify-between gap-2 flex-wrap">
-          <div className="text-[52px] sm:text-6xl font-black leading-none tracking-tight" style={{ color: "#22c55e" }}>
-            ${fmt(mibhIncome)}
-          </div>
-          <div className="flex items-center gap-2 pb-1">
-            <span className="text-[10px] font-semibold uppercase tracking-widest" style={{ color: "#8b949e" }}>
-              GOAL
-            </span>
-            <span className="text-sm sm:text-2xl font-black" style={{ color: "#C9A84C" }}>
-              $5,000,000
-            </span>
-            <span
-              className="text-[11px] font-bold px-2 py-0.5 rounded-full"
-              style={{ background: "#22c55e18", border: "1px solid #22c55e44", color: "#22c55e" }}
-            >
-              {goalPct.toFixed(1)}%
-            </span>
-          </div>
+        {/* Income number — gold */}
+        <div className="text-center text-[52px] sm:text-6xl font-black leading-none tracking-tight mt-1" style={{ color: "#C9A84C" }}>
+          ${fmt(mibhIncome)}
+        </div>
+
+        {/* Goal — green, same size */}
+        <div className="flex items-center justify-center gap-3 mt-1 flex-wrap">
+          <span className="text-[10px] font-semibold uppercase tracking-widest" style={{ color: "#8b949e" }}>GOAL</span>
+          <span className="text-[52px] sm:text-6xl font-black leading-none tracking-tight" style={{ color: "#22c55e" }}>
+            $5,000,000
+          </span>
+          <span
+            className="text-[11px] font-bold px-2 py-0.5 rounded-full"
+            style={{ background: "#22c55e18", border: "1px solid #22c55e44", color: "#22c55e" }}
+          >
+            {goalPct.toFixed(1)}%
+          </span>
         </div>
 
         {/* Progress bar */}

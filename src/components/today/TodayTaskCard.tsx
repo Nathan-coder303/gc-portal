@@ -561,7 +561,7 @@ export default function TodayTaskCard({
     >
       {/* Header */}
       <div className="flex items-center justify-between" onClick={e => e.stopPropagation()}>
-        <span className="text-xs font-semibold uppercase tracking-wider" style={{ color: "#C9A84C" }}>
+        <span className="text-[26px] sm:text-3xl font-black leading-none" style={{ color: "#C9A84C" }}>
           {label}
         </span>
         <div className="flex items-center gap-2">
@@ -586,9 +586,6 @@ export default function TodayTaskCard({
           </button>
         </div>
       </div>
-
-      {/* Big count number */}
-      <div className="text-[26px] sm:text-3xl font-black leading-none" style={{ color: "#e6edf3" }}>{openCount}</div>
 
       {/* Add form */}
       {showAdd && (

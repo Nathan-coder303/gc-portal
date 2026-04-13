@@ -40,17 +40,16 @@ export default function PendingCountersignsCard({
         style={{ background: "#161b22", border: `1px solid ${estimates.length > 0 ? "#22c55e55" : "#30373f"}` }}
       >
         <div className="flex items-center justify-between">
-          <span className="text-xs font-semibold uppercase tracking-wider" style={{ color: "#C9A84C" }}>
+          <span className="text-[26px] sm:text-3xl font-black leading-none" style={{ color: "#C9A84C" }}>
             Pending Countersignatures
           </span>
           <span
-            className="text-xs font-bold px-2 py-0.5 rounded"
+            className="text-xs font-bold px-2 py-0.5 rounded shrink-0"
             style={{ background: estimates.length > 0 ? "#22c55e" : "#30373f", color: estimates.length > 0 ? "#0d1117" : "#8b949e" }}
           >
             {estimates.length}
           </span>
         </div>
-        <div className="text-[26px] sm:text-3xl font-black leading-none" style={{ color: "#e6edf3" }}>{estimates.length}</div>
 
         {estimates.length === 0 ? (
           <p className="text-xs" style={{ color: "#8b949e" }}>No estimates awaiting countersignature.</p>
