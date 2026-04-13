@@ -375,9 +375,17 @@ export default function CollapsibleEstimateList({
 }) {
   if (estimates.length === 0) {
     return (
-      <div className="rounded-xl p-10 text-center" style={{ background: "#1e2736", border: "1px solid #30373f" }}>
+      <div className="rounded-xl p-10 text-center space-y-3" style={{ background: "#1e2736", border: "1px solid #30373f" }}>
         <p className="text-sm" style={{ color: "#8b949e" }}>No estimates yet.</p>
-        <p className="text-xs mt-1" style={{ color: "#8b949e" }}>Open a template and use &quot;Save to Client&quot; to create one.</p>
+        {canEdit && (
+          <a
+            href={`/${companyId}/estimates`}
+            className="inline-flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold transition-opacity hover:opacity-80"
+            style={{ background: "#C9A84C", color: "#0d1117" }}
+          >
+            + New estimate
+          </a>
+        )}
       </div>
     );
   }
@@ -386,7 +394,18 @@ export default function CollapsibleEstimateList({
     <div>
       <div className="flex items-center justify-between mb-3">
         <h2 className="text-base font-semibold" style={{ color: "#e6edf3" }}>Estimates</h2>
-        <span className="text-sm" style={{ color: "#8b949e" }}>{estimates.length} estimate{estimates.length !== 1 ? "s" : ""}</span>
+        <div className="flex items-center gap-3">
+          {canEdit && (
+            <a
+              href={`/${companyId}/estimates`}
+              className="px-3 py-1.5 rounded-lg text-xs font-semibold transition-opacity hover:opacity-80"
+              style={{ background: "#C9A84C", color: "#0d1117" }}
+            >
+              + New estimate
+            </a>
+          )}
+          <span className="text-sm" style={{ color: "#8b949e" }}>{estimates.length} estimate{estimates.length !== 1 ? "s" : ""}</span>
+        </div>
       </div>
       <div className="space-y-2">
         {estimates.map(est => (
