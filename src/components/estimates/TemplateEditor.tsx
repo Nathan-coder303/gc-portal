@@ -455,12 +455,12 @@ function TemplateItemTable({ divisionId, groupId, items, canEdit }: { divisionId
     <DndContext collisionDetection={closestCenter} onDragEnd={handleItemDragEnd}>
     <SortableContext items={itemIds} strategy={verticalListSortingStrategy}>
     <div className="overflow-x-auto">
-      <table className="w-full text-sm">
+      <table className="min-w-full text-sm">
         <thead>
           <tr style={{ background: "#161b22" }}>
             {canEdit && <th style={{ width: "24px" }} />}
             <th className="px-3 py-1.5 text-left font-medium text-xs w-20" style={{ color: "#8b949e" }}>CSI</th>
-            <th className="px-3 py-1.5 text-left font-medium text-xs" style={{ color: "#8b949e" }}>Item</th>
+            <th className="px-3 py-1.5 text-left font-medium text-xs min-w-[220px]" style={{ color: "#8b949e" }}>Item</th>
             <th className="px-3 py-1.5 text-left font-medium text-xs w-28" style={{ color: "#8b949e" }}>Detail</th>
             <th className="px-3 py-1.5 text-right font-medium text-xs w-16" style={{ color: "#8b949e" }}>Qty</th>
             <th className="px-3 py-1.5 text-center font-medium text-xs w-16" style={{ color: "#8b949e" }}>Unit</th>
