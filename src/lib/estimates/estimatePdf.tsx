@@ -413,12 +413,7 @@ export function EstimatePdfDocument({ companyName, projectName, estimate, divisi
               <Text style={[styles.cellTextBold, { fontSize: 9 }]}>${fmt(grandTotal)}</Text>
             </View>
             <View style={styles.tableRow}>
-              <Text style={[styles.cellText, styles.colName]}>01 10 00 – GC Overhead &amp; Profit</Text>
-              <Text style={[{ fontSize: 7, color: "#475569", textAlign: "center" }, styles.colDetail]}>%</Text>
-              <Text style={[styles.cellText, styles.colQty]}>{fmt(gcFee)}</Text>
-              <Text style={[styles.cellTextMuted, styles.colUnit]}>%</Text>
-              <Text style={[styles.cellTextMuted, styles.colCost]}>${fmt(grandTotal)}</Text>
-              <Text style={[styles.cellTextMuted, styles.colMarkup]}>—</Text>
+              <Text style={[styles.cellText, { flex: 1 }]}>01 10 00 – GC Overhead &amp; Profit</Text>
               <Text style={[styles.cellTextBold, styles.colTotal]}>${fmt(gcFeeAmount)}</Text>
             </View>
           </>

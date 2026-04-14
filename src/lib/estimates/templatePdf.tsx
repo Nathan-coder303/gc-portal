@@ -974,7 +974,7 @@ function RetailPage2({ client }: Pick<TemplatePdfProps, "client">) {
 }
 
 // ─── Division Summary Page ────────────────────────────────────────────────────
-function DivisionSummaryPage({ template, client, divisions }: Pick<TemplatePdfProps, "template" | "client" | "divisions" | "gcFeePercent">) {
+function DivisionSummaryPage({ template, client, divisions, gcFeePercent }: Pick<TemplatePdfProps, "template" | "client" | "divisions" | "gcFeePercent">) {
   const logoPath = path.join(process.cwd(), "public", "logo.png");
 
   // Compute division totals (only divisions with items having a total)
@@ -990,6 +990,8 @@ function DivisionSummaryPage({ template, client, divisions }: Pick<TemplatePdfPr
   }
 
   const subtotal = divTotals.reduce((s, d) => s + d.total, 0);
+  const gcFeeAmount = gcFeePercent && gcFeePercent > 0 ? subtotal * gcFeePercent / 100 : 0;
+  const grandTotalWithGc = subtotal + gcFeeAmount;
   const dateDisplay = fmtDate(template.estimateDate);
 
   return (
@@ -1026,7 +1028,15 @@ function DivisionSummaryPage({ template, client, divisions }: Pick<TemplatePdfPr
           </View>
         ))}
 
-        {/* GC Fee row intentionally omitted from summary page */}
+        {/* GC Fee row */}
+        {gcFeeAmount > 0 && (
+          <>
+            <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", paddingVertical: 7, paddingHorizontal: 16, borderBottomWidth: 1, borderBottomColor: "#e2e8f0", backgroundColor: divTotals.length % 2 === 0 ? "#f8fafc" : "#ffffff" }}>
+              <Text style={{ fontSize: 11, color: "#334155", fontFamily: "Helvetica-Bold" }}>01 10 00 – GC Overhead &amp; Profit</Text>
+              <Text style={{ fontSize: 11, color: "#0f172a", fontFamily: "Helvetica-Bold" }}>${fmt(gcFeeAmount)}</Text>
+            </View>
+          </>
+        )}
 
         {/* Gold divider */}
         <View style={{ height: 2, backgroundColor: GOLD, marginTop: 20, marginBottom: 0 }} />
@@ -1034,7 +1044,7 @@ function DivisionSummaryPage({ template, client, divisions }: Pick<TemplatePdfPr
         {/* Grand total */}
         <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", backgroundColor: DARK, paddingHorizontal: 16, paddingVertical: 12, borderRadius: 4, marginTop: 0 }}>
           <Text style={{ fontSize: 14, fontFamily: "Helvetica-Bold", color: GOLD }}>ESTIMATE TOTAL</Text>
-          <Text style={{ fontSize: 16, fontFamily: "Helvetica-Bold", color: GOLD }}>${fmt(subtotal)}</Text>
+          <Text style={{ fontSize: 16, fontFamily: "Helvetica-Bold", color: GOLD }}>${fmt(grandTotalWithGc)}</Text>
         </View>
 
         <Text style={{ fontSize: 8, color: "#94a3b8", textAlign: "center", marginTop: 20 }}>
