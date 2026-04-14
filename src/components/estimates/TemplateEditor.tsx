@@ -170,7 +170,7 @@ function ItemRow({ item, divisionId, groupId, canEdit }: { item: Item; divisionI
   const [isPending, startTransition] = useTransition();
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
     id: item.id,
-    data: { sourceDivisionId: divisionId, itemName: item.name },
+    data: { sourceDivisionId: divisionId, sourceGroupId: groupId ?? null, itemName: item.name },
     disabled: !canEdit,
   });
   function roofSqQty(): string {
@@ -437,23 +437,9 @@ function AddTemplateItemRow({ divisionId, groupId, canEdit }: { divisionId: stri
 }
 
 function TemplateItemTable({ divisionId, groupId, items, canEdit }: { divisionId: string; groupId?: string | null; items: Item[]; canEdit: boolean }) {
-  const [, startTransition] = useTransition();
   const itemIds = items.map(i => i.id);
 
-  function handleItemDragEnd(event: DragEndEvent) {
-    const { active, over } = event;
-    if (!over || active.id === over.id) return;
-    const oldIdx = itemIds.indexOf(active.id as string);
-    const newIdx = itemIds.indexOf(over.id as string);
-    if (oldIdx < 0 || newIdx < 0) return;
-    const newOrder = arrayMove(itemIds, oldIdx, newIdx);
-    startTransition(async () => {
-      await reorderTemplateItems(groupId ?? divisionId, groupId ? "group" : "division", newOrder);
-    });
-  }
-
   return (
-    <DndContext collisionDetection={closestCenter} onDragEnd={handleItemDragEnd}>
     <SortableContext items={itemIds} strategy={verticalListSortingStrategy}>
     <div className="overflow-x-auto">
       <table className="text-sm" style={{ minWidth: "960px" }}>
@@ -481,7 +467,6 @@ function TemplateItemTable({ divisionId, groupId, items, canEdit }: { divisionId
       </table>
     </div>
     </SortableContext>
-    </DndContext>
   );
 }
 
@@ -1145,21 +1130,56 @@ export default function TemplateEditor({
       });
     } else {
       const sourceDivisionId = active.data.current?.sourceDivisionId as string;
+      const sourceGroupId = active.data.current?.sourceGroupId as string | null;
       const overId = over.id as string;
       if (!sourceDivisionId) return;
 
       // Dropped onto a group (id format: "group:{groupId}:{divisionId}")
       if (overId.startsWith("group:")) {
-        const [, groupId, targetDivisionId] = overId.split(":");
+        const [, targetGroupId, targetDivisionId] = overId.split(":");
+        if (sourceGroupId === targetGroupId) return;
         startTransition(async () => {
-          await moveItemToGroup(active.id as string, groupId, targetDivisionId);
+          await moveItemToGroup(active.id as string, targetGroupId, targetDivisionId);
         });
         return;
       }
 
-      // Dropped onto a division
+      // Dropped onto another item — reorder within same group/division
+      const allItems = divisions.flatMap(d => [
+        ...d.items.map(i => ({ ...i, divId: d.id, grpId: null as string | null })),
+        ...d.groups.flatMap(g => g.items.map(i => ({ ...i, divId: d.id, grpId: g.id }))),
+      ]);
+      const overItem = allItems.find(i => i.id === overId);
+      if (overItem) {
+        const isSameGroup = overItem.grpId === sourceGroupId && overItem.divId === sourceDivisionId;
+        if (isSameGroup) {
+          // Reorder within same group/division
+          const siblings = allItems.filter(i => i.divId === sourceDivisionId && i.grpId === sourceGroupId);
+          const oldIdx = siblings.findIndex(i => i.id === active.id);
+          const newIdx = siblings.findIndex(i => i.id === overId);
+          if (oldIdx < 0 || newIdx < 0 || oldIdx === newIdx) return;
+          const newOrder = arrayMove(siblings.map(i => i.id), oldIdx, newIdx);
+          startTransition(async () => {
+            await reorderTemplateItems(sourceGroupId ?? sourceDivisionId, sourceGroupId ? "group" : "division", newOrder);
+          });
+        } else {
+          // Move to different group/division based on where the over-item lives
+          if (overItem.grpId) {
+            startTransition(async () => {
+              await moveItemToGroup(active.id as string, overItem.grpId!, overItem.divId);
+            });
+          } else {
+            startTransition(async () => {
+              await moveItemBetweenDivisions(active.id as string, overItem.divId);
+            });
+          }
+        }
+        return;
+      }
+
+      // Dropped onto a division droppable
       const targetDivisionId = overId;
-      if (sourceDivisionId === targetDivisionId) return;
+      if (sourceDivisionId === targetDivisionId && !sourceGroupId) return;
       startTransition(async () => {
         await moveItemBetweenDivisions(active.id as string, targetDivisionId);
       });
