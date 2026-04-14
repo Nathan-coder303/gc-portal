@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition, useRef, useCallback, createContext, useContext, useEffect } from "react";
+import { useState, useTransition, useRef, useCallback, createContext, useContext, useEffect, useReducer } from "react";
 import { useRouter } from "next/navigation";
 import { TrashIcon, PencilIcon } from "@/components/ui/icons";
 import { lookupCsiCode, lookupItemCsiCode, formatCsiCode } from "@/lib/divisions";
@@ -30,6 +30,9 @@ import {
   updateTemplateDurationMonths,
   moveItemBetweenDivisions,
   moveItemToGroup,
+  restoreTemplateItem,
+  restoreTemplateGroup,
+  restoreTemplateDivision,
   reorderTemplateDivisions,
   reorderTemplateItems,
   updateTemplateSummaryGroup,
@@ -110,6 +113,25 @@ function isDurationNameT(name: string) { const n = name.toLowerCase(); return DU
 const TDimensionsCtx = createContext<{ sqFt: number | null; durationMonths: number | null; isRoof: boolean }>({ sqFt: null, durationMonths: null, isRoof: false });
 const DivisionEditCtx = createContext<{ editAllSignal: number; saveSignal: number; resetAllSignal: number }>({ editAllSignal: 0, saveSignal: 0, resetAllSignal: 0 });
 
+type UndoEntry = { label: string; undo: () => Promise<void>; redo: () => Promise<void> };
+type UndoState = { past: UndoEntry[]; future: UndoEntry[] };
+type UndoAction = { type: "push"; entry: UndoEntry } | { type: "undo" } | { type: "redo" };
+function undoReducer(state: UndoState, action: UndoAction): UndoState {
+  if (action.type === "push") return { past: [...state.past.slice(-29), action.entry], future: [] };
+  if (action.type === "undo") {
+    const entry = state.past[state.past.length - 1];
+    if (!entry) return state;
+    return { past: state.past.slice(0, -1), future: [entry, ...state.future] };
+  }
+  if (action.type === "redo") {
+    const entry = state.future[0];
+    if (!entry) return state;
+    return { past: [...state.past, entry], future: state.future.slice(1) };
+  }
+  return state;
+}
+const UndoCtx = createContext<{ pushUndo: (entry: UndoEntry) => void }>({ pushUndo: () => {} });
+
 function DetailSelect({ value, onChange }: { value: string; onChange: (v: string) => void }) {
   const [custom, setCustom] = useState(!!value && !DETAIL_OPTIONS.includes(value));
   if (custom) {
@@ -166,6 +188,7 @@ function grandTotal(divisions: Division[]): number {
 function ItemRow({ item, divisionId, groupId, canEdit }: { item: Item; divisionId: string; groupId?: string | null; canEdit: boolean }) {
   const { sqFt, durationMonths, isRoof } = useContext(TDimensionsCtx);
   const { editAllSignal, saveSignal, resetAllSignal } = useContext(DivisionEditCtx);
+  const { pushUndo } = useContext(UndoCtx);
   const [editing, setEditing] = useState(false);
   const [isPending, startTransition] = useTransition();
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
@@ -208,25 +231,31 @@ function ItemRow({ item, divisionId, groupId, canEdit }: { item: Item; divisionI
   }
 
   function doSave(closeAfter: boolean) {
+    const prevData = {
+      id: item.id, groupId: groupId ?? null,
+      name: item.name, csiCode: item.csiCode || null, detail: item.detail || null,
+      unit: item.unit || null, defaultQty: item.defaultQty, defaultUnitCost: item.defaultUnitCost,
+      defaultLaborCost: item.defaultLaborCost, defaultMaterialCost: item.defaultMaterialCost,
+      defaultMarkupPct: item.defaultMarkupPct, notes: item.notes || null, visibleInPdf: item.visibleInPdf,
+    };
     startTransition(async () => {
-      // For roof estimates, always enforce Math.ceil(sqFt/100) for SQ/SF items
       const effectiveQty = (isRoof && isSfUnitT(form.unit) && sqFt && sqFt > 0)
         ? Math.ceil(sqFt / 100)
         : (form.defaultQty ? Number(form.defaultQty) : null);
-      await upsertTemplateItem(divisionId, {
-        id: item.id,
-        groupId: groupId ?? null,
-        name: form.name,
-        csiCode: form.csiCode || null,
-        detail: form.detail || null,
-        unit: form.unit || null,
-        defaultQty: effectiveQty,
+      const newData = {
+        id: item.id, groupId: groupId ?? null,
+        name: form.name, csiCode: form.csiCode || null, detail: form.detail || null,
+        unit: form.unit || null, defaultQty: effectiveQty,
         defaultUnitCost: form.defaultUnitCost ? Number(form.defaultUnitCost) : null,
-        defaultLaborCost: item.defaultLaborCost,
-        defaultMaterialCost: item.defaultMaterialCost,
+        defaultLaborCost: item.defaultLaborCost, defaultMaterialCost: item.defaultMaterialCost,
         defaultMarkupPct: form.defaultMarkupPct ? Number(form.defaultMarkupPct) : null,
-        notes: form.notes || null,
-        visibleInPdf: form.visibleInPdf,
+        notes: form.notes || null, visibleInPdf: form.visibleInPdf,
+      };
+      await upsertTemplateItem(divisionId, newData);
+      pushUndo({
+        label: `Edit "${item.name}"`,
+        undo: async () => { await upsertTemplateItem(divisionId, prevData); },
+        redo: async () => { await upsertTemplateItem(divisionId, newData); },
       });
       if (closeAfter) setEditing(false);
     });
@@ -322,7 +351,14 @@ function ItemRow({ item, divisionId, groupId, canEdit }: { item: Item; divisionI
                   title="Reset values">
                   ↺
                 </button>
-                <button onClick={() => startTransition(async () => { await archiveTemplateItem(item.id); })} disabled={isPending}
+                <button onClick={() => startTransition(async () => {
+                  await archiveTemplateItem(item.id);
+                  pushUndo({
+                    label: `Delete "${item.name}"`,
+                    undo: async () => { await restoreTemplateItem(item.id); },
+                    redo: async () => { await archiveTemplateItem(item.id); },
+                  });
+                })} disabled={isPending}
                   className="w-6 h-6 rounded flex items-center justify-center disabled:opacity-50"
                   style={{ background: "#f8514922", color: "#f85149", border: "1px solid #f8514933" }}
                   title="Remove">
@@ -472,6 +508,7 @@ function TemplateItemTable({ divisionId, groupId, items, canEdit }: { divisionId
 
 function TemplateGroupSection({ group, divisionId, canEdit }: { group: Group; divisionId: string; canEdit: boolean }) {
   const [isPending, startTransition] = useTransition();
+  const { pushUndo } = useContext(UndoCtx);
   const total = groupTotal(group.items);
   const { setNodeRef: setGroupDropRef, isOver: isGroupOver } = useDroppable({ id: `group:${group.id}:${divisionId}` });
   return (
@@ -481,7 +518,14 @@ function TemplateGroupSection({ group, divisionId, canEdit }: { group: Group; di
         <div className="flex items-center gap-3">
           {total > 0 && <span className="text-xs font-semibold" style={{ color: "#C9A84C" }}>${fmt(total)}</span>}
           {canEdit && (
-            <button onClick={() => { startTransition(async () => { await archiveTemplateGroup(group.id); }); }} disabled={isPending}
+            <button onClick={() => { startTransition(async () => {
+              await archiveTemplateGroup(group.id);
+              pushUndo({
+                label: `Delete group "${group.name}"`,
+                undo: async () => { await restoreTemplateGroup(group.id); },
+                redo: async () => { await archiveTemplateGroup(group.id); },
+              });
+            }); }} disabled={isPending}
               className="w-6 h-6 rounded flex items-center justify-center disabled:opacity-50"
               style={{ background: "#f8514922", color: "#f85149", border: "1px solid #f8514933" }}
               title="Remove group">
@@ -509,6 +553,7 @@ function TemplateDivisionSection({ division, otherDivisions, canEdit, globalSave
   const [resetAllSignal, setResetAllSignal] = useState(0);
   // Propagate global save from parent
   useEffect(() => { if (globalSaveSignal && globalSaveSignal > 0) setSaveSignal(s => s + 1); }, [globalSaveSignal]); // eslint-disable-line react-hooks/exhaustive-deps
+  const { pushUndo } = useContext(UndoCtx);
   const { setNodeRef: setDropRef, isOver } = useDroppable({ id: division.id });
   const { attributes: dragAttrs, listeners: dragListeners, setNodeRef: setDragRef, isDragging } = useDraggable({
     id: "div-" + division.id,
@@ -667,7 +712,14 @@ function TemplateDivisionSection({ division, otherDivisions, canEdit, globalSave
           )}
           {canEdit && (
             <div className="px-3 pt-1">
-              <button onClick={() => { startTransition(async () => { await archiveTemplateDivision(division.id); }); }} disabled={isPending}
+              <button onClick={() => { startTransition(async () => {
+                await archiveTemplateDivision(division.id);
+                pushUndo({
+                  label: `Delete division "${division.name}"`,
+                  undo: async () => { await restoreTemplateDivision(division.id); },
+                  redo: async () => { await archiveTemplateDivision(division.id); },
+                });
+              }); }} disabled={isPending}
                 className="w-6 h-6 rounded flex items-center justify-center disabled:opacity-50"
                 style={{ background: "#f8514922", color: "#f85149", border: "1px solid #f8514933" }}
                 title="Remove division">
@@ -1098,6 +1150,36 @@ export default function TemplateEditor({
   const [editingSummaryGroup, setEditingSummaryGroup] = useState<string | null>(null);
   const [sgForm, setSgForm] = useState<SummaryGroupData>({ qty: null, unit: null, unitCost: null, markupPct: null, manualTotal: null });
   const [activeDragItem, setActiveDragItem] = useState<{ id: string; name: string; type: "item" | "division" } | null>(null);
+  const [undoState, undoDispatch] = useReducer(undoReducer, { past: [], future: [] });
+  const [undoPending, startUndoTransition] = useTransition();
+
+  const pushUndo = useCallback((entry: UndoEntry) => {
+    undoDispatch({ type: "push", entry });
+  }, []);
+
+  function doUndo() {
+    const entry = undoState.past[undoState.past.length - 1];
+    if (!entry) return;
+    undoDispatch({ type: "undo" });
+    startUndoTransition(async () => { await entry.undo(); });
+  }
+
+  function doRedo() {
+    const entry = undoState.future[0];
+    if (!entry) return;
+    undoDispatch({ type: "redo" });
+    startUndoTransition(async () => { await entry.redo(); });
+  }
+
+  // Keyboard shortcuts: Ctrl+Z = undo, Ctrl+Shift+Z or Ctrl+Y = redo
+  useEffect(() => {
+    function onKey(e: KeyboardEvent) {
+      if ((e.metaKey || e.ctrlKey) && e.key === "z" && !e.shiftKey) { e.preventDefault(); doUndo(); }
+      if ((e.metaKey || e.ctrlKey) && (e.key === "y" || (e.key === "z" && e.shiftKey))) { e.preventDefault(); doRedo(); }
+    }
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }); // eslint-disable-line react-hooks/exhaustive-deps
 
   function handleDragStart(event: DragStartEvent) {
     if (event.active.data.current?.type === "division") {
@@ -1240,9 +1322,33 @@ export default function TemplateEditor({
   }
 
   return (
+    <UndoCtx.Provider value={{ pushUndo }}>
     <TDimensionsCtx.Provider value={{ sqFt: typeof sqFt === "number" ? sqFt : null, durationMonths: typeof durationMonths === "number" ? durationMonths : null, isRoof: isRoofTemplate }}>
     <DndContext collisionDetection={closestCenter} onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
     <div className="space-y-4">
+      {/* Undo/Redo bar */}
+      {(undoState.past.length > 0 || undoState.future.length > 0) && (
+        <div className="flex items-center gap-2 px-3 py-2 rounded-lg" style={{ background: "#1e2736", border: "1px solid #30373f" }}>
+          <button onClick={doUndo} disabled={undoState.past.length === 0 || undoPending}
+            className="flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-lg font-medium disabled:opacity-40"
+            style={{ background: undoState.past.length > 0 ? "#C9A84C22" : "transparent", color: "#C9A84C", border: "1px solid #C9A84C44" }}
+            title="Undo (Ctrl+Z)">
+            ↩ Undo
+          </button>
+          <button onClick={doRedo} disabled={undoState.future.length === 0 || undoPending}
+            className="flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-lg font-medium disabled:opacity-40"
+            style={{ background: undoState.future.length > 0 ? "#1e40af22" : "transparent", color: "#60a5fa", border: "1px solid #60a5fa33" }}
+            title="Redo (Ctrl+Shift+Z)">
+            ↪ Redo
+          </button>
+          {undoState.past.length > 0 && (
+            <span className="text-xs ml-1" style={{ color: "#484f58" }}>
+              {undoState.past[undoState.past.length - 1].label}
+            </span>
+          )}
+          {undoPending && <span className="text-xs ml-auto" style={{ color: "#8b949e" }}>Saving…</span>}
+        </div>
+      )}
       {/* Header card */}
       <div className="rounded-xl p-5" style={{ background: "#1e2736", border: "1px solid #30373f" }}>
         {editingHeader ? (
@@ -1895,5 +2001,6 @@ export default function TemplateEditor({
     </DragOverlay>
     </DndContext>
     </TDimensionsCtx.Provider>
+    </UndoCtx.Provider>
   );
 }

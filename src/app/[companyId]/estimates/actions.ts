@@ -523,6 +523,40 @@ export async function archiveTemplateItem(itemId: string) {
   return { success: true };
 }
 
+export async function restoreTemplateItem(itemId: string) {
+  const session = await auth();
+  if (!session) throw new Error("Unauthorized");
+  requirePermission(session, "estimateTemplate:edit");
+  await prisma.estimateTemplateItem.update({ where: { id: itemId }, data: { archivedAt: null, archivedBy: null } });
+  revalidatePath(`/${session.user.companyId}/estimates`);
+  return { success: true };
+}
+
+export async function restoreTemplateGroup(groupId: string) {
+  const session = await auth();
+  if (!session) throw new Error("Unauthorized");
+  requirePermission(session, "estimateTemplate:edit");
+  await prisma.$transaction([
+    prisma.estimateTemplateGroup.update({ where: { id: groupId }, data: { archivedAt: null, archivedBy: null } }),
+    prisma.estimateTemplateItem.updateMany({ where: { groupId }, data: { archivedAt: null, archivedBy: null } }),
+  ]);
+  revalidatePath(`/${session.user.companyId}/estimates`);
+  return { success: true };
+}
+
+export async function restoreTemplateDivision(divisionId: string) {
+  const session = await auth();
+  if (!session) throw new Error("Unauthorized");
+  requirePermission(session, "estimateTemplate:edit");
+  await prisma.$transaction([
+    prisma.estimateTemplateDivision.update({ where: { id: divisionId }, data: { archivedAt: null, archivedBy: null } }),
+    prisma.estimateTemplateGroup.updateMany({ where: { divisionId }, data: { archivedAt: null, archivedBy: null } }),
+    prisma.estimateTemplateItem.updateMany({ where: { divisionId }, data: { archivedAt: null, archivedBy: null } }),
+  ]);
+  revalidatePath(`/${session.user.companyId}/estimates`);
+  return { success: true };
+}
+
 export async function moveItemBetweenDivisions(itemId: string, newDivisionId: string) {
   const session = await auth();
   if (!session) throw new Error("Unauthorized");
