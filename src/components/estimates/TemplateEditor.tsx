@@ -29,6 +29,7 @@ import {
   updateTemplateSqFt,
   updateTemplateDurationMonths,
   moveItemBetweenDivisions,
+  moveItemToGroup,
   reorderTemplateDivisions,
   reorderTemplateItems,
   updateTemplateSummaryGroup,
@@ -487,9 +488,10 @@ function TemplateItemTable({ divisionId, groupId, items, canEdit }: { divisionId
 function TemplateGroupSection({ group, divisionId, canEdit }: { group: Group; divisionId: string; canEdit: boolean }) {
   const [isPending, startTransition] = useTransition();
   const total = groupTotal(group.items);
+  const { setNodeRef: setGroupDropRef, isOver: isGroupOver } = useDroppable({ id: `group:${group.id}:${divisionId}` });
   return (
-    <div className="mt-3">
-      <div className="flex items-center justify-between px-3 py-1.5 rounded" style={{ background: "#0d1117" }}>
+    <div ref={setGroupDropRef} className="mt-3" style={{ outline: isGroupOver ? "2px solid #C9A84C" : "none", borderRadius: 6 }}>
+      <div className="flex items-center justify-between px-3 py-1.5 rounded" style={{ background: isGroupOver ? "#2a2010" : "#0d1117" }}>
         <span className="text-xs font-semibold uppercase tracking-wide" style={{ color: "#8b949e" }}>{group.name}</span>
         <div className="flex items-center gap-3">
           {total > 0 && <span className="text-xs font-semibold" style={{ color: "#C9A84C" }}>${fmt(total)}</span>}
@@ -1143,8 +1145,21 @@ export default function TemplateEditor({
       });
     } else {
       const sourceDivisionId = active.data.current?.sourceDivisionId as string;
-      const targetDivisionId = over.id as string;
-      if (!sourceDivisionId || sourceDivisionId === targetDivisionId) return;
+      const overId = over.id as string;
+      if (!sourceDivisionId) return;
+
+      // Dropped onto a group (id format: "group:{groupId}:{divisionId}")
+      if (overId.startsWith("group:")) {
+        const [, groupId, targetDivisionId] = overId.split(":");
+        startTransition(async () => {
+          await moveItemToGroup(active.id as string, groupId, targetDivisionId);
+        });
+        return;
+      }
+
+      // Dropped onto a division
+      const targetDivisionId = overId;
+      if (sourceDivisionId === targetDivisionId) return;
       startTransition(async () => {
         await moveItemBetweenDivisions(active.id as string, targetDivisionId);
       });
