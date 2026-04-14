@@ -43,6 +43,7 @@ export async function GET(
   const countersigned = req.nextUrl.searchParams.get("countersigned") === "1";
   const cover = req.nextUrl.searchParams.get("cover") === "1";
   const coverTypeParam = req.nextUrl.searchParams.get("coverType");
+  const coverBlobUrlParam = req.nextUrl.searchParams.get("coverBlobUrl"); // specific custom cover blob URL
   const page2Param = req.nextUrl.searchParams.get("page2"); // "ROOF" | "ADDITION" | "NONE" | null (auto)
   const isPreview = req.nextUrl.searchParams.get("preview") === "1";
   const includeDivisionSummary = req.nextUrl.searchParams.get("divSummary") === "1";
@@ -129,7 +130,11 @@ export async function GET(
     includeDivisionSummary,
     insulationType: template.insulationType ?? "ISO",
     clientCoverPhotoType: coverTypeParam ?? template.client?.coverPhotoType ?? null,
-    clientCoverPhotoUrl: await resolvePrivateCoverUrl(template.client?.coverPhotoUrl ?? null),
+    clientCoverPhotoUrl: await resolvePrivateCoverUrl(
+      (coverTypeParam === "CUSTOM" && coverBlobUrlParam)
+        ? decodeURIComponent(coverBlobUrlParam)
+        : (template.client?.coverPhotoUrl ?? null)
+    ),
     clientCoverTitle: template.client?.coverTitle ?? null,
   });
 

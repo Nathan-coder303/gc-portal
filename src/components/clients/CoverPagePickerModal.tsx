@@ -1,5 +1,5 @@
 "use client";
-import { useState } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 
 export const COVER_OPTIONS = [
   { type: "FLAT_ROOFS",    label: "Flat Roofs",    img: "/flat-roofs-cover.jpg",      desc: "Flat / low-slope roofing" },
@@ -19,10 +19,13 @@ const PAGE2_OPTIONS: { type: Page2Type; label: string; desc: string; icon: strin
 
 export type PdfOptions = {
   coverType: CoverType;
+  coverBlobUrl?: string | null; // blob URL of selected custom cover
   page2: Page2Type;
   includeInsert: boolean;
   includeDivisionSummary: boolean;
 };
+
+type CustomCover = { blobUrl: string; proxyUrl: string };
 
 export default function CoverPagePickerModal({
   isCommercial,
@@ -33,6 +36,8 @@ export default function CoverPagePickerModal({
   initialPage2 = "NONE",
   confirmLabel = "Download PDF",
   showPreview = false,
+  companyId,
+  clientId,
   onConfirm,
   onPreview,
   onSendEmail,
@@ -46,6 +51,8 @@ export default function CoverPagePickerModal({
   initialPage2?: Page2Type;
   confirmLabel?: string;
   showPreview?: boolean;
+  companyId?: string;
+  clientId?: string;
   onConfirm: (opts: PdfOptions) => void;
   onPreview?: (opts: PdfOptions) => void;
   onSendEmail?: (opts: PdfOptions) => void;
@@ -57,20 +64,59 @@ export default function CoverPagePickerModal({
   const [includeInsert, setIncludeInsert] = useState(true);
   const [includeDivisionSummary, setIncludeDivisionSummary] = useState(false);
 
-  const coverLabel = customCoverLabel || "Custom";
+  // Custom cover gallery
+  const [customCovers, setCustomCovers] = useState<CustomCover[]>([]);
+  const [selectedBlobUrl, setSelectedBlobUrl] = useState<string | null>(null);
+  const [uploading, setUploading] = useState(false);
+  const [dragOver, setDragOver] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const coverOptions: { type: CoverType; label: string; img: string; desc: string; placeholder?: boolean }[] = [
-    ...COVER_OPTIONS,
-    {
-      type: "CUSTOM" as CoverType,
-      label: coverLabel,
-      img: customCoverUrl ?? "",
-      desc: customCoverUrl ? "Uploaded for this client" : "Upload a custom cover photo",
-      placeholder: !customCoverUrl,
-    },
-  ];
+  // Load existing custom covers
+  useEffect(() => {
+    if (!companyId || !clientId) return;
+    fetch(`/api/${companyId}/clients/${clientId}/covers`)
+      .then(r => r.json())
+      .then(data => {
+        const covers: CustomCover[] = data.covers ?? [];
+        setCustomCovers(covers);
+        // Auto-select the one matching customCoverUrl (current active cover)
+        if (customCoverUrl && covers.length > 0) {
+          // customCoverUrl is a proxy URL like /api/.../cover, find matching by matching the proxy pattern
+          // Just select the first cover that corresponds to the active one (newest = first)
+          setSelectedBlobUrl(covers[0].blobUrl);
+        }
+      })
+      .catch(() => {});
+  }, [companyId, clientId, customCoverUrl]);
 
-  const opts: PdfOptions = { coverType: cover, page2, includeInsert, includeDivisionSummary };
+  const uploadFile = useCallback(async (file: File) => {
+    if (!companyId || !clientId) return;
+    setUploading(true);
+    try {
+      const fd = new FormData();
+      fd.append("file", file);
+      const res = await fetch(`/api/${companyId}/clients/${clientId}/cover`, { method: "POST", body: fd });
+      if (!res.ok) return;
+      // Refresh the list
+      const listRes = await fetch(`/api/${companyId}/clients/${clientId}/covers`);
+      const data = await listRes.json();
+      const covers: CustomCover[] = data.covers ?? [];
+      setCustomCovers(covers);
+      // Auto-select the newly uploaded cover (it'll be newest = first)
+      if (covers[0]) setSelectedBlobUrl(covers[0].blobUrl);
+      setCover("CUSTOM");
+    } finally {
+      setUploading(false);
+    }
+  }, [companyId, clientId]);
+
+  const opts: PdfOptions = {
+    coverType: cover,
+    coverBlobUrl: cover === "CUSTOM" ? selectedBlobUrl : null,
+    page2,
+    includeInsert,
+    includeDivisionSummary,
+  };
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ background: "rgba(0,0,0,0.8)" }} onClick={onClose}>
@@ -86,23 +132,18 @@ export default function CoverPagePickerModal({
         <div>
           <p className="text-xs font-semibold uppercase tracking-widest mb-2" style={{ color: "#8b949e" }}>Page 1 — Cover</p>
           <div className="grid grid-cols-3 gap-2">
-            {coverOptions.map((opt) => {
+            {/* Preset covers */}
+            {COVER_OPTIONS.map((opt) => {
               const active = cover === opt.type;
               return (
                 <button
                   key={opt.type}
-                  onClick={() => setCover(opt.type)}
+                  onClick={() => { setCover(opt.type); setSelectedBlobUrl(null); }}
                   className="rounded-xl overflow-hidden text-left transition-all"
                   style={{ border: `2px solid ${active ? "#C9A84C" : "#30373f"}`, outline: "none" }}
                 >
-                  {opt.placeholder ? (
-                    <div style={{ width: "100%", height: 72, background: "#0d1117", display: "flex", alignItems: "center", justifyContent: "center" }}>
-                      <span style={{ color: "#484f58", fontSize: 22 }}>🖼</span>
-                    </div>
-                  ) : (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img src={opt.img} alt={opt.label} style={{ width: "100%", height: 72, objectFit: "cover", display: "block" }} />
-                  )}
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img src={opt.img} alt={opt.label} style={{ width: "100%", height: 72, objectFit: "cover", display: "block" }} />
                   <div className="px-2 py-1.5" style={{ background: active ? "#1e2a12" : "#1e2736" }}>
                     <div className="text-xs font-semibold" style={{ color: active ? "#C9A84C" : "#e6edf3" }}>{opt.label}</div>
                     <div className="text-[10px]" style={{ color: "#8b949e" }}>{opt.desc}</div>
@@ -110,7 +151,62 @@ export default function CoverPagePickerModal({
                 </button>
               );
             })}
+
+            {/* Custom covers gallery */}
+            {customCovers.map((c) => {
+              const active = cover === "CUSTOM" && selectedBlobUrl === c.blobUrl;
+              return (
+                <button
+                  key={c.blobUrl}
+                  onClick={() => { setCover("CUSTOM"); setSelectedBlobUrl(c.blobUrl); }}
+                  className="rounded-xl overflow-hidden text-left transition-all"
+                  style={{ border: `2px solid ${active ? "#C9A84C" : "#30373f"}`, outline: "none" }}
+                >
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img src={c.proxyUrl} alt="Custom" style={{ width: "100%", height: 72, objectFit: "cover", display: "block" }} />
+                  <div className="px-2 py-1.5" style={{ background: active ? "#1e2a12" : "#1e2736" }}>
+                    <div className="text-xs font-semibold" style={{ color: active ? "#C9A84C" : "#e6edf3" }}>Custom</div>
+                    <div className="text-[10px]" style={{ color: "#8b949e" }}>Uploaded</div>
+                  </div>
+                </button>
+              );
+            })}
+
+            {/* Upload tile */}
+            {companyId && clientId && (
+              <button
+                onClick={() => fileInputRef.current?.click()}
+                onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
+                onDragLeave={() => setDragOver(false)}
+                onDrop={(e) => {
+                  e.preventDefault();
+                  setDragOver(false);
+                  const file = e.dataTransfer.files[0];
+                  if (file) uploadFile(file);
+                }}
+                className="rounded-xl overflow-hidden text-left transition-all"
+                style={{ border: `2px dashed ${dragOver ? "#C9A84C" : "#30373f"}`, outline: "none", minHeight: 108 }}
+              >
+                <div style={{ width: "100%", height: 72, background: dragOver ? "#1e2a12" : "#0d1117", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                  {uploading
+                    ? <span style={{ color: "#8b949e", fontSize: 12 }}>Uploading…</span>
+                    : <span style={{ color: dragOver ? "#C9A84C" : "#484f58", fontSize: 22 }}>📁</span>
+                  }
+                </div>
+                <div className="px-2 py-1.5" style={{ background: "#1e2736" }}>
+                  <div className="text-xs font-semibold" style={{ color: "#e6edf3" }}>Upload</div>
+                  <div className="text-[10px]" style={{ color: "#8b949e" }}>Drag or click</div>
+                </div>
+              </button>
+            )}
           </div>
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept="image/*"
+            className="hidden"
+            onChange={(e) => { const f = e.target.files?.[0]; if (f) uploadFile(f); e.target.value = ""; }}
+          />
         </div>
 
         {/* ── Section 2: Presentation Page ── */}

@@ -195,10 +195,10 @@ function ItemRow({ item, index, lineNum }: { item: Item; index: number; lineNum?
       <View style={[rowStyle, { borderBottomWidth: 0 }]}>
         {lineNum != null && <Text style={[styles.cellMuted, styles.colLineNum]}>{lineNum}</Text>}
         <View style={styles.colName}>
-          {item.csiCode ? <Text style={{ fontSize: 6.5, color: "#94a3b8", marginBottom: 1 }}>{item.csiCode}</Text> : null}
-          {(item.name ?? "").split(/\n| (?=[A-C]\. [A-Z])/).map((part, pi) => (
-            <Text key={pi} style={[styles.cellText, pi > 0 ? { marginTop: 3 } : {}]}>{part}</Text>
-          ))}
+          <Text style={styles.cellText}>
+            {item.csiCode ? <Text style={{ fontSize: 7, color: "#94a3b8", fontFamily: "Helvetica-Bold" }}>{item.csiCode}{"  "}</Text> : null}
+            {(item.name ?? "")}
+          </Text>
         </View>
         <Text style={[{ fontSize: 7, color: detailColor, textAlign: "center" }, styles.colDetail]}>{item.detail?.toUpperCase() ?? ""}</Text>
         {isExcluded ? (
@@ -1023,8 +1023,8 @@ function DivisionSummaryPage({ template, client, divisions, gcFeePercent }: Pick
         {/* Division rows */}
         {divTotals.map((d, idx) => (
           <View key={idx} style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", paddingVertical: 7, paddingHorizontal: 16, borderBottomWidth: 1, borderBottomColor: "#e2e8f0", backgroundColor: idx % 2 === 0 ? "#f8fafc" : "#ffffff" }}>
-            <Text style={{ fontSize: 11, color: "#334155", fontFamily: "Helvetica-Bold" }}>{d.name}</Text>
-            <Text style={{ fontSize: 11, color: "#0f172a", fontFamily: "Helvetica-Bold" }}>${fmt(d.total)}</Text>
+            <Text style={{ fontSize: 11.5, color: "#334155", fontFamily: "Helvetica-Bold" }}>{d.name}</Text>
+            <Text style={{ fontSize: 11.5, color: "#0f172a", fontFamily: "Helvetica-Bold" }}>${fmt(d.total)}</Text>
           </View>
         ))}
 
@@ -1032,8 +1032,8 @@ function DivisionSummaryPage({ template, client, divisions, gcFeePercent }: Pick
         {gcFeeAmount > 0 && (
           <>
             <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", paddingVertical: 7, paddingHorizontal: 16, borderBottomWidth: 1, borderBottomColor: "#e2e8f0", backgroundColor: divTotals.length % 2 === 0 ? "#f8fafc" : "#ffffff" }}>
-              <Text style={{ fontSize: 11, color: "#334155", fontFamily: "Helvetica-Bold" }}>01 10 00 – GC Overhead &amp; Profit</Text>
-              <Text style={{ fontSize: 11, color: "#0f172a", fontFamily: "Helvetica-Bold" }}>${fmt(gcFeeAmount)}</Text>
+              <Text style={{ fontSize: 11.5, color: "#334155", fontFamily: "Helvetica-Bold" }}>GC Overhead &amp; Profit</Text>
+              <Text style={{ fontSize: 11.5, color: "#0f172a", fontFamily: "Helvetica-Bold" }}>${fmt(gcFeeAmount)}</Text>
             </View>
           </>
         )}
@@ -1325,8 +1325,14 @@ function TemplatePdfDocument({ companyName, template, client, divisions, showTer
                     </View>
 
                     {filledGroups.map((grp) => {
+                      const grpTotal = grp.items.reduce((s, i) => s + calcTotal(i.defaultQty, i.defaultUnitCost, i.defaultMarkupPct), 0);
                       return (
                         <View key={grp.id} minPresenceAhead={30}>
+                          {/* Group header row — light blue */}
+                          <View wrap={false} style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", backgroundColor: "#dbeafe", paddingHorizontal: 8, paddingVertical: 4, marginTop: 4 }}>
+                            <Text style={{ fontSize: 7.5, fontFamily: "Helvetica-Bold", color: "#1e40af", textTransform: "uppercase", letterSpacing: 0.5 }}>{grp.name}</Text>
+                            {grpTotal > 0 && <Text style={{ fontSize: 7.5, fontFamily: "Helvetica-Bold", color: "#1e40af" }}>${fmt(grpTotal)}</Text>}
+                          </View>
                           <ItemTableHeader showLineNum={isRoof} />
                           {grp.items.map((item, idx) => <ItemRow key={item.id} item={item} index={idx} lineNum={lineNumMap.get(item.id)} />)}
                         </View>
@@ -1364,7 +1370,7 @@ function TemplatePdfDocument({ companyName, template, client, divisions, showTer
               </View>
               {/* GC fee row — amount only, no % shown */}
               <View style={[styles.tableRow, { marginTop: 0 }]}>
-                <Text style={[styles.cellText, styles.colName]}>01 10 00 – GC Overhead &amp; Profit</Text>
+                <Text style={[styles.cellText, styles.colName]}>GC Overhead &amp; Profit</Text>
                 <Text style={[styles.cellBold, styles.colTotal]}>${fmt(gcFeeAmount)}</Text>
               </View>
             </>
