@@ -455,12 +455,12 @@ function TemplateItemTable({ divisionId, groupId, items, canEdit }: { divisionId
     <DndContext collisionDetection={closestCenter} onDragEnd={handleItemDragEnd}>
     <SortableContext items={itemIds} strategy={verticalListSortingStrategy}>
     <div className="overflow-x-auto">
-      <table className="min-w-full text-sm">
+      <table className="text-sm" style={{ minWidth: "960px" }}>
         <thead>
           <tr style={{ background: "#161b22" }}>
             {canEdit && <th style={{ width: "24px" }} />}
             <th className="px-3 py-1.5 text-left font-medium text-xs w-20" style={{ color: "#8b949e" }}>CSI</th>
-            <th className="px-3 py-1.5 text-left font-medium text-xs min-w-[220px]" style={{ color: "#8b949e" }}>Item</th>
+            <th className="px-3 py-1.5 text-left font-medium text-xs" style={{ color: "#8b949e", minWidth: "260px" }}>Item</th>
             <th className="px-3 py-1.5 text-left font-medium text-xs w-28" style={{ color: "#8b949e" }}>Detail</th>
             <th className="px-3 py-1.5 text-right font-medium text-xs w-16" style={{ color: "#8b949e" }}>Qty</th>
             <th className="px-3 py-1.5 text-center font-medium text-xs w-16" style={{ color: "#8b949e" }}>Unit</th>
@@ -549,7 +549,7 @@ function TemplateDivisionSection({ division, otherDivisions, canEdit, globalSave
   }
 
   return (
-    <div ref={(node) => { setDropRef(node); setDragRef(node); }} className="rounded-xl overflow-hidden" style={{ background: "#1e2736", border: isOver ? "2px solid #C9A84C" : "1px solid #30373f", transition: "border 0.1s", opacity: isDragging ? 0.4 : 1 }}>
+    <div ref={(node) => { setDropRef(node); setDragRef(node); }} className="rounded-xl overflow-x-auto" style={{ background: "#1e2736", border: isOver ? "2px solid #C9A84C" : "1px solid #30373f", transition: "border 0.1s", opacity: isDragging ? 0.4 : 1 }}>
       <div className="w-full flex items-center gap-3 px-4 py-3" style={{ background: "#1e2736" }}>
         {canEdit && (
           <span className="text-xs select-none shrink-0 cursor-grab" style={{ color: "#8b949e", fontSize: "14px" }} {...dragListeners} {...dragAttrs}>⠿</span>
