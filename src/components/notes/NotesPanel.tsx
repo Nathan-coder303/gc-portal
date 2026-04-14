@@ -32,6 +32,13 @@ export default function NotesPanel({ companyId, leadId, clientId, title, onClose
   const [noteDate, setNoteDate] = useState(todayISO());
   const [saving, setSaving] = useState(false);
 
+  // Task state
+  const [showTaskForm, setShowTaskForm] = useState(false);
+  const [taskText, setTaskText] = useState("");
+  const [taskDate, setTaskDate] = useState(todayISO());
+  const [savingTask, setSavingTask] = useState(false);
+  const [taskSaved, setTaskSaved] = useState(false);
+
   const queryParam = leadId ? `leadId=${leadId}` : `clientId=${clientId}`;
 
   const load = useCallback(async () => {
@@ -76,6 +83,27 @@ export default function NotesPanel({ companyId, leadId, clientId, title, onClose
     await fetch(`/api/${companyId}/notes?noteId=${noteId}`, { method: "DELETE" });
   }
 
+  async function addTask() {
+    if (!taskText.trim()) return;
+    setSavingTask(true);
+    try {
+      const fd = new FormData();
+      fd.append("category", "TASK");
+      fd.append("text", `📌 ${title}: ${taskText.trim()}`);
+      fd.append("dueDate", taskDate);
+      const res = await fetch(`/api/${companyId}/follow-ups`, { method: "POST", body: fd });
+      if (res.ok) {
+        setTaskText("");
+        setTaskDate(todayISO());
+        setShowTaskForm(false);
+        setTaskSaved(true);
+        setTimeout(() => setTaskSaved(false), 3000);
+      }
+    } finally {
+      setSavingTask(false);
+    }
+  }
+
   return (
     <div
       style={{ position: "fixed", inset: 0, zIndex: 60, background: "rgba(0,0,0,0.7)", display: "flex", alignItems: "center", justifyContent: "center", padding: 16 }}
@@ -92,6 +120,58 @@ export default function NotesPanel({ companyId, leadId, clientId, title, onClose
             <p style={{ color: "#484f58", fontSize: 11, margin: "2px 0 0" }}>{title}</p>
           </div>
           <button onClick={onClose} style={{ background: "transparent", border: "none", color: "#8b949e", fontSize: 20, cursor: "pointer", lineHeight: 1 }}>×</button>
+        </div>
+
+        {/* Add task section */}
+        <div style={{ padding: "10px 20px", borderBottom: "1px solid #21262d" }}>
+          {!showTaskForm ? (
+            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+              <button
+                onClick={() => setShowTaskForm(true)}
+                style={{ background: "#C9A84C22", border: "1px solid #C9A84C66", color: "#C9A84C", borderRadius: 8, padding: "5px 14px", fontSize: 12, fontWeight: 700, cursor: "pointer" }}
+              >
+                ✅ Add task
+              </button>
+              {taskSaved && (
+                <span style={{ color: "#22c55e", fontSize: 11, fontWeight: 600 }}>Task added to Today&apos;s Tasks ✓</span>
+              )}
+            </div>
+          ) : (
+            <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+              <div style={{ display: "flex", gap: 8 }}>
+                <input
+                  type="text"
+                  value={taskText}
+                  onChange={e => setTaskText(e.target.value)}
+                  onKeyDown={e => e.key === "Enter" && addTask()}
+                  placeholder="Task description…"
+                  autoFocus
+                  style={{ flex: 1, background: "#0d1117", color: "#e6edf3", border: "1px solid #C9A84C66", borderRadius: 6, padding: "6px 10px", fontSize: 13, outline: "none" }}
+                />
+                <input
+                  type="date"
+                  value={taskDate}
+                  onChange={e => setTaskDate(e.target.value)}
+                  style={{ background: "#0d1117", color: "#e6edf3", border: "1px solid #30373f", borderRadius: 6, padding: "6px 8px", fontSize: 12, outline: "none" }}
+                />
+              </div>
+              <div style={{ display: "flex", gap: 8 }}>
+                <button
+                  onClick={addTask}
+                  disabled={savingTask || !taskText.trim()}
+                  style={{ background: "#C9A84C", color: "#0d1117", border: "none", borderRadius: 8, padding: "6px 16px", fontSize: 12, fontWeight: 700, cursor: "pointer", opacity: savingTask || !taskText.trim() ? 0.5 : 1 }}
+                >
+                  {savingTask ? "Saving…" : "Save task"}
+                </button>
+                <button
+                  onClick={() => { setShowTaskForm(false); setTaskText(""); }}
+                  style={{ background: "transparent", border: "1px solid #30373f", color: "#8b949e", borderRadius: 8, padding: "6px 12px", fontSize: 12, cursor: "pointer" }}
+                >
+                  Cancel
+                </button>
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Add note form */}
