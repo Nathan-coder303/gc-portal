@@ -1330,16 +1330,16 @@ export default function TemplateEditor({
       {(undoState.past.length > 0 || undoState.future.length > 0) && (
         <div className="flex items-center gap-2 px-3 py-2 rounded-lg" style={{ background: "#1e2736", border: "1px solid #30373f" }}>
           <button onClick={doUndo} disabled={undoState.past.length === 0 || undoPending}
-            className="flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-lg font-medium disabled:opacity-40"
-            style={{ background: undoState.past.length > 0 ? "#C9A84C22" : "transparent", color: "#C9A84C", border: "1px solid #C9A84C44" }}
+            className="w-8 h-8 flex items-center justify-center rounded-lg disabled:opacity-30 transition-opacity"
+            style={{ background: "#C9A84C22", color: "#C9A84C", border: "1px solid #C9A84C44", fontSize: 18 }}
             title="Undo (Ctrl+Z)">
-            ↩ Undo
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M3 7v6h6"/><path d="M3 13C5 7 10 4 16 5.5a9 9 0 0 1 5 7.5"/></svg>
           </button>
           <button onClick={doRedo} disabled={undoState.future.length === 0 || undoPending}
-            className="flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-lg font-medium disabled:opacity-40"
-            style={{ background: undoState.future.length > 0 ? "#1e40af22" : "transparent", color: "#60a5fa", border: "1px solid #60a5fa33" }}
+            className="w-8 h-8 flex items-center justify-center rounded-lg disabled:opacity-30 transition-opacity"
+            style={{ background: "#C9A84C22", color: "#C9A84C", border: "1px solid #C9A84C44", fontSize: 18 }}
             title="Redo (Ctrl+Shift+Z)">
-            ↪ Redo
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M21 7v6h-6"/><path d="M21 13C19 7 14 4 8 5.5a9 9 0 0 0-5 7.5"/></svg>
           </button>
           {undoState.past.length > 0 && (
             <span className="text-xs ml-1" style={{ color: "#484f58" }}>
