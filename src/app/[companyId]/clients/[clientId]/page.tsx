@@ -175,13 +175,14 @@ export default async function ClientDetailPage({
         })()}
       />
 
-      <ClientCoverPhotoSelector
+      {/* PDF Cover Photo selector hidden — covered by PDF options modal */}
+      {/* <ClientCoverPhotoSelector
         clientId={safeClient.id}
         companyId={params.companyId}
         initialType={safeClient.coverPhotoType ?? null}
         initialUrl={safeClient.coverPhotoUrl ?? null}
         initialTitle={safeClient.coverTitle ?? null}
-      />
+      /> */}
 
       {/* Tab bar */}
       <div className="flex gap-2 mb-6">
