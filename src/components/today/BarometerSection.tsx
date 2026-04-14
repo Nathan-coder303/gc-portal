@@ -63,24 +63,24 @@ export default function BarometerSection({ mibhIncome, clients }: { mibhIncome: 
         onClick={() => setOpen(true)}
       >
         {/* Label */}
-        <div className="text-center text-[52px] sm:text-6xl font-black leading-none tracking-tight" style={{ color: "#C9A84C" }}>
+        <div className="text-center text-[36px] sm:text-[52px] font-black leading-none tracking-tight" style={{ color: "#C9A84C" }}>
           MIBH INCOME 2026
         </div>
 
         {/* Income left · % center · Goal right */}
-        <div className="grid grid-cols-3 items-center mt-1 gap-2">
-          <div className="text-[52px] sm:text-6xl font-black leading-none tracking-tight" style={{ color: "#C9A84C" }}>
+        <div className="grid grid-cols-3 items-center mt-1 gap-1">
+          <div className="text-[22px] sm:text-[52px] font-black leading-none tracking-tight" style={{ color: "#C9A84C" }}>
             ${fmt(mibhIncome)}
           </div>
           <div className="text-center">
             <span
-              className="text-[52px] sm:text-6xl font-black leading-none tracking-tight"
+              className="text-[22px] sm:text-[52px] font-black leading-none tracking-tight"
               style={{ color: "#22c55e" }}
             >
               {goalPct.toFixed(1)}%
             </span>
           </div>
-          <div className="text-[52px] sm:text-6xl font-black leading-none tracking-tight text-right" style={{ color: "#22c55e" }}>
+          <div className="text-[22px] sm:text-[52px] font-black leading-none tracking-tight text-right" style={{ color: "#22c55e" }}>
             $5,000,000
           </div>
         </div>

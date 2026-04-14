@@ -40,7 +40,7 @@ export default function PendingCountersignsCard({
         style={{ background: "#161b22", border: `1px solid ${estimates.length > 0 ? "#22c55e55" : "#30373f"}` }}
       >
         <div className="flex items-center justify-between">
-          <span className="text-[26px] sm:text-3xl font-black leading-none" style={{ color: "#C9A84C" }}>
+          <span className="text-lg sm:text-[26px] font-black leading-tight" style={{ color: "#C9A84C" }}>
             Pending countersignatures
           </span>
           <span

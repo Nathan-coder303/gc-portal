@@ -200,14 +200,14 @@ export default async function TodayPage({
   return (
     <div className="max-w-6xl mx-auto px-3 sm:px-4 py-4 sm:py-8">
       {/* Header */}
-      <div className="flex items-center justify-between mb-1 gap-2">
+      <div className="flex flex-wrap items-start justify-between mb-1 gap-2">
         <div className="min-w-0">
           <h1 className="text-xl sm:text-2xl font-bold leading-tight" style={{ color: "#e6edf3" }}>
             Today&apos;s Overview
           </h1>
           <p className="text-xs sm:text-sm mt-0.5 truncate" style={{ color: "#8b949e" }}>{today}</p>
         </div>
-        <div className="flex items-center gap-2 shrink-0">
+        <div className="flex items-center gap-2">
           <SyncBidsButton companyId={params.companyId} />
           <SyncLeadsButton companyId={params.companyId} />
         </div>
@@ -255,7 +255,7 @@ export default async function TodayPage({
                   </span>
                 )}
               </div>
-              <div className="text-[26px] sm:text-3xl font-black leading-none mt-1" style={{ color: "#e6edf3" }}>{todayLeads.length}</div>
+              <div className="text-[26px] sm:text-3xl font-black leading-none mt-1" style={{ color: todayLeads.length === 0 ? "#484f58" : "#e6edf3" }}>{todayLeads.length === 0 ? "—" : todayLeads.length}</div>
               <div className="text-[11px] mt-1" style={{ color: "#484f58" }}>{allLeadsCount} total all time</div>
               {todayLeads.length > 0 && (
                 <ul className="space-y-1.5 mt-2">

@@ -68,7 +68,7 @@ export default function SyncLeadsButton({ companyId }: { companyId: string }) {
     <div className="flex items-center gap-2 flex-wrap justify-end">
       {(result || lastSynced) && (
         <span
-          className="text-[10px] max-w-[200px] truncate"
+          className="hidden sm:inline text-[10px] max-w-[200px] truncate"
           style={{ color: status === "error" ? "#f85149" : result ? "#C9A84C" : "#484f58" }}
           title={result || `Last synced: ${lastSynced}`}
         >
