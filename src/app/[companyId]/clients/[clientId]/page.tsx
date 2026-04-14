@@ -13,7 +13,6 @@ import CollapsibleEstimateList from "@/components/clients/CollapsibleEstimateLis
 import ClientDetailHeader from "@/components/clients/ClientDetailHeader";
 import ClientNotesTab from "@/components/clients/ClientNotesTab";
 import ClientTextNotes from "@/components/clients/ClientTextNotes";
-import ClientCoverPhotoSelector from "@/components/clients/ClientCoverPhotoSelector";
 import ClientInvoicesTab from "@/components/clients/ClientInvoicesTab";
 import NurturingEmailTab from "@/components/clients/NurturingEmailTab";
 import ChangeOrdersTab from "@/components/clients/ChangeOrdersTab";
