@@ -793,6 +793,12 @@ function ClientGanttChart({ tasks, projectStart, companyId, clientId, canEdit, o
   const [collapsed, setCollapsed] = useState<Set<string>>(new Set());
   const [drag, setDrag] = useState<DragState | null>(null);
   const [saving, setSaving] = useState<string | null>(null);
+  const [phaseOrder, setPhaseOrder] = useState<string[]>([]);
+  const [phaseDrag, setPhaseDrag] = useState<{ phase: string; startClientY: number; currentClientY: number } | null>(null);
+  const phaseDragRef2 = useRef<{ phase: string; startClientY: number; currentClientY: number } | null>(null);
+  phaseDragRef2.current = phaseDrag;
+  const phaseOrderRef = useRef<string[]>([]);
+  const rowsRef = useRef<Array<{ kind: "phase"; phase: string; y: number }>>([]);
   const [editTask, setEditTask] = useState<ClientTask | null>(null);
   const [addChildFor, setAddChildFor] = useState<ClientTask | null>(null);
   const [setParentFor, setSetParentFor] = useState<ClientTask | null>(null);
@@ -813,6 +819,16 @@ function ClientGanttChart({ tasks, projectStart, companyId, clientId, canEdit, o
     for (const t of tasks) { const arr = map.get(t.phase) ?? []; arr.push(t); map.set(t.phase, arr); }
     return map;
   }, [tasks]);
+
+  // Keep phaseOrder in sync: preserve user reordering, append new phases at end
+  useEffect(() => {
+    setPhaseOrder(prev => {
+      const current = Array.from(phases.keys());
+      if (prev.length === 0) return current;
+      const newOnes = current.filter(p => !prev.includes(p));
+      return [...prev.filter(p => phases.has(p)), ...newOnes];
+    });
+  }, [phases]);
 
   const projectEnd = useMemo(() => {
     const dates = tasks.flatMap(t => [parseDate(t.startDate), parseDate(t.endDate)]).filter(Boolean) as Date[];
@@ -837,7 +853,10 @@ function ClientGanttChart({ tasks, projectStart, companyId, clientId, canEdit, o
   type Row = { kind: "phase"; phase: string; phaseTasks: ClientTask[] } | { kind: "task"; task: ClientTask; rowNum: number };
   const rows: Row[] = [];
   let rowNum = 0;
-  for (const [phase, phaseTasks] of Array.from(phases.entries())) {
+  const orderedPhases = phaseOrder.length > 0 ? phaseOrder : Array.from(phases.keys());
+  for (const phase of orderedPhases) {
+    const phaseTasks = phases.get(phase);
+    if (!phaseTasks) continue;
     rows.push({ kind: "phase", phase, phaseTasks });
     if (!collapsed.has(phase)) {
       for (const task of phaseTasks) { rows.push({ kind: "task", task, rowNum }); rowNum++; }
@@ -849,6 +868,10 @@ function ClientGanttChart({ tasks, projectStart, companyId, clientId, canEdit, o
   for (const row of rows) { rowYs.push(yOffset); yOffset += row.kind === "phase" ? PHASE_ROW_HEIGHT : ROW_HEIGHT; }
   const svgHeight = yOffset + 30;
   const svgWidth = LABEL_WIDTH + totalDays * CELL_WIDTH;
+
+  // Keep refs up to date for phase drag handler
+  phaseOrderRef.current = phaseOrder;
+  rowsRef.current = rows.map((r, i) => r.kind === "phase" ? { kind: "phase" as const, phase: r.phase, y: rowYs[i] } : null).filter(Boolean) as Array<{ kind: "phase"; phase: string; y: number }>;
 
   const getSvgX = useCallback((clientX: number) => {
     if (!svgRef.current) return 0;
@@ -892,6 +915,37 @@ function ClientGanttChart({ tasks, projectStart, companyId, clientId, canEdit, o
     document.addEventListener("mouseup", onUp);
     return () => { document.removeEventListener("mousemove", onMove); document.removeEventListener("mouseup", onUp); };
   }, [drag, getSvgX, companyId, clientId, tasks, onTasksChange]);
+
+  // ── Phase drag ──────────────────────────────────────────────────────────────
+  useEffect(() => {
+    if (!phaseDrag) return;
+    function onMove(e: MouseEvent) {
+      setPhaseDrag(prev => prev ? { ...prev, currentClientY: e.clientY } : null);
+    }
+    function onUp() {
+      const d = phaseDragRef2.current;
+      if (!d) { setPhaseDrag(null); return; }
+      const svgRect = svgRef.current?.getBoundingClientRect();
+      if (!svgRect) { setPhaseDrag(null); return; }
+      const currentSvgY = d.currentClientY - svgRect.top;
+      const phaseRows = rowsRef.current;
+      const withoutDragging = phaseRows.filter(r => r.phase !== d.phase);
+      let insertBefore: string | null = null;
+      for (const r of withoutDragging) {
+        if (currentSvgY < r.y + PHASE_ROW_HEIGHT / 2) { insertBefore = r.phase; break; }
+      }
+      setPhaseOrder(prev => {
+        const without = prev.filter(p => p !== d.phase);
+        if (insertBefore === null) return [...without, d.phase];
+        const idx = without.indexOf(insertBefore);
+        return [...without.slice(0, idx), d.phase, ...without.slice(idx)];
+      });
+      setPhaseDrag(null);
+    }
+    document.addEventListener("mousemove", onMove);
+    document.addEventListener("mouseup", onUp);
+    return () => { document.removeEventListener("mousemove", onMove); document.removeEventListener("mouseup", onUp); };
+  }, [phaseDrag]);
 
   const handleBarMouseDown = useCallback((e: React.MouseEvent, task: ClientTask, type: "move" | "resize") => {
     if (!canEdit || task.isMilestone) return;
@@ -948,7 +1002,7 @@ function ClientGanttChart({ tasks, projectStart, companyId, clientId, canEdit, o
 
   return (
     <>
-      <div className="overflow-x-auto select-none" style={{ cursor: drag ? "grabbing" : "default" }}>
+      <div className="overflow-x-auto select-none" style={{ cursor: drag || phaseDrag ? "grabbing" : "default" }}>
         <svg ref={svgRef} width={svgWidth} height={svgHeight} style={{ display: "block" }}>
           <rect x={0} y={0} width={svgWidth} height={svgHeight} fill="#0d1117" />
 
@@ -987,13 +1041,19 @@ function ClientGanttChart({ tasks, projectStart, companyId, clientId, canEdit, o
             if (row.kind === "phase") {
               const isCollapsed = collapsed.has(row.phase);
               const phaseDates = row.phaseTasks.flatMap(t => [parseDate(t.startDate), parseDate(t.endDate)]).filter(Boolean) as Date[];
+              const isDraggingThisPhase = phaseDrag?.phase === row.phase;
+              const phaseOpacity = isDraggingThisPhase ? 0.35 : 1;
               if (!phaseDates.length) return (
-                <g key={row.phase} onClick={() => toggle(row.phase)} style={{ cursor: "pointer" }}>
+                <g key={row.phase} opacity={phaseOpacity}>
                   <rect x={0} y={y} width={svgWidth} height={PHASE_ROW_HEIGHT} fill="#161b22" />
                   <line x1={0} y1={y} x2={svgWidth} y2={y} stroke="#30373f" strokeWidth={0.5} />
-                  <text x={10} y={y + 17} fontSize={10} fill="#8b949e" fontWeight={700}>{isCollapsed ? "▶" : "▼"}</text>
-                  <text x={24} y={y + 17} fontSize={11} fill={GOLD} fontWeight={700}>{row.phase}</text>
-                  <text x={24 + row.phase.length * 7} y={y + 17} fontSize={10} fill="#484f58"> ({row.phaseTasks.length} tasks)</text>
+                  {canEdit && <text x={4} y={y + 17} fontSize={10} fill="#484f58" style={{ cursor: "grab" }} onMouseDown={e => { e.preventDefault(); e.stopPropagation(); setPhaseDrag({ phase: row.phase, startClientY: e.clientY, currentClientY: e.clientY }); }}>⠿</text>}
+                  <g onClick={() => toggle(row.phase)} style={{ cursor: "pointer" }}>
+                    <rect x={canEdit ? 16 : 0} y={y} width={svgWidth} height={PHASE_ROW_HEIGHT} fill="transparent" />
+                    <text x={canEdit ? 18 : 10} y={y + 17} fontSize={10} fill="#8b949e" fontWeight={700}>{isCollapsed ? "▶" : "▼"}</text>
+                    <text x={canEdit ? 32 : 24} y={y + 17} fontSize={11} fill={GOLD} fontWeight={700}>{row.phase}</text>
+                    <text x={(canEdit ? 32 : 24) + row.phase.length * 7} y={y + 17} fontSize={10} fill="#484f58"> ({row.phaseTasks.length} tasks)</text>
+                  </g>
                 </g>
               );
               const phaseStart = phaseDates.reduce((min, d) => d < min ? d : min, phaseDates[0]);
@@ -1003,12 +1063,16 @@ function ClientGanttChart({ tasks, projectStart, companyId, clientId, canEdit, o
               const done = row.phaseTasks.filter(t => t.status === "DONE").length;
               const pct = Math.round((done / row.phaseTasks.length) * 100);
               return (
-                <g key={row.phase} onClick={() => toggle(row.phase)} style={{ cursor: "pointer" }}>
+                <g key={row.phase} opacity={phaseOpacity}>
                   <rect x={0} y={y} width={svgWidth} height={PHASE_ROW_HEIGHT} fill="#161b22" />
                   <line x1={0} y1={y} x2={svgWidth} y2={y} stroke="#30373f" strokeWidth={0.5} />
-                  <text x={10} y={y + 17} fontSize={10} fill="#8b949e" fontWeight={700}>{isCollapsed ? "▶" : "▼"}</text>
-                  <text x={24} y={y + 17} fontSize={11} fill={GOLD} fontWeight={700}>{row.phase}</text>
-                  <text x={24 + row.phase.length * 7} y={y + 17} fontSize={10} fill="#484f58"> ({row.phaseTasks.length} tasks · {pct}%)</text>
+                  {canEdit && <text x={4} y={y + 17} fontSize={10} fill="#484f58" style={{ cursor: "grab" }} onMouseDown={e => { e.preventDefault(); e.stopPropagation(); setPhaseDrag({ phase: row.phase, startClientY: e.clientY, currentClientY: e.clientY }); }}>⠿</text>}
+                  <g onClick={() => toggle(row.phase)} style={{ cursor: "pointer" }}>
+                    <rect x={canEdit ? 16 : 0} y={y} width={LABEL_WIDTH - (canEdit ? 16 : 0)} height={PHASE_ROW_HEIGHT} fill="transparent" />
+                    <text x={canEdit ? 18 : 10} y={y + 17} fontSize={10} fill="#8b949e" fontWeight={700}>{isCollapsed ? "▶" : "▼"}</text>
+                    <text x={canEdit ? 32 : 24} y={y + 17} fontSize={11} fill={GOLD} fontWeight={700}>{row.phase}</text>
+                    <text x={(canEdit ? 32 : 24) + row.phase.length * 7} y={y + 17} fontSize={10} fill="#484f58"> ({row.phaseTasks.length} tasks · {pct}%)</text>
+                  </g>
                   <rect x={barX} y={y + 7} width={barW} height={PHASE_ROW_HEIGHT - 14} rx={3} fill="#30373f" />
                   {pct > 0 && <rect x={barX} y={y + 7} width={(barW * pct) / 100} height={PHASE_ROW_HEIGHT - 14} rx={3} fill={GOLD} opacity={0.5} />}
                 </g>
@@ -1089,6 +1153,30 @@ function ClientGanttChart({ tasks, projectStart, companyId, clientId, canEdit, o
             );
           })}
 
+          {/* Phase drag: insertion indicator + ghost */}
+          {phaseDrag && (() => {
+            const svgRect = svgRef.current?.getBoundingClientRect();
+            if (!svgRect) return null;
+            const currentSvgY = phaseDrag.currentClientY - svgRect.top;
+            const phaseRows = rowsRef.current;
+            const withoutDragging = phaseRows.filter(r => r.phase !== phaseDrag.phase);
+            let insertY: number = phaseRows[phaseRows.length - 1]?.y ?? svgHeight;
+            // after the last phase row
+            const lastPhaseRow = phaseRows[phaseRows.length - 1];
+            if (lastPhaseRow) insertY = lastPhaseRow.y + PHASE_ROW_HEIGHT;
+            for (const r of withoutDragging) {
+              if (currentSvgY < r.y + PHASE_ROW_HEIGHT / 2) { insertY = r.y; break; }
+            }
+            const ghostY = currentSvgY - PHASE_ROW_HEIGHT / 2;
+            return (
+              <g>
+                <line x1={0} y1={insertY} x2={svgWidth} y2={insertY} stroke="#C9A84C" strokeWidth={2} strokeDasharray="6,3" style={{ pointerEvents: "none" }} />
+                <rect x={0} y={ghostY} width={LABEL_WIDTH} height={PHASE_ROW_HEIGHT} fill="#1e2736" opacity={0.9} rx={3} style={{ pointerEvents: "none" }} />
+                <text x={32} y={ghostY + 17} fontSize={11} fill={GOLD} fontWeight={700} style={{ pointerEvents: "none" }}>{phaseDrag.phase}</text>
+              </g>
+            );
+          })()}
+
           {/* Legend */}
           <g transform={`translate(${LABEL_WIDTH + 8}, ${svgHeight - 16})`}>
             {[
@@ -1104,7 +1192,7 @@ function ClientGanttChart({ tasks, projectStart, companyId, clientId, canEdit, o
         </svg>
         {canEdit && (
           <p className="text-xs mt-1" style={{ color: "#484f58" }}>
-            Drag bars to move · Drag right edge to resize · Double-click to edit
+            Drag bars to move · Drag right edge to resize · Double-click to edit · Drag ⠿ on phase header to reorder
           </p>
         )}
       </div>
@@ -1216,6 +1304,7 @@ function printScheduleHtml(tasks: ClientTask[]) {
     table{width:100%;border-collapse:collapse}
     th{background:#eee;padding:5px 8px;border:1px solid #ccc;text-align:left;font-size:11px}
     td{border:1px solid #eee}
+    td:nth-child(2),td:nth-child(3){white-space:nowrap;width:82px}
     @media print{body{print-color-adjust:exact;-webkit-print-color-adjust:exact}}
   </style></head><body>
     <h1>Project Schedule</h1>
