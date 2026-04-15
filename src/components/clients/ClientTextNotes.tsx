@@ -25,7 +25,7 @@ function formatDate(iso: string) {
 }
 
 function todayISO() {
-  return new Date().toISOString().slice(0, 10);
+  return new Date().toLocaleDateString("en-CA", { timeZone: "America/New_York" }); // YYYY-MM-DD in ET
 }
 
 export default function ClientTextNotes({

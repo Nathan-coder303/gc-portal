@@ -18,11 +18,11 @@ type Props = {
 };
 
 function formatDate(iso: string) {
-  return new Date(iso).toLocaleString("en-US", { timeZone: "America/New_York", month: "short", day: "numeric", year: "numeric", hour: "numeric", minute: "2-digit", hour12: true });
+  return new Date(iso).toLocaleDateString("en-US", { timeZone: "America/New_York", month: "short", day: "numeric", year: "numeric" });
 }
 
 function todayISO() {
-  return new Date().toISOString().slice(0, 10);
+  return new Date().toLocaleDateString("en-CA", { timeZone: "America/New_York" }); // YYYY-MM-DD in ET
 }
 
 export default function NotesPanel({ companyId, leadId, clientId, title, onClose }: Props) {
@@ -64,7 +64,7 @@ export default function NotesPanel({ companyId, leadId, clientId, title, onClose
           leadId: leadId || null,
           clientId: clientId || null,
           content: content.trim(),
-          noteDate: new Date(noteDate).toISOString(),
+          noteDate: new Date(noteDate + "T12:00:00Z").toISOString(),
         }),
       });
       if (res.ok) {
