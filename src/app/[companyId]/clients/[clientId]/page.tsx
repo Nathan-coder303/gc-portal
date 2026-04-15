@@ -183,15 +183,15 @@ export default async function ClientDetailPage({
         initialTitle={safeClient.coverTitle ?? null}
       /> */}
 
-      {/* Tab bar */}
-      <div className="flex gap-2 mb-6">
+      {/* Tab bar — wraps on mobile so all tabs are visible without scrolling */}
+      <div className="flex flex-wrap gap-2 mb-6">
         {tabs.map((tab) => {
           const isActive = activeTab === tab.key;
           return (
             <Link
               key={tab.key}
               href={`/${params.companyId}/clients/${params.clientId}?tab=${tab.key}`}
-              className="px-4 py-1.5 rounded-full text-sm font-medium transition-all"
+              className="px-3 py-1.5 rounded-full text-xs font-medium transition-all whitespace-nowrap"
               style={
                 isActive
                   ? { background: "#C9A84C", color: "#0d1117" }
