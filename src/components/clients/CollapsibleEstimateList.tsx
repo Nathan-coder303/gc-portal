@@ -41,7 +41,7 @@ function fmt(n: number) {
 
 function EstimateCard({
   est, companyId, clientId, clientName, clientEmail, clientAddress, canEdit, canDelete,
-  isCommercial, clientCoverPhotoType, clientCoverPhotoUrl, clientCoverTitle, hasInsertFile,
+  isCommercial, clientCoverPhotoType, clientCoverPhotoUrl, hasInsertFile,
 }: {
   est: EstimateRow;
   companyId: string;
@@ -54,7 +54,6 @@ function EstimateCard({
   isCommercial?: boolean;
   clientCoverPhotoType?: string | null;
   clientCoverPhotoUrl?: string | null;
-  clientCoverTitle?: string | null;
   hasInsertFile?: boolean;
 }) {
   const router = useRouter();
@@ -362,7 +361,7 @@ function EstimateCard({
 
 export default function CollapsibleEstimateList({
   estimates, companyId, clientId, clientName, clientEmail, clientAddress, canEdit, canDelete,
-  isCommercial, clientCoverPhotoType, clientCoverPhotoUrl, clientCoverTitle, hasInsertFile,
+  isCommercial, clientCoverPhotoType, clientCoverPhotoUrl, hasInsertFile,
 }: {
   estimates: EstimateRow[];
   companyId: string;
@@ -375,7 +374,6 @@ export default function CollapsibleEstimateList({
   isCommercial?: boolean;
   clientCoverPhotoType?: string | null;
   clientCoverPhotoUrl?: string | null;
-  clientCoverTitle?: string | null;
   hasInsertFile?: boolean;
 }) {
   if (estimates.length === 0) {
@@ -427,7 +425,6 @@ export default function CollapsibleEstimateList({
             isCommercial={isCommercial}
             clientCoverPhotoType={clientCoverPhotoType}
             clientCoverPhotoUrl={clientCoverPhotoUrl}
-            clientCoverTitle={clientCoverTitle}
             hasInsertFile={hasInsertFile}
           />
         ))}
