@@ -237,7 +237,6 @@ function EstimateCard({
           isCommercial={isCommercial}
           initialCoverType={(clientCoverPhotoType as CoverType) ?? undefined}
           customCoverUrl={clientCoverPhotoUrl}
-          customCoverLabel={clientCoverTitle}
           hasInsertFile={hasInsertFile}
           initialPage2={initialPage2}
           confirmLabel="Download PDF"

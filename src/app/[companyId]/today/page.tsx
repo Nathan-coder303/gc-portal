@@ -4,6 +4,7 @@ import { prisma } from "@/lib/prisma";
 import Link from "next/link";
 import SyncLeadsButton from "@/components/today/SyncLeadsButton";
 import SyncBidsButton from "@/components/today/SyncBidsButton";
+import AddLeadButton from "@/components/leads/AddLeadButton";
 import TodayLeadCard from "@/components/leads/TodayLeadCard";
 import TodayTaskCard, { FollowUpItem } from "@/components/today/TodayTaskCard";
 import TodayCallsSection from "@/components/today/TodayCallsSection";
@@ -208,6 +209,7 @@ export default async function TodayPage({
           <p className="text-xs sm:text-sm mt-0.5 truncate" style={{ color: "#8b949e" }}>{today}</p>
         </div>
         <div className="flex items-center gap-2">
+          <AddLeadButton companyId={params.companyId} />
           <SyncBidsButton companyId={params.companyId} />
           <SyncLeadsButton companyId={params.companyId} />
         </div>

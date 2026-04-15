@@ -31,7 +31,6 @@ export default function CoverPagePickerModal({
   isCommercial,
   initialCoverType,
   customCoverUrl,
-  customCoverLabel,
   hasInsertFile,
   initialPage2 = "NONE",
   confirmLabel = "Download PDF",
@@ -46,7 +45,6 @@ export default function CoverPagePickerModal({
   isCommercial?: boolean;
   initialCoverType?: CoverType | null;
   customCoverUrl?: string | null;
-  customCoverLabel?: string | null;
   hasInsertFile?: boolean;
   initialPage2?: Page2Type;
   confirmLabel?: string;

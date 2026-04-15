@@ -119,7 +119,6 @@ export default function SendEstimateEmailButton({ templateId, companyId, templat
           isCommercial={isCommercial}
           initialCoverType={defaultCover}
           customCoverUrl={clientCoverPhotoUrl}
-          customCoverLabel={clientCoverTitle}
           hasInsertFile={hasInsertFile}
           initialPage2={defaultPage2}
           confirmLabel="Next: Write Email →"
