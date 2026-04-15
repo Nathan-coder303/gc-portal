@@ -177,7 +177,7 @@ export default function AppointmentsCard({
         found = card;
         leadId = card.lead?.id ?? null;
       } else if (rawMatch) {
-        found = { id: `raw_${rawMatch.id}`, displayName: rawMatch.name, notes: null, source: null, lead: { id: rawMatch.id, ...rawMatch } };
+        found = { id: `raw_${rawMatch.id}`, displayName: rawMatch.name, notes: null, source: null, lead: { ...rawMatch } };
         leadId = rawMatch.id;
       }
 
