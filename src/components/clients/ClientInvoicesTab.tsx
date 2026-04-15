@@ -302,11 +302,11 @@ export default function ClientInvoicesTab({
   return (
     <div className="space-y-6">
       {/* Header + summary */}
-      <div className="flex items-start justify-between gap-4">
+      <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <h2 className="text-base font-semibold" style={{ color: "#e6edf3" }}>Invoices</h2>
           {invoices.length > 0 && (
-            <div className="flex gap-4 mt-1">
+            <div className="flex flex-wrap gap-3 mt-1">
               <span className="text-xs" style={{ color: "#8b949e" }}>Invoiced: <strong style={{ color: "#e6edf3" }}>${fmt(totalInvoiced)}</strong></span>
               <span className="text-xs" style={{ color: "#8b949e" }}>Received: <strong style={{ color: "#22c55e" }}>${fmt(totalPaid)}</strong></span>
               <span className="text-xs" style={{ color: "#8b949e" }}>Balance: <strong style={{ color: totalBalance > 0 ? "#f87171" : "#22c55e" }}>${fmt(totalBalance)}</strong></span>
@@ -479,12 +479,12 @@ export default function ClientInvoicesTab({
           <div style={{ background: "#161b22", border: "1px solid #30373f", borderRadius: 14, padding: 24, width: "100%", maxWidth: 560, maxHeight: "90vh", overflowY: "auto" }}
             onClick={(e) => e.stopPropagation()}>
 
-            <div className="flex items-start justify-between mb-3">
+            <div className="flex flex-wrap items-start justify-between gap-2 mb-3">
               <div>
                 <h3 className="text-sm font-bold" style={{ color: "#e6edf3" }}>Send Invoice #{sendInvoice.invoiceNumber}</h3>
                 <p className="text-[11px] mt-0.5" style={{ color: "#8b949e" }}>{sendInvoice.phase} — <strong style={{ color: GOLD }}>${fmt(sendInvoice.amount)}</strong></p>
               </div>
-              <div className="flex gap-2 shrink-0">
+              <div className="flex gap-2">
                 <button onClick={() => setPreviewOpen(v => !v)}
                   className="text-[11px] px-2 py-1 rounded-lg font-semibold"
                   style={{ background: "#3b82f622", color: "#3b82f6", border: "1px solid #3b82f644" }}>

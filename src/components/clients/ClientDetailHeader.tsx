@@ -134,7 +134,7 @@ export default function ClientDetailHeader({
 
           {/* Info */}
           <div className="flex-1 min-w-0">
-            <div className="flex items-start justify-between gap-3">
+            <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
               <div className="flex-1 min-w-0">
                 <h1 className="text-2xl font-bold leading-tight" style={{ color: "#e6edf3" }}>{client.name}</h1>
                 <div className="flex flex-wrap gap-x-4 gap-y-0.5 mt-1.5">
@@ -184,8 +184,8 @@ export default function ClientDetailHeader({
               </div>
 
               {/* Stats + edit */}
-              <div className="flex items-center gap-3 shrink-0">
-                <div className="text-right">
+              <div className="flex items-center gap-3 sm:shrink-0">
+                <div className="sm:text-right">
                   <div className="text-2xl font-bold" style={{ color: GOLD }}>{totalFormatted}</div>
                   <div className="text-xs" style={{ color: "#8b949e" }}>{estimateCount} estimate{estimateCount !== 1 ? "s" : ""}</div>
                 </div>
