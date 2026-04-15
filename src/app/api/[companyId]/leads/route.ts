@@ -4,6 +4,26 @@ import { prisma } from "@/lib/prisma";
 
 export const runtime = "nodejs";
 
+// GET — list raw leads (no pipeline card yet)
+export async function GET(
+  _req: NextRequest,
+  { params }: { params: { companyId: string } }
+) {
+  const session = await auth();
+  if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
+  const leads = await prisma.lead.findMany({
+    where: { companyId: params.companyId, pipelineCard: null },
+    orderBy: { receivedAt: "desc" },
+    select: {
+      id: true, name: true, email: true, phone: true,
+      projectType: true, address: true, city: true,
+    },
+  });
+
+  return NextResponse.json(leads);
+}
+
 export async function POST(
   req: NextRequest,
   { params }: { params: { companyId: string } }

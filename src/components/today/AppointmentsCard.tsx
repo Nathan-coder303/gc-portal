@@ -20,6 +20,16 @@ type PipelineLead = {
   } | null;
 };
 
+type RawLead = {
+  id: string;
+  name: string;
+  email: string | null;
+  phone: string | null;
+  projectType: string | null;
+  address?: string | null;
+  city?: string | null;
+};
+
 export default function AppointmentsCard({
   companyId,
   initialAppointments,
@@ -54,9 +64,21 @@ export default function AppointmentsCard({
     setError("");
     setLoadingLeads(true);
     try {
-      const res = await fetch(`/api/${companyId}/pipeline?type=sales`);
-      const data: PipelineLead[] = await res.json();
-      setLeads(data);
+      const [pipelineRes, rawLeadsRes] = await Promise.all([
+        fetch(`/api/${companyId}/pipeline?type=sales`),
+        fetch(`/api/${companyId}/leads`),
+      ]);
+      const pipelineCards: PipelineLead[] = await pipelineRes.json();
+      const rawLeads: RawLead[] = await rawLeadsRes.json();
+      // Convert raw leads (no pipeline card yet) to PipelineLead shape
+      const rawAsCards: PipelineLead[] = rawLeads.map(l => ({
+        id: `raw_${l.id}`,
+        displayName: l.name,
+        notes: null,
+        source: null,
+        lead: { name: l.name, email: l.email, phone: l.phone, projectType: l.projectType, address: l.address, city: l.city },
+      }));
+      setLeads([...pipelineCards, ...rawAsCards]);
     } catch { /* ignore */ }
     setLoadingLeads(false);
   }

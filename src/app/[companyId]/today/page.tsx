@@ -64,7 +64,7 @@ export default async function TodayPage({
   if (verifyHour !== 0) todayStart = new Date(Date.UTC(etY, etM - 1, etD, 5, 0, 0, 0));
   const todayEnd = new Date(todayStart.getTime() + 24 * 60 * 60 * 1000 - 1);
 
-  const [todayLeads, allLeadsCount, estimatesToSend, followUps, clients, urgentLeads, untriaged, pendingCountersigns, activeClients] = await Promise.all([
+  const [todayLeads, allLeadsCount, estimatesToSend, followUps, clients, urgentLeads, untriaged, pendingCountersigns, todayAppointments, activeClients] = await Promise.all([
     // Leads received today from email
     prisma.lead.findMany({
       where: {
@@ -133,6 +133,17 @@ export default async function TodayPage({
         client: { select: { id: true, name: true } },
       },
     }),
+    // Today's appointments — exact date range so future-scheduled ones appear on their day
+    prisma.followUp.findMany({
+      where: {
+        companyId: params.companyId,
+        category: "TASK",
+        text: { startsWith: "📅 Appointment" },
+        completedAt: null,
+        dueDate: { gte: todayStart, lte: todayEnd },
+      },
+      orderBy: { createdAt: "asc" },
+    }),
     // Active + Completed clients with template data for MIBH Income barometer
     prisma.client.findMany({
       where: { companyId: params.companyId, status: { in: ["ACTIVE", "COMPLETED"] } },
@@ -171,14 +182,8 @@ export default async function TodayPage({
   });
   const mibhIncome = clientIncomeSummaries.filter(c => c.status === "ACTIVE").reduce((s, c) => s + c.mibhIncome, 0);
 
-  // Today's appointments: TASK items starting with "📅 Appointment" due today
-  const appointments = followUps.filter(f =>
-    f.category === "TASK" &&
-    f.text.startsWith("📅 Appointment") &&
-    !f.completedAt &&
-    f.dueDate &&
-    f.dueDate.toISOString().slice(0, 10) === etDateStr
-  );
+  // Today's appointments come from the dedicated query (exact date match, works for future dates too)
+  const appointments = todayAppointments;
 
   // Map follow-ups to FollowUpItem shape for each category
   function toItems(category: "TASK" | "FOLLOW_UP" | "ESTIMATE"): FollowUpItem[] {
