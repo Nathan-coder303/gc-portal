@@ -382,7 +382,7 @@ function DivisionSection({
   canEdit: boolean;
   canArchive: boolean;
 }) {
-  const [open, setOpen] = useState(true);
+  const [open, setOpen] = useState(() => typeof window !== "undefined" ? window.innerWidth >= 768 : true);
   const [isPending, startTransition] = useTransition();
   const [addingGroup, setAddingGroup] = useState(false);
   const [groupName, setGroupName] = useState("");
@@ -406,7 +406,20 @@ function DivisionSection({
 
   return (
     <div ref={(node) => { setDropRef(node); setDragRef(node); }} className="bg-white rounded-xl overflow-hidden" style={{ border: isOver ? "2px solid #3b82f6" : "1px solid #e2e8f0", opacity: isDragging ? 0.4 : 1, transition: "border 0.1s" }}>
-      <div className="w-full flex items-center justify-between px-4 py-3 hover:bg-slate-50 transition-colors">
+      {/* Mobile header */}
+      <div
+        className="w-full flex items-center gap-3 px-4 py-3 md:hidden cursor-pointer select-none"
+        onClick={() => setOpen(!open)}
+      >
+        <span className="text-base shrink-0 text-slate-500">{open ? "▼" : "▶"}</span>
+        <div className="flex flex-col flex-1 min-w-0">
+          {division.csiCode && <span className="text-[10px] font-semibold text-slate-400">{division.csiCode}</span>}
+          <span className="text-sm font-bold text-slate-900 truncate">{division.name}</span>
+        </div>
+        <span className="text-sm font-bold text-slate-900 shrink-0">${fmt(total)}</span>
+      </div>
+      {/* Desktop header */}
+      <div className="w-full hidden md:flex items-center justify-between px-4 py-3 hover:bg-slate-50 transition-colors">
         <div className="flex items-center gap-2">
           {canEdit && (
             <span className="text-slate-400 select-none cursor-grab text-sm" {...dragListeners} {...dragAttrs}>⠿</span>

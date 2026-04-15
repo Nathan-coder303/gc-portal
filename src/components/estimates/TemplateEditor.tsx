@@ -540,7 +540,7 @@ function TemplateGroupSection({ group, divisionId, canEdit }: { group: Group; di
 }
 
 function TemplateDivisionSection({ division, otherDivisions, canEdit, globalSaveSignal }: { division: Division; otherDivisions: Division[]; canEdit: boolean; globalSaveSignal?: number }) {
-  const [open, setOpen] = useState(true);
+  const [open, setOpen] = useState(() => typeof window !== "undefined" ? window.innerWidth >= 768 : true);
   const [isPending, startTransition] = useTransition();
   const [addingGroup, setAddingGroup] = useState(false);
   const [groupName, setGroupName] = useState("");
@@ -582,7 +582,22 @@ function TemplateDivisionSection({ division, otherDivisions, canEdit, globalSave
 
   return (
     <div ref={(node) => { setDropRef(node); setDragRef(node); }} className="rounded-xl overflow-x-auto" style={{ background: "#1e2736", border: isOver ? "2px solid #C9A84C" : "1px solid #30373f", transition: "border 0.1s", opacity: isDragging ? 0.4 : 1 }}>
-      <div className="w-full flex items-center gap-3 px-4 py-3" style={{ background: "#1e2736" }}>
+      {/* Mobile header — tap anywhere to expand/collapse */}
+      <div
+        className="w-full flex items-center gap-3 px-4 py-3 md:hidden cursor-pointer select-none"
+        style={{ background: "#1e2736" }}
+        onClick={() => !editingHeader && setOpen(!open)}
+      >
+        <span className="text-base shrink-0" style={{ color: "#C9A84C" }}>{open ? "▼" : "▶"}</span>
+        <div className="flex flex-col flex-1 min-w-0">
+          {division.csiCode && <span className="text-[10px] font-semibold" style={{ color: "#8b949e" }}>{division.csiCode}</span>}
+          <span className="text-sm font-bold truncate" style={{ color: "#e6edf3" }}>{division.name}</span>
+        </div>
+        {total > 0 && <span className="text-sm font-bold shrink-0" style={{ color: "#C9A84C" }}>${fmt(total)}</span>}
+      </div>
+
+      {/* Desktop header */}
+      <div className="w-full hidden md:flex items-center gap-3 px-4 py-3" style={{ background: "#1e2736" }}>
         {canEdit && (
           <span className="text-xs select-none shrink-0 cursor-grab" style={{ color: "#8b949e", fontSize: "14px" }} {...dragListeners} {...dragAttrs}>⠿</span>
         )}
