@@ -1327,7 +1327,7 @@ function TemplatePdfDocument({ companyName, template, client, divisions, showTer
                     {filledGroups.map((grp) => {
                       const grpTotal = grp.items.reduce((s, i) => s + calcTotal(i.defaultQty, i.defaultUnitCost, i.defaultMarkupPct), 0);
                       return (
-                        <View key={grp.id} minPresenceAhead={30}>
+                        <View key={grp.id} minPresenceAhead={70}>
                           {/* Group header row — light blue */}
                           <View wrap={false} style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", backgroundColor: "#dbeafe", paddingHorizontal: 8, paddingVertical: 4, marginTop: 4 }}>
                             <Text style={{ fontSize: 7.5, fontFamily: "Helvetica-Bold", color: "#1e40af", textTransform: "uppercase", letterSpacing: 0.5 }}>{grp.name}</Text>
@@ -1340,7 +1340,7 @@ function TemplatePdfDocument({ companyName, template, client, divisions, showTer
                     })}
 
                     {filledItems.length > 0 && (
-                      <View minPresenceAhead={30}>
+                      <View minPresenceAhead={55}>
                         <ItemTableHeader showLineNum={isRoof} />
                         {filledItems.map((item, idx) => <ItemRow key={item.id} item={item} index={idx} lineNum={lineNumMap.get(item.id)} />)}
                       </View>
