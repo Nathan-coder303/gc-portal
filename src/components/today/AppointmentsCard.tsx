@@ -1,9 +1,11 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
 
 type Appointment = { id: string; text: string; dueDate: string | null };
+
+type Note = { id: string; content: string; noteDate: string; createdAt: string };
 
 type PipelineLead = {
   id: string;
@@ -11,6 +13,7 @@ type PipelineLead = {
   notes: string | null;
   source: string | null;
   lead: {
+    id?: string;
     name: string;
     email: string | null;
     phone: string | null;
@@ -56,6 +59,11 @@ export default function AppointmentsCard({
   const [apptText, setApptText] = useState("");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
+
+  // Lead popup
+  const [popupLead, setPopupLead] = useState<PipelineLead | null>(null);
+  const [popupNotes, setPopupNotes] = useState<Note[]>([]);
+  const [popupLoading, setPopupLoading] = useState(false);
 
   async function openPicker() {
     setShowPicker(true);
@@ -138,6 +146,49 @@ export default function AppointmentsCard({
     setSelectedLead(null);
     setError("");
   }
+
+  const openLeadPopup = useCallback(async (apptText: string) => {
+    // Extract name: "📅 Appointment – Name · ..." → "Name"
+    const raw = apptText.replace(/^📅 Appointment\s*[–-]\s*/, "");
+    const name = raw.split(" · ")[0]?.trim();
+    if (!name) return;
+    setPopupLoading(true);
+    setPopupLead(null);
+    setPopupNotes([]);
+    try {
+      const [pipelineRes, rawLeadsRes] = await Promise.all([
+        fetch(`/api/${companyId}/pipeline?type=sales`),
+        fetch(`/api/${companyId}/leads`),
+      ]);
+      const cards: PipelineLead[] = await pipelineRes.json();
+      const rawLeads: RawLead[] = await rawLeadsRes.json();
+      const nameLower = name.toLowerCase();
+
+      const card = cards.find(c =>
+        c.displayName.toLowerCase().includes(nameLower) ||
+        (c.lead?.name ?? "").toLowerCase().includes(nameLower)
+      );
+      const rawMatch = rawLeads.find(l => (l.name ?? "").toLowerCase().includes(nameLower));
+
+      let found: PipelineLead | null = null;
+      let leadId: string | null = null;
+
+      if (card) {
+        found = card;
+        leadId = card.lead?.id ?? null;
+      } else if (rawMatch) {
+        found = { id: `raw_${rawMatch.id}`, displayName: rawMatch.name, notes: null, source: null, lead: { id: rawMatch.id, ...rawMatch } };
+        leadId = rawMatch.id;
+      }
+
+      setPopupLead(found);
+      if (leadId) {
+        const notesRes = await fetch(`/api/${companyId}/notes?leadId=${leadId}`);
+        if (notesRes.ok) setPopupNotes(await notesRes.json());
+      }
+    } catch { /* ignore */ }
+    setPopupLoading(false);
+  }, [companyId]);
 
   const filteredLeads = leads.filter(l =>
     l.displayName.toLowerCase().includes(search.toLowerCase()) ||
@@ -283,9 +334,10 @@ export default function AppointmentsCard({
             const name = parts[0] ?? "";
             const rest = parts.slice(1);
             return (
-              <div
+              <button
                 key={appt.id}
-                className="flex items-start gap-3 p-4 rounded-xl"
+                onClick={() => openLeadPopup(appt.text)}
+                className="w-full text-left flex items-start gap-3 p-4 rounded-xl transition-opacity hover:opacity-80"
                 style={{ background: "#161b22", border: "1px solid #C9A84C22" }}
               >
                 <span className="text-2xl shrink-0">📅</span>
@@ -297,11 +349,58 @@ export default function AppointmentsCard({
                     ))}
                   </div>
                 </div>
-              </div>
+              </button>
             );
           })}
         </div>
       ) : null}
+
+      {/* Lead popup modal */}
+      {(popupLoading || popupLead) && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ background: "rgba(0,0,0,0.7)" }} onClick={() => { setPopupLead(null); setPopupNotes([]); }}>
+          <div className="w-full max-w-md rounded-2xl p-5 space-y-4" style={{ background: "#161b22", border: "1px solid #C9A84C44" }} onClick={e => e.stopPropagation()}>
+            <div className="flex items-center justify-between">
+              <h2 className="text-base font-bold" style={{ color: "#e6edf3" }}>{popupLead?.displayName ?? "Loading…"}</h2>
+              <button onClick={() => { setPopupLead(null); setPopupNotes([]); }} style={{ color: "#8b949e", fontSize: 20, lineHeight: 1 }}>×</button>
+            </div>
+
+            {popupLoading && <p className="text-sm text-center py-4" style={{ color: "#484f58" }}>Loading…</p>}
+
+            {!popupLoading && popupLead && (
+              <>
+                {/* Lead details */}
+                <div className="space-y-1 text-sm" style={{ color: "#8b949e" }}>
+                  {popupLead.lead?.projectType && <div><span style={{ color: "#C9A84C" }}>Project:</span> {popupLead.lead.projectType}</div>}
+                  {popupLead.lead?.phone && <div><span style={{ color: "#C9A84C" }}>Phone:</span> {popupLead.lead.phone}</div>}
+                  {popupLead.lead?.email && <div><span style={{ color: "#C9A84C" }}>Email:</span> {popupLead.lead.email}</div>}
+                  {popupLead.lead?.address && <div><span style={{ color: "#C9A84C" }}>Address:</span> {popupLead.lead.address}{popupLead.lead.city ? `, ${popupLead.lead.city}` : ""}</div>}
+                  {popupLead.source && <div><span style={{ color: "#C9A84C" }}>Source:</span> {popupLead.source}</div>}
+                  {popupLead.notes && <div className="mt-1 text-xs" style={{ color: "#484f58" }}>{popupLead.notes}</div>}
+                </div>
+
+                {/* Notes */}
+                <div>
+                  <p className="text-xs font-semibold uppercase tracking-widest mb-2" style={{ color: "#484f58" }}>Notes</p>
+                  {popupNotes.length === 0 ? (
+                    <p className="text-xs italic" style={{ color: "#484f58" }}>No notes yet</p>
+                  ) : (
+                    <div className="space-y-2 max-h-48 overflow-y-auto">
+                      {popupNotes.map(n => (
+                        <div key={n.id} style={{ borderLeft: "2px solid #C9A84C44", paddingLeft: 10 }}>
+                          <div className="text-[10px] font-semibold mb-0.5" style={{ color: "#C9A84C" }}>
+                            {new Date(n.noteDate).toLocaleDateString("en-US", { timeZone: "UTC", month: "short", day: "numeric", year: "numeric" })}
+                          </div>
+                          <p className="text-xs" style={{ color: "#e6edf3", whiteSpace: "pre-wrap" }}>{n.content}</p>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 }

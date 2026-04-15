@@ -144,7 +144,7 @@ export async function GET(req: NextRequest) {
         existingByName.linkedMsgIds = linked;
         merged++;
       } else {
-        await prisma.lead.create({
+        const newLead = await prisma.lead.create({
           data: {
             companyId: COMPANY_ID,
             gmailMsgId: msg.id!, emailFrom: from, emailSubject: subject, receivedAt,
@@ -155,8 +155,38 @@ export async function GET(req: NextRequest) {
           },
         });
         if (nameKey && parsed.name) {
-          byName.set(nameKey, { id: "", gmailMsgId: msg.id!, linkedMsgIds: null, name: parsed.name, email: parsed.email, phone: parsed.phone, address: parsed.address, city: parsed.city, state: parsed.state, projectType: parsed.projectType, message: parsed.message });
+          byName.set(nameKey, { id: newLead.id, gmailMsgId: msg.id!, linkedMsgIds: null, name: parsed.name, email: parsed.email, phone: parsed.phone, address: parsed.address, city: parsed.city, state: parsed.state, projectType: parsed.projectType, message: parsed.message });
         }
+
+        // Auto-create pipeline card for NSA leads that request a call
+        const isNsa = from.toLowerCase().includes("emailings.mibhconstruction") || subject.toLowerCase().includes("nsa");
+        const hasCall = /\bcall\b/i.test(`${subject} ${bodyText}`);
+        if (isNsa && hasCall) {
+          const receivedLabel = receivedAt.toLocaleString("en-US", {
+            month: "short", day: "numeric", year: "numeric",
+            hour: "numeric", minute: "2-digit", hour12: true,
+          });
+          await prisma.pipelineCard.create({
+            data: {
+              companyId: COMPANY_ID,
+              displayName: parsed.name ?? "NSA Lead",
+              leadId: newLead.id,
+              stage: "TO_CALL_ASAP",
+              source: "NSA",
+              notes: `📞 Call requested via NSA email — received ${receivedLabel}`,
+              pipelineType: "sales",
+            },
+          });
+          await prisma.note.create({
+            data: {
+              companyId: COMPANY_ID,
+              leadId: newLead.id,
+              content: `📞 Call requested via NSA email — received ${receivedLabel}`,
+              noteDate: receivedAt,
+            },
+          });
+        }
+
         added++;
       }
     } catch (err) { errors.push(String(err)); }
