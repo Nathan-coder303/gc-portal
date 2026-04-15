@@ -70,12 +70,15 @@ function SourceSelector({
   value,
   onChange,
   stageColor,
+  customSources,
+  onAddCustomSource,
 }: {
   value: string | null;
   onChange: (v: string | null) => void;
   stageColor: string;
+  customSources: string[];
+  onAddCustomSource: (s: string) => void;
 }) {
-  const [customSources, setCustomSources] = useState<string[]>([]);
   const [addingCustom, setAddingCustom] = useState(false);
   const [customInput, setCustomInput] = useState("");
 
@@ -90,7 +93,7 @@ function SourceSelector({
   function handleAddCustom() {
     const v = customInput.trim();
     if (!v) return;
-    setCustomSources((prev) => [...prev, v]);
+    onAddCustomSource(v);
     onChange(v);
     setAddingCustom(false);
     setCustomInput("");
@@ -238,6 +241,8 @@ function TriageCard({
   onDelete,
   onNotes,
   onMoveToStage,
+  customSources,
+  onAddCustomSource,
 }: {
   lead: TriageLead;
   stages: PipelineStage[];
@@ -245,6 +250,8 @@ function TriageCard({
   onEdit: (leadId: string) => void;
   onDelete: (leadId: string) => void;
   onNotes: (leadId: string, name: string) => void;
+  customSources: string[];
+  onAddCustomSource: (s: string) => void;
   onMoveToStage: (leadId: string, stageId: string) => void;
 }) {
   const [dragging, setDragging] = useState(false);
@@ -301,7 +308,7 @@ function TriageCard({
       {lead.phone && (
         <div style={{ color: "#8b949e", fontSize: 10, marginTop: 2 }}>📞 {lead.phone}</div>
       )}
-      <SourceSelector value={source} onChange={setSource} stageColor={TRIAGE_COLOR} />
+      <SourceSelector value={source} onChange={setSource} stageColor={TRIAGE_COLOR} customSources={customSources} onAddCustomSource={onAddCustomSource} />
       <div style={{ marginTop: 5 }} onClick={(e) => e.stopPropagation()}>
         <select
           value=""
@@ -329,6 +336,8 @@ function StageCard({
   onStageChange,
   onEdit,
   onNotes,
+  customSources,
+  onAddCustomSource,
 }: {
   card: StagedCard;
   stageColor: string;
@@ -339,6 +348,8 @@ function StageCard({
   onStageChange: (id: string, stageId: string) => void;
   onEdit: (leadId: string) => void;
   onNotes: (leadId: string, name: string) => void;
+  customSources: string[];
+  onAddCustomSource: (s: string) => void;
 }) {
   const [dragging, setDragging] = useState(false);
   const [hovered, setHovered] = useState(false);
@@ -423,6 +434,8 @@ function StageCard({
         value={card.source}
         stageColor={stageColor}
         onChange={(v) => onSourceChange(card.id, v)}
+        customSources={customSources}
+        onAddCustomSource={onAddCustomSource}
       />
 
       {/* Stage dropdown */}
@@ -456,6 +469,13 @@ export default function LeadsPipeline({ companyId, triageLeads, stagedCards }: P
   const [triage, setTriage] = useState<TriageLead[]>(triageLeads);
   const [cards, setCards] = useState<StagedCard[]>(stagedCards);
   const [stages, setStages] = useState<PipelineStage[]>([]);
+  const [customSources, setCustomSources] = useState<string[]>(() => {
+    const existing = stagedCards.map(c => c.source).filter(Boolean) as string[];
+    return Array.from(new Set(existing.filter(s => !PRESET_SOURCES.includes(s))));
+  });
+  const handleAddCustomSource = useCallback((s: string) => {
+    setCustomSources(prev => prev.includes(s) ? prev : [...prev, s]);
+  }, []);
   const [dragOver, setDragOver] = useState<string | null>(null); // stageId or "triage"
   const dragPayload = useRef<string | null>(null);
   const [search, setSearch] = useState("");
@@ -873,7 +893,7 @@ export default function LeadsPipeline({ companyId, triageLeads, stagedCards }: P
               </div>
             ) : (
               filteredTriage.map((lead) => (
-                <TriageCard key={lead.id} lead={lead} stages={stages} onDragStart={handleDragStart} onEdit={openEdit} onDelete={handleDeleteTriageLead} onNotes={(id, name) => { setNotesLeadId(id); setNotesTitle(name); }} onMoveToStage={handleTriageMoveToStage} />
+                <TriageCard key={lead.id} lead={lead} stages={stages} onDragStart={handleDragStart} onEdit={openEdit} onDelete={handleDeleteTriageLead} onNotes={(id, name) => { setNotesLeadId(id); setNotesTitle(name); }} onMoveToStage={handleTriageMoveToStage} customSources={customSources} onAddCustomSource={handleAddCustomSource} />
               ))
             )}
           </div>
@@ -980,6 +1000,8 @@ export default function LeadsPipeline({ companyId, triageLeads, stagedCards }: P
                     onStageChange={handleStageChange}
                     onEdit={openEdit}
                     onNotes={(leadId, name) => { setNotesLeadId(leadId); setNotesTitle(name); }}
+                    customSources={customSources}
+                    onAddCustomSource={handleAddCustomSource}
                   />
                 ))}
                 {stageCards.length === 0 && (
