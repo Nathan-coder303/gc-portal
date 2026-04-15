@@ -787,10 +787,10 @@ function AddTaskModal({ companyId, clientId, phases, onCreate, onClose, defaultP
 
 // ── Gantt Chart ────────────────────────────────────────────────────────────────
 
-function ClientGanttChart({ tasks, projectStart, companyId, clientId, canEdit, onTasksChange }: {
+function ClientGanttChart({ tasks, projectStart, companyId, clientId, canEdit, onTasksChange, collapsed, setCollapsed }: {
   tasks: ClientTask[]; projectStart: Date; companyId: string; clientId: string; canEdit: boolean; onTasksChange: (tasks: ClientTask[]) => void;
+  collapsed: Set<string>; setCollapsed: React.Dispatch<React.SetStateAction<Set<string>>>;
 }) {
-  const [collapsed, setCollapsed] = useState<Set<string>>(new Set());
   const [drag, setDrag] = useState<DragState | null>(null);
   const [saving, setSaving] = useState<string | null>(null);
   const [phaseOrder, setPhaseOrder] = useState<string[]>([]);
@@ -1323,6 +1323,7 @@ export default function ClientScheduleTab({ companyId, clientId, initialTasks, c
   const [tasks, setTasks] = useState<ClientTask[]>(initialTasks);
   const [adding, setAdding] = useState(false);
   const [loadingTemplate, setLoadingTemplate] = useState(false);
+  const [collapsed, setCollapsed] = useState<Set<string>>(new Set());
 
   const phases = useMemo(() => Array.from(new Set(tasks.map(t => t.phase))), [tasks]);
   const projectStart = useMemo(() => {
@@ -1352,14 +1353,30 @@ export default function ClientScheduleTab({ companyId, clientId, initialTasks, c
         </div>
         <div className="flex gap-2 flex-wrap">
           {tasks.length > 0 && (
-            <button
-              onClick={() => printScheduleHtml(tasks)}
-              className="text-xs font-semibold px-3 py-1.5 rounded-lg"
-              style={{ background: "#1e2736", border: "1px solid #30373f", color: "#8b949e" }}
-              title="Print or save as PDF"
-            >
-              🖨 Print / PDF
-            </button>
+            <>
+              <button
+                onClick={() => setCollapsed(new Set(phases))}
+                className="text-xs font-semibold px-3 py-1.5 rounded-lg"
+                style={{ background: "#1e2736", border: "1px solid #30373f", color: "#8b949e" }}
+              >
+                ▶ Collapse All
+              </button>
+              <button
+                onClick={() => setCollapsed(new Set())}
+                className="text-xs font-semibold px-3 py-1.5 rounded-lg"
+                style={{ background: "#1e2736", border: "1px solid #30373f", color: "#8b949e" }}
+              >
+                ▼ Expand All
+              </button>
+              <button
+                onClick={() => printScheduleHtml(tasks)}
+                className="text-xs font-semibold px-3 py-1.5 rounded-lg"
+                style={{ background: "#1e2736", border: "1px solid #30373f", color: "#8b949e" }}
+                title="Print or save as PDF"
+              >
+                🖨 Print / PDF
+              </button>
+            </>
           )}
           {canEdit && (
             <>
@@ -1388,7 +1405,7 @@ export default function ClientScheduleTab({ companyId, clientId, initialTasks, c
         </div>
       ) : (
         <div className="rounded-xl overflow-hidden" style={{ border: "1px solid #30373f" }}>
-          <ClientGanttChart tasks={tasks} projectStart={projectStart} companyId={companyId} clientId={clientId} canEdit={canEdit} onTasksChange={setTasks} />
+          <ClientGanttChart tasks={tasks} projectStart={projectStart} companyId={companyId} clientId={clientId} canEdit={canEdit} onTasksChange={setTasks} collapsed={collapsed} setCollapsed={setCollapsed} />
         </div>
       )}
 
