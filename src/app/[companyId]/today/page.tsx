@@ -7,7 +7,6 @@ import SyncBidsButton from "@/components/today/SyncBidsButton";
 import AddLeadButton from "@/components/leads/AddLeadButton";
 import TodayLeadCard from "@/components/leads/TodayLeadCard";
 import TodayTaskCard, { FollowUpItem } from "@/components/today/TodayTaskCard";
-import TodayCallsSection from "@/components/today/TodayCallsSection";
 import PendingCountersignsCard from "@/components/today/PendingCountersignsCard";
 import AppointmentsCard from "@/components/today/AppointmentsCard";
 import BarometerSection, { type ClientIncomeSummary } from "@/components/today/BarometerSection";
@@ -372,22 +371,6 @@ export default async function TodayPage({
           </div>
         </Link>
 
-        {/* Card 8 — To Call ASAP (full-width) */}
-        <div className="col-span-2 lg:col-span-3">
-          <TodayCallsSection
-            companyId={params.companyId}
-            initialLeads={urgentLeads.map(c => ({
-              id: c.id,
-              displayName: c.displayName,
-              estimateValue: c.estimateValue ? Number(c.estimateValue) : null,
-              notes: c.notes,
-              clientId: c.clientId,
-              clientName: c.client?.name ?? null,
-              phone: c.lead?.phone ?? c.client?.phone ?? null,
-              createdAt: c.createdAt.toISOString(),
-            }))}
-          />
-        </div>
       </div>
     </div>
   );

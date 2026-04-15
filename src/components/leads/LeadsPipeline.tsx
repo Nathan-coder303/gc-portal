@@ -523,6 +523,7 @@ export default function LeadsPipeline({ companyId, triageLeads, stagedCards }: P
   const [colorPickerStageId, setColorPickerStageId] = useState<string | null>(null);
   const draggingColId = useRef<string | null>(null);
   const [dragOverCol, setDragOverCol] = useState<string | null>(null);
+  const [colSort, setColSort] = useState<Record<string, "asc" | "desc">>({});
 
   useEffect(() => { setStages(loadStages()); }, []);
 
@@ -880,7 +881,15 @@ export default function LeadsPipeline({ companyId, triageLeads, stagedCards }: P
 
         {/* Stage columns */}
         {stages.map((stage) => {
-          const stageCards = filteredCards.filter((c) => c.stage === stage.id);
+          const rawStageCards = filteredCards.filter((c) => c.stage === stage.id);
+          const sortDir = colSort[stage.id] ?? null;
+          const stageCards = sortDir
+            ? [...rawStageCards].sort((a, b) => {
+                const aT = new Date(a.stageChangedAt ?? a.createdAt).getTime();
+                const bT = new Date(b.stageChangedAt ?? b.createdAt).getTime();
+                return sortDir === "desc" ? bT - aT : aT - bT;
+              })
+            : rawStageCards;
           const isOver = dragOver === stage.id;
           const isColOver = dragOverCol === stage.id;
 
@@ -930,6 +939,16 @@ export default function LeadsPipeline({ companyId, triageLeads, stagedCards }: P
                     <span style={{ background: stage.color + "33", color: stage.color, fontSize: 11, fontWeight: 700, borderRadius: 20, padding: "1px 8px", border: `1px solid ${stage.color}55` }}>
                       {stageCards.length}
                     </span>
+                    <button
+                      onClick={(e) => { e.stopPropagation(); setColSort(prev => ({ ...prev, [stage.id]: "desc" })); }}
+                      title="Newest first"
+                      style={{ background: "transparent", border: "none", cursor: "pointer", fontSize: 11, lineHeight: 1, padding: "0 1px", color: colSort[stage.id] === "desc" ? "#C9A84C" : "#484f58" }}
+                    >↓</button>
+                    <button
+                      onClick={(e) => { e.stopPropagation(); setColSort(prev => ({ ...prev, [stage.id]: "asc" })); }}
+                      title="Oldest first"
+                      style={{ background: "transparent", border: "none", cursor: "pointer", fontSize: 11, lineHeight: 1, padding: "0 1px", color: colSort[stage.id] === "asc" ? "#C9A84C" : "#484f58" }}
+                    >↑</button>
                     <button
                       onClick={(e) => { e.stopPropagation(); deleteStage(stage.id); }}
                       title="Delete stage"
