@@ -230,8 +230,8 @@ export default async function TodayPage({
           className="col-span-2 lg:col-span-3 rounded-2xl p-4 sm:p-5"
           style={{ background: "#161b22", border: "1px solid #30373f" }}
         >
-          <div className="flex items-center justify-between">
-            <span className="text-[26px] sm:text-3xl font-black leading-none" style={{ color: "#C9A84C" }}>Leads</span>
+          <div className="flex items-center gap-3">
+            <div className="flex-1 text-center text-[52px] sm:text-6xl font-black leading-none tracking-tight" style={{ color: "#C9A84C" }}>Leads</div>
             <AddLeadButton companyId={params.companyId} />
           </div>
           <div className="grid grid-cols-3 gap-4 mt-3">
@@ -283,16 +283,26 @@ export default async function TodayPage({
         </div>
 
         {/* Estimates */}
-        <Link
-          href={`/${params.companyId}/estimates`}
-          className="rounded-2xl p-4 flex flex-col gap-2 transition-all active:scale-[0.98]"
+        <div
+          className="rounded-2xl p-4 flex flex-col gap-2"
           style={{ background: "#161b22", border: "1px solid #30373f" }}
         >
           <div className="flex items-center justify-between gap-1">
-            <span className="text-[26px] sm:text-3xl font-black leading-none" style={{ color: "#C9A84C" }}>Estimates</span>
-            <span className="text-xs font-bold px-1.5 py-0.5 rounded-full shrink-0" style={{ background: "#C9A84C", color: "#0d1117" }}>
-              {estimatesToSend.length}
-            </span>
+            <Link href={`/${params.companyId}/estimates`} className="text-[26px] sm:text-3xl font-black leading-none hover:opacity-80 transition-opacity" style={{ color: "#C9A84C" }}>Estimates</Link>
+            <div className="flex items-center gap-2 shrink-0">
+              {estimatesToSend.length > 0 && (
+                <span className="text-xs font-bold px-1.5 py-0.5 rounded-full" style={{ background: "#C9A84C", color: "#0d1117" }}>
+                  {estimatesToSend.length}
+                </span>
+              )}
+              <Link
+                href={`/${params.companyId}/estimates`}
+                className="text-xs px-2 py-0.5 rounded font-medium transition-colors"
+                style={{ border: "1px solid #C9A84C66", color: "#C9A84C" }}
+              >
+                + Add
+              </Link>
+            </div>
           </div>
           <div className="text-[11px] mt-1" style={{ color: "#484f58" }}>to send today</div>
           {estimatesToSend.length > 0 && (
@@ -304,7 +314,7 @@ export default async function TodayPage({
               ))}
             </ul>
           )}
-        </Link>
+        </div>
 
         {/* Card 3 — Today's Tasks */}
         <TodayTaskCard

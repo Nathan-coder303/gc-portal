@@ -50,13 +50,10 @@ export default function AddLeadButton({ companyId }: { companyId: string }) {
     <>
       <button
         onClick={() => setOpen(true)}
-        className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all hover:opacity-90"
-        style={{ background: "#C9A84C", color: "#0d1117" }}
+        className="text-xs px-2 py-0.5 rounded font-medium transition-colors"
+        style={{ border: "1px solid #C9A84C66", color: "#C9A84C", background: "transparent" }}
       >
-        <svg width="12" height="12" viewBox="0 0 12 12" fill="currentColor">
-          <path d="M6 1v10M1 6h10" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
-        </svg>
-        Add Lead
+        + Add
       </button>
 
       {open && (
