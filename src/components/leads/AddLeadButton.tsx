@@ -6,7 +6,7 @@ export default function AddLeadButton({ companyId }: { companyId: string }) {
   const [open, setOpen] = useState(false);
   const [saving, setSaving] = useState(false);
   const [form, setForm] = useState({
-    name: "", phone: "", email: "", address: "", projectType: "", message: "",
+    name: "", phone: "", email: "", address: "", city: "", state: "", zip: "", projectType: "", message: "",
   });
   const router = useRouter();
 
@@ -25,7 +25,7 @@ export default function AddLeadButton({ companyId }: { companyId: string }) {
       });
       if (res.ok) {
         setOpen(false);
-        setForm({ name: "", phone: "", email: "", address: "", projectType: "", message: "" });
+        setForm({ name: "", phone: "", email: "", address: "", city: "", state: "", zip: "", projectType: "", message: "" });
         router.refresh();
       }
     } finally {
@@ -88,6 +88,20 @@ export default function AddLeadButton({ companyId }: { companyId: string }) {
               <div className="col-span-2">
                 <label style={labelStyle}>Address</label>
                 <input style={inputStyle} placeholder="Property address" value={form.address} onChange={e => set("address", e.target.value)} />
+              </div>
+              <div>
+                <label style={labelStyle}>City</label>
+                <input style={inputStyle} placeholder="City" value={form.city} onChange={e => set("city", e.target.value)} />
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label style={labelStyle}>State</label>
+                  <input style={inputStyle} placeholder="FL" value={form.state} onChange={e => set("state", e.target.value)} />
+                </div>
+                <div>
+                  <label style={labelStyle}>Zip</label>
+                  <input style={inputStyle} placeholder="00000" value={form.zip} onChange={e => set("zip", e.target.value)} />
+                </div>
               </div>
               <div className="col-span-2">
                 <label style={labelStyle}>Project Type</label>

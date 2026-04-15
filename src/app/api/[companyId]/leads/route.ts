@@ -32,7 +32,7 @@ export async function POST(
   if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const body = await req.json();
-  const { name, phone, email, address, projectType, message } = body;
+  const { name, phone, email, address, city, state, zip, projectType, message } = body;
 
   if (!name?.trim()) {
     return NextResponse.json({ error: "Name is required" }, { status: 400 });
@@ -45,6 +45,9 @@ export async function POST(
       phone: phone?.trim() || null,
       email: email?.trim() || null,
       address: address?.trim() || null,
+      city: city?.trim() || null,
+      state: state?.trim() || null,
+      zip: zip?.trim() || null,
       projectType: projectType?.trim() || null,
       message: message?.trim() || null,
       source: "manual",

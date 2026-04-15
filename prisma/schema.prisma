@@ -91,6 +91,7 @@ model Lead {
   address      String?
   city         String?
   state        String?
+  zip          String?
   projectType  String?
   message      String?
   source       String   @default("email")
