@@ -130,9 +130,11 @@ function ClientCard({
         <div className="flex items-center gap-3 mb-2">
           {/* Drag handle */}
           <div className="cursor-grab text-lg leading-none shrink-0" style={{ color: "#30373f" }} title="Drag to reorder or change status">⠿</div>
-          <div className="w-8 h-8 rounded-full flex items-center justify-center shrink-0 font-bold text-xs" style={{ background: "#C9A84C1a", color: "#C9A84C" }}>
-            {(() => { const words = client.name.trim().split(/\s+/).filter(Boolean); if (words.length >= 2) return (words[0][0] + words[words.length - 1][0]).toUpperCase(); return words[0]?.slice(0, 2).toUpperCase() ?? "?"; })()}
-          </div>
+          {(() => { const words = client.name.trim().split(/\s+/).filter(Boolean); const first = words[0] ?? ""; const label = /^\d+$/.test(first) ? first : words.length >= 2 ? (first[0] + words[words.length - 1][0]).toUpperCase() : first.slice(0, 2).toUpperCase() || "?"; return (
+            <div className="w-8 h-8 rounded-full flex items-center justify-center shrink-0 font-bold" style={{ background: "#C9A84C1a", color: "#C9A84C", fontSize: label.length > 3 ? 9 : 11 }}>
+              {label}
+            </div>
+          ); })()}
           <div className="min-w-0 flex-1">
             <div className="font-bold text-sm leading-tight" style={{ color: "#e6edf3" }}>{client.name}</div>
           </div>
