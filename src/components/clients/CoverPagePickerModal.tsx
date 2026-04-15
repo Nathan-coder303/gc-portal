@@ -23,6 +23,7 @@ export type PdfOptions = {
   page2: Page2Type;
   includeInsert: boolean;
   includeDivisionSummary: boolean;
+  breakDiv07: boolean;
 };
 
 type CustomCover = { blobUrl: string; proxyUrl: string };
@@ -61,6 +62,7 @@ export default function CoverPagePickerModal({
   const [page2, setPage2]               = useState<Page2Type>(initialPage2 === "NONE" ? "ROOF" : initialPage2);
   const [includeInsert, setIncludeInsert] = useState(true);
   const [includeDivisionSummary, setIncludeDivisionSummary] = useState(false);
+  const [breakDiv07, setBreakDiv07] = useState(false);
 
   // Custom cover gallery
   const [customCovers, setCustomCovers] = useState<CustomCover[]>([]);
@@ -114,6 +116,7 @@ export default function CoverPagePickerModal({
     page2,
     includeInsert,
     includeDivisionSummary,
+    breakDiv07,
   };
 
   return (
@@ -282,6 +285,26 @@ export default function CoverPagePickerModal({
             </div>
           </div>
         )}
+
+        {/* ── Section: Page Breaks ── */}
+        <div>
+          <p className="text-xs font-semibold uppercase tracking-widest mb-2" style={{ color: "#8b949e" }}>Page Breaks</p>
+          <button
+            onClick={() => setBreakDiv07(v => !v)}
+            className="w-full rounded-xl p-3 text-left transition-all"
+            style={{ border: `2px solid ${breakDiv07 ? "#C9A84C" : "#30373f"}`, background: breakDiv07 ? "#1e2a12" : "#1e2736", outline: "none" }}
+          >
+            <div className="flex items-center justify-between">
+              <div>
+                <div className="text-xs font-semibold" style={{ color: breakDiv07 ? "#C9A84C" : "#e6edf3" }}>New page before Div 07</div>
+                <div className="text-[10px] mt-0.5" style={{ color: "#8b949e" }}>Thermal & Moisture Protection starts on its own page</div>
+              </div>
+              <div className="text-xs font-bold px-2 py-0.5 rounded" style={{ background: breakDiv07 ? "#C9A84C22" : "#30373f", color: breakDiv07 ? "#C9A84C" : "#8b949e" }}>
+                {breakDiv07 ? "ON" : "OFF"}
+              </div>
+            </div>
+          </button>
+        </div>
 
         {/* ── Actions ── */}
         <div className="flex gap-3 pt-1">

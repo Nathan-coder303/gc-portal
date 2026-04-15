@@ -47,6 +47,7 @@ export async function GET(
   const page2Param = req.nextUrl.searchParams.get("page2"); // "ROOF" | "ADDITION" | "NONE" | null (auto)
   const isPreview = req.nextUrl.searchParams.get("preview") === "1";
   const includeDivisionSummary = req.nextUrl.searchParams.get("divSummary") === "1";
+  const breakDiv07 = req.nextUrl.searchParams.get("breakDiv07") === "1";
 
   const [template, company] = await Promise.all([
     prisma.estimateTemplate.findFirst({
@@ -136,6 +137,7 @@ export async function GET(
         : (template.client?.coverPhotoUrl ?? null)
     ),
     clientCoverTitle: template.client?.coverTitle ?? null,
+    breakDiv07,
   });
 
   // Insert client's marked PDF file as page 3 (if opted in and file exists)
