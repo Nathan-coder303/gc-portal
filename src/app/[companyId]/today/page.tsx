@@ -209,7 +209,6 @@ export default async function TodayPage({
           <p className="text-xs sm:text-sm mt-0.5 truncate" style={{ color: "#8b949e" }}>{today}</p>
         </div>
         <div className="flex items-center gap-2">
-          <AddLeadButton companyId={params.companyId} />
           <SyncBidsButton companyId={params.companyId} />
           <SyncLeadsButton companyId={params.companyId} />
         </div>
@@ -231,8 +230,11 @@ export default async function TodayPage({
           className="col-span-2 lg:col-span-3 rounded-2xl p-4 sm:p-5"
           style={{ background: "#161b22", border: "1px solid #30373f" }}
         >
-          <span className="text-[26px] sm:text-3xl font-black leading-none" style={{ color: "#C9A84C" }}>Leads</span>
-          <div className="grid grid-cols-2 gap-4 mt-3">
+          <div className="flex items-center justify-between">
+            <span className="text-[26px] sm:text-3xl font-black leading-none" style={{ color: "#C9A84C" }}>Leads</span>
+            <AddLeadButton companyId={params.companyId} />
+          </div>
+          <div className="grid grid-cols-3 gap-4 mt-3">
             {/* Triaging */}
             <Link
               href={`/${params.companyId}/leads`}
@@ -266,6 +268,16 @@ export default async function TodayPage({
                   ))}
                 </ul>
               )}
+            </Link>
+            {/* To Call ASAP */}
+            <Link
+              href={`/${params.companyId}/leads`}
+              className="flex flex-col gap-1 p-3 rounded-xl transition-opacity hover:opacity-80"
+              style={{ background: "#0d1117", border: `1px solid ${urgentLeads.length > 0 ? "#ef444433" : "#30373f"}` }}
+            >
+              <span className="text-xs font-semibold uppercase tracking-wider" style={{ color: "#8b949e" }}>To Call ASAP</span>
+              <div className="text-[26px] sm:text-3xl font-black leading-none mt-1" style={{ color: urgentLeads.length === 0 ? "#484f58" : "#ef4444" }}>{urgentLeads.length === 0 ? "—" : urgentLeads.length}</div>
+              <div className="text-[11px] mt-1" style={{ color: "#484f58" }}>in pipeline</div>
             </Link>
           </div>
         </div>
