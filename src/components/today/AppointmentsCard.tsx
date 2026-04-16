@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
 import { useRouter } from "next/navigation";
 
 type Appointment = { id: string; text: string; dueDate: string | null };
@@ -95,6 +95,34 @@ export default function AppointmentsCard({
   const router = useRouter();
   const [appointments, setAppointments] = useState(initialAppointments);
   const [upcoming, setUpcoming] = useState(initialUpcoming);
+
+  // Lead info map: lowercase name → { phone, address } for showing on cards
+  const [leadMap, setLeadMap] = useState<Map<string, { phone: string; address: string }>>(new Map());
+
+  useEffect(() => {
+    async function loadLeads() {
+      try {
+        const [pr, lr] = await Promise.all([
+          fetch(`/api/${companyId}/pipeline?type=sales`),
+          fetch(`/api/${companyId}/leads`),
+        ]);
+        const cards: PipelineLead[] = await pr.json();
+        const raws: RawLead[] = await lr.json();
+        const map = new Map<string, { phone: string; address: string }>();
+        for (const c of cards) {
+          const p = c.lead?.phone ?? "";
+          const a = c.lead?.address ?? "";
+          map.set(c.displayName.toLowerCase(), { phone: p, address: a });
+          if (c.lead?.name) map.set(c.lead.name.toLowerCase(), { phone: p, address: a });
+        }
+        for (const r of raws) {
+          map.set(r.name.toLowerCase(), { phone: r.phone ?? "", address: r.address ?? "" });
+        }
+        setLeadMap(map);
+      } catch { /**/ }
+    }
+    loadLeads();
+  }, [companyId]);
 
   // ── Add flow ────────────────────────────────────────────────────────────────
   const [showPicker, setShowPicker] = useState(false);
@@ -458,7 +486,10 @@ export default function AppointmentsCard({
         : appointments.length > 0 && (
           <div className="space-y-3 mt-4">
             {appointments.map(appt => {
-              const { name, time, phone, address, notes } = parseAppt(appt.text);
+              const { name, time, phone: apptPhone, address: apptAddr, notes } = parseAppt(appt.text);
+              const leadInfo = leadMap.get(name.toLowerCase());
+              const phone = apptPhone || leadInfo?.phone || "";
+              const address = apptAddr || leadInfo?.address || "";
               return (
                 <div key={appt.id} className="rounded-xl" style={{ background: "#161b22", border: "1px solid #C9A84C22" }}>
                   <div className="flex flex-col p-4 gap-1.5">
@@ -536,7 +567,9 @@ export default function AppointmentsCard({
                     {isOpen && (
                       <div style={{ borderTop: "1px solid #30373f" }}>
                         {appts.map(appt => {
-                          const { name, time, address, notes } = parseAppt(appt.text);
+                          const { name, time, address: apptAddr2, notes } = parseAppt(appt.text);
+                          const leadInfo2 = leadMap.get(name.toLowerCase());
+                          const address = apptAddr2 || leadInfo2?.address || "";
                           return (
                             <div key={appt.id} style={{ background: "#0d1117", borderBottom: "1px solid #1e2736" }}>
                               <div className="flex flex-col px-4 py-3 gap-1">
