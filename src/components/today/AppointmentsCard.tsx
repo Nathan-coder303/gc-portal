@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useRef } from "react";
 import { useRouter } from "next/navigation";
 
 type Appointment = { id: string; text: string; dueDate: string | null };
@@ -59,6 +59,69 @@ function formatDueDate(iso: string) {
   });
 }
 
+// ── Time helpers ────────────────────────────────────────────────────────────────
+function parseTime(timeStr: string): { hour: string; min: string; ampm: "AM" | "PM" } {
+  const match = timeStr.match(/^(\d{1,2}):(\d{2})\s*(AM|PM)$/i);
+  if (match) return { hour: match[1].padStart(2, "0"), min: match[2], ampm: match[3].toUpperCase() as "AM" | "PM" };
+  const match2 = timeStr.match(/^(\d{1,2}):(\d{2})$/);
+  if (match2) return { hour: match2[1].padStart(2, "0"), min: match2[2], ampm: "AM" };
+  return { hour: "", min: "", ampm: "AM" };
+}
+
+function buildTimeStr(hour: string, min: string, ampm: string) {
+  if (!hour) return "";
+  return `${hour}:${min || "00"} ${ampm}`;
+}
+
+// ── Structured time input component ────────────────────────────────────────────
+function TimeInput({
+  hour, min, ampm,
+  onHour, onMin, onAmPm,
+}: {
+  hour: string; min: string; ampm: "AM" | "PM";
+  onHour: (v: string) => void; onMin: (v: string) => void; onAmPm: (v: "AM" | "PM") => void;
+}) {
+  const minRef = useRef<HTMLInputElement>(null);
+  return (
+    <div className="flex items-center gap-1 px-2 py-2 rounded-lg" style={{ border: "1px solid #30373f", background: "transparent" }}>
+      <input
+        type="text"
+        inputMode="numeric"
+        placeholder="12"
+        maxLength={2}
+        value={hour}
+        onChange={e => {
+          const v = e.target.value.replace(/\D/g, "").slice(0, 2);
+          onHour(v);
+          if (v.length === 2) minRef.current?.focus();
+        }}
+        className="w-8 bg-transparent text-sm outline-none text-center"
+        style={{ color: "#e6edf3" }}
+      />
+      <span style={{ color: "#8b949e", fontWeight: "bold" }}>:</span>
+      <input
+        ref={minRef}
+        type="text"
+        inputMode="numeric"
+        placeholder="00"
+        maxLength={2}
+        value={min}
+        onChange={e => onMin(e.target.value.replace(/\D/g, "").slice(0, 2))}
+        className="w-8 bg-transparent text-sm outline-none text-center"
+        style={{ color: "#e6edf3" }}
+      />
+      <button
+        type="button"
+        onClick={() => onAmPm(ampm === "AM" ? "PM" : "AM")}
+        className="ml-1 px-2 py-0.5 rounded text-xs font-bold transition-colors"
+        style={{ background: "#C9A84C33", color: "#C9A84C", border: "1px solid #C9A84C55" }}
+      >
+        {ampm}
+      </button>
+    </div>
+  );
+}
+
 export default function AppointmentsCard({
   companyId,
   initialAppointments,
@@ -82,16 +145,20 @@ export default function AppointmentsCard({
 
   const [showForm, setShowForm] = useState(false);
   const [selectedLead, setSelectedLead] = useState<PipelineLead | null>(null);
-  const [apptTime, setApptTime] = useState("");
+  const [apptHour, setApptHour] = useState("");
+  const [apptMin, setApptMin] = useState("");
+  const [apptAmPm, setApptAmPm] = useState<"AM" | "PM">("AM");
   const [apptDate, setApptDate] = useState(todayDateStr);
   const [apptAddress, setApptAddress] = useState("");
   const [apptNotes, setApptNotes] = useState("");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
 
-  // ── Edit appointment ────────────────────────────────────────────────────────
+  // ── Edit appointment modal ──────────────────────────────────────────────────
   const [editingAppt, setEditingAppt] = useState<Appointment | null>(null);
-  const [editTime, setEditTime] = useState("");
+  const [editHour, setEditHour] = useState("");
+  const [editMin, setEditMin] = useState("");
+  const [editAmPm, setEditAmPm] = useState<"AM" | "PM">("AM");
   const [editDate, setEditDate] = useState("");
   const [editAddress, setEditAddress] = useState("");
   const [editNotes, setEditNotes] = useState("");
@@ -99,8 +166,11 @@ export default function AppointmentsCard({
 
   function openEdit(appt: Appointment) {
     const { time, address, notes } = parseAppt(appt.text);
+    const { hour, min, ampm } = parseTime(time);
     setEditingAppt(appt);
-    setEditTime(time);
+    setEditHour(hour);
+    setEditMin(min);
+    setEditAmPm(ampm);
     setEditDate(appt.dueDate ? appt.dueDate.slice(0, 10) : todayDateStr);
     setEditAddress(address);
     setEditNotes(notes);
@@ -109,7 +179,8 @@ export default function AppointmentsCard({
   async function saveEdit() {
     if (!editingAppt) return;
     const { name } = parseAppt(editingAppt.text);
-    const mainLine = [name, editTime, "", editAddress]
+    const timeStr = buildTimeStr(editHour, editMin, editAmPm);
+    const mainLine = [name, timeStr, "", editAddress]
       .map(s => s.trim())
       .filter(Boolean)
       .join(" · ");
@@ -148,8 +219,15 @@ export default function AppointmentsCard({
   // ── Lead popup ──────────────────────────────────────────────────────────────
   const [popupAppt, setPopupAppt] = useState<Appointment | null>(null);
   const [popupLead, setPopupLead] = useState<PipelineLead | null>(null);
+  const [popupLeadId, setPopupLeadId] = useState<string | null>(null);
   const [popupNotes, setPopupNotes] = useState<Note[]>([]);
   const [popupLoading, setPopupLoading] = useState(false);
+
+  // Popup edit state
+  const [popupEditing, setPopupEditing] = useState(false);
+  const [popupPhone, setPopupPhone] = useState("");
+  const [popupNewNote, setPopupNewNote] = useState("");
+  const [popupSaving, setPopupSaving] = useState(false);
 
   async function openPicker() {
     setShowPicker(true);
@@ -179,7 +257,9 @@ export default function AppointmentsCard({
   function selectLead(lead: PipelineLead) {
     setSelectedLead(lead);
     setApptAddress(lead.lead?.address ?? "");
-    setApptTime("");
+    setApptHour("");
+    setApptMin("");
+    setApptAmPm("AM");
     setApptDate(todayDateStr);
     setApptNotes("");
     setShowPicker(false);
@@ -189,7 +269,8 @@ export default function AppointmentsCard({
   async function handleSave() {
     if (!selectedLead) return;
     const namePart = selectedLead.displayName;
-    const mainLine = [namePart, apptTime, selectedLead.lead?.phone ?? "", apptAddress]
+    const timeStr = buildTimeStr(apptHour, apptMin, apptAmPm);
+    const mainLine = [namePart, timeStr, selectedLead.lead?.phone ?? "", apptAddress]
       .map(s => s.trim())
       .filter(Boolean)
       .join(" · ");
@@ -230,7 +311,11 @@ export default function AppointmentsCard({
     setPopupAppt(appt);
     setPopupLoading(true);
     setPopupLead(null);
+    setPopupLeadId(null);
     setPopupNotes([]);
+    setPopupEditing(false);
+    setPopupPhone("");
+    setPopupNewNote("");
     try {
       const [pipelineRes, rawLeadsRes] = await Promise.all([
         fetch(`/api/${companyId}/pipeline?type=sales`),
@@ -258,6 +343,9 @@ export default function AppointmentsCard({
       }
 
       setPopupLead(found);
+      setPopupLeadId(leadId);
+      setPopupPhone(found?.lead?.phone ?? "");
+
       if (leadId) {
         const notesRes = await fetch(`/api/${companyId}/notes?leadId=${leadId}`);
         if (notesRes.ok) setPopupNotes(await notesRes.json());
@@ -266,10 +354,43 @@ export default function AppointmentsCard({
     setPopupLoading(false);
   }, [companyId]);
 
+  async function savePopupEdits() {
+    if (!popupLeadId) return;
+    setPopupSaving(true);
+    try {
+      // Update phone on lead record
+      await fetch(`/api/${companyId}/leads/${popupLeadId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ phone: popupPhone }),
+      });
+      // Add new note if provided
+      if (popupNewNote.trim()) {
+        const res = await fetch(`/api/${companyId}/notes`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ leadId: popupLeadId, content: popupNewNote.trim() }),
+        });
+        if (res.ok) {
+          const newNote = await res.json();
+          setPopupNotes(prev => [newNote, ...prev]);
+          setPopupNewNote("");
+        }
+      }
+      // Update local popup lead state
+      setPopupLead(prev => prev ? { ...prev, lead: prev.lead ? { ...prev.lead, phone: popupPhone } : prev.lead } : prev);
+      setPopupEditing(false);
+    } finally {
+      setPopupSaving(false);
+    }
+  }
+
   function closePopup() {
     setPopupAppt(null);
     setPopupLead(null);
+    setPopupLeadId(null);
     setPopupNotes([]);
+    setPopupEditing(false);
   }
 
   // Group upcoming by date string
@@ -357,15 +478,10 @@ export default function AppointmentsCard({
           <div className="text-xs font-semibold" style={{ color: "#C9A84C" }}>
             Appointment for <span style={{ color: "#e6edf3" }}>{selectedLead.displayName}</span>
           </div>
-          <div className="flex gap-2">
-            <input
-              type="text"
-              placeholder="Time (e.g. 10:30 AM)"
-              value={apptTime}
-              onChange={e => setApptTime(e.target.value)}
-              autoFocus
-              className="flex-1 bg-transparent text-sm px-3 py-2 rounded-lg outline-none"
-              style={{ border: "1px solid #30373f", color: "#e6edf3" }}
+          <div className="flex gap-2 flex-wrap">
+            <TimeInput
+              hour={apptHour} min={apptMin} ampm={apptAmPm}
+              onHour={setApptHour} onMin={setApptMin} onAmPm={setApptAmPm}
             />
             <input
               type="date"
@@ -426,7 +542,6 @@ export default function AppointmentsCard({
                 style={{ background: "#161b22", border: "1px solid #C9A84C22" }}
               >
                 <div className="flex flex-col p-4 gap-2">
-                  {/* Action buttons row */}
                   <div className="flex items-center justify-between gap-2">
                     <div className="flex items-baseline gap-2 flex-wrap min-w-0">
                       <span className="text-base font-black leading-tight" style={{ color: "#e6edf3" }}>{name}</span>
@@ -445,7 +560,6 @@ export default function AppointmentsCard({
                       </button>
                     </div>
                   </div>
-                  {/* Details — click to open lead popup */}
                   <button onClick={() => openLeadPopup(appt)} className="text-left w-full">
                     {(phone || address) && (
                       <div className="flex gap-3 flex-wrap">
@@ -565,10 +679,11 @@ export default function AppointmentsCard({
               </span>
               <button onClick={() => setEditingAppt(null)} style={{ color: "#8b949e", fontSize: 20, lineHeight: 1 }}>×</button>
             </div>
-            <div className="flex gap-2">
-              <input type="text" placeholder="Time (e.g. 10:30 AM)" value={editTime} onChange={e => setEditTime(e.target.value)}
-                autoFocus className="flex-1 bg-transparent text-sm px-3 py-2 rounded-lg outline-none"
-                style={{ border: "1px solid #30373f", color: "#e6edf3" }} />
+            <div className="flex gap-2 flex-wrap">
+              <TimeInput
+                hour={editHour} min={editMin} ampm={editAmPm}
+                onHour={setEditHour} onMin={setEditMin} onAmPm={setEditAmPm}
+              />
               <input type="date" value={editDate} onChange={e => setEditDate(e.target.value)}
                 className="bg-transparent text-sm px-3 py-2 rounded-lg outline-none"
                 style={{ border: "1px solid #30373f", color: "#e6edf3" }} />
@@ -603,8 +718,8 @@ export default function AppointmentsCard({
           onClick={closePopup}
         >
           <div
-            className="w-full max-w-md rounded-2xl p-5 space-y-4"
-            style={{ background: "#161b22", border: "1px solid #C9A84C44" }}
+            className="w-full max-w-md rounded-2xl p-5 space-y-4 overflow-y-auto"
+            style={{ background: "#161b22", border: "1px solid #C9A84C44", maxHeight: "90vh" }}
             onClick={e => e.stopPropagation()}
           >
             {/* Appointment info header */}
@@ -635,14 +750,69 @@ export default function AppointmentsCard({
             {!popupLoading && popupLead && (
               <>
                 <div style={{ borderTop: "1px solid #30373f", paddingTop: 12 }}>
-                  <p className="text-[10px] font-semibold uppercase tracking-widest mb-2" style={{ color: "#484f58" }}>Lead Info</p>
-                  <div className="space-y-1 text-sm" style={{ color: "#8b949e" }}>
-                    {popupLead.lead?.projectType && <div><span style={{ color: "#C9A84C" }}>Project:</span> {popupLead.lead.projectType}</div>}
-                    {popupLead.lead?.phone && <div><span style={{ color: "#C9A84C" }}>Phone:</span> {popupLead.lead.phone}</div>}
-                    {popupLead.lead?.email && <div><span style={{ color: "#C9A84C" }}>Email:</span> {popupLead.lead.email}</div>}
-                    {popupLead.lead?.address && <div><span style={{ color: "#C9A84C" }}>Address:</span> {popupLead.lead.address}{popupLead.lead.city ? `, ${popupLead.lead.city}` : ""}</div>}
-                    {popupLead.source && <div><span style={{ color: "#C9A84C" }}>Source:</span> {popupLead.source}</div>}
+                  <div className="flex items-center justify-between mb-2">
+                    <p className="text-[10px] font-semibold uppercase tracking-widest" style={{ color: "#484f58" }}>Lead Info</p>
+                    {!popupEditing && (
+                      <button
+                        onClick={() => setPopupEditing(true)}
+                        className="text-[10px] px-2 py-0.5 rounded font-bold"
+                        style={{ background: "#C9A84C", color: "#0d1117" }}
+                      >
+                        Edit lead
+                      </button>
+                    )}
                   </div>
+
+                  {popupEditing ? (
+                    <div className="flex flex-col gap-2">
+                      <div className="space-y-1 text-sm mb-1" style={{ color: "#8b949e" }}>
+                        {popupLead.lead?.projectType && <div><span style={{ color: "#C9A84C" }}>Project:</span> {popupLead.lead.projectType}</div>}
+                        {popupLead.lead?.email && <div><span style={{ color: "#C9A84C" }}>Email:</span> {popupLead.lead.email}</div>}
+                        {popupLead.lead?.address && <div><span style={{ color: "#C9A84C" }}>Address:</span> {popupLead.lead.address}{popupLead.lead.city ? `, ${popupLead.lead.city}` : ""}</div>}
+                        {popupLead.source && <div><span style={{ color: "#C9A84C" }}>Source:</span> {popupLead.source}</div>}
+                      </div>
+                      <label className="text-[10px] font-semibold" style={{ color: "#8b949e" }}>Phone</label>
+                      <input
+                        type="tel"
+                        value={popupPhone}
+                        onChange={e => setPopupPhone(e.target.value)}
+                        placeholder="Phone number"
+                        autoFocus
+                        className="w-full bg-transparent text-sm px-3 py-2 rounded-lg outline-none"
+                        style={{ border: "1px solid #30373f", color: "#e6edf3" }}
+                      />
+                      <label className="text-[10px] font-semibold mt-1" style={{ color: "#8b949e" }}>Add a note</label>
+                      <textarea
+                        rows={3}
+                        value={popupNewNote}
+                        onChange={e => setPopupNewNote(e.target.value)}
+                        placeholder="Type a note…"
+                        className="w-full bg-transparent text-sm px-3 py-2 rounded-lg outline-none resize-none"
+                        style={{ border: "1px solid #30373f", color: "#e6edf3" }}
+                      />
+                      <div className="flex gap-2">
+                        <button onClick={savePopupEdits} disabled={popupSaving}
+                          className="flex-1 text-sm font-bold py-2 rounded-lg disabled:opacity-50"
+                          style={{ background: "#C9A84C", color: "#0d1117" }}>
+                          {popupSaving ? "Saving…" : "Save"}
+                        </button>
+                        <button onClick={() => setPopupEditing(false)}
+                          className="text-sm px-4 py-2 rounded-lg"
+                          style={{ color: "#8b949e", border: "1px solid #30373f" }}>
+                          Cancel
+                        </button>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="space-y-1 text-sm" style={{ color: "#8b949e" }}>
+                      {popupLead.lead?.projectType && <div><span style={{ color: "#C9A84C" }}>Project:</span> {popupLead.lead.projectType}</div>}
+                      {popupLead.lead?.phone && <div><span style={{ color: "#C9A84C" }}>Phone:</span> {popupLead.lead.phone}</div>}
+                      {!popupLead.lead?.phone && <div className="text-xs italic" style={{ color: "#484f58" }}>No phone — tap Edit lead to add</div>}
+                      {popupLead.lead?.email && <div><span style={{ color: "#C9A84C" }}>Email:</span> {popupLead.lead.email}</div>}
+                      {popupLead.lead?.address && <div><span style={{ color: "#C9A84C" }}>Address:</span> {popupLead.lead.address}{popupLead.lead.city ? `, ${popupLead.lead.city}` : ""}</div>}
+                      {popupLead.source && <div><span style={{ color: "#C9A84C" }}>Source:</span> {popupLead.source}</div>}
+                    </div>
+                  )}
                 </div>
 
                 <div style={{ borderTop: "1px solid #30373f", paddingTop: 12 }}>
