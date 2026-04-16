@@ -24,6 +24,7 @@ export async function PATCH(
     data: {
       ...(body.completedAt !== undefined ? { completedAt: body.completedAt ? new Date(body.completedAt) : null } : {}),
       ...(body.text !== undefined ? { text: body.text } : {}),
+      ...(body.dueDate !== undefined ? { dueDate: body.dueDate ? new Date(body.dueDate) : null } : {}),
     },
     include: {
       client: { select: { id: true, name: true } },

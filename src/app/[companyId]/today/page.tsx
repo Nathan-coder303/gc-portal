@@ -133,25 +133,28 @@ export default async function TodayPage({
         client: { select: { id: true, name: true } },
       },
     }),
-    // Today's appointments — exact date range so future-scheduled ones appear on their day
+    // Today's appointments — compare DATE column by exact calendar day (UTC midnight bounds)
     prisma.followUp.findMany({
       where: {
         companyId: params.companyId,
         category: "TASK",
         text: { startsWith: "📅 Appointment" },
         completedAt: null,
-        dueDate: { gte: todayStart, lte: todayEnd },
+        dueDate: {
+          gte: new Date(Date.UTC(etY, etM - 1, etD)),
+          lt:  new Date(Date.UTC(etY, etM - 1, etD + 1)),
+        },
       },
       orderBy: { createdAt: "asc" },
     }),
-    // Upcoming appointments (future dates)
+    // Upcoming appointments (future calendar days, ET)
     prisma.followUp.findMany({
       where: {
         companyId: params.companyId,
         category: "TASK",
         text: { startsWith: "📅 Appointment" },
         completedAt: null,
-        dueDate: { gt: todayEnd },
+        dueDate: { gte: new Date(Date.UTC(etY, etM - 1, etD + 1)) },
       },
       orderBy: { dueDate: "asc" },
     }),

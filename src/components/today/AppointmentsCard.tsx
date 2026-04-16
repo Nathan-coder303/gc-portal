@@ -89,6 +89,59 @@ export default function AppointmentsCard({
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
 
+  // ── Edit appointment ────────────────────────────────────────────────────────
+  const [editingAppt, setEditingAppt] = useState<Appointment | null>(null);
+  const [editTime, setEditTime] = useState("");
+  const [editDate, setEditDate] = useState("");
+  const [editAddress, setEditAddress] = useState("");
+  const [editNotes, setEditNotes] = useState("");
+  const [editSaving, setEditSaving] = useState(false);
+
+  function openEdit(appt: Appointment) {
+    const { time, address, notes } = parseAppt(appt.text);
+    setEditingAppt(appt);
+    setEditTime(time);
+    setEditDate(appt.dueDate ? appt.dueDate.slice(0, 10) : todayDateStr);
+    setEditAddress(address);
+    setEditNotes(notes);
+  }
+
+  async function saveEdit() {
+    if (!editingAppt) return;
+    const { name } = parseAppt(editingAppt.text);
+    const mainLine = [name, editTime, "", editAddress]
+      .map(s => s.trim())
+      .filter(Boolean)
+      .join(" · ");
+    const newText = `📅 Appointment – ${mainLine}${editNotes.trim() ? `\n${editNotes.trim()}` : ""}`;
+    setEditSaving(true);
+    try {
+      const res = await fetch(`/api/${companyId}/follow-ups/${editingAppt.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ text: newText, dueDate: editDate }),
+      });
+      if (res.ok) {
+        const updated = await res.json();
+        setAppointments(prev => prev.map(a =>
+          a.id === editingAppt.id
+            ? { ...a, text: updated.text, dueDate: updated.dueDate }
+            : a
+        ));
+        setEditingAppt(null);
+        router.refresh();
+      }
+    } finally {
+      setEditSaving(false);
+    }
+  }
+
+  async function deleteAppt(apptId: string) {
+    await fetch(`/api/${companyId}/follow-ups/${apptId}`, { method: "DELETE" });
+    setAppointments(prev => prev.filter(a => a.id !== apptId));
+    router.refresh();
+  }
+
   // ── Upcoming section toggle ─────────────────────────────────────────────────
   const [showUpcoming, setShowUpcoming] = useState(false);
   const [expandedDates, setExpandedDates] = useState<Set<string>>(new Set());
@@ -367,30 +420,70 @@ export default function AppointmentsCard({
         <div className="space-y-3 mt-4">
           {appointments.map(appt => {
             const { name, time, phone, address, notes } = parseAppt(appt.text);
+            const isEditing = editingAppt?.id === appt.id;
             return (
-              <button
+              <div
                 key={appt.id}
-                onClick={() => openLeadPopup(appt)}
-                className="w-full text-left flex items-start gap-3 p-4 rounded-xl transition-opacity hover:opacity-80"
-                style={{ background: "#161b22", border: "1px solid #C9A84C22" }}
+                className="rounded-xl"
+                style={{ background: "#161b22", border: `1px solid ${isEditing ? "#C9A84C66" : "#C9A84C22"}` }}
               >
-                <span className="text-2xl shrink-0">📅</span>
-                <div className="min-w-0 flex-1">
-                  <div className="flex items-baseline gap-2 flex-wrap">
-                    <span className="text-base font-black leading-tight" style={{ color: "#e6edf3" }}>{name}</span>
-                    {time && <span className="text-sm font-bold" style={{ color: "#C9A84C" }}>{time}</span>}
-                  </div>
-                  {(phone || address) && (
-                    <div className="flex gap-3 mt-0.5 flex-wrap">
-                      {phone && <span className="text-xs" style={{ color: "#8b949e" }}>📞 {phone}</span>}
-                      {address && <span className="text-xs" style={{ color: "#8b949e" }}>📍 {address}</span>}
+                {isEditing ? (
+                  <div className="p-4 flex flex-col gap-3">
+                    <div className="text-xs font-semibold" style={{ color: "#C9A84C" }}>Editing: {name}</div>
+                    <div className="flex gap-2">
+                      <input type="text" placeholder="Time (e.g. 10:30 AM)" value={editTime} onChange={e => setEditTime(e.target.value)}
+                        autoFocus className="flex-1 bg-transparent text-sm px-3 py-2 rounded-lg outline-none"
+                        style={{ border: "1px solid #30373f", color: "#e6edf3" }} />
+                      <input type="date" value={editDate} onChange={e => setEditDate(e.target.value)}
+                        className="bg-transparent text-sm px-3 py-2 rounded-lg outline-none"
+                        style={{ border: "1px solid #30373f", color: "#e6edf3" }} />
                     </div>
-                  )}
-                  {notes && (
-                    <p className="text-xs mt-1 line-clamp-2" style={{ color: "#8b949e", whiteSpace: "pre-wrap" }}>{notes}</p>
-                  )}
-                </div>
-              </button>
+                    <input type="text" placeholder="Address (optional)" value={editAddress} onChange={e => setEditAddress(e.target.value)}
+                      className="w-full bg-transparent text-sm px-3 py-2 rounded-lg outline-none"
+                      style={{ border: "1px solid #30373f", color: "#e6edf3" }} />
+                    <textarea rows={3} placeholder="Notes (optional)…" value={editNotes} onChange={e => setEditNotes(e.target.value)}
+                      className="w-full bg-transparent text-sm px-3 py-2 rounded-lg outline-none resize-none"
+                      style={{ border: "1px solid #30373f", color: "#e6edf3" }} />
+                    <div className="flex gap-2">
+                      <button onClick={saveEdit} disabled={editSaving}
+                        className="flex-1 text-sm font-bold py-2 rounded-lg disabled:opacity-50"
+                        style={{ background: "#C9A84C", color: "#0d1117" }}>
+                        {editSaving ? "Saving…" : "Save"}
+                      </button>
+                      <button onClick={() => setEditingAppt(null)}
+                        className="text-sm px-4 py-2 rounded-lg"
+                        style={{ color: "#8b949e", border: "1px solid #30373f" }}>
+                        Cancel
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="flex items-start gap-3 p-4">
+                    <button onClick={() => openLeadPopup(appt)} className="flex items-start gap-3 flex-1 min-w-0 text-left">
+                      <span className="text-2xl shrink-0">📅</span>
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-baseline gap-2 flex-wrap">
+                          <span className="text-base font-black leading-tight" style={{ color: "#e6edf3" }}>{name}</span>
+                          {time && <span className="text-sm font-bold" style={{ color: "#C9A84C" }}>{time}</span>}
+                        </div>
+                        {(phone || address) && (
+                          <div className="flex gap-3 mt-0.5 flex-wrap">
+                            {phone && <span className="text-xs" style={{ color: "#8b949e" }}>📞 {phone}</span>}
+                            {address && <span className="text-xs" style={{ color: "#8b949e" }}>📍 {address}</span>}
+                          </div>
+                        )}
+                        {notes && <p className="text-xs mt-1" style={{ color: "#8b949e", whiteSpace: "pre-wrap" }}>{notes}</p>}
+                      </div>
+                    </button>
+                    <div className="flex gap-1 shrink-0">
+                      <button onClick={() => openEdit(appt)} title="Edit"
+                        style={{ background: "transparent", border: "none", color: "#8b949e", fontSize: 14, cursor: "pointer", padding: "2px 4px" }}>✎</button>
+                      <button onClick={() => deleteAppt(appt.id)} title="Delete"
+                        style={{ background: "transparent", border: "none", color: "#484f58", fontSize: 16, cursor: "pointer", padding: "2px 4px" }}>×</button>
+                    </div>
+                  </div>
+                )}
+              </div>
             );
           })}
         </div>
