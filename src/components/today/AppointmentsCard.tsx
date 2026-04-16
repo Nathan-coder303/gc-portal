@@ -72,7 +72,7 @@ export default function AppointmentsCard({
 }) {
   const router = useRouter();
   const [appointments, setAppointments] = useState(initialAppointments);
-  const [upcoming] = useState(initialUpcoming);
+  const [upcoming, setUpcoming] = useState(initialUpcoming);
 
   // ── Add appointment flow ────────────────────────────────────────────────────
   const [showPicker, setShowPicker] = useState(false);
@@ -123,11 +123,9 @@ export default function AppointmentsCard({
       });
       if (res.ok) {
         const updated = await res.json();
-        setAppointments(prev => prev.map(a =>
-          a.id === editingAppt.id
-            ? { ...a, text: updated.text, dueDate: updated.dueDate }
-            : a
-        ));
+        const updatedAppt = { id: updated.id, text: updated.text, dueDate: updated.dueDate };
+        setAppointments(prev => prev.map(a => a.id === editingAppt.id ? updatedAppt : a));
+        setUpcoming(prev => prev.map(a => a.id === editingAppt.id ? updatedAppt : a));
         setEditingAppt(null);
         router.refresh();
       }
@@ -139,6 +137,7 @@ export default function AppointmentsCard({
   async function deleteAppt(apptId: string) {
     await fetch(`/api/${companyId}/follow-ups/${apptId}`, { method: "DELETE" });
     setAppointments(prev => prev.filter(a => a.id !== apptId));
+    setUpcoming(prev => prev.filter(a => a.id !== apptId));
     router.refresh();
   }
 
@@ -539,26 +538,69 @@ export default function AppointmentsCard({
                       </div>
                     </button>
                     {isOpen && (
-                      <div className="divide-y" style={{ borderTop: "1px solid #30373f" }}>
+                      <div style={{ borderTop: "1px solid #30373f" }}>
                         {appts.map(appt => {
                           const { name, time, address, notes } = parseAppt(appt.text);
+                          const isEditingThis = editingAppt?.id === appt.id;
                           return (
-                            <button
-                              key={appt.id}
-                              onClick={() => openLeadPopup(appt)}
-                              className="w-full text-left px-4 py-3 transition-colors hover:bg-[#1e2736] flex items-start gap-2"
-                              style={{ background: "#0d1117" }}
-                            >
-                              <span className="text-base shrink-0">📅</span>
-                              <div className="min-w-0">
-                                <div className="flex items-baseline gap-2 flex-wrap">
-                                  <span className="text-sm font-bold" style={{ color: "#e6edf3" }}>{name}</span>
-                                  {time && <span className="text-xs font-semibold" style={{ color: "#C9A84C" }}>{time}</span>}
+                            <div key={appt.id} style={{ background: "#0d1117", borderBottom: "1px solid #1e2736" }}>
+                              {isEditingThis ? (
+                                <div className="p-4 flex flex-col gap-3">
+                                  <div className="text-xs font-semibold" style={{ color: "#C9A84C" }}>Editing: {name}</div>
+                                  <div className="flex gap-2">
+                                    <input type="text" placeholder="Time" value={editTime} onChange={e => setEditTime(e.target.value)}
+                                      autoFocus className="flex-1 bg-transparent text-sm px-3 py-2 rounded-lg outline-none"
+                                      style={{ border: "1px solid #30373f", color: "#e6edf3" }} />
+                                    <input type="date" value={editDate} onChange={e => setEditDate(e.target.value)}
+                                      className="bg-transparent text-sm px-3 py-2 rounded-lg outline-none"
+                                      style={{ border: "1px solid #30373f", color: "#e6edf3" }} />
+                                  </div>
+                                  <input type="text" placeholder="Address" value={editAddress} onChange={e => setEditAddress(e.target.value)}
+                                    className="w-full bg-transparent text-sm px-3 py-2 rounded-lg outline-none"
+                                    style={{ border: "1px solid #30373f", color: "#e6edf3" }} />
+                                  <textarea rows={3} placeholder="Notes…" value={editNotes} onChange={e => setEditNotes(e.target.value)}
+                                    className="w-full bg-transparent text-sm px-3 py-2 rounded-lg outline-none resize-none"
+                                    style={{ border: "1px solid #30373f", color: "#e6edf3" }} />
+                                  <div className="flex gap-2">
+                                    <button onClick={saveEdit} disabled={editSaving}
+                                      className="flex-1 text-sm font-bold py-2 rounded-lg disabled:opacity-50"
+                                      style={{ background: "#C9A84C", color: "#0d1117" }}>
+                                      {editSaving ? "Saving…" : "Save"}
+                                    </button>
+                                    <button onClick={() => setEditingAppt(null)}
+                                      className="text-sm px-4 py-2 rounded-lg"
+                                      style={{ color: "#8b949e", border: "1px solid #30373f" }}>
+                                      Cancel
+                                    </button>
+                                  </div>
                                 </div>
-                                {address && <div className="text-xs mt-0.5" style={{ color: "#8b949e" }}>📍 {address}</div>}
-                                {notes && <div className="text-xs mt-0.5 line-clamp-1" style={{ color: "#484f58" }}>{notes}</div>}
-                              </div>
-                            </button>
+                              ) : (
+                                <div className="flex flex-col px-4 py-3 gap-1">
+                                  <div className="flex items-center justify-between gap-2">
+                                    <div className="flex items-baseline gap-2 flex-wrap min-w-0">
+                                      <span className="text-sm font-bold" style={{ color: "#e6edf3" }}>{name}</span>
+                                      {time && <span className="text-xs font-semibold" style={{ color: "#C9A84C" }}>{time}</span>}
+                                    </div>
+                                    <div className="flex gap-2 shrink-0">
+                                      <button onClick={() => openEdit(appt)}
+                                        className="rounded-md px-3 py-1 text-xs font-bold"
+                                        style={{ background: "#C9A84C", color: "#0d1117", cursor: "pointer" }}>
+                                        Edit
+                                      </button>
+                                      <button onClick={() => deleteAppt(appt.id)}
+                                        className="rounded-md px-2 py-1 text-xs font-bold"
+                                        style={{ background: "#ef4444", color: "#fff", cursor: "pointer" }}>
+                                        ×
+                                      </button>
+                                    </div>
+                                  </div>
+                                  <button onClick={() => openLeadPopup(appt)} className="text-left">
+                                    {address && <div className="text-xs" style={{ color: "#8b949e" }}>📍 {address}</div>}
+                                    {notes && <div className="text-xs line-clamp-1" style={{ color: "#484f58" }}>{notes}</div>}
+                                  </button>
+                                </div>
+                              )}
+                            </div>
                           );
                         })}
                       </div>
