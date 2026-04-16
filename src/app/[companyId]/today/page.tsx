@@ -64,7 +64,7 @@ export default async function TodayPage({
   if (verifyHour !== 0) todayStart = new Date(Date.UTC(etY, etM - 1, etD, 5, 0, 0, 0));
   const todayEnd = new Date(todayStart.getTime() + 24 * 60 * 60 * 1000 - 1);
 
-  const [todayLeads, allLeadsCount, estimatesToSend, followUps, clients, urgentLeads, untriaged, pendingCountersigns, todayAppointments, upcomingAppointments, activeClients] = await Promise.all([
+  const [todayLeads, allLeadsCount, estimatesToSend, followUps, clients, urgentLeads, untriaged, pendingCountersigns, todayAppointments, upcomingAppointments, activeClients, upcomingTasks] = await Promise.all([
     // Leads received today from email
     prisma.lead.findMany({
       where: {
@@ -181,6 +181,18 @@ export default async function TodayPage({
         },
       },
     }),
+    // Upcoming tasks (future dates, TASK category, not appointments)
+    prisma.followUp.findMany({
+      where: {
+        companyId: params.companyId,
+        category: "TASK",
+        completedAt: null,
+        dueDate: { gte: new Date(Date.UTC(etY, etM - 1, etD + 1)) },
+        NOT: { text: { startsWith: "📅 Appointment" } },
+      },
+      orderBy: { dueDate: "asc" },
+      include: { client: { select: { id: true, name: true } } },
+    }),
   ]);
 
   const today = new Date().toLocaleDateString("en-US", {
@@ -200,21 +212,37 @@ export default async function TodayPage({
   const appointments = todayAppointments;
 
   // Map follow-ups to FollowUpItem shape for each category
-  function toItems(category: "TASK" | "FOLLOW_UP" | "ESTIMATE"): FollowUpItem[] {
-    return followUps
-      .filter(f => f.category === category)
-      .map(f => ({
-        id: f.id,
-        text: f.text,
-        audioUrl: f.audioUrl,
-        audioMimeType: f.audioMimeType,
-        audioSize: f.audioSize,
-        clientId: f.clientId,
-        clientName: f.client?.name ?? null,
-        completedAt: f.completedAt ? f.completedAt.toISOString() : null,
-        createdAt: f.createdAt.toISOString(),
-      }));
+  function toItem(f: typeof followUps[number]): FollowUpItem {
+    return {
+      id: f.id,
+      text: f.text,
+      audioUrl: f.audioUrl,
+      audioMimeType: f.audioMimeType,
+      audioSize: f.audioSize,
+      clientId: f.clientId,
+      clientName: f.client?.name ?? null,
+      completedAt: f.completedAt ? f.completedAt.toISOString() : null,
+      createdAt: f.createdAt.toISOString(),
+      dueDate: f.dueDate ? f.dueDate.toISOString() : null,
+    };
   }
+
+  function toItems(category: "TASK" | "FOLLOW_UP" | "ESTIMATE"): FollowUpItem[] {
+    return followUps.filter(f => f.category === category).map(toItem);
+  }
+
+  const upcomingTaskItems: FollowUpItem[] = upcomingTasks.map(f => ({
+    id: f.id,
+    text: f.text,
+    audioUrl: f.audioUrl,
+    audioMimeType: f.audioMimeType,
+    audioSize: f.audioSize,
+    clientId: f.clientId,
+    clientName: f.client?.name ?? null,
+    completedAt: null,
+    createdAt: f.createdAt.toISOString(),
+    dueDate: f.dueDate ? f.dueDate.toISOString() : null,
+  }));
 
   return (
     <div className="max-w-6xl mx-auto px-3 sm:px-4 py-4 sm:py-8">
@@ -341,6 +369,7 @@ export default async function TodayPage({
           category="TASK"
           label="Today's tasks"
           initialItems={toItems("TASK")}
+          initialUpcoming={upcomingTaskItems}
           clients={clients}
         />
 

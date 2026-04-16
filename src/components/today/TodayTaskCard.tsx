@@ -14,6 +14,7 @@ export type FollowUpItem = {
   clientName: string | null;
   completedAt: string | null;
   createdAt: string;
+  dueDate?: string | null;
 };
 
 type ClientOption = {
@@ -509,15 +510,19 @@ export default function TodayTaskCard({
   category,
   label,
   initialItems,
+  initialUpcoming,
   clients,
 }: {
   companyId: string;
   category: "TASK" | "FOLLOW_UP" | "ESTIMATE";
   label: string;
   initialItems: FollowUpItem[];
+  initialUpcoming?: FollowUpItem[];
   clients: ClientOption[];
 }) {
   const [items, setItems] = useState<FollowUpItem[]>(initialItems);
+  const [upcomingItems, setUpcomingItems] = useState<FollowUpItem[]>(initialUpcoming ?? []);
+  const [showUpcoming, setShowUpcoming] = useState(false);
   const [showAdd, setShowAdd] = useState(false);
   const [hovered, setHovered] = useState(false);
 
@@ -536,6 +541,7 @@ export default function TodayTaskCard({
 
   function handleDelete(id: string) {
     setItems(prev => prev.filter(i => i.id !== id));
+    setUpcomingItems(prev => prev.filter(i => i.id !== id));
   }
 
   function handleSaved(item: FollowUpItem) {
@@ -633,6 +639,49 @@ export default function TodayTaskCard({
                 />
               ))}
             </>
+          )}
+        </div>
+      )}
+
+      {/* Upcoming tasks */}
+      {upcomingItems.length > 0 && (
+        <div onClick={e => e.stopPropagation()}>
+          <button
+            onClick={() => setShowUpcoming(v => !v)}
+            className="w-full flex items-center justify-between px-2 py-1.5 rounded-lg mt-1"
+            style={{ background: "#1e273688", border: "1px solid #C9A84C22" }}
+          >
+            <span className="text-[10px] font-semibold uppercase tracking-widest" style={{ color: "#C9A84C" }}>
+              Upcoming ({upcomingItems.length})
+            </span>
+            <span style={{ color: "#C9A84C", fontSize: 11 }}>{showUpcoming ? "▲" : "▼"}</span>
+          </button>
+          {showUpcoming && (
+            <div className="mt-1 flex flex-col divide-y rounded-lg overflow-hidden" style={{ borderColor: "#30373f", border: "1px solid #30373f" }}>
+              {upcomingItems.map(item => {
+                const dateLabel = item.dueDate
+                  ? new Date(item.dueDate).toLocaleDateString("en-US", { timeZone: "UTC", weekday: "short", month: "short", day: "numeric" })
+                  : "";
+                return (
+                  <div key={item.id} className="px-2 py-2" style={{ background: "#0d1117" }}>
+                    {dateLabel && (
+                      <div className="text-[10px] font-bold mb-1" style={{ color: "#C9A84C" }}>{dateLabel}</div>
+                    )}
+                    <ItemRow
+                      item={item}
+                      companyId={companyId}
+                      onToggle={(id, done) => {
+                        if (done) {
+                          setUpcomingItems(prev => prev.filter(i => i.id !== id));
+                          setItems(prev => [...prev, { ...item, completedAt: new Date().toISOString() }]);
+                        }
+                      }}
+                      onDelete={handleDelete}
+                    />
+                  </div>
+                );
+              })}
+            </div>
           )}
         </div>
       )}
