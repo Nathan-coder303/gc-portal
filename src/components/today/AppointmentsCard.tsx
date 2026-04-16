@@ -475,11 +475,17 @@ export default function AppointmentsCard({
                         {notes && <p className="text-xs mt-1" style={{ color: "#8b949e", whiteSpace: "pre-wrap" }}>{notes}</p>}
                       </div>
                     </button>
-                    <div className="flex gap-1 shrink-0">
+                    <div className="flex gap-1 shrink-0 ml-1">
                       <button onClick={() => openEdit(appt)} title="Edit"
-                        style={{ background: "transparent", border: "none", color: "#8b949e", fontSize: 14, cursor: "pointer", padding: "2px 4px" }}>✎</button>
+                        className="rounded-lg px-2 py-1 text-xs font-semibold"
+                        style={{ background: "#C9A84C22", border: "1px solid #C9A84C55", color: "#C9A84C", cursor: "pointer" }}>
+                        Edit
+                      </button>
                       <button onClick={() => deleteAppt(appt.id)} title="Delete"
-                        style={{ background: "transparent", border: "none", color: "#484f58", fontSize: 16, cursor: "pointer", padding: "2px 4px" }}>×</button>
+                        className="rounded-lg px-2 py-1 text-xs font-semibold"
+                        style={{ background: "#ef444422", border: "1px solid #ef444444", color: "#ef4444", cursor: "pointer" }}>
+                        ×
+                      </button>
                     </div>
                   </div>
                 )}
