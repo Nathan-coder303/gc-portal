@@ -38,13 +38,27 @@ function parseAppt(text: string) {
   const mainLine = newlineIdx >= 0 ? clean.slice(0, newlineIdx) : clean;
   const notes = newlineIdx >= 0 ? clean.slice(newlineIdx + 1).trim() : "";
   const parts = mainLine.split(" · ");
-  return {
-    name: parts[0]?.trim() ?? "",
-    time: parts[1]?.trim() ?? "",
-    phone: parts[2]?.trim() ?? "",
-    address: parts[3]?.trim() ?? "",
-    notes,
-  };
+
+  const name = parts[0]?.trim() ?? "";
+  const time = parts[1]?.trim() ?? "";
+  let phone = "", address = "";
+
+  if (parts.length >= 4) {
+    // Full format: Name · Time · Phone · Address
+    phone = parts[2]?.trim() ?? "";
+    address = parts.slice(3).join(" · ").trim();
+  } else if (parts.length === 3) {
+    // Either Name · Time · Phone  OR  Name · Time · Address
+    // If it's all digits/spaces/dashes/parens it's a phone; otherwise it's an address
+    const p2 = parts[2]?.trim() ?? "";
+    if (/^[\d\s\-()+.]{7,}$/.test(p2)) {
+      phone = p2;
+    } else {
+      address = p2;
+    }
+  }
+
+  return { name, time, phone, address, notes };
 }
 
 function formatDueDate(iso: string) {
@@ -277,25 +291,26 @@ export default function AppointmentsCard({
         }
       }
 
-      // Also patch the appointment text so the phone shows on the card
-      if (popupAppt && popupPhone) {
-        const { name, time, phone: oldSlot, address: oldAddr, notes: apptNotes } = parseAppt(popupAppt.text);
-        // oldSlot might be the address (if phone was empty at creation and address shifted left)
-        const looksLikePhone = /^[\d\s\-().+]{7,}$/.test(oldSlot);
-        const actualAddress = looksLikePhone ? oldAddr : (oldSlot || oldAddr);
-        const newMain = [name, time, popupPhone, actualAddress].map(s => s.trim()).filter(Boolean).join(" · ");
-        const newText = `📅 Appointment – ${newMain}${apptNotes ? `\n${apptNotes}` : ""}`;
-        const pr = await fetch(`/api/${companyId}/follow-ups/${popupAppt.id}`, {
-          method: "PATCH",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ text: newText }),
-        });
-        if (pr.ok) {
-          const updated = await pr.json();
-          const a: Appointment = { id: updated.id, text: updated.text, dueDate: updated.dueDate };
-          setAppointments(prev => prev.map(x => x.id === popupAppt.id ? a : x));
-          setUpcoming(prev => prev.map(x => x.id === popupAppt.id ? a : x));
-          setPopupAppt(a);
+      // Patch the appointment text if phone changed so it shows on the card
+      if (popupAppt) {
+        const { name, time, phone: currentPhone, address: currentAddr, notes: apptNotes } = parseAppt(popupAppt.text);
+        const phoneChanged = popupPhone.trim() !== currentPhone.trim();
+        if (phoneChanged && popupPhone.trim()) {
+          // currentAddr already parsed correctly by the updated parseAppt
+          const newMain = [name, time, popupPhone.trim(), currentAddr].map(s => s.trim()).filter(Boolean).join(" · ");
+          const newText = `📅 Appointment – ${newMain}${apptNotes ? `\n${apptNotes}` : ""}`;
+          const pr = await fetch(`/api/${companyId}/follow-ups/${popupAppt.id}`, {
+            method: "PATCH",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ text: newText }),
+          });
+          if (pr.ok) {
+            const updated = await pr.json();
+            const a: Appointment = { id: updated.id, text: updated.text, dueDate: updated.dueDate };
+            setAppointments(prev => prev.map(x => x.id === popupAppt.id ? a : x));
+            setUpcoming(prev => prev.map(x => x.id === popupAppt.id ? a : x));
+            setPopupAppt(a);
+          }
         }
       }
 
