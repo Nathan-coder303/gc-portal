@@ -4,7 +4,6 @@ import { useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
 
 type Appointment = { id: string; text: string; dueDate: string | null };
-
 type Note = { id: string; content: string; noteDate: string; createdAt: string };
 
 type PipelineLead = {
@@ -33,34 +32,69 @@ type RawLead = {
   city?: string | null;
 };
 
+// ── Parse the stored appointment text ──────────────────────────────────────────
+// Format line 1: "📅 Appointment – Name · Time · Phone · Address"
+// Line 2+: notes
+function parseAppt(text: string) {
+  const clean = text.replace(/^📅 Appointment\s*[–-]\s*/, "");
+  const newlineIdx = clean.indexOf("\n");
+  const mainLine = newlineIdx >= 0 ? clean.slice(0, newlineIdx) : clean;
+  const notes = newlineIdx >= 0 ? clean.slice(newlineIdx + 1).trim() : "";
+  const parts = mainLine.split(" · ");
+  return {
+    name: parts[0]?.trim() ?? "",
+    time: parts[1]?.trim() ?? "",
+    phone: parts[2]?.trim() ?? "",
+    address: parts[3]?.trim() ?? "",
+    notes,
+  };
+}
+
+function formatDueDate(iso: string) {
+  return new Date(iso).toLocaleDateString("en-US", {
+    timeZone: "UTC",
+    weekday: "short",
+    month: "short",
+    day: "numeric",
+  });
+}
+
 export default function AppointmentsCard({
   companyId,
   initialAppointments,
+  initialUpcoming,
   todayDateStr,
 }: {
   companyId: string;
   initialAppointments: Appointment[];
+  initialUpcoming: Appointment[];
   todayDateStr: string;
 }) {
   const router = useRouter();
   const [appointments, setAppointments] = useState(initialAppointments);
+  const [upcoming] = useState(initialUpcoming);
 
-  // Step 1: pick lead
+  // ── Add appointment flow ────────────────────────────────────────────────────
   const [showPicker, setShowPicker] = useState(false);
   const [leads, setLeads] = useState<PipelineLead[]>([]);
   const [loadingLeads, setLoadingLeads] = useState(false);
   const [search, setSearch] = useState("");
 
-  // Step 2: compose appointment
   const [showForm, setShowForm] = useState(false);
   const [selectedLead, setSelectedLead] = useState<PipelineLead | null>(null);
   const [apptTime, setApptTime] = useState("");
   const [apptDate, setApptDate] = useState(todayDateStr);
-  const [apptText, setApptText] = useState("");
+  const [apptAddress, setApptAddress] = useState("");
+  const [apptNotes, setApptNotes] = useState("");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
 
-  // Lead popup
+  // ── Upcoming section toggle ─────────────────────────────────────────────────
+  const [showUpcoming, setShowUpcoming] = useState(false);
+  const [expandedDates, setExpandedDates] = useState<Set<string>>(new Set());
+
+  // ── Lead popup ──────────────────────────────────────────────────────────────
+  const [popupAppt, setPopupAppt] = useState<Appointment | null>(null);
   const [popupLead, setPopupLead] = useState<PipelineLead | null>(null);
   const [popupNotes, setPopupNotes] = useState<Note[]>([]);
   const [popupLoading, setPopupLoading] = useState(false);
@@ -78,13 +112,12 @@ export default function AppointmentsCard({
       ]);
       const pipelineCards: PipelineLead[] = await pipelineRes.json();
       const rawLeads: RawLead[] = await rawLeadsRes.json();
-      // Convert raw leads (no pipeline card yet) to PipelineLead shape
       const rawAsCards: PipelineLead[] = rawLeads.map(l => ({
         id: `raw_${l.id}`,
         displayName: l.name,
         notes: null,
         source: null,
-        lead: { name: l.name, email: l.email, phone: l.phone, projectType: l.projectType, address: l.address, city: l.city },
+        lead: { id: l.id, name: l.name, email: l.email, phone: l.phone, projectType: l.projectType, address: l.address, city: l.city },
       }));
       setLeads([...pipelineCards, ...rawAsCards]);
     } catch { /* ignore */ }
@@ -93,35 +126,28 @@ export default function AppointmentsCard({
 
   function selectLead(lead: PipelineLead) {
     setSelectedLead(lead);
-    // Pre-compose appointment text from lead data
-    const parts: string[] = [lead.displayName];
-    if (lead.lead?.projectType) parts.push(lead.lead.projectType);
-    if (lead.lead?.phone) parts.push(lead.lead.phone);
-    if (lead.lead?.email) parts.push(lead.lead.email);
-    setApptText(parts.join(" · "));
+    setApptAddress(lead.lead?.address ?? "");
     setApptTime("");
     setApptDate(todayDateStr);
+    setApptNotes("");
     setShowPicker(false);
     setShowForm(true);
   }
 
-  function buildFinalText() {
-    // Insert time after name (first part)
-    const parts = apptText.split(" · ");
-    const name = parts[0];
-    const rest = parts.slice(1);
-    const withTime = apptTime ? [name, apptTime, ...rest] : [name, ...rest];
-    return withTime.join(" · ");
-  }
-
   async function handleSave() {
-    const final = buildFinalText();
-    if (!final.trim()) return;
+    if (!selectedLead) return;
+    const namePart = selectedLead.displayName;
+    const mainLine = [namePart, apptTime, selectedLead.lead?.phone ?? "", apptAddress]
+      .map(s => s.trim())
+      .filter(Boolean)
+      .join(" · ");
+    const fullText = `📅 Appointment – ${mainLine}${apptNotes.trim() ? `\n${apptNotes.trim()}` : ""}`;
+
     setSaving(true);
     setError("");
     const fd = new FormData();
     fd.append("category", "TASK");
-    fd.append("text", `📅 Appointment – ${final.trim()}`);
+    fd.append("text", fullText);
     fd.append("dueDate", apptDate);
     try {
       const res = await fetch(`/api/${companyId}/follow-ups`, { method: "POST", body: fd });
@@ -132,7 +158,6 @@ export default function AppointmentsCard({
       }
       setShowForm(false);
       setSelectedLead(null);
-      setApptText("");
       router.refresh();
     } catch (e) {
       setError(String(e));
@@ -147,11 +172,10 @@ export default function AppointmentsCard({
     setError("");
   }
 
-  const openLeadPopup = useCallback(async (apptText: string) => {
-    // Extract name: "📅 Appointment – Name · ..." → "Name"
-    const raw = apptText.replace(/^📅 Appointment\s*[–-]\s*/, "");
-    const name = raw.split(" · ")[0]?.trim();
+  const openLeadPopup = useCallback(async (appt: Appointment) => {
+    const { name } = parseAppt(appt.text);
     if (!name) return;
+    setPopupAppt(appt);
     setPopupLoading(true);
     setPopupLead(null);
     setPopupNotes([]);
@@ -190,6 +214,21 @@ export default function AppointmentsCard({
     setPopupLoading(false);
   }, [companyId]);
 
+  function closePopup() {
+    setPopupAppt(null);
+    setPopupLead(null);
+    setPopupNotes([]);
+  }
+
+  // Group upcoming by date string
+  const upcomingByDate: Record<string, Appointment[]> = {};
+  for (const a of upcoming) {
+    const key = a.dueDate ? a.dueDate.slice(0, 10) : "no-date";
+    if (!upcomingByDate[key]) upcomingByDate[key] = [];
+    upcomingByDate[key].push(a);
+  }
+  const upcomingDates = Object.keys(upcomingByDate).sort();
+
   const filteredLeads = leads.filter(l =>
     l.displayName.toLowerCase().includes(search.toLowerCase()) ||
     (l.lead?.email ?? "").toLowerCase().includes(search.toLowerCase()) ||
@@ -201,7 +240,7 @@ export default function AppointmentsCard({
       className="mb-4 rounded-2xl px-4 py-4 sm:px-6 sm:py-5"
       style={{ background: "#0a0e1a", border: "1px solid #C9A84C33" }}
     >
-      {/* Header row */}
+      {/* Header */}
       <div className="flex items-center gap-3">
         <div
           className="flex-1 text-center text-[52px] sm:text-6xl font-black leading-none tracking-tight"
@@ -249,12 +288,8 @@ export default function AppointmentsCard({
                     {lead.lead?.projectType && (
                       <span className="text-[10px] px-1.5 py-0.5 rounded-full" style={{ background: "#C9A84C22", color: "#C9A84C" }}>{lead.lead.projectType}</span>
                     )}
-                    {lead.lead?.phone && (
-                      <span className="text-[10px]" style={{ color: "#8b949e" }}>{lead.lead.phone}</span>
-                    )}
-                    {lead.lead?.email && (
-                      <span className="text-[10px] truncate max-w-[140px]" style={{ color: "#58a6ff" }}>{lead.lead.email}</span>
-                    )}
+                    {lead.lead?.phone && <span className="text-[10px]" style={{ color: "#8b949e" }}>{lead.lead.phone}</span>}
+                    {lead.lead?.address && <span className="text-[10px] truncate max-w-[180px]" style={{ color: "#484f58" }}>{lead.lead.address}</span>}
                   </div>
                 </div>
                 <span className="text-[10px] shrink-0" style={{ color: "#C9A84C" }}>Select →</span>
@@ -270,12 +305,10 @@ export default function AppointmentsCard({
           <div className="text-xs font-semibold" style={{ color: "#C9A84C" }}>
             Appointment for <span style={{ color: "#e6edf3" }}>{selectedLead.displayName}</span>
           </div>
-
-          {/* Time + Date row */}
           <div className="flex gap-2">
             <input
               type="text"
-              placeholder="Time (e.g. 11:00 AM)"
+              placeholder="Time (e.g. 10:30 AM)"
               value={apptTime}
               onChange={e => setApptTime(e.target.value)}
               autoFocus
@@ -290,22 +323,26 @@ export default function AppointmentsCard({
               style={{ border: "1px solid #30373f", color: "#e6edf3" }}
             />
           </div>
-
-          {/* Editable text */}
           <input
             type="text"
-            value={apptText}
-            onChange={e => setApptText(e.target.value)}
+            placeholder="Address (optional)"
+            value={apptAddress}
+            onChange={e => setApptAddress(e.target.value)}
             className="w-full bg-transparent text-sm px-3 py-2 rounded-lg outline-none"
-            style={{ border: "1px solid #30373f", color: "#8b949e" }}
-            placeholder="Name · Project · Phone · Email"
+            style={{ border: "1px solid #30373f", color: "#e6edf3" }}
           />
-          <p className="text-[10px] -mt-1" style={{ color: "#484f58" }}>Edit details above if needed</p>
-
+          <textarea
+            rows={3}
+            placeholder="Notes (optional)…"
+            value={apptNotes}
+            onChange={e => setApptNotes(e.target.value)}
+            className="w-full bg-transparent text-sm px-3 py-2 rounded-lg outline-none resize-none"
+            style={{ border: "1px solid #30373f", color: "#e6edf3" }}
+          />
           <div className="flex gap-2">
             <button
               onClick={handleSave}
-              disabled={saving || !apptText.trim()}
+              disabled={saving}
               className="flex-1 text-sm font-bold py-2 rounded-lg transition-opacity disabled:opacity-50"
               style={{ background: "#C9A84C", color: "#0d1117" }}
             >
@@ -323,31 +360,35 @@ export default function AppointmentsCard({
         </div>
       )}
 
-      {/* Appointment list */}
+      {/* Today's appointment list */}
       {appointments.length === 0 && !showPicker && !showForm ? (
         <p className="text-base text-center mt-3" style={{ color: "#484f58" }}>No appointments scheduled for today</p>
       ) : appointments.length > 0 ? (
         <div className="space-y-3 mt-4">
           {appointments.map(appt => {
-            const raw = appt.text.replace(/^📅 Appointment\s*[–-]\s*/, "");
-            const parts = raw.split(" · ");
-            const name = parts[0] ?? "";
-            const rest = parts.slice(1);
+            const { name, time, phone, address, notes } = parseAppt(appt.text);
             return (
               <button
                 key={appt.id}
-                onClick={() => openLeadPopup(appt.text)}
+                onClick={() => openLeadPopup(appt)}
                 className="w-full text-left flex items-start gap-3 p-4 rounded-xl transition-opacity hover:opacity-80"
                 style={{ background: "#161b22", border: "1px solid #C9A84C22" }}
               >
                 <span className="text-2xl shrink-0">📅</span>
-                <div>
-                  <div className="text-lg font-black leading-tight" style={{ color: "#e6edf3" }}>{name}</div>
-                  <div className="flex flex-wrap gap-x-3 gap-y-0.5 mt-1">
-                    {rest.map((p, i) => (
-                      <span key={i} className="text-sm" style={{ color: "#8b949e" }}>{p}</span>
-                    ))}
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-baseline gap-2 flex-wrap">
+                    <span className="text-base font-black leading-tight" style={{ color: "#e6edf3" }}>{name}</span>
+                    {time && <span className="text-sm font-bold" style={{ color: "#C9A84C" }}>{time}</span>}
                   </div>
+                  {(phone || address) && (
+                    <div className="flex gap-3 mt-0.5 flex-wrap">
+                      {phone && <span className="text-xs" style={{ color: "#8b949e" }}>📞 {phone}</span>}
+                      {address && <span className="text-xs" style={{ color: "#8b949e" }}>📍 {address}</span>}
+                    </div>
+                  )}
+                  {notes && (
+                    <p className="text-xs mt-1 line-clamp-2" style={{ color: "#8b949e", whiteSpace: "pre-wrap" }}>{notes}</p>
+                  )}
                 </div>
               </button>
             );
@@ -355,32 +396,130 @@ export default function AppointmentsCard({
         </div>
       ) : null}
 
-      {/* Lead popup modal */}
-      {(popupLoading || popupLead) && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ background: "rgba(0,0,0,0.7)" }} onClick={() => { setPopupLead(null); setPopupNotes([]); }}>
-          <div className="w-full max-w-md rounded-2xl p-5 space-y-4" style={{ background: "#161b22", border: "1px solid #C9A84C44" }} onClick={e => e.stopPropagation()}>
-            <div className="flex items-center justify-between">
-              <h2 className="text-base font-bold" style={{ color: "#e6edf3" }}>{popupLead?.displayName ?? "Loading…"}</h2>
-              <button onClick={() => { setPopupLead(null); setPopupNotes([]); }} style={{ color: "#8b949e", fontSize: 20, lineHeight: 1 }}>×</button>
-            </div>
+      {/* Upcoming appointments section */}
+      {upcoming.length > 0 && (
+        <div className="mt-4">
+          <button
+            onClick={() => setShowUpcoming(v => !v)}
+            className="w-full flex items-center justify-between px-3 py-2 rounded-xl transition-opacity hover:opacity-80"
+            style={{ background: "#161b2288", border: "1px solid #C9A84C22" }}
+          >
+            <span className="text-xs font-semibold uppercase tracking-widest" style={{ color: "#C9A84C" }}>
+              Upcoming appointments ({upcoming.length})
+            </span>
+            <span style={{ color: "#C9A84C", fontSize: 14 }}>{showUpcoming ? "▲" : "▼"}</span>
+          </button>
 
-            {popupLoading && <p className="text-sm text-center py-4" style={{ color: "#484f58" }}>Loading…</p>}
+          {showUpcoming && (
+            <div className="mt-2 space-y-2">
+              {upcomingDates.map(dateKey => {
+                const appts = upcomingByDate[dateKey];
+                const isOpen = expandedDates.has(dateKey);
+                const label = dateKey !== "no-date"
+                  ? new Date(dateKey + "T12:00:00Z").toLocaleDateString("en-US", { weekday: "long", month: "short", day: "numeric" })
+                  : "No date";
+                return (
+                  <div key={dateKey} className="rounded-xl overflow-hidden" style={{ border: "1px solid #30373f" }}>
+                    <button
+                      onClick={() => setExpandedDates(prev => {
+                        const next = new Set(prev);
+                        isOpen ? next.delete(dateKey) : next.add(dateKey);
+                        return next;
+                      })}
+                      className="w-full flex items-center justify-between px-4 py-2.5 transition-colors hover:bg-[#1e2736]"
+                      style={{ background: "#161b22" }}
+                    >
+                      <span className="text-sm font-bold" style={{ color: "#e6edf3" }}>{label}</span>
+                      <div className="flex items-center gap-2">
+                        <span className="text-[10px] px-1.5 py-0.5 rounded-full" style={{ background: "#C9A84C22", color: "#C9A84C" }}>{appts.length}</span>
+                        <span style={{ color: "#484f58", fontSize: 12 }}>{isOpen ? "▲" : "▼"}</span>
+                      </div>
+                    </button>
+                    {isOpen && (
+                      <div className="divide-y" style={{ borderTop: "1px solid #30373f" }}>
+                        {appts.map(appt => {
+                          const { name, time, address, notes } = parseAppt(appt.text);
+                          return (
+                            <button
+                              key={appt.id}
+                              onClick={() => openLeadPopup(appt)}
+                              className="w-full text-left px-4 py-3 transition-colors hover:bg-[#1e2736] flex items-start gap-2"
+                              style={{ background: "#0d1117" }}
+                            >
+                              <span className="text-base shrink-0">📅</span>
+                              <div className="min-w-0">
+                                <div className="flex items-baseline gap-2 flex-wrap">
+                                  <span className="text-sm font-bold" style={{ color: "#e6edf3" }}>{name}</span>
+                                  {time && <span className="text-xs font-semibold" style={{ color: "#C9A84C" }}>{time}</span>}
+                                </div>
+                                {address && <div className="text-xs mt-0.5" style={{ color: "#8b949e" }}>📍 {address}</div>}
+                                {notes && <div className="text-xs mt-0.5 line-clamp-1" style={{ color: "#484f58" }}>{notes}</div>}
+                              </div>
+                            </button>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Lead popup modal */}
+      {(popupLoading || popupAppt) && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center p-4"
+          style={{ background: "rgba(0,0,0,0.7)" }}
+          onClick={closePopup}
+        >
+          <div
+            className="w-full max-w-md rounded-2xl p-5 space-y-4"
+            style={{ background: "#161b22", border: "1px solid #C9A84C44" }}
+            onClick={e => e.stopPropagation()}
+          >
+            {/* Appointment info header */}
+            {popupAppt && (() => {
+              const { name, time, address, notes } = parseAppt(popupAppt.text);
+              return (
+                <div>
+                  <div className="flex items-center justify-between mb-1">
+                    <h2 className="text-base font-bold" style={{ color: "#e6edf3" }}>{name}</h2>
+                    <button onClick={closePopup} style={{ color: "#8b949e", fontSize: 20, lineHeight: 1 }}>×</button>
+                  </div>
+                  <div className="flex flex-wrap gap-3 text-sm" style={{ color: "#8b949e" }}>
+                    {popupAppt.dueDate && (
+                      <span style={{ color: "#C9A84C" }}>📅 {formatDueDate(popupAppt.dueDate)}</span>
+                    )}
+                    {time && <span style={{ color: "#C9A84C" }}>⏰ {time}</span>}
+                    {address && <span>📍 {address}</span>}
+                  </div>
+                  {notes && (
+                    <p className="text-xs mt-2 p-2 rounded-lg" style={{ color: "#e6edf3", background: "#0d1117", whiteSpace: "pre-wrap" }}>{notes}</p>
+                  )}
+                </div>
+              );
+            })()}
+
+            {popupLoading && <p className="text-sm text-center py-4" style={{ color: "#484f58" }}>Loading lead…</p>}
 
             {!popupLoading && popupLead && (
               <>
-                {/* Lead details */}
-                <div className="space-y-1 text-sm" style={{ color: "#8b949e" }}>
-                  {popupLead.lead?.projectType && <div><span style={{ color: "#C9A84C" }}>Project:</span> {popupLead.lead.projectType}</div>}
-                  {popupLead.lead?.phone && <div><span style={{ color: "#C9A84C" }}>Phone:</span> {popupLead.lead.phone}</div>}
-                  {popupLead.lead?.email && <div><span style={{ color: "#C9A84C" }}>Email:</span> {popupLead.lead.email}</div>}
-                  {popupLead.lead?.address && <div><span style={{ color: "#C9A84C" }}>Address:</span> {popupLead.lead.address}{popupLead.lead.city ? `, ${popupLead.lead.city}` : ""}</div>}
-                  {popupLead.source && <div><span style={{ color: "#C9A84C" }}>Source:</span> {popupLead.source}</div>}
-                  {popupLead.notes && <div className="mt-1 text-xs" style={{ color: "#484f58" }}>{popupLead.notes}</div>}
+                <div style={{ borderTop: "1px solid #30373f", paddingTop: 12 }}>
+                  <p className="text-[10px] font-semibold uppercase tracking-widest mb-2" style={{ color: "#484f58" }}>Lead Info</p>
+                  <div className="space-y-1 text-sm" style={{ color: "#8b949e" }}>
+                    {popupLead.lead?.projectType && <div><span style={{ color: "#C9A84C" }}>Project:</span> {popupLead.lead.projectType}</div>}
+                    {popupLead.lead?.phone && <div><span style={{ color: "#C9A84C" }}>Phone:</span> {popupLead.lead.phone}</div>}
+                    {popupLead.lead?.email && <div><span style={{ color: "#C9A84C" }}>Email:</span> {popupLead.lead.email}</div>}
+                    {popupLead.lead?.address && <div><span style={{ color: "#C9A84C" }}>Address:</span> {popupLead.lead.address}{popupLead.lead.city ? `, ${popupLead.lead.city}` : ""}</div>}
+                    {popupLead.source && <div><span style={{ color: "#C9A84C" }}>Source:</span> {popupLead.source}</div>}
+                  </div>
                 </div>
 
-                {/* Notes */}
-                <div>
-                  <p className="text-xs font-semibold uppercase tracking-widest mb-2" style={{ color: "#484f58" }}>Notes</p>
+                <div style={{ borderTop: "1px solid #30373f", paddingTop: 12 }}>
+                  <p className="text-[10px] font-semibold uppercase tracking-widest mb-2" style={{ color: "#484f58" }}>Notes</p>
                   {popupNotes.length === 0 ? (
                     <p className="text-xs italic" style={{ color: "#484f58" }}>No notes yet</p>
                   ) : (
@@ -397,6 +536,10 @@ export default function AppointmentsCard({
                   )}
                 </div>
               </>
+            )}
+
+            {!popupLoading && !popupLead && (
+              <p className="text-xs italic" style={{ color: "#484f58" }}>No matching lead found in pipeline</p>
             )}
           </div>
         </div>

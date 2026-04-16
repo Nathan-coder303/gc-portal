@@ -27,7 +27,7 @@ export async function GET(
     orderBy: [{ stage: "asc" }, { sortOrder: "asc" }],
     include: {
       client: { select: { id: true, name: true, email: true } },
-      lead: { select: { id: true, name: true, email: true, phone: true, projectType: true, receivedAt: true } },
+      lead: { select: { id: true, name: true, email: true, phone: true, projectType: true, address: true, city: true, receivedAt: true } },
     },
   });
 
@@ -65,7 +65,7 @@ export async function POST(
         data: { stage: stage || existing.stage, source: source ?? existing.source },
         include: {
           client: { select: { id: true, name: true } },
-          lead: { select: { id: true, name: true, email: true, phone: true, projectType: true, receivedAt: true } },
+          lead: { select: { id: true, name: true, email: true, phone: true, projectType: true, address: true, city: true, receivedAt: true } },
         },
       });
       return NextResponse.json(updated);
@@ -87,7 +87,7 @@ export async function POST(
     },
     include: {
       client: { select: { id: true, name: true } },
-      lead: { select: { id: true, name: true, email: true, phone: true, projectType: true, receivedAt: true } },
+      lead: { select: { id: true, name: true, email: true, phone: true, projectType: true, address: true, city: true, receivedAt: true } },
     },
   });
 

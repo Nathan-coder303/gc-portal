@@ -64,7 +64,7 @@ export default async function TodayPage({
   if (verifyHour !== 0) todayStart = new Date(Date.UTC(etY, etM - 1, etD, 5, 0, 0, 0));
   const todayEnd = new Date(todayStart.getTime() + 24 * 60 * 60 * 1000 - 1);
 
-  const [todayLeads, allLeadsCount, estimatesToSend, followUps, clients, urgentLeads, untriaged, pendingCountersigns, todayAppointments, activeClients] = await Promise.all([
+  const [todayLeads, allLeadsCount, estimatesToSend, followUps, clients, urgentLeads, untriaged, pendingCountersigns, todayAppointments, upcomingAppointments, activeClients] = await Promise.all([
     // Leads received today from email
     prisma.lead.findMany({
       where: {
@@ -143,6 +143,17 @@ export default async function TodayPage({
         dueDate: { gte: todayStart, lte: todayEnd },
       },
       orderBy: { createdAt: "asc" },
+    }),
+    // Upcoming appointments (future dates)
+    prisma.followUp.findMany({
+      where: {
+        companyId: params.companyId,
+        category: "TASK",
+        text: { startsWith: "📅 Appointment" },
+        completedAt: null,
+        dueDate: { gt: todayEnd },
+      },
+      orderBy: { dueDate: "asc" },
     }),
     // Active + Completed clients with template data for MIBH Income barometer
     prisma.client.findMany({
@@ -225,6 +236,7 @@ export default async function TodayPage({
       <AppointmentsCard
         companyId={params.companyId}
         initialAppointments={appointments.map(a => ({ id: a.id, text: a.text, dueDate: a.dueDate ? a.dueDate.toISOString() : null }))}
+        initialUpcoming={upcomingAppointments.map(a => ({ id: a.id, text: a.text, dueDate: a.dueDate ? a.dueDate.toISOString() : null }))}
         todayDateStr={etDateStr}
       />
 
