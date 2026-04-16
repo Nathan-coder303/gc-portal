@@ -419,79 +419,46 @@ export default function AppointmentsCard({
         <div className="space-y-3 mt-4">
           {appointments.map(appt => {
             const { name, time, phone, address, notes } = parseAppt(appt.text);
-            const isEditing = editingAppt?.id === appt.id;
             return (
               <div
                 key={appt.id}
                 className="rounded-xl"
-                style={{ background: "#161b22", border: `1px solid ${isEditing ? "#C9A84C66" : "#C9A84C22"}` }}
+                style={{ background: "#161b22", border: "1px solid #C9A84C22" }}
               >
-                {isEditing ? (
-                  <div className="p-4 flex flex-col gap-3">
-                    <div className="text-xs font-semibold" style={{ color: "#C9A84C" }}>Editing: {name}</div>
-                    <div className="flex gap-2">
-                      <input type="text" placeholder="Time (e.g. 10:30 AM)" value={editTime} onChange={e => setEditTime(e.target.value)}
-                        autoFocus className="flex-1 bg-transparent text-sm px-3 py-2 rounded-lg outline-none"
-                        style={{ border: "1px solid #30373f", color: "#e6edf3" }} />
-                      <input type="date" value={editDate} onChange={e => setEditDate(e.target.value)}
-                        className="bg-transparent text-sm px-3 py-2 rounded-lg outline-none"
-                        style={{ border: "1px solid #30373f", color: "#e6edf3" }} />
+                <div className="flex flex-col p-4 gap-2">
+                  {/* Action buttons row */}
+                  <div className="flex items-center justify-between gap-2">
+                    <div className="flex items-baseline gap-2 flex-wrap min-w-0">
+                      <span className="text-base font-black leading-tight" style={{ color: "#e6edf3" }}>{name}</span>
+                      {time && <span className="text-sm font-bold" style={{ color: "#C9A84C" }}>{time}</span>}
                     </div>
-                    <input type="text" placeholder="Address (optional)" value={editAddress} onChange={e => setEditAddress(e.target.value)}
-                      className="w-full bg-transparent text-sm px-3 py-2 rounded-lg outline-none"
-                      style={{ border: "1px solid #30373f", color: "#e6edf3" }} />
-                    <textarea rows={3} placeholder="Notes (optional)…" value={editNotes} onChange={e => setEditNotes(e.target.value)}
-                      className="w-full bg-transparent text-sm px-3 py-2 rounded-lg outline-none resize-none"
-                      style={{ border: "1px solid #30373f", color: "#e6edf3" }} />
-                    <div className="flex gap-2">
-                      <button onClick={saveEdit} disabled={editSaving}
-                        className="flex-1 text-sm font-bold py-2 rounded-lg disabled:opacity-50"
-                        style={{ background: "#C9A84C", color: "#0d1117" }}>
-                        {editSaving ? "Saving…" : "Save"}
+                    <div className="flex gap-2 shrink-0">
+                      <button onClick={() => openEdit(appt)}
+                        className="rounded-md px-3 py-1 text-xs font-bold"
+                        style={{ background: "#C9A84C", color: "#0d1117", cursor: "pointer" }}>
+                        Edit
                       </button>
-                      <button onClick={() => setEditingAppt(null)}
-                        className="text-sm px-4 py-2 rounded-lg"
-                        style={{ color: "#8b949e", border: "1px solid #30373f" }}>
-                        Cancel
+                      <button onClick={() => deleteAppt(appt.id)}
+                        className="rounded-md px-2 py-1 text-xs font-bold"
+                        style={{ background: "#ef4444", color: "#fff", cursor: "pointer" }}>
+                        ×
                       </button>
                     </div>
                   </div>
-                ) : (
-                  <div className="flex flex-col p-4 gap-2">
-                    {/* Action buttons row */}
-                    <div className="flex items-center justify-between gap-2">
-                      <div className="flex items-baseline gap-2 flex-wrap min-w-0">
-                        <span className="text-base font-black leading-tight" style={{ color: "#e6edf3" }}>{name}</span>
-                        {time && <span className="text-sm font-bold" style={{ color: "#C9A84C" }}>{time}</span>}
+                  {/* Details — click to open lead popup */}
+                  <button onClick={() => openLeadPopup(appt)} className="text-left w-full">
+                    {(phone || address) && (
+                      <div className="flex gap-3 flex-wrap">
+                        {phone && <span className="text-xs" style={{ color: "#8b949e" }}>📞 {phone}</span>}
+                        {address && <span className="text-xs" style={{ color: "#8b949e" }}>📍 {address}</span>}
                       </div>
-                      <div className="flex gap-2 shrink-0">
-                        <button onClick={() => openEdit(appt)}
-                          className="rounded-md px-3 py-1 text-xs font-bold"
-                          style={{ background: "#C9A84C", color: "#0d1117", cursor: "pointer" }}>
-                          Edit
-                        </button>
-                        <button onClick={() => deleteAppt(appt.id)}
-                          className="rounded-md px-2 py-1 text-xs font-bold"
-                          style={{ background: "#ef4444", color: "#fff", cursor: "pointer" }}>
-                          ×
-                        </button>
-                      </div>
-                    </div>
-                    {/* Details — click to open lead popup */}
-                    <button onClick={() => openLeadPopup(appt)} className="text-left w-full">
-                      {(phone || address) && (
-                        <div className="flex gap-3 flex-wrap">
-                          {phone && <span className="text-xs" style={{ color: "#8b949e" }}>📞 {phone}</span>}
-                          {address && <span className="text-xs" style={{ color: "#8b949e" }}>📍 {address}</span>}
-                        </div>
-                      )}
-                      {notes && <p className="text-xs mt-0.5" style={{ color: "#8b949e", whiteSpace: "pre-wrap" }}>{notes}</p>}
-                      {!phone && !address && !notes && (
-                        <span className="text-xs" style={{ color: "#484f58" }}>Tap for lead details</span>
-                      )}
-                    </button>
-                  </div>
-                )}
+                    )}
+                    {notes && <p className="text-xs mt-0.5" style={{ color: "#8b949e", whiteSpace: "pre-wrap" }}>{notes}</p>}
+                    {!phone && !address && !notes && (
+                      <span className="text-xs" style={{ color: "#484f58" }}>Tap for lead details</span>
+                    )}
+                  </button>
+                </div>
               </div>
             );
           })}
@@ -541,65 +508,32 @@ export default function AppointmentsCard({
                       <div style={{ borderTop: "1px solid #30373f" }}>
                         {appts.map(appt => {
                           const { name, time, address, notes } = parseAppt(appt.text);
-                          const isEditingThis = editingAppt?.id === appt.id;
                           return (
                             <div key={appt.id} style={{ background: "#0d1117", borderBottom: "1px solid #1e2736" }}>
-                              {isEditingThis ? (
-                                <div className="p-4 flex flex-col gap-3">
-                                  <div className="text-xs font-semibold" style={{ color: "#C9A84C" }}>Editing: {name}</div>
-                                  <div className="flex gap-2">
-                                    <input type="text" placeholder="Time" value={editTime} onChange={e => setEditTime(e.target.value)}
-                                      autoFocus className="flex-1 bg-transparent text-sm px-3 py-2 rounded-lg outline-none"
-                                      style={{ border: "1px solid #30373f", color: "#e6edf3" }} />
-                                    <input type="date" value={editDate} onChange={e => setEditDate(e.target.value)}
-                                      className="bg-transparent text-sm px-3 py-2 rounded-lg outline-none"
-                                      style={{ border: "1px solid #30373f", color: "#e6edf3" }} />
+                              <div className="flex flex-col px-4 py-3 gap-1">
+                                <div className="flex items-center justify-between gap-2">
+                                  <div className="flex items-baseline gap-2 flex-wrap min-w-0">
+                                    <span className="text-sm font-bold" style={{ color: "#e6edf3" }}>{name}</span>
+                                    {time && <span className="text-xs font-semibold" style={{ color: "#C9A84C" }}>{time}</span>}
                                   </div>
-                                  <input type="text" placeholder="Address" value={editAddress} onChange={e => setEditAddress(e.target.value)}
-                                    className="w-full bg-transparent text-sm px-3 py-2 rounded-lg outline-none"
-                                    style={{ border: "1px solid #30373f", color: "#e6edf3" }} />
-                                  <textarea rows={3} placeholder="Notes…" value={editNotes} onChange={e => setEditNotes(e.target.value)}
-                                    className="w-full bg-transparent text-sm px-3 py-2 rounded-lg outline-none resize-none"
-                                    style={{ border: "1px solid #30373f", color: "#e6edf3" }} />
-                                  <div className="flex gap-2">
-                                    <button onClick={saveEdit} disabled={editSaving}
-                                      className="flex-1 text-sm font-bold py-2 rounded-lg disabled:opacity-50"
-                                      style={{ background: "#C9A84C", color: "#0d1117" }}>
-                                      {editSaving ? "Saving…" : "Save"}
+                                  <div className="flex gap-2 shrink-0">
+                                    <button onClick={() => openEdit(appt)}
+                                      className="rounded-md px-3 py-1 text-xs font-bold"
+                                      style={{ background: "#C9A84C", color: "#0d1117", cursor: "pointer" }}>
+                                      Edit
                                     </button>
-                                    <button onClick={() => setEditingAppt(null)}
-                                      className="text-sm px-4 py-2 rounded-lg"
-                                      style={{ color: "#8b949e", border: "1px solid #30373f" }}>
-                                      Cancel
+                                    <button onClick={() => deleteAppt(appt.id)}
+                                      className="rounded-md px-2 py-1 text-xs font-bold"
+                                      style={{ background: "#ef4444", color: "#fff", cursor: "pointer" }}>
+                                      ×
                                     </button>
                                   </div>
                                 </div>
-                              ) : (
-                                <div className="flex flex-col px-4 py-3 gap-1">
-                                  <div className="flex items-center justify-between gap-2">
-                                    <div className="flex items-baseline gap-2 flex-wrap min-w-0">
-                                      <span className="text-sm font-bold" style={{ color: "#e6edf3" }}>{name}</span>
-                                      {time && <span className="text-xs font-semibold" style={{ color: "#C9A84C" }}>{time}</span>}
-                                    </div>
-                                    <div className="flex gap-2 shrink-0">
-                                      <button onClick={() => openEdit(appt)}
-                                        className="rounded-md px-3 py-1 text-xs font-bold"
-                                        style={{ background: "#C9A84C", color: "#0d1117", cursor: "pointer" }}>
-                                        Edit
-                                      </button>
-                                      <button onClick={() => deleteAppt(appt.id)}
-                                        className="rounded-md px-2 py-1 text-xs font-bold"
-                                        style={{ background: "#ef4444", color: "#fff", cursor: "pointer" }}>
-                                        ×
-                                      </button>
-                                    </div>
-                                  </div>
-                                  <button onClick={() => openLeadPopup(appt)} className="text-left">
-                                    {address && <div className="text-xs" style={{ color: "#8b949e" }}>📍 {address}</div>}
-                                    {notes && <div className="text-xs line-clamp-1" style={{ color: "#484f58" }}>{notes}</div>}
-                                  </button>
-                                </div>
-                              )}
+                                <button onClick={() => openLeadPopup(appt)} className="text-left">
+                                  {address && <div className="text-xs" style={{ color: "#8b949e" }}>📍 {address}</div>}
+                                  {notes && <div className="text-xs line-clamp-1" style={{ color: "#484f58" }}>{notes}</div>}
+                                </button>
+                              </div>
                             </div>
                           );
                         })}
@@ -610,6 +544,54 @@ export default function AppointmentsCard({
               })}
             </div>
           )}
+        </div>
+      )}
+
+      {/* Edit appointment modal */}
+      {editingAppt && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center p-4"
+          style={{ background: "rgba(0,0,0,0.75)" }}
+          onClick={() => setEditingAppt(null)}
+        >
+          <div
+            className="w-full max-w-md rounded-2xl p-5 flex flex-col gap-3"
+            style={{ background: "#161b22", border: "1px solid #C9A84C66" }}
+            onClick={e => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between">
+              <span className="text-sm font-bold" style={{ color: "#C9A84C" }}>
+                Edit: {parseAppt(editingAppt.text).name}
+              </span>
+              <button onClick={() => setEditingAppt(null)} style={{ color: "#8b949e", fontSize: 20, lineHeight: 1 }}>×</button>
+            </div>
+            <div className="flex gap-2">
+              <input type="text" placeholder="Time (e.g. 10:30 AM)" value={editTime} onChange={e => setEditTime(e.target.value)}
+                autoFocus className="flex-1 bg-transparent text-sm px-3 py-2 rounded-lg outline-none"
+                style={{ border: "1px solid #30373f", color: "#e6edf3" }} />
+              <input type="date" value={editDate} onChange={e => setEditDate(e.target.value)}
+                className="bg-transparent text-sm px-3 py-2 rounded-lg outline-none"
+                style={{ border: "1px solid #30373f", color: "#e6edf3" }} />
+            </div>
+            <input type="text" placeholder="Address (optional)" value={editAddress} onChange={e => setEditAddress(e.target.value)}
+              className="w-full bg-transparent text-sm px-3 py-2 rounded-lg outline-none"
+              style={{ border: "1px solid #30373f", color: "#e6edf3" }} />
+            <textarea rows={3} placeholder="Notes (optional)…" value={editNotes} onChange={e => setEditNotes(e.target.value)}
+              className="w-full bg-transparent text-sm px-3 py-2 rounded-lg outline-none resize-none"
+              style={{ border: "1px solid #30373f", color: "#e6edf3" }} />
+            <div className="flex gap-2">
+              <button onClick={saveEdit} disabled={editSaving}
+                className="flex-1 text-sm font-bold py-2 rounded-lg disabled:opacity-50"
+                style={{ background: "#C9A84C", color: "#0d1117" }}>
+                {editSaving ? "Saving…" : "Save"}
+              </button>
+              <button onClick={() => setEditingAppt(null)}
+                className="text-sm px-4 py-2 rounded-lg"
+                style={{ color: "#8b949e", border: "1px solid #30373f" }}>
+                Cancel
+              </button>
+            </div>
+          </div>
         </div>
       )}
 
