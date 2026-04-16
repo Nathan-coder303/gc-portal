@@ -90,7 +90,7 @@ export default async function CompanyLayout({
         <Link href={`/${params.companyId}/projects`}>
           <span className="text-sm font-bold" style={{ color: "#C9A84C" }}>{companyName}</span>
         </Link>
-        <Image src="/logo.png" alt="Logo" width={32} height={32} className="rounded-lg object-contain" />
+        <div className="w-8" />
       </div>
 
       {/* ── Main content ── */}
