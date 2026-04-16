@@ -256,11 +256,14 @@ export default function AppointmentsCard({
     if (!popupLeadId) return;
     setPopupSaving(true);
     try {
+      // Save phone to lead record
       await fetch(`/api/${companyId}/leads/${popupLeadId}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ phone: popupPhone }),
       });
+
+      // Save new note if provided
       if (popupNewNote.trim()) {
         const res = await fetch(`/api/${companyId}/notes`, {
           method: "POST",
@@ -273,6 +276,29 @@ export default function AppointmentsCard({
           setPopupNewNote("");
         }
       }
+
+      // Also patch the appointment text so the phone shows on the card
+      if (popupAppt && popupPhone) {
+        const { name, time, phone: oldSlot, address: oldAddr, notes: apptNotes } = parseAppt(popupAppt.text);
+        // oldSlot might be the address (if phone was empty at creation and address shifted left)
+        const looksLikePhone = /^[\d\s\-().+]{7,}$/.test(oldSlot);
+        const actualAddress = looksLikePhone ? oldAddr : (oldSlot || oldAddr);
+        const newMain = [name, time, popupPhone, actualAddress].map(s => s.trim()).filter(Boolean).join(" · ");
+        const newText = `📅 Appointment – ${newMain}${apptNotes ? `\n${apptNotes}` : ""}`;
+        const pr = await fetch(`/api/${companyId}/follow-ups/${popupAppt.id}`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ text: newText }),
+        });
+        if (pr.ok) {
+          const updated = await pr.json();
+          const a: Appointment = { id: updated.id, text: updated.text, dueDate: updated.dueDate };
+          setAppointments(prev => prev.map(x => x.id === popupAppt.id ? a : x));
+          setUpcoming(prev => prev.map(x => x.id === popupAppt.id ? a : x));
+          setPopupAppt(a);
+        }
+      }
+
       setPopupLead(prev => prev ? { ...prev, lead: prev.lead ? { ...prev.lead, phone: popupPhone || null } : prev.lead } : prev);
       setPopupEditing(false);
     } finally { setPopupSaving(false); }
