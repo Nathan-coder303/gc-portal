@@ -461,7 +461,8 @@ export default function AppointmentsCard({
               const { name, time, phone, address, notes } = parseAppt(appt.text);
               return (
                 <div key={appt.id} className="rounded-xl" style={{ background: "#161b22", border: "1px solid #C9A84C22" }}>
-                  <div className="flex flex-col p-4 gap-2">
+                  <div className="flex flex-col p-4 gap-1.5">
+                    {/* Name + time + Edit/Delete */}
                     <div className="flex items-center justify-between gap-2">
                       <div className="flex items-baseline gap-2 flex-wrap min-w-0">
                         <span className="text-base font-black" style={{ color: "#e6edf3" }}>{name}</span>
@@ -474,16 +475,25 @@ export default function AppointmentsCard({
                           style={{ background: "#ef4444", color: "#fff" }}>×</button>
                       </div>
                     </div>
-                    <button onClick={() => openLeadPopup(appt)} className="text-left w-full">
-                      {(phone || address) && (
-                        <div className="flex gap-3 flex-wrap">
-                          {phone && <span className="text-xs" style={{ color: "#8b949e" }}>📞 {phone}</span>}
-                          {address && <span className="text-xs" style={{ color: "#8b949e" }}>📍 {address}</span>}
-                        </div>
-                      )}
-                      {notes && <p className="text-xs mt-0.5" style={{ color: "#8b949e", whiteSpace: "pre-wrap" }}>{notes}</p>}
-                      {!phone && !address && !notes && <span className="text-xs" style={{ color: "#484f58" }}>Tap for lead details →</span>}
-                    </button>
+                    {/* Phone + address in yellow */}
+                    {(phone || address) && (
+                      <div className="flex gap-4 flex-wrap">
+                        {phone && <span className="text-sm font-semibold" style={{ color: "#C9A84C" }}>📞 {phone}</span>}
+                        {address && <span className="text-sm font-semibold" style={{ color: "#C9A84C" }}>📍 {address}</span>}
+                      </div>
+                    )}
+                    {/* Notes + tap for details (right-aligned) */}
+                    <div className="flex items-end justify-between gap-2">
+                      {notes
+                        ? <p className="text-xs flex-1" style={{ color: "#8b949e", whiteSpace: "pre-wrap" }}>{notes}</p>
+                        : <span />
+                      }
+                      <button onClick={() => openLeadPopup(appt)}
+                        className="text-xs shrink-0 font-semibold"
+                        style={{ color: "#C9A84C99" }}>
+                        Tap for details →
+                      </button>
+                    </div>
                   </div>
                 </div>
               );
