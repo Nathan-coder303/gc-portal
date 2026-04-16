@@ -423,7 +423,7 @@ export default function AppointmentsCard({
                     <button
                       onClick={() => setExpandedDates(prev => {
                         const next = new Set(prev);
-                        isOpen ? next.delete(dateKey) : next.add(dateKey);
+                        if (isOpen) { next.delete(dateKey); } else { next.add(dateKey); }
                         return next;
                       })}
                       className="w-full flex items-center justify-between px-4 py-2.5 transition-colors hover:bg-[#1e2736]"
