@@ -14,6 +14,13 @@ export default function AddLeadButton({ companyId }: { companyId: string }) {
     setForm(f => ({ ...f, [field]: value }));
   }
 
+  function formatPhoneInput(raw: string): string {
+    const digits = raw.replace(/\D/g, "").slice(0, 10);
+    if (digits.length <= 3) return digits;
+    if (digits.length <= 6) return `${digits.slice(0, 3)}-${digits.slice(3)}`;
+    return `${digits.slice(0, 3)}-${digits.slice(3, 6)}-${digits.slice(6)}`;
+  }
+
   async function handleSubmit() {
     if (!form.name.trim()) return;
     setSaving(true);
@@ -79,7 +86,9 @@ export default function AddLeadButton({ companyId }: { companyId: string }) {
               </div>
               <div>
                 <label style={labelStyle}>Phone</label>
-                <input style={inputStyle} placeholder="(305) 000-0000" value={form.phone} onChange={e => set("phone", e.target.value)} />
+                <input style={inputStyle} placeholder="305-000-0000" value={form.phone}
+                  onChange={e => set("phone", formatPhoneInput(e.target.value))}
+                  type="tel" inputMode="numeric" />
               </div>
               <div>
                 <label style={labelStyle}>Email</label>

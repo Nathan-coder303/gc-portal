@@ -92,16 +92,20 @@ export default function AppointmentsCard({
   companyId,
   initialAppointments,
   initialUpcoming,
+  initialPast,
   todayDateStr,
 }: {
   companyId: string;
   initialAppointments: Appointment[];
   initialUpcoming: Appointment[];
+  initialPast?: Appointment[];
   todayDateStr: string;
 }) {
   const router = useRouter();
   const [appointments, setAppointments] = useState(initialAppointments);
   const [upcoming, setUpcoming] = useState(initialUpcoming);
+  const [past] = useState(initialPast ?? []);
+  const [showPast, setShowPast] = useState(false);
 
   // Lead info map: lowercase name → { phone, address } for showing on cards
   const [leadMap, setLeadMap] = useState<Map<string, { phone: string; address: string }>>(new Map());
@@ -520,7 +524,7 @@ export default function AppointmentsCard({
                           <a href={`tel:${phone.replace(/\D/g, "")}`} onClick={e => e.stopPropagation()}
                             className="text-sm font-semibold"
                             style={{ color: "#C9A84C", textDecoration: "none" }}>
-                            📞 {formatPhone(phone)}
+                            {formatPhone(phone)}
                           </a>
                         )}
                         {address && <span className="text-sm font-semibold" style={{ color: "#C9A84C" }}>📍 {address}</span>}
@@ -615,6 +619,63 @@ export default function AppointmentsCard({
                         })}
                       </div>
                     )}
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Past appointments — collapsible, gray */}
+      {past.length > 0 && (
+        <div className="mt-4">
+          <button onClick={() => setShowPast(v => !v)}
+            className="w-full flex items-center justify-between px-3 py-2 rounded-xl"
+            style={{ background: "#8b949e11", border: "1px solid #8b949e22" }}>
+            <span className="text-xs font-semibold uppercase tracking-widest" style={{ color: "#8b949e" }}>
+              Past appointments ({past.length})
+            </span>
+            <span style={{ color: "#8b949e", fontSize: 14 }}>{showPast ? "▲" : "▼"}</span>
+          </button>
+          {showPast && (
+            <div className="mt-2 space-y-2">
+              {past.map(appt => {
+                const { name, time, phone: apptPhone, address: apptAddr, notes } = parseAppt(appt.text);
+                const leadInfo = leadMap.get(name.toLowerCase());
+                const phone = apptPhone || leadInfo?.phone || "";
+                const address = apptAddr || leadInfo?.address || "";
+                return (
+                  <div key={appt.id} className="rounded-xl" style={{ background: "#161b2288", border: "1px solid #30373f" }}>
+                    <div className="flex flex-col p-3 gap-1">
+                      <div className="flex items-center justify-between gap-2">
+                        <div className="flex items-baseline gap-2 flex-wrap min-w-0">
+                          <span className="text-sm font-bold" style={{ color: "#8b949e" }}>{name}</span>
+                          {time && <span className="text-xs" style={{ color: "#484f58" }}>{time}</span>}
+                          {appt.dueDate && (
+                            <span className="text-[10px] px-1.5 py-0.5 rounded-full" style={{ background: "#30373f", color: "#484f58" }}>
+                              {formatDueDate(appt.dueDate)}
+                            </span>
+                          )}
+                        </div>
+                        <button onClick={() => openLeadPopup(appt)}
+                          className="text-xs shrink-0" style={{ color: "#484f58" }}>
+                          Details →
+                        </button>
+                      </div>
+                      {(phone || address) && (
+                        <div className="flex gap-3 flex-wrap">
+                          {phone && (
+                            <a href={`tel:${phone.replace(/\D/g, "")}`} onClick={e => e.stopPropagation()}
+                              className="text-xs" style={{ color: "#8b949e66", textDecoration: "none" }}>
+                              {formatPhone(phone)}
+                            </a>
+                          )}
+                          {address && <span className="text-xs" style={{ color: "#484f58" }}>{address}</span>}
+                        </div>
+                      )}
+                      {notes && <p className="text-xs" style={{ color: "#484f58", whiteSpace: "pre-wrap" }}>{notes}</p>}
+                    </div>
                   </div>
                 );
               })}

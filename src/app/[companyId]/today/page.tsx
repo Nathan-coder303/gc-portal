@@ -64,7 +64,7 @@ export default async function TodayPage({
   if (verifyHour !== 0) todayStart = new Date(Date.UTC(etY, etM - 1, etD, 5, 0, 0, 0));
   const todayEnd = new Date(todayStart.getTime() + 24 * 60 * 60 * 1000 - 1);
 
-  const [todayLeads, allLeadsCount, estimatesToSend, followUps, clients, leads, urgentLeads, untriaged, pendingCountersigns, todayAppointments, upcomingAppointments, activeClients, upcomingTasks] = await Promise.all([
+  const [todayLeads, allLeadsCount, estimatesToSend, followUps, clients, leads, urgentLeads, untriaged, pendingCountersigns, todayAppointments, upcomingAppointments, pastAppointments, activeClients, upcomingTasks] = await Promise.all([
     // Leads received today from email
     prisma.lead.findMany({
       where: {
@@ -168,6 +168,17 @@ export default async function TodayPage({
         dueDate: { gte: new Date(Date.UTC(etY, etM - 1, etD + 1)) },
       },
       orderBy: { dueDate: "asc" },
+    }),
+    // Past appointments (before today)
+    prisma.followUp.findMany({
+      where: {
+        companyId: params.companyId,
+        category: "TASK",
+        text: { startsWith: "📅 Appointment" },
+        dueDate: { lt: new Date(Date.UTC(etY, etM - 1, etD)) },
+      },
+      orderBy: { dueDate: "desc" },
+      take: 30,
     }),
     // Active + Completed clients with template data for MIBH Income barometer
     prisma.client.findMany({
@@ -283,6 +294,7 @@ export default async function TodayPage({
         companyId={params.companyId}
         initialAppointments={appointments.map(a => ({ id: a.id, text: a.text, dueDate: a.dueDate ? a.dueDate.toISOString() : null }))}
         initialUpcoming={upcomingAppointments.map(a => ({ id: a.id, text: a.text, dueDate: a.dueDate ? a.dueDate.toISOString() : null }))}
+        initialPast={pastAppointments.map(a => ({ id: a.id, text: a.text, dueDate: a.dueDate ? a.dueDate.toISOString() : null }))}
         todayDateStr={etDateStr}
       />
 
@@ -382,7 +394,7 @@ export default async function TodayPage({
         <TodayTaskCard
           companyId={params.companyId}
           category="TASK"
-          label="Today's tasks"
+          label="Mike's tasks"
           initialItems={toItems("TASK")}
           initialUpcoming={upcomingTaskItems}
           clients={clients}
