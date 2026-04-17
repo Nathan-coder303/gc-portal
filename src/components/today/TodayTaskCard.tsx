@@ -69,15 +69,23 @@ function ItemRow({
   companyId,
   onToggle,
   onDelete,
+  onUpdate,
 }: {
   item: FollowUpItem;
   companyId: string;
   onToggle: (id: string, completed: boolean) => void;
   onDelete: (id: string) => void;
+  onUpdate: (updated: FollowUpItem) => void;
 }) {
   const [hovered, setHovered] = useState(false);
   const [toggling, setToggling] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const [editing, setEditing] = useState(false);
+  const [editText, setEditText] = useState(item.text);
+  const [editDate, setEditDate] = useState(
+    item.dueDate ? item.dueDate.slice(0, 10) : ""
+  );
+  const [saving, setSaving] = useState(false);
   const isComplete = !!item.completedAt;
 
   async function handleToggle() {
@@ -87,9 +95,7 @@ function ItemRow({
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ completedAt: isComplete ? null : new Date().toISOString() }),
     });
-    if (res.ok) {
-      onToggle(item.id, !isComplete);
-    }
+    if (res.ok) onToggle(item.id, !isComplete);
     setToggling(false);
   }
 
@@ -99,9 +105,75 @@ function ItemRow({
     onDelete(item.id);
   }
 
+  async function handleSaveEdit() {
+    setSaving(true);
+    const res = await fetch(`/api/${companyId}/follow-ups/${item.id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        text: editText.trim() || item.text,
+        dueDate: editDate || null,
+      }),
+    });
+    if (res.ok) {
+      const raw = await res.json();
+      onUpdate({
+        ...item,
+        text: raw.text,
+        dueDate: raw.dueDate ?? null,
+      });
+      setEditing(false);
+    }
+    setSaving(false);
+  }
+
   const audioSrc = item.audioUrl
     ? `/api/${companyId}/follow-ups/${item.id}/audio`
     : null;
+
+  if (editing) {
+    return (
+      <div
+        className="flex flex-col gap-2 py-2 px-1 rounded-lg"
+        style={{ background: "#1e2736" }}
+        onClick={e => e.stopPropagation()}
+      >
+        <input
+          type="text"
+          value={editText}
+          onChange={e => setEditText(e.target.value)}
+          onKeyDown={e => e.key === "Enter" && handleSaveEdit()}
+          autoFocus
+          className="w-full text-sm px-3 py-2 rounded-lg outline-none"
+          style={{ background: "#0d1117", border: "1px solid #484f58", color: "#e6edf3" }}
+        />
+        <input
+          type="date"
+          value={editDate}
+          onChange={e => setEditDate(e.target.value)}
+          className="text-xs px-2 py-1.5 rounded-lg outline-none"
+          style={{ background: "#0d1117", border: "1px solid #484f58", color: editDate ? "#e6edf3" : "#8b949e", colorScheme: "dark" }}
+        />
+        <div className="flex items-center gap-2">
+          <button
+            onClick={handleSaveEdit}
+            disabled={saving}
+            className="text-xs px-3 py-1 rounded-lg font-semibold"
+            style={{ background: GOLD, color: "#0d1117" }}
+          >
+            {saving ? "…" : "Save"}
+          </button>
+          <button
+            onClick={() => { setEditing(false); setEditText(item.text); setEditDate(item.dueDate ? item.dueDate.slice(0, 10) : ""); }}
+            className="text-xs px-3 py-1 rounded-lg"
+            style={{ color: "#8b949e", border: "1px solid #30373f" }}
+          >
+            Cancel
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div
@@ -132,20 +204,43 @@ function ItemRow({
           }}
         >
           {item.text || <em style={{ color: "#8b949e" }}>Voice note</em>}
+          {!isComplete && item.dueDate && item.dueDate.slice(0, 10) < new Date().toISOString().slice(0, 10) && (
+            <span className="ml-2 text-[10px] font-bold px-1.5 py-0.5 rounded uppercase" style={{ background: "#f8514922", color: "#f85149", border: "1px solid #f8514933" }}>
+              past due
+            </span>
+          )}
         </span>
 
-        {/* Delete button */}
+        {/* Edit + Delete buttons */}
         {hovered && (
-          <button
-            onClick={handleDelete}
-            disabled={deleting}
-            className="flex-shrink-0 text-xs px-1.5 py-0.5 rounded opacity-70 hover:opacity-100"
-            style={{ color: "#f85149", border: "1px solid #f8514933" }}
-          >
-            {deleting ? "…" : "✕"}
-          </button>
+          <div className="flex items-center gap-1 flex-shrink-0">
+            <button
+              onClick={() => setEditing(true)}
+              className="text-xs px-1.5 py-0.5 rounded opacity-70 hover:opacity-100"
+              style={{ color: "#58a6ff", border: "1px solid #58a6ff33" }}
+            >
+              ✎
+            </button>
+            <button
+              onClick={handleDelete}
+              disabled={deleting}
+              className="text-xs px-1.5 py-0.5 rounded opacity-70 hover:opacity-100"
+              style={{ color: "#f85149", border: "1px solid #f8514933" }}
+            >
+              {deleting ? "…" : "✕"}
+            </button>
+          </div>
         )}
       </div>
+
+      {/* Due date label */}
+      {item.dueDate && (
+        <div className="ml-6">
+          <span className="text-[10px]" style={{ color: "#8b949e" }}>
+            {new Date(item.dueDate).toLocaleDateString("en-US", { timeZone: "UTC", weekday: "short", month: "short", day: "numeric" })}
+          </span>
+        </div>
+      )}
 
       {/* Client or Lead badge */}
       {(item.clientName || item.leadName) && (
@@ -188,6 +283,7 @@ function AddForm({
 }) {
   const [mode, setMode] = useState<"text" | "voice">("text");
   const [textValue, setTextValue] = useState("");
+  const [dueDateValue, setDueDateValue] = useState("");
   const [selectedClientId, setSelectedClientId] = useState("");
   const [selectedLeadId, setSelectedLeadId] = useState("");
   const [showLeadPicker, setShowLeadPicker] = useState(false);
@@ -325,6 +421,7 @@ function AddForm({
     fd.append("text", text);
     if (selectedClientId) fd.append("clientId", selectedClientId);
     if (selectedLeadId && !selectedClientId) fd.append("leadId", selectedLeadId);
+    if (dueDateValue) fd.append("dueDate", dueDateValue);
     if (blob) {
       const ext = blob.type.includes("mp4") || blob.type.includes("aac") || blob.type.includes("m4a") ? "m4a" : "webm";
       fd.append("audio", blob, `note.${ext}`);
@@ -354,6 +451,7 @@ function AddForm({
       };
       onSaved(item);
       setTextValue("");
+      setDueDateValue("");
       setSelectedClientId("");
       setSelectedLeadId("");
       pendingBlobRef.current = null;
@@ -473,6 +571,15 @@ function AddForm({
           )}
         </div>
       )}
+
+      {/* Due date */}
+      <input
+        type="date"
+        value={dueDateValue}
+        onChange={e => setDueDateValue(e.target.value)}
+        className="text-xs px-2 py-1.5 rounded-lg outline-none"
+        style={{ background: "#0d1117", border: "1px solid #484f58", color: dueDateValue ? "#e6edf3" : "#8b949e", colorScheme: "dark" }}
+      />
 
       {/* Assignment pickers */}
       <div className="flex flex-col gap-1.5">
@@ -623,6 +730,11 @@ export default function TodayTaskCard({
     setUpcomingItems(prev => prev.filter(i => i.id !== id));
   }
 
+  function handleUpdate(updated: FollowUpItem) {
+    setItems(prev => prev.map(i => i.id === updated.id ? updated : i));
+    setUpcomingItems(prev => prev.map(i => i.id === updated.id ? updated : i));
+  }
+
   function handleSaved(item: FollowUpItem) {
     setItems(prev => [...prev, item]);
     setShowAdd(false);
@@ -700,6 +812,7 @@ export default function TodayTaskCard({
               companyId={companyId}
               onToggle={handleToggle}
               onDelete={handleDelete}
+              onUpdate={handleUpdate}
             />
           ))}
           {doneItems.length > 0 && (
@@ -716,6 +829,7 @@ export default function TodayTaskCard({
                   companyId={companyId}
                   onToggle={handleToggle}
                   onDelete={handleDelete}
+                  onUpdate={handleUpdate}
                 />
               ))}
             </>
@@ -757,6 +871,7 @@ export default function TodayTaskCard({
                         }
                       }}
                       onDelete={handleDelete}
+                      onUpdate={handleUpdate}
                     />
                   </div>
                 );
