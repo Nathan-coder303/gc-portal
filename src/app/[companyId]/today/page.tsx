@@ -90,11 +90,20 @@ export default async function TodayPage({
       orderBy: { createdAt: "desc" },
       select: { id: true, name: true, project: { select: { id: true, name: true } } },
     }),
-    // All follow-ups for this company — only show items due today or earlier (or with no due date)
+    // All follow-ups for this company — no due date (always show) OR due exactly today; never appointments
     prisma.followUp.findMany({
       where: {
         companyId: params.companyId,
-        OR: [{ dueDate: null }, { dueDate: { lte: todayEnd } }],
+        NOT: { text: { startsWith: "📅 Appointment" } },
+        OR: [
+          { dueDate: null },
+          {
+            dueDate: {
+              gte: new Date(Date.UTC(etY, etM - 1, etD)),
+              lt:  new Date(Date.UTC(etY, etM - 1, etD + 1)),
+            },
+          },
+        ],
       },
       orderBy: { createdAt: "asc" },
       include: { client: { select: { id: true, name: true } }, lead: { select: { id: true, name: true } } },
