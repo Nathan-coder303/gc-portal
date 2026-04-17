@@ -211,25 +211,25 @@ function ItemRow({
           )}
         </span>
 
-        {/* Edit + Delete buttons */}
+        {/* Edit button — always visible */}
+        <button
+          onClick={() => setEditing(true)}
+          className="flex-shrink-0 text-xs px-1.5 py-0.5 rounded opacity-50 hover:opacity-100"
+          style={{ color: "#58a6ff", border: "1px solid #58a6ff33" }}
+        >
+          ✎
+        </button>
+
+        {/* Delete button — hover only */}
         {hovered && (
-          <div className="flex items-center gap-1 flex-shrink-0">
-            <button
-              onClick={() => setEditing(true)}
-              className="text-xs px-1.5 py-0.5 rounded opacity-70 hover:opacity-100"
-              style={{ color: "#58a6ff", border: "1px solid #58a6ff33" }}
-            >
-              ✎
-            </button>
-            <button
-              onClick={handleDelete}
-              disabled={deleting}
-              className="text-xs px-1.5 py-0.5 rounded opacity-70 hover:opacity-100"
-              style={{ color: "#f85149", border: "1px solid #f8514933" }}
-            >
-              {deleting ? "…" : "✕"}
-            </button>
-          </div>
+          <button
+            onClick={handleDelete}
+            disabled={deleting}
+            className="flex-shrink-0 text-xs px-1.5 py-0.5 rounded opacity-70 hover:opacity-100"
+            style={{ color: "#f85149", border: "1px solid #f8514933" }}
+          >
+            {deleting ? "…" : "✕"}
+          </button>
         )}
       </div>
 
