@@ -29,6 +29,174 @@ type LeadOption = {
   name: string | null;
 };
 
+type PopupTarget = { type: "lead" | "client"; id: string; name: string };
+
+type LeadDetail = {
+  id: string; name: string | null; phone: string | null; email: string | null;
+  address: string | null; city: string | null; state: string | null;
+  projectType: string | null; message: string | null;
+};
+type NoteRecord = { id: string; content: string; noteDate: string; createdAt: string };
+
+// ─── Entity Popup ─────────────────────────────────────────────────────────────
+
+function EntityPopup({
+  target,
+  companyId,
+  onClose,
+}: {
+  target: PopupTarget;
+  companyId: string;
+  onClose: () => void;
+}) {
+  const [lead, setLead] = useState<LeadDetail | null>(null);
+  const [notes, setNotes] = useState<NoteRecord[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [newNote, setNewNote] = useState("");
+  const [savingNote, setSavingNote] = useState(false);
+
+  useEffect(() => {
+    async function load() {
+      setLoading(true);
+      try {
+        if (target.type === "lead") {
+          const [lr, nr] = await Promise.all([
+            fetch(`/api/${companyId}/leads/${target.id}`),
+            fetch(`/api/${companyId}/notes?leadId=${target.id}`),
+          ]);
+          if (lr.ok) setLead(await lr.json());
+          if (nr.ok) setNotes(await nr.json());
+        } else {
+          const nr = await fetch(`/api/${companyId}/notes?clientId=${target.id}`);
+          if (nr.ok) setNotes(await nr.json());
+        }
+      } catch { /**/ }
+      setLoading(false);
+    }
+    load();
+  }, [target, companyId]);
+
+  async function handleAddNote() {
+    if (!newNote.trim()) return;
+    setSavingNote(true);
+    try {
+      const body = target.type === "lead"
+        ? { leadId: target.id, content: newNote.trim() }
+        : { clientId: target.id, content: newNote.trim(), sendEmail: false };
+      const res = await fetch(`/api/${companyId}/notes`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      });
+      if (res.ok) {
+        const n = await res.json();
+        setNotes(prev => [n, ...prev]);
+        setNewNote("");
+      }
+    } finally { setSavingNote(false); }
+  }
+
+  const clientPageUrl = target.type === "client"
+    ? `/${companyId}/clients/${target.id}`
+    : null;
+  const leadPageUrl = target.type === "lead"
+    ? `/${companyId}/leads`
+    : null;
+
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center p-4"
+      style={{ background: "rgba(0,0,0,0.8)" }}
+      onClick={onClose}
+    >
+      <div
+        className="w-full max-w-md rounded-2xl p-5 flex flex-col gap-4 overflow-y-auto"
+        style={{ background: "#161b22", border: "1px solid #C9A84C44", maxHeight: "90vh" }}
+        onClick={e => e.stopPropagation()}
+      >
+        {/* Header */}
+        <div className="flex items-center justify-between">
+          <div>
+            <h2 className="text-base font-bold" style={{ color: "#e6edf3" }}>{target.name}</h2>
+            <span className="text-[10px] uppercase tracking-widest font-semibold" style={{ color: "#484f58" }}>
+              {target.type === "lead" ? "Lead" : "Client"}
+            </span>
+          </div>
+          <div className="flex items-center gap-2">
+            {(clientPageUrl || leadPageUrl) && (
+              <a
+                href={clientPageUrl ?? leadPageUrl ?? "#"}
+                className="text-xs px-2 py-1 rounded font-medium"
+                style={{ border: "1px solid #C9A84C66", color: GOLD }}
+              >
+                Open file →
+              </a>
+            )}
+            <button onClick={onClose} style={{ color: "#8b949e", fontSize: 20, lineHeight: 1 }}>×</button>
+          </div>
+        </div>
+
+        {loading && <p className="text-sm text-center py-4" style={{ color: "#484f58" }}>Loading…</p>}
+
+        {!loading && (
+          <>
+            {/* Lead details */}
+            {target.type === "lead" && lead && (
+              <div className="flex flex-col gap-1 text-sm" style={{ borderTop: "1px solid #30373f", paddingTop: 12 }}>
+                {lead.phone && <div><span style={{ color: GOLD }}>Phone: </span><span style={{ color: "#e6edf3" }}>{lead.phone}</span></div>}
+                {lead.email && <div><span style={{ color: GOLD }}>Email: </span><span style={{ color: "#e6edf3" }}>{lead.email}</span></div>}
+                {lead.address && <div><span style={{ color: GOLD }}>Address: </span><span style={{ color: "#e6edf3" }}>{lead.address}{lead.city ? `, ${lead.city}` : ""}{lead.state ? `, ${lead.state}` : ""}</span></div>}
+                {lead.projectType && <div><span style={{ color: GOLD }}>Project: </span><span style={{ color: "#e6edf3" }}>{lead.projectType}</span></div>}
+                {lead.message && <div className="mt-1 p-2 rounded-lg text-xs" style={{ background: "#0d1117", color: "#8b949e", whiteSpace: "pre-wrap" }}>{lead.message}</div>}
+              </div>
+            )}
+
+            {/* Notes list */}
+            <div style={{ borderTop: "1px solid #30373f", paddingTop: 12 }}>
+              <p className="text-[10px] font-semibold uppercase tracking-widest mb-2" style={{ color: "#484f58" }}>Notes</p>
+              {notes.length === 0
+                ? <p className="text-xs italic" style={{ color: "#484f58" }}>No notes yet</p>
+                : (
+                  <div className="flex flex-col gap-2 max-h-48 overflow-y-auto">
+                    {notes.map(n => (
+                      <div key={n.id} style={{ borderLeft: "2px solid #C9A84C44", paddingLeft: 10 }}>
+                        <div className="text-[10px] font-semibold mb-0.5" style={{ color: GOLD }}>
+                          {new Date(n.noteDate).toLocaleDateString("en-US", { timeZone: "UTC", month: "short", day: "numeric", year: "numeric" })}
+                        </div>
+                        <p className="text-xs" style={{ color: "#e6edf3", whiteSpace: "pre-wrap" }}>{n.content}</p>
+                      </div>
+                    ))}
+                  </div>
+                )
+              }
+            </div>
+
+            {/* Add note */}
+            <div style={{ borderTop: "1px solid #30373f", paddingTop: 12 }}>
+              <textarea
+                rows={2}
+                value={newNote}
+                onChange={e => setNewNote(e.target.value)}
+                placeholder="Add a note…"
+                className="w-full bg-transparent text-sm px-3 py-2 rounded-lg outline-none resize-none"
+                style={{ border: "1px solid #30373f", color: "#e6edf3" }}
+              />
+              <button
+                onClick={handleAddNote}
+                disabled={savingNote || !newNote.trim()}
+                className="mt-2 text-xs px-3 py-1.5 rounded-lg font-semibold disabled:opacity-40"
+                style={{ background: GOLD, color: "#0d1117" }}
+              >
+                {savingNote ? "Saving…" : "Save note"}
+              </button>
+            </div>
+          </>
+        )}
+      </div>
+    </div>
+  );
+}
+
 // ─── Audio Player ────────────────────────────────────────────────────────────
 
 function AudioPlayer({ src, mimeType }: { src: string; mimeType: string | null }) {
@@ -70,12 +238,14 @@ function ItemRow({
   onToggle,
   onDelete,
   onUpdate,
+  onBadgeClick,
 }: {
   item: FollowUpItem;
   companyId: string;
   onToggle: (id: string, completed: boolean) => void;
   onDelete: (id: string) => void;
   onUpdate: (updated: FollowUpItem) => void;
+  onBadgeClick?: () => void;
 }) {
   const [hovered, setHovered] = useState(false);
   const [toggling, setToggling] = useState(false);
@@ -242,15 +412,16 @@ function ItemRow({
         </div>
       )}
 
-      {/* Client or Lead badge */}
+      {/* Client or Lead badge — tappable */}
       {(item.clientName || item.leadName) && (
         <div className="ml-6">
-          <span
-            className="text-xs px-2 py-0.5 rounded-full font-medium"
+          <button
+            onClick={onBadgeClick}
+            className="text-xs px-2 py-0.5 rounded-full font-medium transition-opacity hover:opacity-80 active:opacity-60"
             style={{ background: "#C9A84C22", color: GOLD, border: `1px solid ${GOLD}44` }}
           >
-            {item.clientName || item.leadName}
-          </span>
+            {item.clientName || item.leadName} →
+          </button>
         </div>
       )}
 
@@ -710,6 +881,13 @@ export default function TodayTaskCard({
   const [upcomingItems, setUpcomingItems] = useState<FollowUpItem[]>(initialUpcoming ?? []);
   const [showUpcoming, setShowUpcoming] = useState(false);
   const [showCompleted, setShowCompleted] = useState(false);
+  const [activePopup, setActivePopup] = useState<PopupTarget | null>(null);
+
+  function popupFor(item: FollowUpItem): (() => void) | undefined {
+    if (item.leadId) return () => setActivePopup({ type: "lead", id: item.leadId!, name: item.leadName ?? "Lead" });
+    if (item.clientId) return () => setActivePopup({ type: "client", id: item.clientId!, name: item.clientName ?? "Client" });
+    return undefined;
+  }
   const [showAdd, setShowAdd] = useState(false);
   const [hovered, setHovered] = useState(false);
 
@@ -814,6 +992,7 @@ export default function TodayTaskCard({
               onToggle={handleToggle}
               onDelete={handleDelete}
               onUpdate={handleUpdate}
+              onBadgeClick={popupFor(item)}
             />
           ))}
         </div>
@@ -842,6 +1021,7 @@ export default function TodayTaskCard({
                     onToggle={handleToggle}
                     onDelete={handleDelete}
                     onUpdate={handleUpdate}
+                    onBadgeClick={popupFor(item)}
                   />
                 </div>
               ))}
@@ -885,6 +1065,7 @@ export default function TodayTaskCard({
                       }}
                       onDelete={handleDelete}
                       onUpdate={handleUpdate}
+                      onBadgeClick={popupFor(item)}
                     />
                   </div>
                 );
@@ -892,6 +1073,15 @@ export default function TodayTaskCard({
             </div>
           )}
         </div>
+      )}
+
+      {/* Entity popup */}
+      {activePopup && (
+        <EntityPopup
+          target={activePopup}
+          companyId={companyId}
+          onClose={() => setActivePopup(null)}
+        />
       )}
     </div>
   );
