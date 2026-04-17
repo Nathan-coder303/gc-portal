@@ -968,13 +968,24 @@ export default function TodayTaskCard({
   const doneCount = doneItems.length;
 
   function handleToggle(id: string, nowComplete: boolean) {
-    setItems(prev =>
-      prev.map(item =>
-        item.id === id
-          ? { ...item, completedAt: nowComplete ? new Date().toISOString() : null }
-          : item
-      )
-    );
+    if (nowComplete) {
+      // Mark complete: update completedAt in items (or move from upcoming)
+      setItems(prev => prev.map(item =>
+        item.id === id ? { ...item, completedAt: new Date().toISOString() } : item
+      ));
+    } else {
+      // Mark incomplete: if it has a future due date, move back to upcoming
+      const item = items.find(i => i.id === id);
+      if (item && item.dueDate && item.dueDate.slice(0, 10) > todayStr) {
+        setItems(prev => prev.filter(i => i.id !== id));
+        setUpcomingItems(prev => [...prev, { ...item, completedAt: null }]
+          .sort((a, b) => (a.dueDate ?? "").localeCompare(b.dueDate ?? "")));
+      } else {
+        setItems(prev => prev.map(i =>
+          i.id === id ? { ...i, completedAt: null } : i
+        ));
+      }
+    }
   }
 
   function handleDelete(id: string) {
