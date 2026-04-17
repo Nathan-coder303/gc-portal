@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useRef, useEffect, useCallback } from "react";
+import { useUndoRedo } from "@/lib/undo-redo-context";
 
 const GOLD = "#C9A84C";
 
@@ -54,6 +55,10 @@ function EntityPopup({
   const [loading, setLoading] = useState(true);
   const [newNote, setNewNote] = useState("");
   const [savingNote, setSavingNote] = useState(false);
+  const [editingNoteId, setEditingNoteId] = useState<string | null>(null);
+  const [editNoteText, setEditNoteText] = useState("");
+  const [savingEdit, setSavingEdit] = useState(false);
+  const { pushUndo } = useUndoRedo();
 
   useEffect(() => {
     async function load() {
@@ -94,6 +99,43 @@ function EntityPopup({
         setNewNote("");
       }
     } finally { setSavingNote(false); }
+  }
+
+  async function handleSaveNoteEdit(noteId: string) {
+    if (!editNoteText.trim()) return;
+    setSavingEdit(true);
+    await fetch(`/api/${companyId}/notes`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ noteId, content: editNoteText.trim() }),
+    });
+    setNotes(prev => prev.map(n => n.id === noteId ? { ...n, content: editNoteText.trim() } : n));
+    setSavingEdit(false);
+    setEditingNoteId(null);
+  }
+
+  async function handleDeleteNote(noteId: string) {
+    const deleted = notes.find(n => n.id === noteId);
+    setNotes(prev => prev.filter(n => n.id !== noteId));
+    await fetch(`/api/${companyId}/notes?noteId=${noteId}`, { method: "DELETE" });
+    if (!deleted) return;
+    let newNoteId = noteId;
+    pushUndo({
+      label: `Delete note`,
+      undo: async () => {
+        const body = target.type === "lead"
+          ? { leadId: target.id, content: deleted.content }
+          : { clientId: target.id, content: deleted.content, sendEmail: false };
+        const res = await fetch(`/api/${companyId}/notes`, {
+          method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body),
+        });
+        if (res.ok) { const n = await res.json(); newNoteId = n.id; setNotes(prev => [n, ...prev]); }
+      },
+      redo: async () => {
+        setNotes(prev => prev.filter(n => n.id !== newNoteId));
+        fetch(`/api/${companyId}/notes?noteId=${newNoteId}`, { method: "DELETE" });
+      },
+    });
   }
 
   const clientPageUrl = target.type === "client"
@@ -160,10 +202,38 @@ function EntityPopup({
                   <div className="flex flex-col gap-2 max-h-48 overflow-y-auto">
                     {notes.map(n => (
                       <div key={n.id} style={{ borderLeft: "2px solid #C9A84C44", paddingLeft: 10 }}>
-                        <div className="text-[10px] font-semibold mb-0.5" style={{ color: GOLD }}>
-                          {new Date(n.noteDate).toLocaleDateString("en-US", { timeZone: "UTC", month: "short", day: "numeric", year: "numeric" })}
+                        <div className="flex items-center justify-between gap-2 mb-0.5">
+                          <div className="text-[10px] font-semibold" style={{ color: GOLD }}>
+                            {new Date(n.noteDate).toLocaleDateString("en-US", { timeZone: "UTC", month: "short", day: "numeric", year: "numeric" })}
+                          </div>
+                          <div className="flex gap-1 shrink-0">
+                            <button onClick={() => { setEditingNoteId(n.id); setEditNoteText(n.content); }}
+                              className="text-[10px] px-1.5 py-0.5 rounded"
+                              style={{ color: GOLD, border: "1px solid #C9A84C33" }}>Edit</button>
+                            <button onClick={() => handleDeleteNote(n.id)}
+                              className="text-[10px] px-1.5 py-0.5 rounded"
+                              style={{ color: "#f85149", border: "1px solid #f8514933" }}>Del</button>
+                          </div>
                         </div>
-                        <p className="text-xs" style={{ color: "#e6edf3", whiteSpace: "pre-wrap" }}>{n.content}</p>
+                        {editingNoteId === n.id ? (
+                          <div className="space-y-1">
+                            <textarea autoFocus rows={2} value={editNoteText} onChange={e => setEditNoteText(e.target.value)}
+                              className="w-full rounded px-2 py-1 text-xs resize-none"
+                              style={{ background: "#0d1117", border: "1px solid #C9A84C", color: "#e6edf3" }} />
+                            <div className="flex gap-1">
+                              <button onClick={() => handleSaveNoteEdit(n.id)} disabled={savingEdit}
+                                className="text-[10px] px-2 py-0.5 rounded font-medium"
+                                style={{ background: GOLD, color: "#0d1117", opacity: savingEdit ? 0.6 : 1 }}>
+                                {savingEdit ? "…" : "Save"}
+                              </button>
+                              <button onClick={() => setEditingNoteId(null)}
+                                className="text-[10px] px-2 py-0.5 rounded"
+                                style={{ color: "#8b949e", border: "1px solid #30373f" }}>Cancel</button>
+                            </div>
+                          </div>
+                        ) : (
+                          <p className="text-xs" style={{ color: "#e6edf3", whiteSpace: "pre-wrap" }}>{n.content}</p>
+                        )}
                       </div>
                     ))}
                   </div>
@@ -957,6 +1027,7 @@ export default function TodayTaskCard({
   }
   const [showAdd, setShowAdd] = useState(false);
   const [hovered, setHovered] = useState(false);
+  const { pushUndo } = useUndoRedo();
 
   const todayStr = new Date().toISOString().slice(0, 10);
   const openItems = items.filter(i => !i.completedAt);
@@ -989,8 +1060,43 @@ export default function TodayTaskCard({
   }
 
   function handleDelete(id: string) {
+    const deleted = [...items, ...upcomingItems].find(i => i.id === id);
     setItems(prev => prev.filter(i => i.id !== id));
     setUpcomingItems(prev => prev.filter(i => i.id !== id));
+    if (!deleted) return;
+    let newItemId = id;
+    pushUndo({
+      label: `Delete "${deleted.text.slice(0, 30)}"`,
+      undo: async () => {
+        const fd = new FormData();
+        fd.set("text", deleted.text);
+        fd.set("category", category);
+        if (deleted.clientId) fd.set("clientId", deleted.clientId);
+        if (deleted.leadId) fd.set("leadId", deleted.leadId);
+        if (deleted.dueDate) fd.set("dueDate", deleted.dueDate.slice(0, 10));
+        const res = await fetch(`/api/${companyId}/follow-ups`, { method: "POST", body: fd });
+        const created: FollowUpItem & { client?: { id: string; name: string } | null; lead?: { id: string; name: string | null } | null } = await res.json();
+        newItemId = created.id;
+        const restored: FollowUpItem = {
+          ...deleted,
+          id: created.id,
+          completedAt: null,
+          clientName: created.client?.name ?? deleted.clientName,
+          leadName: created.lead?.name ?? deleted.leadName,
+        };
+        const today = new Date().toISOString().slice(0, 10);
+        if (restored.dueDate && restored.dueDate.slice(0, 10) > today) {
+          setUpcomingItems(prev => [...prev, restored].sort((a, b) => (a.dueDate ?? "").localeCompare(b.dueDate ?? "")));
+        } else {
+          setItems(prev => [...prev, restored]);
+        }
+      },
+      redo: async () => {
+        setItems(prev => prev.filter(i => i.id !== newItemId));
+        setUpcomingItems(prev => prev.filter(i => i.id !== newItemId));
+        fetch(`/api/${companyId}/follow-ups/${newItemId}`, { method: "DELETE" });
+      },
+    });
   }
 
   function handleUpdate(updated: FollowUpItem) {

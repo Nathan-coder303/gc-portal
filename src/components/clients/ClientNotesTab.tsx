@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useRef, useEffect, useCallback } from "react";
+import { useUndoRedo } from "@/lib/undo-redo-context";
 
 type Note = {
   id: string;
@@ -62,17 +63,35 @@ function AudioPlayer({ src, mimeType }: { src: string; mimeType: string | null }
 }
 
 function NoteCard({
-  note, companyId, clientId, onDelete,
+  note, companyId, clientId, onDelete, onUpdate,
 }: {
-  note: Note; companyId: string; clientId: string; onDelete: (id: string) => void;
+  note: Note; companyId: string; clientId: string;
+  onDelete: (id: string) => void;
+  onUpdate: (id: string, transcription: string) => void;
 }) {
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const [editing, setEditing] = useState(false);
+  const [editText, setEditText] = useState(note.transcription ?? "");
+  const [saving, setSaving] = useState(false);
 
   async function handleDelete() {
     setDeleting(true);
     await fetch(`/api/${companyId}/clients/${clientId}/notes?noteId=${note.id}`, { method: "DELETE" });
     onDelete(note.id);
+  }
+
+  async function handleSaveEdit() {
+    if (editText.trim() === (note.transcription ?? "")) { setEditing(false); return; }
+    setSaving(true);
+    await fetch(`/api/${companyId}/clients/${clientId}/notes/${note.id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ transcription: editText.trim() }),
+    });
+    onUpdate(note.id, editText.trim());
+    setSaving(false);
+    setEditing(false);
   }
 
   const audioSrc = note.audioUrl
@@ -83,21 +102,29 @@ function NoteCard({
     <div className="rounded-xl p-4" style={{ background: "#1e2736", border: "1px solid #30373f" }}>
       <div className="flex items-start justify-between gap-3 mb-3">
         <span className="text-xs" style={{ color: "#8b949e" }}>{fmtDate(note.createdAt)}</span>
-        {!confirmDelete ? (
-          <button onClick={() => setConfirmDelete(true)} className="text-xs px-2 py-0.5 rounded" style={{ color: "#f85149", border: "1px solid #f8514933" }}>
-            Delete
-          </button>
-        ) : (
-          <div className="flex items-center gap-2">
-            <span className="text-xs" style={{ color: "#8b949e" }}>Delete?</span>
-            <button onClick={handleDelete} disabled={deleting} className="text-xs px-2 py-0.5 rounded font-medium" style={{ background: "#f8514922", color: "#f85149" }}>
-              {deleting ? "…" : "Yes"}
+        <div className="flex items-center gap-2 shrink-0">
+          {!editing && !confirmDelete && (
+            <button onClick={() => { setEditing(true); setEditText(note.transcription ?? ""); }}
+              className="text-xs px-2 py-0.5 rounded" style={{ color: "#C9A84C", border: "1px solid #C9A84C44" }}>
+              Edit
             </button>
-            <button onClick={() => setConfirmDelete(false)} className="text-xs px-2 py-0.5 rounded" style={{ color: "#8b949e", border: "1px solid #30373f" }}>
-              No
+          )}
+          {!confirmDelete && !editing ? (
+            <button onClick={() => setConfirmDelete(true)} className="text-xs px-2 py-0.5 rounded" style={{ color: "#f85149", border: "1px solid #f8514933" }}>
+              Delete
             </button>
-          </div>
-        )}
+          ) : confirmDelete && (
+            <div className="flex items-center gap-2">
+              <span className="text-xs" style={{ color: "#8b949e" }}>Delete?</span>
+              <button onClick={handleDelete} disabled={deleting} className="text-xs px-2 py-0.5 rounded font-medium" style={{ background: "#f8514922", color: "#f85149" }}>
+                {deleting ? "…" : "Yes"}
+              </button>
+              <button onClick={() => setConfirmDelete(false)} className="text-xs px-2 py-0.5 rounded" style={{ color: "#8b949e", border: "1px solid #30373f" }}>
+                No
+              </button>
+            </div>
+          )}
+        </div>
       </div>
 
       {audioSrc && (
@@ -109,7 +136,30 @@ function NoteCard({
         </div>
       )}
 
-      {note.transcription ? (
+      {editing ? (
+        <div className="space-y-2">
+          <textarea
+            autoFocus
+            value={editText}
+            onChange={e => setEditText(e.target.value)}
+            rows={4}
+            className="w-full rounded-lg px-3 py-2 text-sm leading-relaxed resize-none"
+            style={{ background: "#0d1117", border: "1px solid #C9A84C", color: "#e6edf3" }}
+          />
+          <div className="flex gap-2">
+            <button onClick={handleSaveEdit} disabled={saving}
+              className="text-xs px-3 py-1 rounded font-medium"
+              style={{ background: "#C9A84C", color: "#0d1117", opacity: saving ? 0.6 : 1 }}>
+              {saving ? "Saving…" : "Save"}
+            </button>
+            <button onClick={() => setEditing(false)}
+              className="text-xs px-3 py-1 rounded"
+              style={{ color: "#8b949e", border: "1px solid #30373f" }}>
+              Cancel
+            </button>
+          </div>
+        </div>
+      ) : note.transcription ? (
         <p className="text-sm leading-relaxed whitespace-pre-wrap" style={{ color: "#e6edf3" }}>
           {note.transcription}
         </p>
@@ -126,6 +176,7 @@ export default function ClientNotesTab({
   companyId: string; clientId: string; initialNotes: Note[];
 }) {
   const [notes, setNotes] = useState<Note[]>(initialNotes);
+  const { pushUndo } = useUndoRedo();
   const [recording, setRecording] = useState(false);
   const [processing, setProcessing] = useState(false);
   const [liveText, setLiveText] = useState("");
@@ -313,7 +364,30 @@ export default function ClientNotesTab({
               note={n}
               companyId={companyId}
               clientId={clientId}
-              onDelete={id => setNotes(prev => prev.filter(x => x.id !== id))}
+              onUpdate={(id, transcription) =>
+                setNotes(prev => prev.map(x => x.id === id ? { ...x, transcription } : x))
+              }
+              onDelete={id => {
+                const deleted = notes.find(x => x.id === id);
+                setNotes(prev => prev.filter(x => x.id !== id));
+                if (!deleted) return;
+                let newId = id;
+                pushUndo({
+                  label: `Delete note`,
+                  undo: async () => {
+                    const fd = new FormData();
+                    fd.append("transcription", deleted.transcription ?? "");
+                    const res = await fetch(`/api/${companyId}/clients/${clientId}/notes`, { method: "POST", body: fd });
+                    const created: Note = await res.json();
+                    newId = created.id;
+                    setNotes(prev => [created, ...prev]);
+                  },
+                  redo: async () => {
+                    setNotes(prev => prev.filter(x => x.id !== newId));
+                    fetch(`/api/${companyId}/clients/${clientId}/notes?noteId=${newId}`, { method: "DELETE" });
+                  },
+                });
+              }}
             />
           ))}
         </div>

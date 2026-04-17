@@ -3,6 +3,7 @@
 import React, { useState, useRef, useCallback, useEffect } from "react";
 import { type PipelineStage, loadStages, saveStages, STAGE_COLORS } from "@/lib/pipelineStages";
 import NotesPanel from "@/components/notes/NotesPanel";
+import { useUndoRedo } from "@/lib/undo-redo-context";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -515,6 +516,7 @@ function StageCard({
 // ─── Main Component ───────────────────────────────────────────────────────────
 
 export default function LeadsPipeline({ companyId, triageLeads, stagedCards }: Props) {
+  const { pushUndo } = useUndoRedo();
   const [triage, setTriage] = useState<TriageLead[]>(triageLeads);
   const [cards, setCards] = useState<StagedCard[]>(stagedCards);
   const [stages, setStages] = useState<PipelineStage[]>([]);
@@ -812,9 +814,27 @@ export default function LeadsPipeline({ companyId, triageLeads, stagedCards }: P
   }, [triage, cards, companyId, triageLeads]);
 
   const handleDeleteTriageLead = useCallback(async (leadId: string) => {
+    const lead = triage.find(l => l.id === leadId);
     setTriage((prev) => prev.filter((l) => l.id !== leadId));
-    try { await fetch(`/api/${companyId}/leads/${leadId}`, { method: "DELETE" }); } catch { /* */ }
-  }, [companyId]);
+    fetch(`/api/${companyId}/leads/${leadId}`, { method: "DELETE" });
+    if (!lead) return;
+    let newLeadId = leadId;
+    pushUndo({
+      label: `Delete lead "${lead.name}"`,
+      undo: async () => {
+        const res = await fetch(`/api/${companyId}/leads`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ name: lead.name, phone: lead.phone, email: lead.email, projectType: lead.projectType }),
+        });
+        if (res.ok) { const created = await res.json(); newLeadId = created.id; setTriage(prev => [created, ...prev]); }
+      },
+      redo: async () => {
+        setTriage(prev => prev.filter(l => l.id !== newLeadId));
+        fetch(`/api/${companyId}/leads/${newLeadId}`, { method: "DELETE" });
+      },
+    });
+  }, [companyId, triage, pushUndo]);
 
   const handleDelete = useCallback(async (cardId: string) => {
     const card = cards.find((c) => c.id === cardId);
@@ -824,13 +844,40 @@ export default function LeadsPipeline({ companyId, triageLeads, stagedCards }: P
       const origLead = triageLeads.find((l) => l.id === card.leadId);
       if (origLead) setTriage((prev) => [origLead, ...prev]);
     }
-    try {
-      await fetch(`/api/${companyId}/pipeline/${cardId}`, { method: "DELETE" });
-    } catch {
-      setCards((prev) => [...prev, card]);
-      if (card.leadId) setTriage((prev) => prev.filter((l) => l.id !== card.leadId));
-    }
-  }, [cards, companyId, triageLeads]);
+    fetch(`/api/${companyId}/pipeline/${cardId}`, { method: "DELETE" });
+    let newCardId = cardId;
+    pushUndo({
+      label: `Delete "${card.displayName}"`,
+      undo: async () => {
+        const res = await fetch(`/api/${companyId}/pipeline`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            displayName: card.displayName,
+            leadId: card.leadId,
+            stage: card.stage,
+            estimateValue: card.estimateValue,
+            notes: card.notes,
+            source: card.source,
+          }),
+        });
+        if (res.ok) {
+          const created = await res.json();
+          newCardId = created.id;
+          setCards(prev => [...prev, created]);
+          if (card.leadId) setTriage(prev => prev.filter(l => l.id !== card.leadId));
+        }
+      },
+      redo: async () => {
+        setCards(prev => prev.filter(c => c.id !== newCardId));
+        if (card.leadId) {
+          const origLead = triageLeads.find(l => l.id === card.leadId);
+          if (origLead) setTriage(prev => [origLead, ...prev]);
+        }
+        fetch(`/api/${companyId}/pipeline/${newCardId}`, { method: "DELETE" });
+      },
+    });
+  }, [cards, companyId, triageLeads, pushUndo]);
 
   const handleSourceChange = useCallback(async (cardId: string, source: string | null) => {
     setCards((prev) => prev.map((c) => c.id === cardId ? { ...c, source } : c));
