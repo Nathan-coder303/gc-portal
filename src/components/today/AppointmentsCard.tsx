@@ -416,8 +416,8 @@ export default function AppointmentsCard({
         </div>
         <button
           onClick={showPicker || showForm ? () => { setShowPicker(false); setShowForm(false); setSelectedLead(null); setError(""); } : openPicker}
-          className="shrink-0 w-10 h-10 flex items-center justify-center rounded-full text-2xl font-bold"
-          style={{ background: "#C9A84C22", border: "1px solid #C9A84C66", color: "#C9A84C" }}
+          className="shrink-0 text-sm px-3 py-1 rounded font-medium transition-colors"
+          style={{ border: "1px solid #C9A84C66", color: "#C9A84C", background: (showPicker || showForm) ? "#C9A84C22" : "transparent" }}
         >
           {showPicker || showForm ? "×" : "+"}
         </button>
