@@ -47,7 +47,11 @@ export async function GET(
   const page2Param = req.nextUrl.searchParams.get("page2"); // "ROOF" | "ADDITION" | "NONE" | null (auto)
   const isPreview = req.nextUrl.searchParams.get("preview") === "1";
   const includeDivisionSummary = req.nextUrl.searchParams.get("divSummary") === "1";
+  const breakDiv04 = req.nextUrl.searchParams.get("breakDiv04") === "1";
+  const breakDiv05 = req.nextUrl.searchParams.get("breakDiv05") === "1";
+  const breakDiv06 = req.nextUrl.searchParams.get("breakDiv06") !== "0"; // default true (was hardcoded)
   const breakDiv07 = req.nextUrl.searchParams.get("breakDiv07") === "1";
+  const breakDiv08 = req.nextUrl.searchParams.get("breakDiv08") === "1";
 
   const [template, company] = await Promise.all([
     prisma.estimateTemplate.findFirst({
@@ -137,7 +141,11 @@ export async function GET(
         : (template.client?.coverPhotoUrl ?? null)
     ),
     clientCoverTitle: template.client?.coverTitle ?? null,
+    breakDiv04,
+    breakDiv05,
+    breakDiv06,
     breakDiv07,
+    breakDiv08,
   });
 
   // Insert client's marked PDF file as page 3 (if opted in and file exists)

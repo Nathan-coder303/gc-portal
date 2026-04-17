@@ -170,7 +170,11 @@ type TemplatePdfProps = {
   clientCoverPhotoType?: string | null;
   clientCoverPhotoUrl?: string | null;
   clientCoverTitle?: string | null;
+  breakDiv04?: boolean;
+  breakDiv05?: boolean;
+  breakDiv06?: boolean;
   breakDiv07?: boolean;
+  breakDiv08?: boolean;
 };
 
 function ItemTableHeader({ showLineNum }: { showLineNum?: boolean }) {
@@ -1069,7 +1073,7 @@ function DivisionSummaryPage({ template, client, divisions, gcFeePercent }: Pick
   );
 }
 
-function TemplatePdfDocument({ companyName, template, client, divisions, showTerms, termsContent, paymentSchedule, gcFeePercent, summaryGroups, clientSignatureData, clientSignedByName, clientSignedAt, contractorSignatureData, contractorSignedAt, includeRoofUpgradesPage, includeCoverPage, includeAdditionPages, includeRetailPages, includeDivisionSummary, insulationType, clientCoverPhotoType, clientCoverPhotoUrl, clientCoverTitle, breakDiv07 }: TemplatePdfProps) {
+function TemplatePdfDocument({ companyName, template, client, divisions, showTerms, termsContent, paymentSchedule, gcFeePercent, summaryGroups, clientSignatureData, clientSignedByName, clientSignedAt, contractorSignatureData, contractorSignedAt, includeRoofUpgradesPage, includeCoverPage, includeAdditionPages, includeRetailPages, includeDivisionSummary, insulationType, clientCoverPhotoType, clientCoverPhotoUrl, clientCoverTitle, breakDiv04, breakDiv05, breakDiv06, breakDiv07, breakDiv08 }: TemplatePdfProps) {
   const grouped = groupDivisions(divisions);
 
   // Compute raw totals per group label (or null for ungrouped)
@@ -1316,7 +1320,13 @@ function TemplatePdfDocument({ companyName, template, client, divisions, showTer
                   .reduce((s, i) => s + calcTotal(i.defaultQty, i.defaultUnitCost, i.defaultMarkupPct), 0);
 
                 return (
-                  <View key={div.id} minPresenceAhead={50} break={div.csiCode != null && (/^06\b/.test(div.csiCode) || (breakDiv07 && /^07\b/.test(div.csiCode)))}>
+                  <View key={div.id} minPresenceAhead={50} break={div.csiCode != null && (
+                    (breakDiv04 && /^04\b/.test(div.csiCode)) ||
+                    (breakDiv05 && /^05\b/.test(div.csiCode)) ||
+                    ((breakDiv06 !== false) && /^06\b/.test(div.csiCode)) ||
+                    (breakDiv07 && /^07\b/.test(div.csiCode)) ||
+                    (breakDiv08 && /^08\b/.test(div.csiCode))
+                  )}>
                     <View wrap={false} style={[styles.divisionHeader, groupLabel ? { marginTop: 6 } : {}]}>
                       <View style={styles.divisionLeft}>
                         {!isRoof && div.csiCode ? <Text style={styles.divisionCsi}>{div.csiCode}</Text> : null}

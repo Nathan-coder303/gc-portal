@@ -1,10 +1,15 @@
 "use client";
 
-import { useState, useTransition, useRef } from "react";
+import { useState, useTransition, useRef, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { upsertClient, deleteClient } from "@/app/[companyId]/estimates/actions";
 import { TrashIcon, PencilIcon } from "@/components/ui/icons";
 import BarometerSection, { type ClientIncomeSummary } from "@/components/today/BarometerSection";
+
+type LeadOption = {
+  id: string; name: string | null; email: string | null; phone: string | null;
+  address: string | null; city: string | null; projectType: string | null;
+};
 
 type Client = {
   id: string; name: string; address: string | null; city: string | null;
@@ -63,8 +68,6 @@ function ClientCard({
     });
   }
 
-  const cityLine = [client.city, client.state, client.zip].filter(Boolean).join(", ");
-
   if (editing) {
     return (
       <div className="rounded-xl p-4 space-y-3" style={{ background: "#1a2d1a", border: "1px solid #30373f" }}>
@@ -115,90 +118,187 @@ function ClientCard({
       onDragOver={onDragOver}
       onDrop={onDrop}
       onDragEnd={onDragEnd}
-      className="rounded-xl cursor-pointer transition-all flex flex-col select-none"
+      className="rounded-xl cursor-pointer select-none"
       style={{
         background: isDragOver ? "#1a2a3a" : "#1e2736",
-        border: `1px solid ${isDragOver ? "#C9A84C" : hovered ? "#C9A84C" : "#30373f"}`,
-        minHeight: 140,
-        opacity: 1,
+        border: `1px solid ${isDragOver ? "#C9A84C" : hovered ? "#C9A84C55" : "#30373f"}`,
+        transition: "border-color 0.12s",
       }}
       onClick={() => router.push(`/${companyId}/clients/${client.id}`)}
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}
     >
-      <div className="px-5 py-5 flex flex-col flex-1">
-        <div className="flex items-center gap-3 mb-2">
-          {/* Drag handle */}
-          <div className="cursor-grab text-lg leading-none shrink-0" style={{ color: "#30373f" }} title="Drag to reorder or change status">⠿</div>
-          {(() => { const words = client.name.trim().split(/\s+/).filter(Boolean); const first = words[0] ?? ""; const label = /^\d+$/.test(first) ? first : words.length >= 2 ? (first[0] + words[words.length - 1][0]).toUpperCase() : first.slice(0, 2).toUpperCase() || "?"; return (
-            <div className="w-8 h-8 rounded-full flex items-center justify-center shrink-0 font-bold" style={{ background: "#C9A84C1a", color: "#C9A84C", fontSize: label.length > 3 ? 9 : 11 }}>
-              {label}
+      <div className="px-4 py-3 flex flex-col gap-2">
+        {/* Name row */}
+        <div className="flex items-center gap-2">
+          <div className="cursor-grab text-base leading-none shrink-0" style={{ color: "#30373f" }} title="Drag to reorder">⠿</div>
+          <div className="font-bold text-sm leading-tight truncate flex-1" style={{ color: "#e6edf3" }}>{client.name}</div>
+        </div>
+
+        {/* Amounts row */}
+        <div className="flex items-end gap-3">
+          <div className="flex-1">
+            <div className="text-[10px] font-medium mb-0.5" style={{ color: "#484f58" }}>ESTIMATE</div>
+            <div className="text-base font-black leading-none" style={{ color: client.estimateTotal > 0 ? "#22c55e" : "#30373f" }}>
+              {client.estimateTotal > 0 ? `$${client.estimateTotal.toLocaleString("en-US", { maximumFractionDigits: 0 })}` : "—"}
             </div>
-          ); })()}
-          <div className="min-w-0 flex-1">
-            <div className="font-bold text-sm leading-tight" style={{ color: "#e6edf3" }}>{client.name}</div>
+          </div>
+          <div className="flex-1">
+            <div className="text-[10px] font-medium mb-0.5" style={{ color: "#484f58" }}>GC PROFIT</div>
+            <div className="text-base font-black leading-none" style={{ color: (client.internalProfit + client.gcFee) > 0 ? "#C9A84C" : "#30373f" }}>
+              {(client.internalProfit + client.gcFee) > 0 ? `$${(client.internalProfit + client.gcFee).toLocaleString("en-US", { maximumFractionDigits: 0 })}` : "—"}
+            </div>
           </div>
         </div>
 
-        {/* Numbers row */}
-        <div className="mb-2">
-          {client.estimateTotal > 0 && (
-            <div className="text-2xl font-black leading-none tracking-tight" style={{ color: "#22c55e" }}>
-              ${client.estimateTotal.toLocaleString("en-US", { maximumFractionDigits: 0 })}
-            </div>
-          )}
-          {(client.internalProfit > 0 || client.gcFee > 0) && (
-            <div className="text-xl font-black leading-none tracking-tight mt-1" style={{ color: "#C9A84C" }}>
-              ${(client.internalProfit + client.gcFee).toLocaleString("en-US", { maximumFractionDigits: 0 })}
-            </div>
-          )}
-          {client.estimateTotal === 0 && client.internalProfit === 0 && client.gcFee === 0 && (
-            <div className="text-2xl font-black leading-none" style={{ color: "#30373f" }}>—</div>
-          )}
-          {client.estimateCount > 0 && (
-            <div className="text-[10px] mt-0.5" style={{ color: "#484f58" }}>{client.estimateCount} estimate{client.estimateCount !== 1 ? "s" : ""}</div>
-          )}
-        </div>
-
-        <div className="space-y-0.5 mb-3 pl-9">
-          {client.address && <p className="text-xs" style={{ color: "#8b949e" }}>{client.address}</p>}
-          {cityLine && <p className="text-xs" style={{ color: "#8b949e" }}>{cityLine}</p>}
-          {client.email && <p className="text-xs" style={{ color: "#8b949e" }}>{client.email}</p>}
-          {client.phone && <p className="text-xs" style={{ color: "#8b949e" }}>{formatPhone(client.phone)}</p>}
-        </div>
-
-        {isAdmin && (
-          <div className="flex flex-wrap gap-2 mt-auto pl-9" onClick={(e) => e.stopPropagation()}>
-            <button
-              onClick={(e) => { e.stopPropagation(); setEditing(true); }}
-              className="w-7 h-7 rounded-lg flex items-center justify-center"
-              style={{ background: "#C9A84C22", color: "#C9A84C", border: "1px solid #C9A84C44" }}
-              title="Edit"
-            >
-              <PencilIcon size={12} />
-            </button>
-            {showDelete ? (
-              <div className="flex gap-2 items-center">
-                <span className="text-xs" style={{ color: "#8b949e" }}>Delete?</span>
-                <button onClick={(e) => { e.stopPropagation(); handleDelete(); }} disabled={isPending} className="text-xs font-medium px-2 py-0.5 rounded" style={{ background: "#f8514922", color: "#f85149" }}>Yes</button>
-                <button onClick={(e) => { e.stopPropagation(); setShowDelete(false); }} className="text-xs px-2 py-0.5 rounded" style={{ color: "#8b949e", border: "1px solid #30373f" }}>No</button>
-              </div>
-            ) : (
+        {/* Phone + buttons row */}
+        <div className="flex items-center justify-between gap-2">
+          <div className="text-xs truncate" style={{ color: "#8b949e" }}>
+            {client.phone ? formatPhone(client.phone) : <span style={{ color: "#30373f" }}>no phone</span>}
+          </div>
+          {isAdmin && (
+            <div className="flex gap-1.5 shrink-0" onClick={(e) => e.stopPropagation()}>
               <button
-                onClick={(e) => { e.stopPropagation(); setShowDelete(true); }}
-                className="w-7 h-7 rounded-lg flex items-center justify-center"
-                style={{ background: "#f8514922", color: "#f85149", border: "1px solid #f8514933" }}
-                title="Delete"
+                onClick={(e) => { e.stopPropagation(); setEditing(true); }}
+                className="w-6 h-6 rounded flex items-center justify-center"
+                style={{ background: "#C9A84C22", color: "#C9A84C", border: "1px solid #C9A84C44" }}
+                title="Edit"
               >
-                <TrashIcon size={12} />
+                <PencilIcon size={11} />
               </button>
-            )}
-          </div>
-        )}
+              {showDelete ? (
+                <div className="flex gap-1 items-center">
+                  <button onClick={(e) => { e.stopPropagation(); handleDelete(); }} disabled={isPending} className="text-[10px] font-medium px-1.5 py-0.5 rounded" style={{ background: "#f8514922", color: "#f85149" }}>Yes</button>
+                  <button onClick={(e) => { e.stopPropagation(); setShowDelete(false); }} className="text-[10px] px-1.5 py-0.5 rounded" style={{ color: "#8b949e", border: "1px solid #30373f" }}>No</button>
+                </div>
+              ) : (
+                <button
+                  onClick={(e) => { e.stopPropagation(); setShowDelete(true); }}
+                  className="w-6 h-6 rounded flex items-center justify-center"
+                  style={{ background: "#f8514922", color: "#f85149", border: "1px solid #f8514933" }}
+                  title="Delete"
+                >
+                  <TrashIcon size={11} />
+                </button>
+              )}
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );
 }
+
+// ─── From Lead Modal ──────────────────────────────────────────────────────────
+
+function FromLeadModal({ companyId, defaultStatus, onDone, onClose }: {
+  companyId: string; defaultStatus: string; onDone: () => void; onClose: () => void;
+}) {
+  const [leads, setLeads] = useState<LeadOption[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [search, setSearch] = useState("");
+  const [selected, setSelected] = useState<LeadOption | null>(null);
+  const [isPending, startTransition] = useTransition();
+  const router = useRouter();
+
+  useEffect(() => {
+    fetch(`/api/${companyId}/leads`)
+      .then(r => r.json())
+      .then(data => { setLeads(Array.isArray(data) ? data : []); setLoading(false); })
+      .catch(() => setLoading(false));
+  }, [companyId]);
+
+  const filtered = leads.filter(l =>
+    (l.name ?? "").toLowerCase().includes(search.toLowerCase()) ||
+    (l.email ?? "").toLowerCase().includes(search.toLowerCase()) ||
+    (l.phone ?? "").includes(search)
+  );
+
+  function handleConfirm() {
+    if (!selected?.name?.trim()) return;
+    startTransition(async () => {
+      const res = await upsertClient({
+        name: selected.name!.trim(),
+        address: selected.address ?? "",
+        city: selected.city ?? "",
+        state: "",
+        zip: "",
+        email: selected.email ?? "",
+        phone: selected.phone ?? "",
+      });
+      // If not the default PROSPECT status, update it
+      if (defaultStatus !== "PROSPECT" && res?.id) {
+        await patchClientStatus(companyId, res.id, { status: defaultStatus });
+      }
+      onDone();
+      router.refresh();
+    });
+  }
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ background: "rgba(0,0,0,0.75)" }} onClick={onClose}>
+      <div className="w-full max-w-sm rounded-2xl flex flex-col" style={{ background: "#161b22", border: "1px solid #30373f", maxHeight: "80vh" }} onClick={e => e.stopPropagation()}>
+        <div className="flex items-center justify-between px-5 py-4" style={{ borderBottom: "1px solid #30373f" }}>
+          <h2 className="text-sm font-bold" style={{ color: "#e6edf3" }}>From Existing Lead</h2>
+          <button onClick={onClose} style={{ color: "#8b949e", fontSize: 20, lineHeight: 1, background: "none", border: "none", cursor: "pointer" }}>×</button>
+        </div>
+
+        <div className="px-4 py-3">
+          <input
+            autoFocus
+            type="text"
+            placeholder="Search by name, email, phone..."
+            value={search}
+            onChange={e => setSearch(e.target.value)}
+            className="w-full rounded-lg px-3 py-2 text-sm outline-none"
+            style={{ background: "#0d1117", border: "1px solid #30373f", color: "#e6edf3" }}
+          />
+        </div>
+
+        <div className="flex-1 overflow-y-auto px-3 pb-3 space-y-1.5">
+          {loading && <p className="text-xs text-center py-6" style={{ color: "#8b949e" }}>Loading leads…</p>}
+          {!loading && filtered.length === 0 && (
+            <p className="text-xs text-center py-6" style={{ color: "#8b949e" }}>No leads found</p>
+          )}
+          {filtered.map(lead => (
+            <button
+              key={lead.id}
+              onClick={() => setSelected(lead)}
+              className="w-full rounded-lg px-3 py-2.5 text-left transition-colors"
+              style={{
+                background: selected?.id === lead.id ? "#C9A84C22" : "#0d1117",
+                border: `1px solid ${selected?.id === lead.id ? "#C9A84C55" : "#30373f"}`,
+              }}
+            >
+              <div className="font-medium text-sm truncate" style={{ color: "#e6edf3" }}>{lead.name ?? "—"}</div>
+              <div className="text-xs mt-0.5 flex gap-2 flex-wrap" style={{ color: "#8b949e" }}>
+                {lead.phone && <span>{formatPhone(lead.phone)}</span>}
+                {lead.email && <span className="truncate">{lead.email}</span>}
+                {lead.projectType && <span style={{ color: "#C9A84C" }}>{lead.projectType}</span>}
+              </div>
+            </button>
+          ))}
+        </div>
+
+        <div className="px-4 py-3 flex gap-2" style={{ borderTop: "1px solid #30373f" }}>
+          <button
+            onClick={handleConfirm}
+            disabled={!selected || isPending}
+            className="flex-1 rounded-xl py-2 text-sm font-bold"
+            style={{ background: selected && !isPending ? "#C9A84C" : "#30373f", color: selected && !isPending ? "#0d1117" : "#8b949e" }}
+          >
+            {isPending ? "Creating…" : "Create Client"}
+          </button>
+          <button onClick={onClose} className="px-4 rounded-xl py-2 text-sm" style={{ background: "#30373f", color: "#e6edf3" }}>
+            Cancel
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ─── Add Client Form ───────────────────────────────────────────────────────────
 
 function AddClientForm({ onDone, defaultStatus }: { onDone: () => void; defaultStatus: string }) {
   const [isPending, startTransition] = useTransition();
@@ -260,21 +360,22 @@ function AddClientForm({ onDone, defaultStatus }: { onDone: () => void; defaultS
 
 function ClientColumn({
   title, status, clients, companyId, isAdmin, adding,
-  onAdd, onCancelAdd, accentColor, bgColor, onDragStart, onDrop,
+  onAdd, onCancelAdd, onAddFromLead, accentColor, bgColor, onDragStart, onDrop,
 }: {
   title: string; status: string; clients: Client[]; companyId: string; isAdmin: boolean;
-  adding: boolean; onAdd: () => void; onCancelAdd: () => void;
+  adding: boolean; onAdd: () => void; onCancelAdd: () => void; onAddFromLead: () => void;
   accentColor: string; bgColor: string;
   onDragStart: (clientId: string) => void;
   onDrop: (targetClientId: string | null, targetStatus: string) => void;
 }) {
   const [dragOverId, setDragOverId] = useState<string | null>(null);
   const [dragOverZone, setDragOverZone] = useState(false);
+  const [showAddMenu, setShowAddMenu] = useState(false);
 
   return (
     <div
       className="flex-1 rounded-2xl flex flex-col"
-      style={{ background: bgColor, border: `1px solid ${dragOverZone ? accentColor : "#30373f"}`, minHeight: 300, transition: "border-color 0.15s" }}
+      style={{ background: bgColor, border: `1px solid ${dragOverZone ? accentColor : "#30373f"}`, minHeight: 300, minWidth: 200, transition: "border-color 0.15s" }}
       onDragOver={(e) => { e.preventDefault(); setDragOverZone(true); }}
       onDragLeave={(e) => { if (!e.currentTarget.contains(e.relatedTarget as Node)) setDragOverZone(false); }}
       onDrop={(e) => { e.preventDefault(); setDragOverZone(false); onDrop(null, status); }}
@@ -286,9 +387,36 @@ function ClientColumn({
           <span className="text-xs px-2 py-0.5 rounded-full font-semibold" style={{ background: `${accentColor}22`, color: accentColor }}>{clients.length}</span>
         </div>
         {isAdmin && (
-          <button onClick={onAdd} className="text-xs px-3 py-1 rounded-lg font-medium" style={{ background: `${accentColor}22`, color: accentColor, border: `1px solid ${accentColor}44` }}>
-            + Add
-          </button>
+          <div className="relative">
+            <button
+              onClick={() => setShowAddMenu(v => !v)}
+              className="text-xs px-3 py-1 rounded-lg font-medium"
+              style={{ background: `${accentColor}22`, color: accentColor, border: `1px solid ${accentColor}44` }}
+            >
+              + Add
+            </button>
+            {showAddMenu && (
+              <>
+                <div className="fixed inset-0 z-10" onClick={() => setShowAddMenu(false)} />
+                <div className="absolute right-0 top-full mt-1 z-20 rounded-xl overflow-hidden shadow-xl" style={{ background: "#1e2736", border: "1px solid #30373f", minWidth: 170 }}>
+                  <button
+                    onClick={() => { setShowAddMenu(false); onAdd(); }}
+                    className="w-full text-left px-4 py-2.5 text-xs font-medium transition-colors hover:brightness-125"
+                    style={{ color: "#e6edf3" }}
+                  >
+                    ✦ New Prospect
+                  </button>
+                  <button
+                    onClick={() => { setShowAddMenu(false); onAddFromLead(); }}
+                    className="w-full text-left px-4 py-2.5 text-xs font-medium transition-colors hover:brightness-125"
+                    style={{ color: "#C9A84C", borderTop: "1px solid #30373f" }}
+                  >
+                    ↗ From Existing Lead
+                  </button>
+                </div>
+              </>
+            )}
+          </div>
         )}
       </div>
 
@@ -322,6 +450,7 @@ function ClientColumn({
 export default function ClientsManager({ companyId, clients: initialClients, isAdmin }: { companyId: string; clients: Client[]; isAdmin: boolean }) {
   const [clients, setClients] = useState<Client[]>(initialClients);
   const [addingIn, setAddingIn] = useState<string | null>(null);
+  const [fromLeadForStatus, setFromLeadForStatus] = useState<string | null>(null);
   const dragIdRef = useRef<string | null>(null);
   const router = useRouter();
 
@@ -391,6 +520,15 @@ export default function ClientsManager({ companyId, clients: initialClients, isA
 
   return (
     <div>
+      {fromLeadForStatus && (
+        <FromLeadModal
+          companyId={companyId}
+          defaultStatus={fromLeadForStatus}
+          onDone={() => setFromLeadForStatus(null)}
+          onClose={() => setFromLeadForStatus(null)}
+        />
+      )}
+
       {/* MIBH Income 2026 Barometer — clickable, shows open + closed breakdown */}
       <BarometerSection mibhIncome={mibhIncome} clients={clientIncomeSummaries} />
 
@@ -411,6 +549,7 @@ export default function ClientsManager({ companyId, clients: initialClients, isA
           adding={addingIn === "PROSPECT"}
           onAdd={() => setAddingIn("PROSPECT")}
           onCancelAdd={() => setAddingIn(null)}
+          onAddFromLead={() => setFromLeadForStatus("PROSPECT")}
           accentColor="#C9A84C"
           bgColor="#0d1117"
           onDragStart={handleDragStart}
@@ -425,6 +564,7 @@ export default function ClientsManager({ companyId, clients: initialClients, isA
           adding={addingIn === "ACTIVE"}
           onAdd={() => setAddingIn("ACTIVE")}
           onCancelAdd={() => setAddingIn(null)}
+          onAddFromLead={() => setFromLeadForStatus("ACTIVE")}
           accentColor="#22c55e"
           bgColor="#0a1a0f"
           onDragStart={handleDragStart}
@@ -439,6 +579,7 @@ export default function ClientsManager({ companyId, clients: initialClients, isA
           adding={addingIn === "COMPLETED"}
           onAdd={() => setAddingIn("COMPLETED")}
           onCancelAdd={() => setAddingIn(null)}
+          onAddFromLead={() => setFromLeadForStatus("COMPLETED")}
           accentColor="#8b949e"
           bgColor="#0d1117"
           onDragStart={handleDragStart}
@@ -453,6 +594,7 @@ export default function ClientsManager({ companyId, clients: initialClients, isA
           adding={false}
           onAdd={() => {}}
           onCancelAdd={() => {}}
+          onAddFromLead={() => setFromLeadForStatus("DEAD")}
           accentColor="#ef4444"
           bgColor="#1a0a0a"
           onDragStart={handleDragStart}

@@ -23,7 +23,11 @@ export type PdfOptions = {
   page2: Page2Type;
   includeInsert: boolean;
   includeDivisionSummary: boolean;
+  breakDiv04: boolean;
+  breakDiv05: boolean;
+  breakDiv06: boolean;
   breakDiv07: boolean;
+  breakDiv08: boolean;
 };
 
 type CustomCover = { blobUrl: string; proxyUrl: string };
@@ -62,7 +66,11 @@ export default function CoverPagePickerModal({
   const [page2, setPage2]               = useState<Page2Type>(initialPage2 === "NONE" ? "ROOF" : initialPage2);
   const [includeInsert, setIncludeInsert] = useState(true);
   const [includeDivisionSummary, setIncludeDivisionSummary] = useState(false);
+  const [breakDiv04, setBreakDiv04] = useState(false);
+  const [breakDiv05, setBreakDiv05] = useState(false);
+  const [breakDiv06, setBreakDiv06] = useState(true); // was hardcoded true
   const [breakDiv07, setBreakDiv07] = useState(false);
+  const [breakDiv08, setBreakDiv08] = useState(false);
 
   // Custom cover gallery
   const [customCovers, setCustomCovers] = useState<CustomCover[]>([]);
@@ -116,7 +124,11 @@ export default function CoverPagePickerModal({
     page2,
     includeInsert,
     includeDivisionSummary,
+    breakDiv04,
+    breakDiv05,
+    breakDiv06,
     breakDiv07,
+    breakDiv08,
   };
 
   return (
@@ -289,21 +301,30 @@ export default function CoverPagePickerModal({
         {/* ── Section: Page Breaks ── */}
         <div>
           <p className="text-xs font-semibold uppercase tracking-widest mb-2" style={{ color: "#8b949e" }}>Page Breaks</p>
-          <button
-            onClick={() => setBreakDiv07(v => !v)}
-            className="w-full rounded-xl p-3 text-left transition-all"
-            style={{ border: `2px solid ${breakDiv07 ? "#C9A84C" : "#30373f"}`, background: breakDiv07 ? "#1e2a12" : "#1e2736", outline: "none" }}
-          >
-            <div className="flex items-center justify-between">
-              <div>
-                <div className="text-xs font-semibold" style={{ color: breakDiv07 ? "#C9A84C" : "#e6edf3" }}>New page before Div 07</div>
-                <div className="text-[10px] mt-0.5" style={{ color: "#8b949e" }}>Thermal & Moisture Protection starts on its own page</div>
-              </div>
-              <div className="text-xs font-bold px-2 py-0.5 rounded" style={{ background: breakDiv07 ? "#C9A84C22" : "#30373f", color: breakDiv07 ? "#C9A84C" : "#8b949e" }}>
-                {breakDiv07 ? "ON" : "OFF"}
-              </div>
-            </div>
-          </button>
+          <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+            {([
+              { div: "04", label: "Div 04", desc: "Masonry",                    val: breakDiv04, set: setBreakDiv04 },
+              { div: "05", label: "Div 05", desc: "Metals",                     val: breakDiv05, set: setBreakDiv05 },
+              { div: "06", label: "Div 06", desc: "Wood & Plastics",             val: breakDiv06, set: setBreakDiv06 },
+              { div: "07", label: "Div 07", desc: "Thermal & Moisture",          val: breakDiv07, set: setBreakDiv07 },
+              { div: "08", label: "Div 08", desc: "Openings",                    val: breakDiv08, set: setBreakDiv08 },
+            ] as const).map(({ div, label, desc, val, set }) => (
+              <button
+                key={div}
+                onClick={() => set(v => !v)}
+                className="rounded-xl p-3 text-left transition-all"
+                style={{ border: `2px solid ${val ? "#C9A84C" : "#30373f"}`, background: val ? "#1e2a12" : "#1e2736", outline: "none" }}
+              >
+                <div className="flex items-center justify-between mb-1">
+                  <span className="text-xs font-bold" style={{ color: val ? "#C9A84C" : "#e6edf3" }}>{label}</span>
+                  <span className="text-[10px] font-bold px-1.5 py-0.5 rounded" style={{ background: val ? "#C9A84C22" : "#30373f", color: val ? "#C9A84C" : "#8b949e" }}>
+                    {val ? "ON" : "OFF"}
+                  </span>
+                </div>
+                <div className="text-[10px]" style={{ color: "#8b949e" }}>{desc}</div>
+              </button>
+            ))}
+          </div>
         </div>
 
         {/* ── Actions ── */}
