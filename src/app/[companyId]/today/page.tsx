@@ -327,11 +327,6 @@ export default async function TodayPage({
             >
               <div className="flex items-center gap-2">
                 <span className="text-xs font-semibold uppercase tracking-wider" style={{ color: "#8b949e" }}>New leads</span>
-                {todayLeads.length > 0 && (
-                  <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full" style={{ background: "#C9A84C", color: "#0d1117" }}>
-                    {todayLeads.length} today
-                  </span>
-                )}
               </div>
               <div className="text-[26px] sm:text-3xl font-black leading-none mt-1" style={{ color: todayLeads.length === 0 ? "#484f58" : "#e6edf3" }}>{todayLeads.length === 0 ? "—" : todayLeads.length}</div>
               <div className="text-[11px] mt-1" style={{ color: "#484f58" }}>{allLeadsCount} total all time</div>

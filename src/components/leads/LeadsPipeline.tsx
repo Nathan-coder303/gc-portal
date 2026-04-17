@@ -66,6 +66,13 @@ function relTime(iso: string) {
   return `${d} days ago`;
 }
 
+function formatPhone(raw: string): string {
+  const digits = raw.replace(/\D/g, "");
+  if (digits.length === 10) return `${digits.slice(0, 3)}-${digits.slice(3, 6)}-${digits.slice(6)}`;
+  if (digits.length === 11 && digits[0] === "1") return `1-${digits.slice(1, 4)}-${digits.slice(4, 7)}-${digits.slice(7)}`;
+  return raw;
+}
+
 // ─── Source Selector ──────────────────────────────────────────────────────────
 
 function SourceSelector({
@@ -254,7 +261,7 @@ function TriageCard({
   onNotes: (leadId: string, name: string) => void;
   customSources: string[];
   onAddCustomSource: (s: string) => void;
-  onMoveToStage: (leadId: string, stageId: string) => void;
+  onMoveToStage: (leadId: string, stageId: string, source: string | null) => void;
 }) {
   const [dragging, setDragging] = useState(false);
   const [hovered, setHovered] = useState(false);
@@ -305,16 +312,16 @@ function TriageCard({
         </div>
       </div>
       {lead.email && (
-        <div style={{ color: "#8b949e", fontSize: 10, marginTop: 5, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>✉ {lead.email}</div>
+        <div className="hidden md:block" style={{ color: "#8b949e", fontSize: 10, marginTop: 5, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{lead.email}</div>
       )}
       {lead.phone && (
-        <div style={{ color: "#8b949e", fontSize: 10, marginTop: 2 }}>📞 {lead.phone}</div>
+        <div style={{ color: "#8b949e", fontSize: 10, marginTop: 2 }}>{formatPhone(lead.phone)}</div>
       )}
       <SourceSelector value={source} onChange={setSource} stageColor={TRIAGE_COLOR} customSources={customSources} onAddCustomSource={onAddCustomSource} />
       <div style={{ marginTop: 5 }} onClick={(e) => e.stopPropagation()}>
         <select
           value=""
-          onChange={(e) => { if (e.target.value) { onMoveToStage(lead.id, e.target.value); e.currentTarget.value = ""; } }}
+          onChange={(e) => { if (e.target.value) { onMoveToStage(lead.id, e.target.value, source); e.currentTarget.value = ""; } }}
           style={{ width: "100%", background: "#0d1117", color: "#8b949e", border: "1px solid #30373f", borderRadius: 4, padding: "3px 6px", fontSize: 11, cursor: "pointer" }}
         >
           <option value="">Move to stage…</option>
@@ -805,7 +812,7 @@ export default function LeadsPipeline({ companyId, triageLeads, stagedCards }: P
         await fetch(`/api/${companyId}/pipeline/${payload.cardId}`, {
           method: "PATCH",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ stage: targetStage }),
+          body: JSON.stringify({ stage: targetStage, source: card.source }),
         });
       } catch {
         setCards((prev) => prev.map((c) => c.id === payload.cardId ? { ...c, stage: card.stage, stageChangedAt: card.stageChangedAt } : c));
@@ -898,19 +905,19 @@ export default function LeadsPipeline({ companyId, triageLeads, stagedCards }: P
       await fetch(`/api/${companyId}/pipeline/${cardId}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ stage: newStage }),
+        body: JSON.stringify({ stage: newStage, source: card.source }),
       });
     } catch {
       setCards((prev) => prev.map((c) => c.id === cardId ? { ...c, stage: card.stage } : c));
     }
   }, [cards, companyId]);
 
-  const handleTriageMoveToStage = useCallback(async (leadId: string, targetStage: string) => {
+  const handleTriageMoveToStage = useCallback(async (leadId: string, targetStage: string, source: string | null = null) => {
     const lead = triage.find((l) => l.id === leadId);
     if (!lead) return;
     const tempCard: StagedCard = {
       id: `temp-${Date.now()}`, displayName: lead.name, stage: targetStage,
-      source: null, estimateValue: null, notes: null, leadId: lead.id, sortOrder: 0, createdAt: new Date().toISOString(),
+      source, estimateValue: null, notes: null, leadId: lead.id, sortOrder: 0, createdAt: new Date().toISOString(),
       phone: lead.phone ?? null, stageChangedAt: new Date().toISOString(),
     };
     setTriage((prev) => prev.filter((l) => l.id !== leadId));
@@ -918,7 +925,7 @@ export default function LeadsPipeline({ companyId, triageLeads, stagedCards }: P
     try {
       const res = await fetch(`/api/${companyId}/pipeline`, {
         method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ displayName: lead.name, leadId: lead.id, stage: targetStage }),
+        body: JSON.stringify({ displayName: lead.name, leadId: lead.id, stage: targetStage, source }),
       });
       if (!res.ok) throw new Error();
       const created = await res.json();
