@@ -627,7 +627,7 @@ export async function addPartnerAccountEntry(data: {
 
   if (data.amount <= 0) throw new Error("Amount must be positive");
 
-  await prisma.partnerAccountEntry.create({
+  const created = await prisma.partnerAccountEntry.create({
     data: {
       projectId: data.projectId,
       accountType: data.accountType,
@@ -641,7 +641,7 @@ export async function addPartnerAccountEntry(data: {
   });
 
   revalidatePath(`/${data.companyId}/${data.projectId}/ledger`);
-  return { success: true };
+  return { success: true, id: created.id };
 }
 
 export async function deletePartnerAccountEntry(id: string, companyId: string, projectId: string) {

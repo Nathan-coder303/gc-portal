@@ -7,6 +7,7 @@ import {
   updateLlcName,
   deletePartnerAccountEntry,
   updatePartnerAccountEntry,
+  addPartnerAccountEntry,
   archivePartner,
 } from "@/app/[companyId]/[projectId]/ledger/actions";
 import { format } from "date-fns";
@@ -150,6 +151,7 @@ function AccountCard({
   onUpdateBeginning,
   onSave,
   onDelete,
+  onAdd,
   isAdmin,
   showDragHandle,
   dragHandleProps,
@@ -164,6 +166,7 @@ function AccountCard({
   onUpdateBeginning: (amount: number) => Promise<void | { success: boolean }>;
   onSave: (id: string, data: { description: string; amount: number; date: string }) => Promise<void | { success: boolean }>;
   onDelete: (id: string) => Promise<void | { success: boolean }>;
+  onAdd?: (data: { description: string; amount: number; entryType: "CREDIT" | "DEBIT"; date: string }) => Promise<Entry>;
   isAdmin: boolean;
   showDragHandle?: boolean;
   dragHandleProps?: React.HTMLAttributes<HTMLDivElement>;
@@ -172,6 +175,28 @@ function AccountCard({
 })
 
 {
+  const [localEntries, setLocalEntries] = useState<Entry[]>(entries);
+  const [showAddForm, setShowAddForm] = useState(false);
+  const [addDesc, setAddDesc] = useState("");
+  const [addAmount, setAddAmount] = useState("");
+  const [addType, setAddType] = useState<"CREDIT" | "DEBIT">("CREDIT");
+  const [addDate, setAddDate] = useState(() => new Date().toISOString().slice(0, 10));
+  const [addSaving, setAddSaving] = useState(false);
+
+  async function handleAdd() {
+    const amt = parseFloat(addAmount);
+    if (!addDesc.trim() || !amt || amt <= 0) return;
+    setAddSaving(true);
+    try {
+      const entry = await onAdd!({ description: addDesc.trim(), amount: amt, entryType: addType, date: addDate });
+      setLocalEntries(prev => [...prev, entry]);
+      setAddDesc(""); setAddAmount(""); setAddType("CREDIT");
+      setAddDate(new Date().toISOString().slice(0, 10));
+      setShowAddForm(false);
+      setTxOpen(true);
+    } finally { setAddSaving(false); }
+  }
+
   const [previewHtml, setPreviewHtml] = useState<string | null>(null);
   const [editingBalance, setEditingBalance] = useState(false);
   const [balanceInput, setBalanceInput] = useState(String(beginningBalance));
@@ -179,15 +204,15 @@ function AccountCard({
   const [journalOpen, setJournalOpen] = useState(false);
   const [txOpen, setTxOpen] = useState(true);
 
-  const credits = entries.filter((e) => e.entryType === "CREDIT").reduce((s, e) => s + e.amount, 0);
-  const debits = entries.filter((e) => e.entryType === "DEBIT").reduce((s, e) => s + e.amount, 0);
+  const credits = localEntries.filter((e) => e.entryType === "CREDIT").reduce((s, e) => s + e.amount, 0);
+  const debits = localEntries.filter((e) => e.entryType === "DEBIT").reduce((s, e) => s + e.amount, 0);
   const journalCredits = (capitalLines ?? []).reduce((s, l) => s + l.credit, 0);
   const journalDebits = (capitalLines ?? []).reduce((s, l) => s + l.debit, 0);
   const balance = beginningBalance + credits - debits + journalCredits - journalDebits;
 
   function buildStatementHtml() {
     const allLines = [
-      ...entries.map((e) => ({ date: e.date, memo: e.description, amount: e.entryType === "CREDIT" ? e.amount : -e.amount })),
+      ...localEntries.map((e) => ({ date: e.date, memo: e.description, amount: e.entryType === "CREDIT" ? e.amount : -e.amount })),
       ...(capitalLines ?? []).map((l) => ({ date: l.date, memo: l.memo, amount: l.credit > 0 ? l.credit : -l.debit })),
     ].sort((a, b) => a.date.localeCompare(b.date));
     const rows = allLines.map((l) => `<tr><td>${new Date(l.date + "T00:00:00").toLocaleDateString("en-US",{month:"short",day:"numeric",year:"numeric"})}</td><td>${l.memo}</td><td style="text-align:right;color:${l.amount>=0?"#166534":"#991b1b"};font-family:monospace">${l.amount>=0?"+":"-"}$${fmt(Math.abs(l.amount))}</td></tr>`).join("");
@@ -321,27 +346,80 @@ return (
         )}
       </div>
 
-      {/* Manual transactions — collapsible */}
-      {entries.length > 0 && (
-        <div>
+      {/* Manual transactions — collapsible + add button */}
+      <div>
+        <div className="flex items-center justify-between">
           <button
             onClick={() => setTxOpen((o) => !o)}
-            className="flex items-center justify-between w-full text-left"
+            className="flex items-center gap-1 text-left"
           >
             <span className="text-[10px] font-semibold uppercase tracking-wider" style={{ color: "#8b949e" }}>
-              Transactions ({entries.length})
+              Transactions ({localEntries.length})
             </span>
             <span className="text-[10px]" style={{ color: "#8b949e" }}>{txOpen ? "▲" : "▼"}</span>
           </button>
-          {txOpen && (
-            <div className="space-y-1 mt-1.5">
-              {entries.map((e) => (
-                <EditableEntry key={e.id} entry={e} isAdmin={isAdmin} onSave={onSave} onDelete={onDelete} />
-              ))}
-            </div>
+          {isAdmin && onAdd && (
+            <button
+              onClick={() => { setShowAddForm(v => !v); setTxOpen(true); }}
+              className="text-[10px] px-2 py-0.5 rounded font-bold"
+              style={{ background: showAddForm ? "#C9A84C33" : "#C9A84C22", color: GOLD, border: `1px solid ${GOLD}44` }}
+            >
+              {showAddForm ? "×" : "+"}
+            </button>
           )}
         </div>
-      )}
+
+        {/* Inline add form */}
+        {showAddForm && (
+          <div className="mt-2 rounded-lg p-2 space-y-2" style={{ background: "#1e2736", border: `1px solid ${GOLD}44` }}>
+            <input
+              type="text" value={addDesc} onChange={e => setAddDesc(e.target.value)}
+              placeholder="Description" autoFocus
+              className="w-full rounded px-2 py-1.5 text-xs focus:outline-none" style={INPUT_STYLE}
+              onKeyDown={e => e.key === "Enter" && handleAdd()}
+            />
+            <div className="flex gap-2">
+              <input
+                type="number" value={addAmount} onChange={e => setAddAmount(e.target.value)}
+                placeholder="Amount" min="0" step="0.01"
+                className="flex-1 rounded px-2 py-1.5 text-xs focus:outline-none" style={INPUT_STYLE}
+              />
+              <button
+                onClick={() => setAddType(t => t === "CREDIT" ? "DEBIT" : "CREDIT")}
+                className="px-2 py-1 text-xs font-bold rounded shrink-0"
+                style={{ background: addType === "CREDIT" ? "#14532d" : "#7f1d1d", color: addType === "CREDIT" ? "#4ade80" : "#f87171", border: `1px solid ${addType === "CREDIT" ? "#4ade8044" : "#f8717144"}` }}
+              >
+                {addType}
+              </button>
+            </div>
+            <input
+              type="date" value={addDate} onChange={e => setAddDate(e.target.value)}
+              className="w-full rounded px-2 py-1.5 text-xs focus:outline-none" style={INPUT_STYLE}
+            />
+            <div className="flex gap-2">
+              <button onClick={handleAdd} disabled={addSaving}
+                className="px-3 py-1 text-xs font-semibold rounded disabled:opacity-50"
+                style={{ background: GOLD, color: "#0d1117" }}>
+                {addSaving ? "..." : "Add"}
+              </button>
+              <button onClick={() => setShowAddForm(false)}
+                className="px-2 py-1 text-xs rounded"
+                style={{ background: "#30373f", color: "#8b949e" }}>
+                Cancel
+              </button>
+            </div>
+          </div>
+        )}
+
+        {txOpen && localEntries.length > 0 && (
+          <div className="space-y-1 mt-1.5">
+            {localEntries.map((e) => (
+              <EditableEntry key={e.id} entry={e} isAdmin={isAdmin} onSave={onSave}
+                onDelete={async (id) => { await onDelete(id); setLocalEntries(prev => prev.filter(x => x.id !== id)); }} />
+            ))}
+          </div>
+        )}
+      </div>
 
       {/* Preview modal */}
       {previewHtml && (
@@ -681,6 +759,10 @@ export default function PartnerAccountCards({
           onUpdateBeginning={(amount) => updatePartnerBeginningBalance(p.id, amount)}
           onSave={makeSave()}
           onDelete={(id) => deletePartnerAccountEntry(id, companyId, projectId)}
+          onAdd={async (data) => {
+            const result = await addPartnerAccountEntry({ projectId, companyId, accountType: "PARTNER", partnerId: p.id, ...data });
+            return { id: result.id, ...data };
+          }}
           showDragHandle={true}
           dragHandleProps={dragHandleProps}
           onArchive={() => handleArchivePartner(p.id)}
@@ -728,6 +810,10 @@ export default function PartnerAccountCards({
         onUpdateBeginning={(amount) => updateLlcBeginningBalance(projectId, amount)}
         onSave={makeSave()}
         onDelete={(id) => deletePartnerAccountEntry(id, companyId, projectId)}
+        onAdd={async (data) => {
+          const result = await addPartnerAccountEntry({ projectId, companyId, accountType: "LLC", ...data });
+          return { id: result.id, ...data };
+        }}
         showDragHandle={true}
         dragHandleProps={dragHandleProps}
       />
