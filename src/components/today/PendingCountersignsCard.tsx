@@ -36,12 +36,12 @@ export default function PendingCountersignsCard({
   return (
     <>
       <div
-        className="rounded-xl p-5 flex flex-col gap-3"
+        className="rounded-xl p-4 flex flex-col gap-3"
         style={{ background: "#161b22", border: `1px solid ${estimates.length > 0 ? "#22c55e55" : "#30373f"}` }}
       >
-        <div className="flex items-center justify-between">
-          <span className="text-lg sm:text-[26px] font-black leading-tight" style={{ color: "#C9A84C" }}>
-            Pending countersignatures
+        <div className="flex items-center justify-between gap-2 min-w-0">
+          <span className="text-[26px] sm:text-3xl font-black leading-none min-w-0 truncate" style={{ color: "#C9A84C" }}>
+            Countersigns
           </span>
           <span
             className="text-xs font-bold px-2 py-0.5 rounded shrink-0"

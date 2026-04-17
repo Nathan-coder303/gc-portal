@@ -925,7 +925,7 @@ export default function TodayTaskCard({
 
   return (
     <div
-      className="rounded-xl p-5 flex flex-col gap-2 transition-all cursor-pointer"
+      className="rounded-xl p-4 flex flex-col gap-2 transition-all cursor-pointer"
       style={{
         background: "#161b22",
         border: `1px solid ${hovered ? "#C9A84C55" : "#30373f"}`,
