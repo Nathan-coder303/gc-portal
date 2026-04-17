@@ -25,9 +25,12 @@ export async function PATCH(
       ...(body.completedAt !== undefined ? { completedAt: body.completedAt ? new Date(body.completedAt) : null } : {}),
       ...(body.text !== undefined ? { text: body.text } : {}),
       ...(body.dueDate !== undefined ? { dueDate: body.dueDate ? new Date(body.dueDate) : null } : {}),
+      ...(body.leadId !== undefined ? { leadId: body.leadId || null, clientId: null } : {}),
+      ...(body.clientId !== undefined ? { clientId: body.clientId || null, leadId: null } : {}),
     },
     include: {
       client: { select: { id: true, name: true } },
+      lead: { select: { id: true, name: true } },
     },
   });
 

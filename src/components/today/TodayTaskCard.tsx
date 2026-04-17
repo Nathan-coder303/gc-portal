@@ -237,25 +237,19 @@ function ItemRow({
   companyId,
   onToggle,
   onDelete,
-  onUpdate,
+  onEdit,
   onBadgeClick,
 }: {
   item: FollowUpItem;
   companyId: string;
   onToggle: (id: string, completed: boolean) => void;
   onDelete: (id: string) => void;
-  onUpdate: (updated: FollowUpItem) => void;
+  onEdit: () => void;
   onBadgeClick?: () => void;
 }) {
   const [hovered, setHovered] = useState(false);
   const [toggling, setToggling] = useState(false);
   const [deleting, setDeleting] = useState(false);
-  const [editing, setEditing] = useState(false);
-  const [editText, setEditText] = useState(item.text);
-  const [editDate, setEditDate] = useState(
-    item.dueDate ? item.dueDate.slice(0, 10) : ""
-  );
-  const [saving, setSaving] = useState(false);
   const isComplete = !!item.completedAt;
 
   async function handleToggle() {
@@ -275,75 +269,9 @@ function ItemRow({
     onDelete(item.id);
   }
 
-  async function handleSaveEdit() {
-    setSaving(true);
-    const res = await fetch(`/api/${companyId}/follow-ups/${item.id}`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        text: editText.trim() || item.text,
-        dueDate: editDate || null,
-      }),
-    });
-    if (res.ok) {
-      const raw = await res.json();
-      onUpdate({
-        ...item,
-        text: raw.text,
-        dueDate: raw.dueDate ?? null,
-      });
-      setEditing(false);
-    }
-    setSaving(false);
-  }
-
   const audioSrc = item.audioUrl
     ? `/api/${companyId}/follow-ups/${item.id}/audio`
     : null;
-
-  if (editing) {
-    return (
-      <div
-        className="flex flex-col gap-2 py-2 px-1 rounded-lg"
-        style={{ background: "#1e2736" }}
-        onClick={e => e.stopPropagation()}
-      >
-        <input
-          type="text"
-          value={editText}
-          onChange={e => setEditText(e.target.value)}
-          onKeyDown={e => e.key === "Enter" && handleSaveEdit()}
-          autoFocus
-          className="w-full text-sm px-3 py-2 rounded-lg outline-none"
-          style={{ background: "#0d1117", border: "1px solid #484f58", color: "#e6edf3" }}
-        />
-        <input
-          type="date"
-          value={editDate}
-          onChange={e => setEditDate(e.target.value)}
-          className="text-xs px-2 py-1.5 rounded-lg outline-none"
-          style={{ background: "#0d1117", border: "1px solid #484f58", color: editDate ? "#e6edf3" : "#8b949e", colorScheme: "dark" }}
-        />
-        <div className="flex items-center gap-2">
-          <button
-            onClick={handleSaveEdit}
-            disabled={saving}
-            className="text-xs px-3 py-1 rounded-lg font-semibold"
-            style={{ background: GOLD, color: "#0d1117" }}
-          >
-            {saving ? "…" : "Save"}
-          </button>
-          <button
-            onClick={() => { setEditing(false); setEditText(item.text); setEditDate(item.dueDate ? item.dueDate.slice(0, 10) : ""); }}
-            className="text-xs px-3 py-1 rounded-lg"
-            style={{ color: "#8b949e", border: "1px solid #30373f" }}
-          >
-            Cancel
-          </button>
-        </div>
-      </div>
-    );
-  }
 
   return (
     <div
@@ -374,16 +302,11 @@ function ItemRow({
           }}
         >
           {item.text || <em style={{ color: "#8b949e" }}>Voice note</em>}
-          {!isComplete && item.dueDate && item.dueDate.slice(0, 10) < new Date().toISOString().slice(0, 10) && (
-            <span className="ml-2 text-[10px] font-bold px-1.5 py-0.5 rounded uppercase" style={{ background: "#f8514922", color: "#f85149", border: "1px solid #f8514933" }}>
-              past due
-            </span>
-          )}
         </span>
 
         {/* Edit button — always visible */}
         <button
-          onClick={() => setEditing(true)}
+          onClick={onEdit}
           className="flex-shrink-0 text-xs px-1.5 py-0.5 rounded opacity-50 hover:opacity-100"
           style={{ color: "#58a6ff", border: "1px solid #58a6ff33" }}
         >
@@ -858,6 +781,148 @@ function AddForm({
   );
 }
 
+// ─── Edit Modal ───────────────────────────────────────────────────────────────
+
+function EditModal({
+  item,
+  companyId,
+  leads,
+  clients,
+  onSave,
+  onClose,
+}: {
+  item: FollowUpItem;
+  companyId: string;
+  leads: LeadOption[];
+  clients: ClientOption[];
+  onSave: (updated: FollowUpItem) => void;
+  onClose: () => void;
+}) {
+  const [text, setText] = useState(item.text);
+  const [date, setDate] = useState(item.dueDate ? item.dueDate.slice(0, 10) : "");
+  const [leadId, setLeadId] = useState(item.leadId ?? "");
+  const [clientId, setClientId] = useState(item.clientId ?? "");
+  const [showLeadPicker, setShowLeadPicker] = useState(false);
+  const [showClientPicker, setShowClientPicker] = useState(false);
+  const [saving, setSaving] = useState(false);
+
+  async function handleSave() {
+    setSaving(true);
+    const body: Record<string, string | null> = {
+      text: text.trim() || item.text,
+      dueDate: date || null,
+    };
+    if (leadId) { body.leadId = leadId; }
+    else if (clientId) { body.clientId = clientId; }
+    else { body.leadId = null; body.clientId = null; }
+
+    const res = await fetch(`/api/${companyId}/follow-ups/${item.id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    });
+    if (res.ok) {
+      const raw = await res.json();
+      onSave({
+        ...item,
+        text: raw.text,
+        dueDate: raw.dueDate ?? null,
+        leadId: raw.leadId ?? null,
+        leadName: raw.lead?.name ?? null,
+        clientId: raw.clientId ?? null,
+        clientName: raw.client?.name ?? null,
+      });
+    }
+    setSaving(false);
+  }
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ background: "rgba(0,0,0,0.8)" }}
+      onClick={onClose}>
+      <div className="w-full max-w-sm rounded-2xl p-5 flex flex-col gap-3"
+        style={{ background: "#161b22", border: "1px solid #C9A84C44" }} onClick={e => e.stopPropagation()}>
+        <div className="flex items-center justify-between">
+          <span className="text-sm font-bold" style={{ color: GOLD }}>Edit task</span>
+          <button onClick={onClose} style={{ color: "#8b949e", fontSize: 20, lineHeight: 1 }}>×</button>
+        </div>
+
+        <input type="text" value={text} onChange={e => setText(e.target.value)}
+          onKeyDown={e => e.key === "Enter" && handleSave()}
+          autoFocus className="w-full text-sm px-3 py-2 rounded-lg outline-none"
+          style={{ background: "#0d1117", border: "1px solid #484f58", color: "#e6edf3" }} />
+
+        <input type="date" value={date} onChange={e => setDate(e.target.value)}
+          className="text-xs px-2 py-1.5 rounded-lg outline-none w-full"
+          style={{ background: "#0d1117", border: "1px solid #484f58", color: date ? "#e6edf3" : "#8b949e", colorScheme: "dark" }} />
+
+        {/* Lead picker */}
+        {leads.length > 0 && (
+          <div>
+            <button type="button"
+              onClick={() => { setShowLeadPicker(v => !v); setShowClientPicker(false); }}
+              className="w-full flex items-center justify-between px-2 py-1.5 rounded-lg text-xs"
+              style={{ background: "#0d1117", border: `1px solid ${leadId ? GOLD + "88" : "#484f58"}`, color: leadId ? GOLD : "#8b949e" }}>
+              <span>{leadId ? (leads.find(l => l.id === leadId)?.name ?? "Lead") : "Assign to lead"}</span>
+              <span>{showLeadPicker ? "▲" : "▼"}</span>
+            </button>
+            {showLeadPicker && (
+              <div className="mt-1 rounded-lg overflow-hidden max-h-36 overflow-y-auto" style={{ border: "1px solid #30373f", background: "#0d1117" }}>
+                {leadId && <button type="button" onClick={() => { setLeadId(""); setShowLeadPicker(false); }}
+                  className="w-full text-left px-3 py-1.5 text-xs" style={{ color: "#8b949e", borderBottom: "1px solid #30373f" }}>— Clear</button>}
+                {leads.map(l => (
+                  <button key={l.id} type="button"
+                    onClick={() => { setLeadId(l.id); setClientId(""); setShowLeadPicker(false); }}
+                    className="w-full text-left px-3 py-1.5 text-xs hover:bg-[#1e2736]"
+                    style={{ color: l.id === leadId ? GOLD : "#e6edf3" }}>
+                    {l.name ?? "(no name)"}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Client picker */}
+        {clients.length > 0 && (
+          <div>
+            <button type="button"
+              onClick={() => { setShowClientPicker(v => !v); setShowLeadPicker(false); }}
+              className="w-full flex items-center justify-between px-2 py-1.5 rounded-lg text-xs"
+              style={{ background: "#0d1117", border: `1px solid ${clientId ? GOLD + "88" : "#484f58"}`, color: clientId ? GOLD : "#8b949e" }}>
+              <span>{clientId ? (clients.find(c => c.id === clientId)?.name ?? "Client") : "Assign to client"}</span>
+              <span>{showClientPicker ? "▲" : "▼"}</span>
+            </button>
+            {showClientPicker && (
+              <div className="mt-1 rounded-lg overflow-hidden max-h-36 overflow-y-auto" style={{ border: "1px solid #30373f", background: "#0d1117" }}>
+                {clientId && <button type="button" onClick={() => { setClientId(""); setShowClientPicker(false); }}
+                  className="w-full text-left px-3 py-1.5 text-xs" style={{ color: "#8b949e", borderBottom: "1px solid #30373f" }}>— Clear</button>}
+                {clients.map(c => (
+                  <button key={c.id} type="button"
+                    onClick={() => { setClientId(c.id); setLeadId(""); setShowClientPicker(false); }}
+                    className="w-full text-left px-3 py-1.5 text-xs hover:bg-[#1e2736]"
+                    style={{ color: c.id === clientId ? GOLD : "#e6edf3" }}>
+                    {c.name}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+
+        <div className="flex gap-2 pt-1">
+          <button onClick={handleSave} disabled={saving}
+            className="flex-1 text-sm font-bold py-2 rounded-lg disabled:opacity-50"
+            style={{ background: GOLD, color: "#0d1117" }}>
+            {saving ? "Saving…" : "Save"}
+          </button>
+          <button onClick={onClose} className="text-sm px-4 py-2 rounded-lg"
+            style={{ color: "#8b949e", border: "1px solid #30373f" }}>Cancel</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ─── Main Card Component ──────────────────────────────────────────────────────
 
 export default function TodayTaskCard({
@@ -880,8 +945,10 @@ export default function TodayTaskCard({
   const [items, setItems] = useState<FollowUpItem[]>(initialItems);
   const [upcomingItems, setUpcomingItems] = useState<FollowUpItem[]>(initialUpcoming ?? []);
   const [showUpcoming, setShowUpcoming] = useState(false);
+  const [showOverdue, setShowOverdue] = useState(true);
   const [showCompleted, setShowCompleted] = useState(false);
   const [activePopup, setActivePopup] = useState<PopupTarget | null>(null);
+  const [editingItem, setEditingItem] = useState<FollowUpItem | null>(null);
 
   function popupFor(item: FollowUpItem): (() => void) | undefined {
     if (item.leadId) return () => setActivePopup({ type: "lead", id: item.leadId!, name: item.leadName ?? "Lead" });
@@ -891,8 +958,14 @@ export default function TodayTaskCard({
   const [showAdd, setShowAdd] = useState(false);
   const [hovered, setHovered] = useState(false);
 
-  const openCount = items.filter(i => !i.completedAt).length;
-  const doneCount = items.filter(i => !!i.completedAt).length;
+  const todayStr = new Date().toISOString().slice(0, 10);
+  const openItems = items.filter(i => !i.completedAt);
+  const doneItems = items.filter(i => !!i.completedAt);
+  const overdueItems = openItems.filter(i => i.dueDate && i.dueDate.slice(0, 10) < todayStr);
+  const currentItems = openItems.filter(i => !i.dueDate || i.dueDate.slice(0, 10) >= todayStr);
+
+  const openCount = openItems.length;
+  const doneCount = doneItems.length;
 
   function handleToggle(id: string, nowComplete: boolean) {
     setItems(prev =>
@@ -919,10 +992,6 @@ export default function TodayTaskCard({
     setShowAdd(false);
   }
 
-  // Split open/done for rendering
-  const openItems = items.filter(i => !i.completedAt);
-  const doneItems = items.filter(i => !!i.completedAt);
-
   return (
     <div
       className="rounded-xl p-4 flex flex-col gap-2 transition-all cursor-pointer"
@@ -936,17 +1005,17 @@ export default function TodayTaskCard({
       onClick={() => !showAdd && setShowAdd(true)}
     >
       {/* Header */}
-      <div className="flex items-center justify-between" onClick={e => e.stopPropagation()}>
-        <span className="text-[26px] sm:text-3xl font-black leading-none" style={{ color: "#C9A84C" }}>
+      <div className="flex items-start justify-between gap-2" onClick={e => e.stopPropagation()}>
+        <span className="text-[26px] sm:text-3xl font-black leading-none whitespace-nowrap" style={{ color: "#C9A84C" }}>
           {label}
         </span>
-        <div className="flex items-center gap-2">
-          {items.length > 0 && (
+        <div className="flex items-center gap-2 shrink-0 pt-0.5">
+          {(openCount > 0 || doneCount > 0) && (
             <span
               className="text-xs font-bold px-2 py-0.5 rounded"
               style={{ background: "#C9A84C", color: "#0d1117" }}
             >
-              {openCount} open{doneCount > 0 ? ` · ${doneCount} done` : ""}
+              {openCount > 0 ? `${openCount}` : ""}{doneCount > 0 ? ` · ${doneCount} ✓` : ""}
             </span>
           )}
           <button
@@ -977,34 +1046,74 @@ export default function TodayTaskCard({
         </div>
       )}
 
-      {/* Item list — open tasks only */}
-      {openItems.length === 0 && !showAdd ? (
+      {/* Item list — current tasks (no due date or due today/future, not overdue) */}
+      {currentItems.length === 0 && overdueItems.length === 0 && !showAdd ? (
         <p className="text-xs" style={{ color: "#8b949e" }}>
           No items yet. Click &quot;+&quot; to get started.
         </p>
       ) : (
         <div className="flex flex-col divide-y" style={{ borderColor: "#30373f" }} onClick={e => e.stopPropagation()}>
-          {openItems.map(item => (
+          {currentItems.map(item => (
             <ItemRow
               key={item.id}
               item={item}
               companyId={companyId}
               onToggle={handleToggle}
               onDelete={handleDelete}
-              onUpdate={handleUpdate}
+              onEdit={() => setEditingItem(item)}
               onBadgeClick={popupFor(item)}
             />
           ))}
         </div>
       )}
 
-      {/* Completed tasks — collapsible */}
+      {/* Overdue tasks — collapsible, red */}
+      {overdueItems.length > 0 && (
+        <div onClick={e => e.stopPropagation()}>
+          <button
+            onClick={() => setShowOverdue(v => !v)}
+            className="w-full flex items-center justify-between px-2 py-1.5 rounded-lg mt-1"
+            style={{ background: "#f8514922", border: "1px solid #f8514944" }}
+          >
+            <span className="text-[10px] font-semibold uppercase tracking-widest" style={{ color: "#f85149" }}>
+              Overdue ({overdueItems.length})
+            </span>
+            <span style={{ color: "#f85149", fontSize: 11 }}>{showOverdue ? "▲" : "▼"}</span>
+          </button>
+          {showOverdue && (
+            <div className="mt-1 flex flex-col divide-y rounded-lg overflow-hidden" style={{ border: "1px solid #f8514933" }}>
+              {overdueItems.map(item => {
+                const dateLabel = item.dueDate
+                  ? new Date(item.dueDate).toLocaleDateString("en-US", { timeZone: "UTC", weekday: "short", month: "short", day: "numeric" })
+                  : "";
+                return (
+                  <div key={item.id} className="px-2 py-2" style={{ background: "#0d1117" }}>
+                    {dateLabel && (
+                      <div className="text-[10px] font-bold mb-1" style={{ color: "#f85149" }}>{dateLabel}</div>
+                    )}
+                    <ItemRow
+                      item={item}
+                      companyId={companyId}
+                      onToggle={handleToggle}
+                      onDelete={handleDelete}
+                      onEdit={() => setEditingItem(item)}
+                      onBadgeClick={popupFor(item)}
+                    />
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Completed tasks — collapsible, gray */}
       {doneItems.length > 0 && (
         <div onClick={e => e.stopPropagation()}>
           <button
             onClick={() => setShowCompleted(v => !v)}
             className="w-full flex items-center justify-between px-2 py-1.5 rounded-lg mt-1"
-            style={{ background: "#1e273688", border: "1px solid #30373f44" }}
+            style={{ background: "#8b949e22", border: "1px solid #8b949e44" }}
           >
             <span className="text-[10px] font-semibold uppercase tracking-widest" style={{ color: "#8b949e" }}>
               Completed ({doneItems.length})
@@ -1012,7 +1121,7 @@ export default function TodayTaskCard({
             <span style={{ color: "#8b949e", fontSize: 11 }}>{showCompleted ? "▲" : "▼"}</span>
           </button>
           {showCompleted && (
-            <div className="mt-1 flex flex-col divide-y rounded-lg overflow-hidden" style={{ border: "1px solid #30373f" }}>
+            <div className="mt-1 flex flex-col divide-y rounded-lg overflow-hidden" style={{ border: "1px solid #8b949e33" }}>
               {doneItems.map(item => (
                 <div key={item.id} className="px-2" style={{ background: "#0d1117" }}>
                   <ItemRow
@@ -1020,7 +1129,7 @@ export default function TodayTaskCard({
                     companyId={companyId}
                     onToggle={handleToggle}
                     onDelete={handleDelete}
-                    onUpdate={handleUpdate}
+                    onEdit={() => setEditingItem(item)}
                     onBadgeClick={popupFor(item)}
                   />
                 </div>
@@ -1030,13 +1139,13 @@ export default function TodayTaskCard({
         </div>
       )}
 
-      {/* Upcoming tasks — collapsible */}
+      {/* Upcoming tasks — collapsible, gold */}
       {upcomingItems.length > 0 && (
         <div onClick={e => e.stopPropagation()}>
           <button
             onClick={() => setShowUpcoming(v => !v)}
             className="w-full flex items-center justify-between px-2 py-1.5 rounded-lg mt-1"
-            style={{ background: "#1e273688", border: "1px solid #C9A84C22" }}
+            style={{ background: "#C9A84C22", border: "1px solid #C9A84C44" }}
           >
             <span className="text-[10px] font-semibold uppercase tracking-widest" style={{ color: "#C9A84C" }}>
               Upcoming ({upcomingItems.length})
@@ -1044,7 +1153,7 @@ export default function TodayTaskCard({
             <span style={{ color: "#C9A84C", fontSize: 11 }}>{showUpcoming ? "▲" : "▼"}</span>
           </button>
           {showUpcoming && (
-            <div className="mt-1 flex flex-col divide-y rounded-lg overflow-hidden" style={{ borderColor: "#30373f", border: "1px solid #30373f" }}>
+            <div className="mt-1 flex flex-col divide-y rounded-lg overflow-hidden" style={{ border: "1px solid #C9A84C33" }}>
               {upcomingItems.map(item => {
                 const dateLabel = item.dueDate
                   ? new Date(item.dueDate).toLocaleDateString("en-US", { timeZone: "UTC", weekday: "short", month: "short", day: "numeric" })
@@ -1064,7 +1173,7 @@ export default function TodayTaskCard({
                         }
                       }}
                       onDelete={handleDelete}
-                      onUpdate={handleUpdate}
+                      onEdit={() => setEditingItem(item)}
                       onBadgeClick={popupFor(item)}
                     />
                   </div>
@@ -1073,6 +1182,18 @@ export default function TodayTaskCard({
             </div>
           )}
         </div>
+      )}
+
+      {/* Edit modal */}
+      {editingItem && (
+        <EditModal
+          item={editingItem}
+          companyId={companyId}
+          leads={leads ?? []}
+          clients={clients}
+          onSave={(updated) => { handleUpdate(updated); setEditingItem(null); }}
+          onClose={() => setEditingItem(null)}
+        />
       )}
 
       {/* Entity popup */}

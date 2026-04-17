@@ -348,8 +348,8 @@ export default async function TodayPage({
           className="rounded-2xl p-4 flex flex-col gap-2"
           style={{ background: "#161b22", border: "1px solid #30373f" }}
         >
-          <div className="flex items-center justify-between gap-1">
-            <Link href={`/${params.companyId}/estimates`} className="text-[26px] sm:text-3xl font-black leading-none hover:opacity-80 transition-opacity" style={{ color: "#C9A84C" }}>Estimates</Link>
+          <div className="flex items-start justify-between gap-1">
+            <Link href={`/${params.companyId}/estimates`} className="text-[26px] sm:text-3xl font-black leading-none whitespace-nowrap hover:opacity-80 transition-opacity" style={{ color: "#C9A84C" }}>Estimates</Link>
             <div className="flex items-center gap-2 shrink-0">
               {estimatesToSend.length > 0 && (
                 <span className="text-xs font-bold px-1.5 py-0.5 rounded-full" style={{ background: "#C9A84C", color: "#0d1117" }}>
@@ -428,9 +428,9 @@ export default async function TodayPage({
           className="rounded-2xl p-4 flex flex-col gap-2 transition-all active:scale-[0.98]"
           style={{ background: "#161b22", border: "1px solid #30373f" }}
         >
-          <div className="flex items-center justify-between">
-            <span className="text-[26px] sm:text-3xl font-black leading-none" style={{ color: "#C9A84C" }}>Sub database</span>
-            <span className="text-xs px-2 py-0.5 rounded font-medium" style={{ border: "1px solid #C9A84C66", color: "#C9A84C" }}>+</span>
+          <div className="flex items-start justify-between">
+            <span className="text-[26px] sm:text-3xl font-black leading-none whitespace-nowrap" style={{ color: "#C9A84C" }}>Sub database</span>
+            <span className="text-xs px-2 py-0.5 rounded font-medium shrink-0" style={{ border: "1px solid #C9A84C66", color: "#C9A84C" }}>+</span>
           </div>
           <div className="text-[11px]" style={{ color: "#484f58" }}>By division · copy emails</div>
           <div className="mt-auto pt-2 flex items-center gap-1.5">
