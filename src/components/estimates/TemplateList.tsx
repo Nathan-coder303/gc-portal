@@ -83,7 +83,7 @@ function TemplateCard({
           <span style={{ color: "#C9A84C66", fontSize: 12, letterSpacing: 4 }}>⠿⠿⠿</span>
         </div>
 
-        <div className="px-6 py-4 flex flex-col flex-1">
+        <div className="px-3 sm:px-6 py-3 sm:py-4 flex flex-col flex-1">
           {editingName ? (
             <input
               autoFocus
@@ -96,7 +96,7 @@ function TemplateCard({
               onClick={(e) => e.stopPropagation()}
             />
           ) : (
-            <div className="text-xl font-bold mb-1" style={{ color: "#C9A84C" }}>{tpl.name}</div>
+            <div className="text-base sm:text-xl font-bold mb-1 leading-snug" style={{ color: "#C9A84C" }}>{tpl.name}</div>
           )}
           <div className="text-sm mb-4" style={{ color: "#8b949e" }}>
             {tpl.divisionCount} divisions · {tpl.itemCount} items
@@ -260,7 +260,7 @@ export default function TemplateList({
       ) : (
         <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
           <SortableContext items={templates.map(t => t.id)} strategy={rectSortingStrategy}>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
               {templates.map((tpl) => (
                 <TemplateCard key={tpl.id} tpl={tpl} companyId={companyId} canEdit={canEdit} canArchive={canArchive} isPending={isPending} startTransition={startTransition} />
               ))}
