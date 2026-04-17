@@ -27,6 +27,22 @@ export default async function LeadsPage({
     }),
   ]);
 
+  // Fetch open follow-ups for all leads in the pipeline
+  const pipelineLeadIds = pipelineCards.filter(c => c.leadId).map(c => c.leadId as string);
+  const leadFollowUps = pipelineLeadIds.length > 0
+    ? await prisma.followUp.findMany({
+        where: { companyId: params.companyId, completedAt: null, leadId: { in: pipelineLeadIds } },
+        orderBy: { createdAt: "asc" },
+        select: { id: true, text: true, dueDate: true, leadId: true },
+      })
+    : [];
+  const followUpsByLead = new Map<string, { id: string; text: string; dueDate: string | null }[]>();
+  for (const f of leadFollowUps) {
+    if (!f.leadId) continue;
+    if (!followUpsByLead.has(f.leadId)) followUpsByLead.set(f.leadId, []);
+    followUpsByLead.get(f.leadId)!.push({ id: f.id, text: f.text, dueDate: f.dueDate ? f.dueDate.toISOString().slice(0, 10) : null });
+  }
+
   // Set of lead IDs already in pipeline
   const inPipelineLeadIds = new Set(
     pipelineCards.filter((c) => c.leadId).map((c) => c.leadId as string)
@@ -58,6 +74,7 @@ export default async function LeadsPage({
       sortOrder: c.sortOrder,
       stageChangedAt: c.stageChangedAt?.toISOString() ?? null,
       createdAt: c.createdAt.toISOString(),
+      followUps: followUpsByLead.get(c.leadId!) ?? [],
     }));
 
   return (

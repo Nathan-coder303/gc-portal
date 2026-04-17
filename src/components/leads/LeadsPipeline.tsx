@@ -28,6 +28,7 @@ type StagedCard = {
   sortOrder: number;
   stageChangedAt: string | null;
   createdAt: string;
+  followUps?: { id: string; text: string; dueDate: string | null }[];
 };
 
 type Props = {
@@ -324,6 +325,40 @@ function TriageCard({
   );
 }
 
+// ─── Pipeline Task ────────────────────────────────────────────────────────────
+
+function PipelineTask({ task, companyId }: { task: { id: string; text: string; dueDate: string | null }; companyId: string }) {
+  const [done, setDone] = useState(false);
+  if (done) return null;
+  const isOverdue = task.dueDate && task.dueDate.slice(0, 10) < new Date().toISOString().slice(0, 10);
+  return (
+    <div style={{ display: "flex", alignItems: "flex-start", gap: 4, marginBottom: 3 }}>
+      <button
+        onClick={async () => {
+          setDone(true);
+          await fetch(`/api/${companyId}/follow-ups/${task.id}`, {
+            method: "PATCH",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ completedAt: new Date().toISOString() }),
+          });
+        }}
+        title="Mark complete"
+        style={{ flexShrink: 0, marginTop: 1, width: 14, height: 14, borderRadius: 3, border: "1px solid #30373f", background: "transparent", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}
+      >
+        <span style={{ fontSize: 8, color: "#8b949e" }}>✓</span>
+      </button>
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <div style={{ fontSize: 11, color: "#e6edf3", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{task.text}</div>
+        {task.dueDate && (
+          <div style={{ fontSize: 9, color: isOverdue ? "#f85149" : "#8b949e" }}>
+            {new Date(task.dueDate).toLocaleDateString("en-US", { timeZone: "UTC", month: "short", day: "numeric" })}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
 // ─── Staged Card ──────────────────────────────────────────────────────────────
 
 function StageCard({
@@ -338,6 +373,7 @@ function StageCard({
   onNotes,
   customSources,
   onAddCustomSource,
+  companyId,
 }: {
   card: StagedCard;
   stageColor: string;
@@ -350,6 +386,7 @@ function StageCard({
   onNotes: (leadId: string, name: string) => void;
   customSources: string[];
   onAddCustomSource: (s: string) => void;
+  companyId: string;
 }) {
   const [dragging, setDragging] = useState(false);
   const [hovered, setHovered] = useState(false);
@@ -459,6 +496,18 @@ function StageCard({
           ? `In stage ${relTime(card.stageChangedAt)}`
           : `Added ${relTime(card.createdAt)}`}
       </div>
+
+      {/* Open tasks for this lead */}
+      {card.followUps && card.followUps.length > 0 && (
+        <div style={{ marginTop: 8, borderTop: "1px solid #30373f", paddingTop: 6 }} onClick={e => e.stopPropagation()}>
+          <div style={{ fontSize: 10, fontWeight: 700, color: "#C9A84C", textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: 4 }}>
+            Tasks ({card.followUps.length})
+          </div>
+          {card.followUps.map(task => (
+            <PipelineTask key={task.id} task={task} companyId={companyId} />
+          ))}
+        </div>
+      )}
     </div>
   );
 }
@@ -1002,6 +1051,7 @@ export default function LeadsPipeline({ companyId, triageLeads, stagedCards }: P
                     onNotes={(leadId, name) => { setNotesLeadId(leadId); setNotesTitle(name); }}
                     customSources={customSources}
                     onAddCustomSource={handleAddCustomSource}
+                    companyId={companyId}
                   />
                 ))}
                 {stageCards.length === 0 && (

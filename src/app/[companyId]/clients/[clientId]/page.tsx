@@ -17,6 +17,7 @@ import ClientInvoicesTab from "@/components/clients/ClientInvoicesTab";
 import NurturingEmailTab from "@/components/clients/NurturingEmailTab";
 import ChangeOrdersTab from "@/components/clients/ChangeOrdersTab";
 import ClientScheduleTab from "@/components/clients/ClientScheduleTab";
+import TodayTaskCard, { FollowUpItem } from "@/components/today/TodayTaskCard";
 
 export default async function ClientDetailPage({
   params,
@@ -115,7 +116,12 @@ export default async function ClientDetailPage({
     orderBy: { createdAt: "desc" },
   });
 
-  const [clientInvoices, changeOrders, clientScheduleTasks] = await Promise.all([
+  const [clientFollowUps, clientInvoices, changeOrders, clientScheduleTasks] = await Promise.all([
+    prisma.followUp.findMany({
+      where: { clientId: params.clientId, companyId: params.companyId },
+      orderBy: { createdAt: "asc" },
+      include: { client: { select: { id: true, name: true } }, lead: { select: { id: true, name: true } } },
+    }),
     prisma.invoice.findMany({
       where: { clientId: params.clientId, companyId: params.companyId },
       orderBy: { createdAt: "asc" },
@@ -182,6 +188,40 @@ export default async function ClientDetailPage({
         initialUrl={safeClient.coverPhotoUrl ?? null}
         initialTitle={safeClient.coverTitle ?? null}
       /> */}
+
+      {/* Tasks for this client */}
+      {(() => {
+        const todayStr = new Date().toISOString().slice(0, 10);
+        const toItem = (f: typeof clientFollowUps[0]): FollowUpItem => ({
+          id: f.id,
+          text: f.text,
+          audioUrl: f.audioUrl,
+          audioMimeType: f.audioMimeType,
+          audioSize: f.audioSize,
+          clientId: f.clientId,
+          clientName: f.client?.name ?? null,
+          leadId: f.leadId,
+          leadName: f.lead?.name ?? null,
+          completedAt: f.completedAt ? f.completedAt.toISOString() : null,
+          createdAt: f.createdAt.toISOString(),
+          dueDate: f.dueDate ? f.dueDate.toISOString().slice(0, 10) : null,
+        });
+        const todayItems = clientFollowUps.filter(f => !f.dueDate || f.dueDate.toISOString().slice(0, 10) <= todayStr).map(toItem);
+        const upcomingItems = clientFollowUps.filter(f => f.dueDate && f.dueDate.toISOString().slice(0, 10) > todayStr).map(toItem);
+        return (
+          <div className="mb-6">
+            <TodayTaskCard
+              companyId={params.companyId}
+              category="TASK"
+              label="Tasks"
+              initialItems={todayItems}
+              initialUpcoming={upcomingItems}
+              clients={[{ id: safeClient.id, name: safeClient.name }]}
+              leads={[]}
+            />
+          </div>
+        );
+      })()}
 
       {/* Tab bar — wraps on mobile so all tabs are visible without scrolling */}
       <div className="flex flex-wrap gap-2 mb-6">

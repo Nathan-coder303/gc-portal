@@ -1006,7 +1006,7 @@ export default function TodayTaskCard({
     >
       {/* Header */}
       <div className="flex items-start justify-between gap-2" onClick={e => e.stopPropagation()}>
-        <span className="text-[26px] sm:text-3xl font-black leading-none whitespace-nowrap" style={{ color: "#C9A84C" }}>
+        <span className="text-[26px] sm:text-3xl font-black leading-none" style={{ color: "#C9A84C" }}>
           {label}
         </span>
         <div className="flex items-center gap-2 shrink-0 pt-0.5">
