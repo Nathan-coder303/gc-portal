@@ -61,6 +61,13 @@ function parseAppt(text: string) {
   return { name, time, phone, address, notes };
 }
 
+function formatPhone(raw: string): string {
+  const digits = raw.replace(/\D/g, "");
+  if (digits.length === 10) return `${digits.slice(0, 3)}-${digits.slice(3, 6)}-${digits.slice(6)}`;
+  if (digits.length === 11 && digits[0] === "1") return `1-${digits.slice(1, 4)}-${digits.slice(4, 7)}-${digits.slice(7)}`;
+  return raw;
+}
+
 function formatDueDate(iso: string) {
   return new Date(iso).toLocaleDateString("en-US", {
     timeZone: "UTC",
@@ -509,7 +516,13 @@ export default function AppointmentsCard({
                     {/* Phone + address in yellow */}
                     {(phone || address) && (
                       <div className="flex gap-4 flex-wrap">
-                        {phone && <span className="text-sm font-semibold" style={{ color: "#C9A84C" }}>📞 {phone}</span>}
+                        {phone && (
+                          <a href={`tel:${phone.replace(/\D/g, "")}`} onClick={e => e.stopPropagation()}
+                            className="text-sm font-semibold"
+                            style={{ color: "#C9A84C", textDecoration: "none" }}>
+                            📞 {formatPhone(phone)}
+                          </a>
+                        )}
                         {address && <span className="text-sm font-semibold" style={{ color: "#C9A84C" }}>📍 {address}</span>}
                       </div>
                     )}
@@ -567,8 +580,9 @@ export default function AppointmentsCard({
                     {isOpen && (
                       <div style={{ borderTop: "1px solid #30373f" }}>
                         {appts.map(appt => {
-                          const { name, time, address: apptAddr2, notes } = parseAppt(appt.text);
+                          const { name, time, phone: apptPhone2, address: apptAddr2, notes } = parseAppt(appt.text);
                           const leadInfo2 = leadMap.get(name.toLowerCase());
+                          const phone2 = apptPhone2 || leadInfo2?.phone || "";
                           const address = apptAddr2 || leadInfo2?.address || "";
                           return (
                             <div key={appt.id} style={{ background: "#0d1117", borderBottom: "1px solid #1e2736" }}>
@@ -585,6 +599,12 @@ export default function AppointmentsCard({
                                       style={{ background: "#ef4444", color: "#fff" }}>×</button>
                                   </div>
                                 </div>
+                                {phone2 && (
+                                  <a href={`tel:${phone2.replace(/\D/g, "")}`} onClick={e => e.stopPropagation()}
+                                    className="text-xs font-semibold" style={{ color: "#C9A84C", textDecoration: "none" }}>
+                                    📞 {formatPhone(phone2)}
+                                  </a>
+                                )}
                                 <button onClick={() => openLeadPopup(appt)} className="text-left">
                                   {address && <div className="text-xs" style={{ color: "#8b949e" }}>📍 {address}</div>}
                                   {notes && <div className="text-xs line-clamp-1" style={{ color: "#484f58" }}>{notes}</div>}
@@ -720,7 +740,12 @@ export default function AppointmentsCard({
                         <>
                           {popupLead.lead?.projectType && <div><span style={{ color: "#C9A84C" }}>Project:</span> {popupLead.lead.projectType}</div>}
                           {popupLead.lead?.phone
-                            ? <div><span style={{ color: "#C9A84C" }}>Phone:</span> {popupLead.lead.phone}</div>
+                            ? <div><span style={{ color: "#C9A84C" }}>Phone:</span>{" "}
+                                <a href={`tel:${popupLead.lead.phone.replace(/\D/g, "")}`}
+                                  style={{ color: "#e6edf3", textDecoration: "none" }}>
+                                  {formatPhone(popupLead.lead.phone)}
+                                </a>
+                              </div>
                             : <div className="italic text-xs" style={{ color: "#484f58" }}>No phone on file — tap Edit lead to add</div>
                           }
                           {popupLead.lead?.email && <div><span style={{ color: "#C9A84C" }}>Email:</span> {popupLead.lead.email}</div>}
