@@ -103,6 +103,7 @@ model Lead {
   status        String   @default("NEW")
   pipelineCard  PipelineCard?
   notes         Note[]
+  followUps     FollowUp[]
 
   @@index([companyId])
   @@index([receivedAt])
@@ -202,6 +203,8 @@ model FollowUp {
   audioSize     Int?
   clientId      String?
   client        Client?          @relation(fields: [clientId], references: [id], onDelete: SetNull)
+  leadId        String?
+  lead          Lead?            @relation(fields: [leadId], references: [id], onDelete: SetNull)
   dueDate       DateTime?        @db.Date
   completedAt   DateTime?
   createdAt     DateTime         @default(now())

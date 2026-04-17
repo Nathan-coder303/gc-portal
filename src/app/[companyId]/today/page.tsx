@@ -64,7 +64,7 @@ export default async function TodayPage({
   if (verifyHour !== 0) todayStart = new Date(Date.UTC(etY, etM - 1, etD, 5, 0, 0, 0));
   const todayEnd = new Date(todayStart.getTime() + 24 * 60 * 60 * 1000 - 1);
 
-  const [todayLeads, allLeadsCount, estimatesToSend, followUps, clients, urgentLeads, untriaged, pendingCountersigns, todayAppointments, upcomingAppointments, activeClients, upcomingTasks] = await Promise.all([
+  const [todayLeads, allLeadsCount, estimatesToSend, followUps, clients, leads, urgentLeads, untriaged, pendingCountersigns, todayAppointments, upcomingAppointments, activeClients, upcomingTasks] = await Promise.all([
     // Leads received today from email
     prisma.lead.findMany({
       where: {
@@ -97,12 +97,18 @@ export default async function TodayPage({
         OR: [{ dueDate: null }, { dueDate: { lte: todayEnd } }],
       },
       orderBy: { createdAt: "asc" },
-      include: { client: { select: { id: true, name: true } } },
+      include: { client: { select: { id: true, name: true } }, lead: { select: { id: true, name: true } } },
     }),
     // Clients list for assignment dropdowns
     prisma.client.findMany({
       where: { companyId: params.companyId },
       orderBy: { name: "asc" },
+      select: { id: true, name: true },
+    }),
+    // Leads list for assignment dropdowns
+    prisma.lead.findMany({
+      where: { companyId: params.companyId },
+      orderBy: { receivedAt: "desc" },
       select: { id: true, name: true },
     }),
     // To Call ASAP pipeline cards
@@ -191,7 +197,7 @@ export default async function TodayPage({
         NOT: { text: { startsWith: "📅 Appointment" } },
       },
       orderBy: { dueDate: "asc" },
-      include: { client: { select: { id: true, name: true } } },
+      include: { client: { select: { id: true, name: true } }, lead: { select: { id: true, name: true } } },
     }),
   ]);
 
@@ -221,6 +227,8 @@ export default async function TodayPage({
       audioSize: f.audioSize,
       clientId: f.clientId,
       clientName: f.client?.name ?? null,
+      leadId: f.leadId ?? null,
+      leadName: f.lead?.name ?? null,
       completedAt: f.completedAt ? f.completedAt.toISOString() : null,
       createdAt: f.createdAt.toISOString(),
       dueDate: f.dueDate ? f.dueDate.toISOString() : null,
@@ -239,6 +247,8 @@ export default async function TodayPage({
     audioSize: f.audioSize,
     clientId: f.clientId,
     clientName: f.client?.name ?? null,
+    leadId: f.leadId ?? null,
+    leadName: f.lead?.name ?? null,
     completedAt: null,
     createdAt: f.createdAt.toISOString(),
     dueDate: f.dueDate ? f.dueDate.toISOString() : null,
@@ -347,7 +357,7 @@ export default async function TodayPage({
                 className="text-xs px-2 py-0.5 rounded font-medium transition-colors"
                 style={{ border: "1px solid #C9A84C66", color: "#C9A84C" }}
               >
-                + Add
+                +
               </Link>
             </div>
           </div>
@@ -371,6 +381,7 @@ export default async function TodayPage({
           initialItems={toItems("TASK")}
           initialUpcoming={upcomingTaskItems}
           clients={clients}
+          leads={leads}
         />
 
         {/* Card 4 — Follow-ups */}
@@ -378,9 +389,9 @@ export default async function TodayPage({
           companyId={params.companyId}
           category="FOLLOW_UP"
           label="Follow-ups"
-
           initialItems={toItems("FOLLOW_UP")}
           clients={clients}
+          leads={leads}
         />
 
         {/* Card 5 — Pending Countersignatures (interactive) */}
@@ -404,6 +415,7 @@ export default async function TodayPage({
           label="Estimate notes"
           initialItems={toItems("ESTIMATE")}
           clients={clients}
+          leads={leads}
         />
 
         {/* Card 7 — Sub Database */}
@@ -412,7 +424,10 @@ export default async function TodayPage({
           className="rounded-2xl p-4 flex flex-col gap-2 transition-all active:scale-[0.98]"
           style={{ background: "#161b22", border: "1px solid #30373f" }}
         >
-          <span className="text-[26px] sm:text-3xl font-black leading-none" style={{ color: "#C9A84C" }}>Sub database</span>
+          <div className="flex items-center justify-between">
+            <span className="text-[26px] sm:text-3xl font-black leading-none" style={{ color: "#C9A84C" }}>Sub database</span>
+            <span className="text-xs px-2 py-0.5 rounded font-medium" style={{ border: "1px solid #C9A84C66", color: "#C9A84C" }}>+</span>
+          </div>
           <div className="text-[11px]" style={{ color: "#484f58" }}>By division · copy emails</div>
           <div className="mt-auto pt-2 flex items-center gap-1.5">
             <span className="text-[10px] px-2 py-0.5 rounded-full" style={{ background: "#1e2736", color: "#58a6ff", border: "1px solid #58a6ff33" }}>Divisions</span>

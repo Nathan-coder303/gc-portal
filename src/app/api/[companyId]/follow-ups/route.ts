@@ -24,6 +24,7 @@ export async function GET(
     orderBy: { createdAt: "asc" },
     include: {
       client: { select: { id: true, name: true } },
+      lead: { select: { id: true, name: true } },
     },
   });
 
@@ -42,6 +43,7 @@ export async function POST(
   const category = (formData.get("category") as string | null) || "TASK";
   const text = (formData.get("text") as string | null) || "";
   const clientId = (formData.get("clientId") as string | null) || null;
+  const leadId = (formData.get("leadId") as string | null) || null;
   const dueDate = (formData.get("dueDate") as string | null) || null;
   const audio = formData.get("audio") as File | null;
 
@@ -75,6 +77,15 @@ export async function POST(
     validClientId = client ? clientId : null;
   }
 
+  // Validate leadId belongs to this company
+  let validLeadId: string | null = null;
+  if (leadId && !validClientId) {
+    const lead = await prisma.lead.findFirst({
+      where: { id: leadId, companyId: params.companyId },
+    });
+    validLeadId = lead ? leadId : null;
+  }
+
   const item = await prisma.followUp.create({
     data: {
       companyId: params.companyId,
@@ -84,11 +95,13 @@ export async function POST(
       audioMimeType,
       audioSize,
       clientId: validClientId,
+      leadId: validLeadId,
       dueDate: dueDate ? new Date(dueDate) : null,
       createdBy: session.user.id,
     },
     include: {
       client: { select: { id: true, name: true } },
+      lead: { select: { id: true, name: true } },
     },
   });
 

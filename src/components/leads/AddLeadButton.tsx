@@ -53,7 +53,7 @@ export default function AddLeadButton({ companyId }: { companyId: string }) {
         className="text-xs px-2 py-0.5 rounded font-medium transition-colors"
         style={{ border: "1px solid #C9A84C66", color: "#C9A84C", background: "transparent" }}
       >
-        + Add
+        +
       </button>
 
       {open && (

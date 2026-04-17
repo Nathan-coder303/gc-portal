@@ -12,6 +12,8 @@ export type FollowUpItem = {
   audioSize: number | null;
   clientId: string | null;
   clientName: string | null;
+  leadId?: string | null;
+  leadName?: string | null;
   completedAt: string | null;
   createdAt: string;
   dueDate?: string | null;
@@ -20,6 +22,11 @@ export type FollowUpItem = {
 type ClientOption = {
   id: string;
   name: string;
+};
+
+type LeadOption = {
+  id: string;
+  name: string | null;
 };
 
 // ─── Audio Player ────────────────────────────────────────────────────────────
@@ -140,14 +147,14 @@ function ItemRow({
         )}
       </div>
 
-      {/* Client badge */}
-      {item.clientName && (
+      {/* Client or Lead badge */}
+      {(item.clientName || item.leadName) && (
         <div className="ml-6">
           <span
             className="text-xs px-2 py-0.5 rounded-full font-medium"
             style={{ background: "#C9A84C22", color: GOLD, border: `1px solid ${GOLD}44` }}
           >
-            {item.clientName}
+            {item.clientName || item.leadName}
           </span>
         </div>
       )}
@@ -168,18 +175,23 @@ function AddForm({
   companyId,
   category,
   clients,
+  leads,
   onSaved,
   onCancel,
 }: {
   companyId: string;
   category: "TASK" | "FOLLOW_UP" | "ESTIMATE";
   clients: ClientOption[];
+  leads: LeadOption[];
   onSaved: (item: FollowUpItem) => void;
   onCancel: () => void;
 }) {
   const [mode, setMode] = useState<"text" | "voice">("text");
   const [textValue, setTextValue] = useState("");
   const [selectedClientId, setSelectedClientId] = useState("");
+  const [selectedLeadId, setSelectedLeadId] = useState("");
+  const [showLeadPicker, setShowLeadPicker] = useState(false);
+  const [showClientPicker, setShowClientPicker] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -312,6 +324,7 @@ function AddForm({
     fd.append("category", category);
     fd.append("text", text);
     if (selectedClientId) fd.append("clientId", selectedClientId);
+    if (selectedLeadId && !selectedClientId) fd.append("leadId", selectedLeadId);
     if (blob) {
       const ext = blob.type.includes("mp4") || blob.type.includes("aac") || blob.type.includes("m4a") ? "m4a" : "webm";
       fd.append("audio", blob, `note.${ext}`);
@@ -334,12 +347,15 @@ function AddForm({
         audioSize: raw.audioSize,
         clientId: raw.clientId,
         clientName: raw.client?.name ?? null,
+        leadId: raw.leadId ?? null,
+        leadName: raw.lead?.name ?? null,
         completedAt: raw.completedAt ?? null,
         createdAt: raw.createdAt,
       };
       onSaved(item);
       setTextValue("");
       setSelectedClientId("");
+      setSelectedLeadId("");
       pendingBlobRef.current = null;
       pendingTranscriptRef.current = "";
       setLiveText("");
@@ -458,26 +474,87 @@ function AddForm({
         </div>
       )}
 
-      {/* Client selector */}
-      {clients.length > 0 && (
-        <select
-          value={selectedClientId}
-          onChange={e => setSelectedClientId(e.target.value)}
-          className="w-full text-xs px-2 py-1.5 rounded-lg outline-none"
-          style={{
-            background: "#0d1117",
-            border: "1px solid #484f58",
-            color: selectedClientId ? GOLD : "#8b949e",
-          }}
-        >
-          <option value="">Assign to client (optional)</option>
-          {clients.map(c => (
-            <option key={c.id} value={c.id} style={{ color: "#e6edf3" }}>
-              {c.name}
-            </option>
-          ))}
-        </select>
-      )}
+      {/* Assignment pickers */}
+      <div className="flex flex-col gap-1.5">
+        {/* Lead picker */}
+        {leads.length > 0 && (
+          <div>
+            <button
+              type="button"
+              onClick={() => { setShowLeadPicker(v => !v); setShowClientPicker(false); }}
+              className="w-full flex items-center justify-between px-2 py-1.5 rounded-lg text-xs"
+              style={{ background: "#0d1117", border: `1px solid ${selectedLeadId ? GOLD + "88" : "#484f58"}`, color: selectedLeadId ? GOLD : "#8b949e" }}
+            >
+              <span>{selectedLeadId ? (leads.find(l => l.id === selectedLeadId)?.name ?? "Lead") : "Assign to lead"}</span>
+              <span>{showLeadPicker ? "▲" : "▼"}</span>
+            </button>
+            {showLeadPicker && (
+              <div className="mt-1 rounded-lg overflow-hidden max-h-36 overflow-y-auto" style={{ border: "1px solid #30373f", background: "#0d1117" }}>
+                {selectedLeadId && (
+                  <button
+                    type="button"
+                    onClick={() => { setSelectedLeadId(""); setShowLeadPicker(false); }}
+                    className="w-full text-left px-3 py-1.5 text-xs"
+                    style={{ color: "#8b949e", borderBottom: "1px solid #30373f" }}
+                  >
+                    — Clear
+                  </button>
+                )}
+                {leads.map(l => (
+                  <button
+                    key={l.id}
+                    type="button"
+                    onClick={() => { setSelectedLeadId(l.id); setSelectedClientId(""); setShowLeadPicker(false); }}
+                    className="w-full text-left px-3 py-1.5 text-xs hover:bg-[#1e2736]"
+                    style={{ color: l.id === selectedLeadId ? GOLD : "#e6edf3", borderBottom: "1px solid #30373f11" }}
+                  >
+                    {l.name ?? "(no name)"}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+        {/* Client picker */}
+        {clients.length > 0 && (
+          <div>
+            <button
+              type="button"
+              onClick={() => { setShowClientPicker(v => !v); setShowLeadPicker(false); }}
+              className="w-full flex items-center justify-between px-2 py-1.5 rounded-lg text-xs"
+              style={{ background: "#0d1117", border: `1px solid ${selectedClientId ? GOLD + "88" : "#484f58"}`, color: selectedClientId ? GOLD : "#8b949e" }}
+            >
+              <span>{selectedClientId ? (clients.find(c => c.id === selectedClientId)?.name ?? "Client") : "Assign to client"}</span>
+              <span>{showClientPicker ? "▲" : "▼"}</span>
+            </button>
+            {showClientPicker && (
+              <div className="mt-1 rounded-lg overflow-hidden max-h-36 overflow-y-auto" style={{ border: "1px solid #30373f", background: "#0d1117" }}>
+                {selectedClientId && (
+                  <button
+                    type="button"
+                    onClick={() => { setSelectedClientId(""); setShowClientPicker(false); }}
+                    className="w-full text-left px-3 py-1.5 text-xs"
+                    style={{ color: "#8b949e", borderBottom: "1px solid #30373f" }}
+                  >
+                    — Clear
+                  </button>
+                )}
+                {clients.map(c => (
+                  <button
+                    key={c.id}
+                    type="button"
+                    onClick={() => { setSelectedClientId(c.id); setSelectedLeadId(""); setShowClientPicker(false); }}
+                    className="w-full text-left px-3 py-1.5 text-xs hover:bg-[#1e2736]"
+                    style={{ color: c.id === selectedClientId ? GOLD : "#e6edf3", borderBottom: "1px solid #30373f11" }}
+                  >
+                    {c.name}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+      </div>
 
       {error && <p className="text-xs" style={{ color: "#f85149" }}>{error}</p>}
 
@@ -512,6 +589,7 @@ export default function TodayTaskCard({
   initialItems,
   initialUpcoming,
   clients,
+  leads,
 }: {
   companyId: string;
   category: "TASK" | "FOLLOW_UP" | "ESTIMATE";
@@ -519,6 +597,7 @@ export default function TodayTaskCard({
   initialItems: FollowUpItem[];
   initialUpcoming?: FollowUpItem[];
   clients: ClientOption[];
+  leads?: LeadOption[];
 }) {
   const [items, setItems] = useState<FollowUpItem[]>(initialItems);
   const [upcomingItems, setUpcomingItems] = useState<FollowUpItem[]>(initialUpcoming ?? []);
@@ -588,7 +667,7 @@ export default function TodayTaskCard({
               background: showAdd ? "#C9A84C22" : "transparent",
             }}
           >
-            + Add
+            +
           </button>
         </div>
       </div>
@@ -600,6 +679,7 @@ export default function TodayTaskCard({
             companyId={companyId}
             category={category}
             clients={clients}
+            leads={leads ?? []}
             onSaved={handleSaved}
             onCancel={() => setShowAdd(false)}
           />
@@ -609,7 +689,7 @@ export default function TodayTaskCard({
       {/* Item list */}
       {items.length === 0 && !showAdd ? (
         <p className="text-xs" style={{ color: "#8b949e" }}>
-          No items yet. Click &quot;+ Add&quot; to get started.
+          No items yet. Click &quot;+&quot; to get started.
         </p>
       ) : (
         <div className="flex flex-col divide-y" style={{ borderColor: "#30373f" }} onClick={e => e.stopPropagation()}>
