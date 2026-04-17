@@ -709,6 +709,7 @@ export default function TodayTaskCard({
   const [items, setItems] = useState<FollowUpItem[]>(initialItems);
   const [upcomingItems, setUpcomingItems] = useState<FollowUpItem[]>(initialUpcoming ?? []);
   const [showUpcoming, setShowUpcoming] = useState(false);
+  const [showCompleted, setShowCompleted] = useState(false);
   const [showAdd, setShowAdd] = useState(false);
   const [hovered, setHovered] = useState(false);
 
@@ -798,8 +799,8 @@ export default function TodayTaskCard({
         </div>
       )}
 
-      {/* Item list */}
-      {items.length === 0 && !showAdd ? (
+      {/* Item list — open tasks only */}
+      {openItems.length === 0 && !showAdd ? (
         <p className="text-xs" style={{ color: "#8b949e" }}>
           No items yet. Click &quot;+&quot; to get started.
         </p>
@@ -815,29 +816,41 @@ export default function TodayTaskCard({
               onUpdate={handleUpdate}
             />
           ))}
-          {doneItems.length > 0 && (
-            <>
-              {openItems.length > 0 && (
-                <div className="py-1">
-                  <span className="text-xs" style={{ color: "#484f58" }}>Completed</span>
-                </div>
-              )}
+        </div>
+      )}
+
+      {/* Completed tasks — collapsible */}
+      {doneItems.length > 0 && (
+        <div onClick={e => e.stopPropagation()}>
+          <button
+            onClick={() => setShowCompleted(v => !v)}
+            className="w-full flex items-center justify-between px-2 py-1.5 rounded-lg mt-1"
+            style={{ background: "#1e273688", border: "1px solid #30373f44" }}
+          >
+            <span className="text-[10px] font-semibold uppercase tracking-widest" style={{ color: "#8b949e" }}>
+              Completed ({doneItems.length})
+            </span>
+            <span style={{ color: "#8b949e", fontSize: 11 }}>{showCompleted ? "▲" : "▼"}</span>
+          </button>
+          {showCompleted && (
+            <div className="mt-1 flex flex-col divide-y rounded-lg overflow-hidden" style={{ border: "1px solid #30373f" }}>
               {doneItems.map(item => (
-                <ItemRow
-                  key={item.id}
-                  item={item}
-                  companyId={companyId}
-                  onToggle={handleToggle}
-                  onDelete={handleDelete}
-                  onUpdate={handleUpdate}
-                />
+                <div key={item.id} className="px-2" style={{ background: "#0d1117" }}>
+                  <ItemRow
+                    item={item}
+                    companyId={companyId}
+                    onToggle={handleToggle}
+                    onDelete={handleDelete}
+                    onUpdate={handleUpdate}
+                  />
+                </div>
               ))}
-            </>
+            </div>
           )}
         </div>
       )}
 
-      {/* Upcoming tasks */}
+      {/* Upcoming tasks — collapsible */}
       {upcomingItems.length > 0 && (
         <div onClick={e => e.stopPropagation()}>
           <button
