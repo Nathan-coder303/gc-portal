@@ -128,9 +128,21 @@ function ClientCard({
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}
     >
-      <div className="px-4 py-3 flex flex-col gap-2">
+      <div className="px-4 py-3 flex flex-col gap-2" style={{ position: "relative" }}>
+        {/* Avatar sticker — top right */}
+        {(() => {
+          const words = client.name.trim().split(/\s+/).filter(Boolean);
+          const first = words[0] ?? "";
+          const label = /^\d+$/.test(first) ? first : words.length >= 2 ? (first[0] + words[words.length - 1][0]).toUpperCase() : first.slice(0, 2).toUpperCase() || "?";
+          return (
+            <div style={{ position: "absolute", top: 10, right: 10, width: 30, height: 30, borderRadius: "50%", background: "#C9A84C1a", border: "1px solid #C9A84C44", display: "flex", alignItems: "center", justifyContent: "center", fontSize: label.length > 2 ? 9 : 11, fontWeight: 700, color: "#C9A84C" }}>
+              {label}
+            </div>
+          );
+        })()}
+
         {/* Name row */}
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2" style={{ paddingRight: 36 }}>
           <div className="cursor-grab text-base leading-none shrink-0" style={{ color: "#30373f" }} title="Drag to reorder">⠿</div>
           <div className="font-bold text-sm leading-tight truncate flex-1" style={{ color: "#e6edf3" }}>{client.name}</div>
         </div>
