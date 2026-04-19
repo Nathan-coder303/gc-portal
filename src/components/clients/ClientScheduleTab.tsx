@@ -1965,9 +1965,10 @@ function ScheduleTableView({
 // ── Main Tab ───────────────────────────────────────────────────────────────────
 
 function printScheduleHtml(tasks: ClientTask[]) {
-  const phases = Array.from(new Set(tasks.map(t => t.phase)));
+  const sorted = [...tasks].sort((a, b) => a.sortOrder - b.sortOrder);
+  const phases = Array.from(new Set(sorted.map(t => t.phase)));
   const rows = phases.flatMap(phase => {
-    const phaseTasks = tasks.filter(t => t.phase === phase);
+    const phaseTasks = sorted.filter(t => t.phase === phase);
     return [
       `<tr style="background:#f0f0f0"><td colspan="7" style="font-weight:bold;padding:6px 8px;font-size:12px">${phase}</td></tr>`,
       ...phaseTasks.map(t => `
@@ -2004,8 +2005,9 @@ function printScheduleHtml(tasks: ClientTask[]) {
 
 function printGanttDiagram(tasks: ClientTask[], projectStart: Date, clientName: string) {
   const today = new Date();
+  const sorted = [...tasks].sort((a, b) => a.sortOrder - b.sortOrder);
   const phases = new Map<string, ClientTask[]>();
-  for (const t of tasks) { const arr = phases.get(t.phase) ?? []; arr.push(t); phases.set(t.phase, arr); }
+  for (const t of sorted) { const arr = phases.get(t.phase) ?? []; arr.push(t); phases.set(t.phase, arr); }
 
   const parseD = (s: string | null): Date | null => {
     if (!s) return null;
