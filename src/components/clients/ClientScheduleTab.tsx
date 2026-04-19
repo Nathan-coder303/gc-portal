@@ -70,7 +70,10 @@ function parseDate(s: string | null): Date | null {
 
 // ── Schedule Templates ─────────────────────────────────────────────────────────
 
-type TplTask = { phase: string; name: string; durationDays: number; offsetDays: number; trade?: string; isMilestone?: boolean };
+type TplTask = {
+  localId?: string; phase: string; name: string; durationDays: number; offsetDays: number;
+  trade?: string; isMilestone?: boolean; parentRef?: string; predecessorRefs?: string[];
+};
 type ScheduleTemplate = { id: string; label: string; emoji: string; description: string; tasks: TplTask[] };
 
 const SCHEDULE_TEMPLATES: ScheduleTemplate[] = [
@@ -443,81 +446,118 @@ const SCHEDULE_TEMPLATES: ScheduleTemplate[] = [
     id: "additions-v1",
     label: "Additions v1",
     emoji: "🏗️",
-    description: "Home addition · full schedule · ~169 days",
+    description: "Home addition · full WBS hierarchy · ~169 days",
     tasks: [
-      // Pre-Construction
-      { phase: "Pre-Construction", name: "Demolition existing wood", durationDays: 3, offsetDays: 0 },
-      { phase: "Pre-Construction", name: "Excavation", durationDays: 3, offsetDays: 3 },
-      // Shell - Footings
-      { phase: "Shell - Footings", name: "Forming", durationDays: 1, offsetDays: 0 },
-      { phase: "Shell - Footings", name: "Footings Rebars Installation", durationDays: 3, offsetDays: 1, trade: "Concrete" },
-      { phase: "Shell - Footings", name: "Footings Inspection", durationDays: 1, offsetDays: 4, isMilestone: true },
-      { phase: "Shell - Footings", name: "Footings Pouring Concrete", durationDays: 1, offsetDays: 5, trade: "Concrete" },
-      // Shell - 1st Lift
-      { phase: "Shell - 1st Lift", name: "1st Lift Columns", durationDays: 4, offsetDays: 0, trade: "Concrete" },
-      { phase: "Shell - 1st Lift", name: "1st Lift Blocks", durationDays: 4, offsetDays: 0, trade: "Masonry" },
-      // Shell - Slab on Grade
-      { phase: "Shell - Slab on Grade", name: "SOG Rebars Installation", durationDays: 4, offsetDays: 0, trade: "Concrete" },
-      { phase: "Shell - Slab on Grade", name: "SOG Inspection", durationDays: 1, offsetDays: 4, isMilestone: true },
-      { phase: "Shell - Slab on Grade", name: "SOG Pouring Concrete", durationDays: 1, offsetDays: 5, trade: "Concrete" },
-      // Shell - Tie Beam
-      { phase: "Shell - Tie Beam", name: "Tie Beam Rebars Installation", durationDays: 5, offsetDays: 0, trade: "Concrete" },
-      { phase: "Shell - Tie Beam", name: "Tie Beam Rebars Inspection", durationDays: 1, offsetDays: 5, isMilestone: true },
-      { phase: "Shell - Tie Beam", name: "Tie Beam Pouring Concrete", durationDays: 1, offsetDays: 6, trade: "Concrete" },
-      // Shell - Trusses
-      { phase: "Shell - Trusses", name: "Trusses Installation", durationDays: 10, offsetDays: 0, trade: "Framing" },
-      { phase: "Shell - Trusses", name: "Plywood Sheathing", durationDays: 5, offsetDays: 10, trade: "Framing" },
-      // Plumbing
-      { phase: "Plumbing", name: "Plumbing Underground Installation", durationDays: 4, offsetDays: 0, trade: "Plumbing" },
-      { phase: "Plumbing", name: "Plumbing Underground Inspection", durationDays: 1, offsetDays: 4, isMilestone: true },
-      { phase: "Plumbing", name: "Plumbing Rough Installation", durationDays: 1, offsetDays: 5, trade: "Plumbing" },
-      { phase: "Plumbing", name: "Plumbing Rough Inspection", durationDays: 1, offsetDays: 6, isMilestone: true },
-      { phase: "Plumbing", name: "Toilets Installation", durationDays: 1, offsetDays: 7, trade: "Plumbing" },
-      { phase: "Plumbing", name: "Vanity Installation", durationDays: 1, offsetDays: 8, trade: "Plumbing" },
-      { phase: "Plumbing", name: "Bathtub Installation", durationDays: 1, offsetDays: 9, trade: "Plumbing" },
-      { phase: "Plumbing", name: "Plumbing Final Inspection", durationDays: 1, offsetDays: 10, isMilestone: true },
-      // Electrical
-      { phase: "Electrical", name: "Electrical Underground", durationDays: 1, offsetDays: 0, trade: "Electrical" },
-      { phase: "Electrical", name: "Electrical Rough", durationDays: 5, offsetDays: 1, trade: "Electrical" },
-      { phase: "Electrical", name: "Electrical Rough Inspection", durationDays: 1, offsetDays: 6, isMilestone: true },
-      { phase: "Electrical", name: "Electrical Trims and Outlets", durationDays: 4, offsetDays: 7, trade: "Electrical" },
-      { phase: "Electrical", name: "Electrical Final Inspection", durationDays: 1, offsetDays: 11, isMilestone: true },
-      // Roof
-      { phase: "Roof", name: "Flat Roof Installation", durationDays: 5, offsetDays: 0, trade: "Roofing" },
-      { phase: "Roof", name: "Flat Roof Final Inspection", durationDays: 1, offsetDays: 5, isMilestone: true },
-      // Windows
-      { phase: "Windows", name: "Windows Installation", durationDays: 3, offsetDays: 0, trade: "Windows" },
-      { phase: "Windows", name: "Windows Inspection", durationDays: 1, offsetDays: 3, isMilestone: true },
-      // Drywall
-      { phase: "Drywall", name: "Wall Insulation", durationDays: 3, offsetDays: 0, trade: "Insulation" },
-      { phase: "Drywall", name: "Roof Insulation", durationDays: 4, offsetDays: 0, trade: "Insulation" },
-      { phase: "Drywall", name: "Insulation Inspection", durationDays: 1, offsetDays: 4, isMilestone: true },
-      { phase: "Drywall", name: "Framing Installation", durationDays: 5, offsetDays: 5, trade: "Framing" },
-      { phase: "Drywall", name: "Framing Inspection", durationDays: 1, offsetDays: 10, isMilestone: true },
-      { phase: "Drywall", name: "Drywall Hanging", durationDays: 10, offsetDays: 11, trade: "Drywall" },
-      { phase: "Drywall", name: "Drywall Inspection", durationDays: 1, offsetDays: 21, isMilestone: true },
-      { phase: "Drywall", name: "Drywall Finish", durationDays: 7, offsetDays: 22, trade: "Drywall" },
-      { phase: "Drywall", name: "Drywall Finishes Touchup", durationDays: 1, offsetDays: 29, trade: "Drywall" },
-      { phase: "Drywall", name: "Ceilings Paint", durationDays: 3, offsetDays: 30, trade: "Painter" },
-      { phase: "Drywall", name: "Wall Paint", durationDays: 7, offsetDays: 33, trade: "Painter" },
-      // Tiles
-      { phase: "Tiles", name: "Flooring Tiles", durationDays: 7, offsetDays: 0, trade: "Tile" },
-      { phase: "Tiles", name: "Bathroom Wall Tiles", durationDays: 5, offsetDays: 0, trade: "Tile" },
-      // Fine Carpentry
-      { phase: "Fine Carpentry", name: "Baseboards Installation", durationDays: 10, offsetDays: 0, trade: "Carpenter" },
-      { phase: "Fine Carpentry", name: "Doors Installation", durationDays: 3, offsetDays: 0, trade: "Carpenter" },
-      { phase: "Fine Carpentry", name: "Doors Casings Installation", durationDays: 5, offsetDays: 3, trade: "Carpenter" },
-      // Exterior
-      { phase: "Exterior", name: "Stucco", durationDays: 60, offsetDays: 0, trade: "Stucco" },
-      { phase: "Exterior", name: "Exterior Paint", durationDays: 60, offsetDays: 60, trade: "Painter" },
-      // HVAC
-      { phase: "HVAC", name: "HVAC Ducts Installation", durationDays: 3, offsetDays: 0, trade: "HVAC" },
-      { phase: "HVAC", name: "HVAC Rough Inspection", durationDays: 1, offsetDays: 3, isMilestone: true },
-      { phase: "HVAC", name: "HVAC Mini Split Installation", durationDays: 1, offsetDays: 4, trade: "HVAC" },
-      { phase: "HVAC", name: "HVAC Final Inspection", durationDays: 1, offsetDays: 5, isMilestone: true },
-      // Closeout
-      { phase: "Closeout", name: "Final Cleaning", durationDays: 1, offsetDays: 0 },
-      { phase: "Closeout", name: "Building Final Inspection", durationDays: 1, offsetDays: 1, isMilestone: true },
+      // ── ROOT ─────────────────────────────────────────────────────────────────
+      { localId: "root", phase: "Project", name: "Allisons Addition", durationDays: 169, offsetDays: 0 },
+
+      // ── SHELL ────────────────────────────────────────────────────────────────
+      { localId: "shell", phase: "Shell", name: "Shell", durationDays: 44, offsetDays: 0, parentRef: "root" },
+
+      // Pre-Construction (under Shell)
+      { localId: "demo", phase: "Shell", name: "Demolition existing wood structure", durationDays: 3, offsetDays: 0, parentRef: "shell" },
+      { localId: "excav", phase: "Shell", name: "Excavation", durationDays: 3, offsetDays: 3, parentRef: "shell", predecessorRefs: ["demo"] },
+
+      // Footings
+      { localId: "footings", phase: "Shell", name: "Footings", durationDays: 6, offsetDays: 6, parentRef: "shell", predecessorRefs: ["excav"] },
+      { localId: "forming", phase: "Shell", name: "Forming", durationDays: 1, offsetDays: 6, parentRef: "footings" },
+      { localId: "foot-rebars", phase: "Shell", name: "Footings Rebars Installation", durationDays: 3, offsetDays: 7, parentRef: "footings", trade: "Concrete", predecessorRefs: ["forming"] },
+      { localId: "foot-insp", phase: "Shell", name: "Footings Inspection", durationDays: 1, offsetDays: 10, parentRef: "footings", isMilestone: true, predecessorRefs: ["foot-rebars"] },
+      { localId: "foot-pour", phase: "Shell", name: "Footings Pouring Concrete", durationDays: 1, offsetDays: 11, parentRef: "footings", trade: "Concrete", predecessorRefs: ["foot-insp"] },
+
+      // 1st Lift
+      { localId: "1st-lift", phase: "Shell", name: "1st Lift", durationDays: 4, offsetDays: 12, parentRef: "shell", predecessorRefs: ["foot-pour"] },
+      { localId: "lift-col", phase: "Shell", name: "1st Lift Columns", durationDays: 4, offsetDays: 12, parentRef: "1st-lift", trade: "Concrete" },
+      { localId: "lift-blk", phase: "Shell", name: "1st Lift Blocks", durationDays: 4, offsetDays: 12, parentRef: "1st-lift", trade: "Masonry", predecessorRefs: ["lift-col"] },
+
+      // Slab on Grade
+      { localId: "sog", phase: "Shell", name: "Slab on Grade", durationDays: 6, offsetDays: 16, parentRef: "shell", predecessorRefs: ["lift-blk"] },
+      { localId: "sog-rebars", phase: "Shell", name: "SOG Rebars Installation", durationDays: 4, offsetDays: 16, parentRef: "sog", trade: "Concrete" },
+      { localId: "sog-insp", phase: "Shell", name: "SOG Inspection", durationDays: 1, offsetDays: 20, parentRef: "sog", isMilestone: true, predecessorRefs: ["sog-rebars"] },
+      { localId: "sog-pour", phase: "Shell", name: "SOG Pouring Concrete", durationDays: 1, offsetDays: 21, parentRef: "sog", trade: "Concrete", predecessorRefs: ["sog-insp"] },
+
+      // Tie Beam
+      { localId: "tie-beam", phase: "Shell", name: "Tie Beam", durationDays: 7, offsetDays: 22, parentRef: "shell", predecessorRefs: ["sog-pour"] },
+      { localId: "tb-rebars", phase: "Shell", name: "Tie Beam Rebars Installation", durationDays: 5, offsetDays: 22, parentRef: "tie-beam", trade: "Concrete" },
+      { localId: "tb-insp", phase: "Shell", name: "Tie Beam Rebars Inspection", durationDays: 1, offsetDays: 27, parentRef: "tie-beam", isMilestone: true, predecessorRefs: ["tb-rebars"] },
+      { localId: "tb-pour", phase: "Shell", name: "Tie Beam Pouring Concrete", durationDays: 1, offsetDays: 28, parentRef: "tie-beam", trade: "Concrete", predecessorRefs: ["tb-insp"] },
+
+      // Trusses
+      { localId: "trusses", phase: "Shell", name: "Trusses", durationDays: 15, offsetDays: 29, parentRef: "shell", predecessorRefs: ["tb-pour"] },
+      { localId: "truss-inst", phase: "Shell", name: "Trusses Installation", durationDays: 10, offsetDays: 29, parentRef: "trusses", trade: "Framing" },
+      { localId: "plywood", phase: "Shell", name: "Plywood Sheathing", durationDays: 5, offsetDays: 39, parentRef: "trusses", trade: "Framing", predecessorRefs: ["truss-inst"] },
+
+      // ── PLUMBING ─────────────────────────────────────────────────────────────
+      { localId: "plumbing", phase: "Plumbing", name: "Plumbing", durationDays: 82, offsetDays: 12, parentRef: "root" },
+      { localId: "plumb-ug", phase: "Plumbing", name: "Plumbing Underground", durationDays: 5, offsetDays: 12, parentRef: "plumbing" },
+      { localId: "plumb-ug-inst", phase: "Plumbing", name: "Plumbing Underground Installation", durationDays: 4, offsetDays: 12, parentRef: "plumb-ug", trade: "Plumbing" },
+      { localId: "plumb-ug-insp", phase: "Plumbing", name: "Plumbing Underground Inspection", durationDays: 1, offsetDays: 16, parentRef: "plumb-ug", isMilestone: true, predecessorRefs: ["plumb-ug-inst"] },
+      { localId: "plumb-rough", phase: "Plumbing", name: "Plumbing Rough Installation", durationDays: 1, offsetDays: 45, parentRef: "plumbing", trade: "Plumbing", predecessorRefs: ["plumb-ug-insp"] },
+      { localId: "plumb-rough-insp", phase: "Plumbing", name: "Plumbing Rough Inspection", durationDays: 1, offsetDays: 46, parentRef: "plumbing", isMilestone: true, predecessorRefs: ["plumb-rough"] },
+      { localId: "plumb-toilets", phase: "Plumbing", name: "Toilets Installation", durationDays: 1, offsetDays: 90, parentRef: "plumbing", trade: "Plumbing" },
+      { localId: "plumb-vanity", phase: "Plumbing", name: "Vanity Installation", durationDays: 1, offsetDays: 91, parentRef: "plumbing", trade: "Plumbing", predecessorRefs: ["plumb-toilets"] },
+      { localId: "plumb-tub", phase: "Plumbing", name: "Bathtub Installation", durationDays: 1, offsetDays: 92, parentRef: "plumbing", trade: "Plumbing", predecessorRefs: ["plumb-vanity"] },
+      { localId: "plumb-final", phase: "Plumbing", name: "Plumbing Final Inspection", durationDays: 1, offsetDays: 93, parentRef: "plumbing", isMilestone: true, predecessorRefs: ["plumb-tub"] },
+
+      // ── ELECTRICAL ───────────────────────────────────────────────────────────
+      { localId: "elec", phase: "Electrical", name: "Electrical", durationDays: 78, offsetDays: 12, parentRef: "root" },
+      { localId: "elec-ug", phase: "Electrical", name: "Electrical Underground", durationDays: 1, offsetDays: 12, parentRef: "elec", trade: "Electrical" },
+      { localId: "elec-rough", phase: "Electrical", name: "Electrical Rough", durationDays: 5, offsetDays: 45, parentRef: "elec", trade: "Electrical", predecessorRefs: ["elec-ug"] },
+      { localId: "elec-rough-insp", phase: "Electrical", name: "Electrical Rough Inspection", durationDays: 1, offsetDays: 50, parentRef: "elec", isMilestone: true, predecessorRefs: ["elec-rough"] },
+      { localId: "elec-trims", phase: "Electrical", name: "Electrical Trims and Outlets", durationDays: 4, offsetDays: 85, parentRef: "elec", trade: "Electrical", predecessorRefs: ["elec-rough-insp"] },
+      { localId: "elec-final", phase: "Electrical", name: "Electrical Final Inspection", durationDays: 1, offsetDays: 89, parentRef: "elec", isMilestone: true, predecessorRefs: ["elec-trims"] },
+
+      // ── ROOF ─────────────────────────────────────────────────────────────────
+      { localId: "roof", phase: "Roof", name: "Roof", durationDays: 6, offsetDays: 44, parentRef: "root", predecessorRefs: ["plywood"] },
+      { localId: "roof-inst", phase: "Roof", name: "Flat Roof Installation", durationDays: 5, offsetDays: 44, parentRef: "roof", trade: "Roofing" },
+      { localId: "roof-insp", phase: "Roof", name: "Flat Roof Final Inspection", durationDays: 1, offsetDays: 49, parentRef: "roof", isMilestone: true, predecessorRefs: ["roof-inst"] },
+
+      // ── WINDOWS ──────────────────────────────────────────────────────────────
+      { localId: "windows", phase: "Windows", name: "Windows", durationDays: 4, offsetDays: 45, parentRef: "root", predecessorRefs: ["roof-insp"] },
+      { localId: "win-inst", phase: "Windows", name: "Windows Installation", durationDays: 3, offsetDays: 45, parentRef: "windows", trade: "Windows" },
+      { localId: "win-insp", phase: "Windows", name: "Windows Inspection", durationDays: 1, offsetDays: 48, parentRef: "windows", isMilestone: true, predecessorRefs: ["win-inst"] },
+
+      // ── DRYWALL ──────────────────────────────────────────────────────────────
+      { localId: "drywall", phase: "Drywall", name: "Drywall", durationDays: 40, offsetDays: 51, parentRef: "root", predecessorRefs: ["elec-rough-insp", "plumb-rough-insp"] },
+      { localId: "wall-insul", phase: "Drywall", name: "Wall Insulation", durationDays: 3, offsetDays: 51, parentRef: "drywall", trade: "Insulation" },
+      { localId: "roof-insul", phase: "Drywall", name: "Roof Insulation", durationDays: 4, offsetDays: 51, parentRef: "drywall", trade: "Insulation" },
+      { localId: "insul-insp", phase: "Drywall", name: "Insulation Inspection", durationDays: 1, offsetDays: 55, parentRef: "drywall", isMilestone: true, predecessorRefs: ["roof-insul"] },
+      { localId: "framing-inst", phase: "Drywall", name: "Framing Installation", durationDays: 5, offsetDays: 56, parentRef: "drywall", trade: "Framing", predecessorRefs: ["insul-insp"] },
+      { localId: "framing-insp", phase: "Drywall", name: "Framing Inspection", durationDays: 1, offsetDays: 61, parentRef: "drywall", isMilestone: true, predecessorRefs: ["framing-inst"] },
+      { localId: "dw-hang", phase: "Drywall", name: "Drywall Hanging", durationDays: 10, offsetDays: 62, parentRef: "drywall", trade: "Drywall", predecessorRefs: ["framing-insp"] },
+      { localId: "dw-insp", phase: "Drywall", name: "Drywall Inspection", durationDays: 1, offsetDays: 72, parentRef: "drywall", isMilestone: true, predecessorRefs: ["dw-hang"] },
+      { localId: "dw-finish", phase: "Drywall", name: "Drywall Finish", durationDays: 7, offsetDays: 73, parentRef: "drywall", trade: "Drywall", predecessorRefs: ["dw-insp"] },
+      { localId: "dw-touch", phase: "Drywall", name: "Drywall Finishes Touchup", durationDays: 1, offsetDays: 80, parentRef: "drywall", trade: "Drywall", predecessorRefs: ["dw-finish"] },
+      { localId: "ceil-paint", phase: "Drywall", name: "Ceilings Paint", durationDays: 3, offsetDays: 81, parentRef: "drywall", trade: "Painter", predecessorRefs: ["dw-touch"] },
+      { localId: "wall-paint", phase: "Drywall", name: "Wall Paint", durationDays: 7, offsetDays: 84, parentRef: "drywall", trade: "Painter", predecessorRefs: ["ceil-paint"] },
+
+      // ── TILES ────────────────────────────────────────────────────────────────
+      { localId: "tiles", phase: "Tiles", name: "Tiles", durationDays: 12, offsetDays: 91, parentRef: "root", predecessorRefs: ["wall-paint"] },
+      { localId: "floor-tiles", phase: "Tiles", name: "Flooring Tiles", durationDays: 7, offsetDays: 91, parentRef: "tiles", trade: "Tile" },
+      { localId: "bath-tiles", phase: "Tiles", name: "Bathroom Wall Tiles", durationDays: 5, offsetDays: 91, parentRef: "tiles", trade: "Tile" },
+
+      // ── FINE CARPENTRY ───────────────────────────────────────────────────────
+      { localId: "carpentry", phase: "Fine Carpentry", name: "Fine Carpentry", durationDays: 18, offsetDays: 103, parentRef: "root", predecessorRefs: ["tiles"] },
+      { localId: "baseboards", phase: "Fine Carpentry", name: "Baseboards Installation", durationDays: 10, offsetDays: 103, parentRef: "carpentry", trade: "Carpenter" },
+      { localId: "doors", phase: "Fine Carpentry", name: "Doors Installation", durationDays: 3, offsetDays: 103, parentRef: "carpentry", trade: "Carpenter" },
+      { localId: "door-casings", phase: "Fine Carpentry", name: "Doors Casings Installation", durationDays: 5, offsetDays: 106, parentRef: "carpentry", trade: "Carpenter", predecessorRefs: ["doors"] },
+
+      // ── EXTERIOR ─────────────────────────────────────────────────────────────
+      { localId: "exterior", phase: "Exterior", name: "Exterior", durationDays: 120, offsetDays: 29, parentRef: "root" },
+      { localId: "stucco", phase: "Exterior", name: "Stucco", durationDays: 60, offsetDays: 29, parentRef: "exterior", trade: "Stucco" },
+      { localId: "ext-paint", phase: "Exterior", name: "Exterior Paint", durationDays: 60, offsetDays: 89, parentRef: "exterior", trade: "Painter", predecessorRefs: ["stucco"] },
+
+      // ── HVAC ─────────────────────────────────────────────────────────────────
+      { localId: "hvac", phase: "HVAC", name: "HVAC", durationDays: 5, offsetDays: 51, parentRef: "root" },
+      { localId: "hvac-ducts", phase: "HVAC", name: "HVAC Ducts Installation", durationDays: 3, offsetDays: 51, parentRef: "hvac", trade: "HVAC" },
+      { localId: "hvac-rough-insp", phase: "HVAC", name: "HVAC Rough Inspection", durationDays: 1, offsetDays: 54, parentRef: "hvac", isMilestone: true, predecessorRefs: ["hvac-ducts"] },
+      { localId: "hvac-split", phase: "HVAC", name: "HVAC Mini Split Installation", durationDays: 1, offsetDays: 55, parentRef: "hvac", trade: "HVAC", predecessorRefs: ["hvac-rough-insp"] },
+      { localId: "hvac-final", phase: "HVAC", name: "HVAC Final Inspection", durationDays: 1, offsetDays: 56, parentRef: "hvac", isMilestone: true, predecessorRefs: ["hvac-split"] },
+
+      // ── CLOSEOUT ─────────────────────────────────────────────────────────────
+      { localId: "closeout", phase: "Closeout", name: "Closeout", durationDays: 2, offsetDays: 167, parentRef: "root", predecessorRefs: ["carpentry", "ext-paint", "hvac-final", "plumb-final", "elec-final"] },
+      { localId: "final-clean", phase: "Closeout", name: "Final Cleaning", durationDays: 1, offsetDays: 167, parentRef: "closeout", predecessorRefs: ["closeout"] },
+      { localId: "bldg-final", phase: "Closeout", name: "Building Final Inspection", durationDays: 1, offsetDays: 168, parentRef: "closeout", isMilestone: true, predecessorRefs: ["final-clean"] },
     ],
   },
 ];
@@ -543,44 +583,38 @@ function LoadTemplateModal({
     if (!selected) return;
     setLoading(true);
     const base = parseDate(startDate) ?? new Date();
+    const localIdMap = new Map<string, string>(); // localId → DB task id
     const created: ClientTask[] = [];
+    let sortIdx = 0;
     for (const t of selected.tasks) {
       const start = addDays(base, t.offsetDays);
       const end = addDays(start, t.durationDays - 1);
+      const parentId = t.parentRef ? (localIdMap.get(t.parentRef) ?? null) : null;
+      const predecessorIds = (t.predecessorRefs ?? []).map(ref => localIdMap.get(ref)).filter(Boolean) as string[];
       const res = await fetch(`/api/${companyId}/clients/${clientId}/schedule`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          phase: t.phase,
-          name: t.name,
-          durationDays: t.durationDays,
-          startDate: toDateStr(start),
-          endDate: toDateStr(end),
-          trade: t.trade ?? null,
-          isMilestone: t.isMilestone ?? false,
+          phase: t.phase, name: t.name, durationDays: t.durationDays,
+          startDate: toDateStr(start), endDate: toDateStr(end),
+          trade: t.trade ?? null, isMilestone: t.isMilestone ?? false,
+          parentId, predecessorIds, sortOrder: sortIdx++,
         }),
       });
       const raw = await res.json();
-      const task: ClientTask = {
-        id: raw.id,
-        phase: raw.phase ?? t.phase,
-        name: raw.name ?? t.name,
+      if (t.localId) localIdMap.set(t.localId, raw.id);
+      created.push({
+        id: raw.id, phase: raw.phase ?? t.phase, name: raw.name ?? t.name,
         durationDays: raw.durationDays ?? t.durationDays,
-        startDate: raw.startDate ?? null,
-        endDate: raw.endDate ?? null,
-        predecessorIds: raw.predecessorIds ?? [],
-        parentId: raw.parentId ?? null,
-        trade: raw.trade ?? t.trade ?? null,
-        assignee: raw.assignee ?? null,
+        startDate: raw.startDate ?? null, endDate: raw.endDate ?? null,
+        predecessorIds: raw.predecessorIds ?? predecessorIds,
+        parentId: raw.parentId ?? parentId,
+        trade: raw.trade ?? t.trade ?? null, assignee: raw.assignee ?? null,
         isMilestone: raw.isMilestone ?? t.isMilestone ?? false,
-        status: raw.status ?? "NOT_STARTED",
-        percentComplete: raw.percentComplete ?? 0,
-        notes: raw.notes ?? null,
-        priority: raw.priority ?? null,
-        actualFinish: raw.actualFinish ?? null,
-        sortOrder: raw.sortOrder ?? 0,
-      };
-      created.push(task);
+        status: raw.status ?? "NOT_STARTED", percentComplete: raw.percentComplete ?? 0,
+        notes: raw.notes ?? null, priority: raw.priority ?? null,
+        actualFinish: raw.actualFinish ?? null, sortOrder: raw.sortOrder ?? 0,
+      });
     }
     setLoading(false);
     onLoaded(created);
@@ -1650,136 +1684,202 @@ function buildTableRows(tasks: ClientTask[], collapsedIds: Set<string>): TableRo
 }
 
 function ScheduleTableView({
-  tasks, companyId, clientId, onTasksChange,
+  tasks, companyId, clientId, onTasksChange, canEdit,
 }: {
-  tasks: ClientTask[];
-  companyId: string;
-  clientId: string;
-  onTasksChange: (tasks: ClientTask[]) => void;
+  tasks: ClientTask[]; companyId: string; clientId: string;
+  onTasksChange: (tasks: ClientTask[]) => void; canEdit: boolean;
 }) {
   const [collapsedIds, setCollapsedIds] = useState<Set<string>>(new Set());
   const [editTask, setEditTask] = useState<ClientTask | null>(null);
+  const [addSubFor, setAddSubFor] = useState<ClientTask | null>(null);
+  const [dragId, setDragId] = useState<string | null>(null);
+  const [dropId, setDropId] = useState<string | null>(null);
+  const [settingParentFor, setSettingParentFor] = useState<ClientTask | null>(null);
+  const [ctxMenu, setCtxMenu] = useState<{ x: number; y: number; task: ClientTask } | null>(null);
+  const [colWidths, setColWidths] = useState({ num: 44, link: 72, wbs: 76, name: 260, dur: 82, pct: 52, start: 106, end: 106, actual: 106, priority: 82, status: 108, assignee: 120 });
 
+  const phases = useMemo(() => Array.from(new Set(tasks.map(t => t.phase))), [tasks]);
   const rows = useMemo(() => buildTableRows(tasks, collapsedIds), [tasks, collapsedIds]);
+  const idToRow = useMemo(() => { const m = new Map<string, number>(); for (const r of rows) m.set(r.task.id, r.rowNum); return m; }, [rows]);
 
-  // Build rowNum→task id map for predecessor display
-  const idToRowNum = useMemo(() => {
-    const map = new Map<string, number>();
-    for (const r of rows) map.set(r.task.id, r.rowNum);
-    return map;
-  }, [rows]);
+  // Close context menu on outside click; ESC cancels parent-set mode
+  useEffect(() => {
+    if (!ctxMenu) return;
+    const close = () => setCtxMenu(null);
+    window.addEventListener("click", close);
+    return () => window.removeEventListener("click", close);
+  }, [ctxMenu]);
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") { setSettingParentFor(null); setCtxMenu(null); } };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, []);
 
   function toggleCollapse(id: string) {
-    setCollapsedIds(prev => {
-      const next = new Set(prev);
-      if (next.has(id)) next.delete(id); else next.add(id);
-      return next;
+    setCollapsedIds(prev => { const n = new Set(prev); if (n.has(id)) { n.delete(id); } else { n.add(id); } return n; });
+  }
+
+  // ── Column resize ─────────────────────────────────────────────────────────
+  function startResize(col: keyof typeof colWidths, e: React.MouseEvent) {
+    e.preventDefault(); e.stopPropagation();
+    const startX = e.clientX; const startW = colWidths[col];
+    const onMove = (ev: MouseEvent) => setColWidths(p => ({ ...p, [col]: Math.max(36, startW + ev.clientX - startX) }));
+    const onUp = () => { window.removeEventListener("mousemove", onMove); window.removeEventListener("mouseup", onUp); };
+    window.addEventListener("mousemove", onMove); window.addEventListener("mouseup", onUp);
+  }
+
+  // ── Drag-to-reorder ──────────────────────────────────────────────────────
+  async function handleDrop(targetId: string) {
+    if (!dragId || dragId === targetId) { setDragId(null); setDropId(null); return; }
+    const flatIds = rows.map(r => r.task.id);
+    const from = flatIds.indexOf(dragId); const to = flatIds.indexOf(targetId);
+    if (from === -1 || to === -1) { setDragId(null); setDropId(null); return; }
+    const reordered = [...flatIds]; reordered.splice(from, 1); reordered.splice(reordered.indexOf(targetId), 0, dragId);
+    const newOrders = new Map(reordered.map((id, i) => [id, i]));
+    const updated = tasks.map(t => ({ ...t, sortOrder: newOrders.get(t.id) ?? t.sortOrder }));
+    onTasksChange(updated);
+    const changed = updated.filter(t => t.sortOrder !== tasks.find(o => o.id === t.id)?.sortOrder);
+    await Promise.all(changed.map(t => fetch(`/api/${companyId}/clients/${clientId}/schedule/${t.id}`, {
+      method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ sortOrder: t.sortOrder }),
+    })));
+    setDragId(null); setDropId(null);
+  }
+
+  // ── Indent: make task child of the task immediately above it ─────────────
+  async function indent(task: ClientTask) {
+    const flatIds = rows.map(r => r.task.id);
+    const idx = flatIds.indexOf(task.id);
+    if (idx <= 0) return;
+    const parentTask = rows[idx - 1].task;
+    if (parentTask.id === task.id) return;
+    await fetch(`/api/${companyId}/clients/${clientId}/schedule/${task.id}`, {
+      method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ parentId: parentTask.id }),
     });
+    onTasksChange(tasks.map(t => t.id === task.id ? { ...t, parentId: parentTask.id } : t));
   }
 
-  function statusLabel(s: string) {
-    const map: Record<string, string> = { NOT_STARTED: "To Do", IN_PROGRESS: "In Progress", DONE: "Done", BLOCKED: "Blocked" };
-    return map[s] ?? s;
+  // ── Outdent: remove one level (set parent to grandparent or null) ─────────
+  async function outdent(task: ClientTask) {
+    if (!task.parentId) return;
+    const parent = tasks.find(t => t.id === task.parentId);
+    const newParentId = parent?.parentId ?? null;
+    await fetch(`/api/${companyId}/clients/${clientId}/schedule/${task.id}`, {
+      method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ parentId: newParentId }),
+    });
+    onTasksChange(tasks.map(t => t.id === task.id ? { ...t, parentId: newParentId } : t));
   }
 
-  function statusColor(s: string) {
-    const map: Record<string, string> = { NOT_STARTED: GOLD, IN_PROGRESS: "#3b82f6", DONE: "#22c55e", BLOCKED: "#f97316" };
-    return map[s] ?? "#8b949e";
+  // ── Set parent via click ──────────────────────────────────────────────────
+  async function handleSetParent(parentTask: ClientTask) {
+    if (!settingParentFor || parentTask.id === settingParentFor.id) { setSettingParentFor(null); return; }
+    await fetch(`/api/${companyId}/clients/${clientId}/schedule/${settingParentFor.id}`, {
+      method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ parentId: parentTask.id }),
+    });
+    onTasksChange(tasks.map(t => t.id === settingParentFor.id ? { ...t, parentId: parentTask.id } : t));
+    setSettingParentFor(null);
   }
 
-  function priorityColor(p: string | null) {
-    if (p === "HIGH") return "#f87171";
-    if (p === "MEDIUM") return GOLD;
-    if (p === "LOW") return "#22c55e";
-    return "#8b949e";
+  async function removeParent(task: ClientTask) {
+    await fetch(`/api/${companyId}/clients/${clientId}/schedule/${task.id}`, {
+      method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ parentId: null }),
+    });
+    onTasksChange(tasks.map(t => t.id === task.id ? { ...t, parentId: null } : t));
   }
 
-  const colStyle = (width: number): React.CSSProperties => ({
-    minWidth: width,
-    maxWidth: width,
-    padding: "0 8px",
-    borderRight: "1px solid #21262d",
-    overflow: "hidden",
-    textOverflow: "ellipsis",
-    whiteSpace: "nowrap",
-    fontSize: 12,
-    color: "#e6edf3",
-    height: 36,
-    display: "table-cell",
-    verticalAlign: "middle",
+  // ── Style helpers ─────────────────────────────────────────────────────────
+  type CK = keyof typeof colWidths;
+  const RHANDLE: React.CSSProperties = { position: "absolute", right: 0, top: 0, bottom: 0, width: 5, cursor: "col-resize", zIndex: 1 };
+
+  const col = (k: CK, extra?: React.CSSProperties): React.CSSProperties => ({
+    minWidth: colWidths[k], maxWidth: colWidths[k], padding: "0 8px", borderRight: "1px solid #21262d",
+    overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
+    fontSize: 12, color: "#e6edf3", height: 36, display: "table-cell", verticalAlign: "middle",
+    position: "relative", ...extra,
+  });
+  const th = (k: CK, extra?: React.CSSProperties): React.CSSProperties => ({
+    ...col(k), background: "#161b22", color: "#8b949e", fontWeight: 700, fontSize: 11,
+    letterSpacing: "0.04em", textTransform: "uppercase" as const,
+    height: 32, position: "sticky" as const, top: 0, zIndex: 2, userSelect: "none" as const, ...extra,
   });
 
-  const thStyle = (width: number): React.CSSProperties => ({
-    ...colStyle(width),
-    background: "#161b22",
-    color: "#8b949e",
-    fontWeight: 700,
-    fontSize: 11,
-    letterSpacing: "0.04em",
-    textTransform: "uppercase",
-    height: 32,
-    position: "sticky",
-    top: 0,
-    zIndex: 2,
-  });
+  function statusLabel(s: string) { return ({ NOT_STARTED: "To Do", IN_PROGRESS: "In Progress", DONE: "Done", BLOCKED: "Blocked" } as Record<string,string>)[s] ?? s; }
+  function statusColor(s: string) { return ({ NOT_STARTED: GOLD, IN_PROGRESS: "#3b82f6", DONE: "#22c55e", BLOCKED: "#f97316" } as Record<string,string>)[s] ?? "#8b949e"; }
+  function priorityColor(p: string | null) { return p === "HIGH" ? "#f87171" : p === "MEDIUM" ? GOLD : p === "LOW" ? "#22c55e" : "#8b949e"; }
+
+  const CTX_BTN: React.CSSProperties = { display: "block", width: "100%", padding: "9px 16px", textAlign: "left", background: "none", border: "none", color: "#e6edf3", fontSize: 13, cursor: "pointer" };
 
   return (
     <>
+      {/* Parent-set banner */}
+      {settingParentFor && (
+        <div style={{ background: "#1a2744", border: `1px solid ${GOLD}`, borderRadius: 8, padding: "8px 16px", marginBottom: 8, display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+          <span style={{ color: GOLD, fontSize: 13 }}>🔗 Click any task to set as parent of <strong>&ldquo;{settingParentFor.name}&rdquo;</strong> — or press ESC to cancel</span>
+          <button onClick={() => setSettingParentFor(null)} style={{ background: "none", border: "none", color: "#8b949e", cursor: "pointer", fontSize: 20, lineHeight: 1 }}>×</button>
+        </div>
+      )}
+
       <div style={{ overflowX: "auto", overflowY: "auto", maxHeight: "70vh", borderRadius: 8, border: "1px solid #21262d" }}>
-        <table style={{ borderCollapse: "collapse", minWidth: 1200, tableLayout: "fixed", width: "100%" }}>
+        <table style={{ borderCollapse: "collapse", tableLayout: "fixed", width: "100%" }}>
           <thead>
             <tr>
-              <th style={{ ...thStyle(40), position: "sticky", left: 0, zIndex: 3, background: "#161b22" }}>#</th>
-              <th style={thStyle(70)} title="Finish-to-Start: this task cannot start until the linked tasks are finished">LINKED FROM</th>
-              <th style={thStyle(70)}>WBS</th>
-              <th style={{ ...thStyle(240), textAlign: "left" }}>TASK NAME</th>
-              <th style={thStyle(80)}>DURATION</th>
-              <th style={thStyle(50)}>%</th>
-              <th style={thStyle(100)}>PLANNED START</th>
-              <th style={thStyle(100)}>PLANNED END</th>
-              <th style={thStyle(100)}>ACTUAL FINISH</th>
-              <th style={thStyle(80)}>PRIORITY</th>
-              <th style={thStyle(100)}>STATUS</th>
-              <th style={{ ...thStyle(110), borderRight: "none" }}>ASSIGNEE</th>
+              <th style={{ ...th("num"), position: "sticky", left: 0, zIndex: 3, textAlign: "center" }}>
+                #<div style={RHANDLE} onMouseDown={e => startResize("num", e)} />
+              </th>
+              <th style={th("link")} title="Finish-to-Start: this task cannot start until the linked tasks are finished">
+                LINKED FROM<div style={RHANDLE} onMouseDown={e => startResize("link", e)} />
+              </th>
+              <th style={th("wbs")}>WBS<div style={RHANDLE} onMouseDown={e => startResize("wbs", e)} /></th>
+              <th style={{ ...th("name"), textAlign: "left" }}>TASK NAME<div style={RHANDLE} onMouseDown={e => startResize("name", e)} /></th>
+              <th style={{ ...th("dur"), textAlign: "center" }}>DURATION<div style={RHANDLE} onMouseDown={e => startResize("dur", e)} /></th>
+              <th style={{ ...th("pct"), textAlign: "center" }}>%<div style={RHANDLE} onMouseDown={e => startResize("pct", e)} /></th>
+              <th style={th("start")}>PLANNED START<div style={RHANDLE} onMouseDown={e => startResize("start", e)} /></th>
+              <th style={th("end")}>PLANNED END<div style={RHANDLE} onMouseDown={e => startResize("end", e)} /></th>
+              <th style={th("actual")}>ACTUAL FINISH<div style={RHANDLE} onMouseDown={e => startResize("actual", e)} /></th>
+              <th style={{ ...th("priority"), textAlign: "center" }}>PRIORITY<div style={RHANDLE} onMouseDown={e => startResize("priority", e)} /></th>
+              <th style={th("status")}>STATUS<div style={RHANDLE} onMouseDown={e => startResize("status", e)} /></th>
+              <th style={{ ...th("assignee"), borderRight: "none" }}>ASSIGNEE</th>
             </tr>
           </thead>
           <tbody>
             {rows.map(r => {
               const { task, rowNum: rn, depth, wbs, hasChildren } = r;
-              const isParentRow = hasChildren;
-              const rowBg = isParentRow ? "#1e2736" : rn % 2 === 0 ? "#0d1117" : "#0a0e14";
-              const linkStr = task.predecessorIds
-                .map(pid => idToRowNum.get(pid))
-                .filter(Boolean)
-                .join(", ");
+              const isDragging = dragId === task.id;
+              const isDropOver = dropId === task.id && dragId !== task.id;
+              const isParent = hasChildren;
+              const rowBg = isDropOver ? "#1f3a5f" : isParent ? "#1e2736" : rn % 2 === 0 ? "#0d1117" : "#0a0e14";
+              const linkStr = task.predecessorIds.map(pid => idToRow.get(pid)).filter(Boolean).join(", ");
 
               return (
-                <tr
-                  key={task.id}
-                  onDoubleClick={() => setEditTask(task)}
-                  style={{ background: rowBg, cursor: "pointer" }}
+                <tr key={task.id}
+                  draggable={canEdit}
+                  onDragStart={e => { e.dataTransfer.effectAllowed = "move"; setDragId(task.id); }}
+                  onDragEnd={() => { setDragId(null); setDropId(null); }}
+                  onDragOver={e => { e.preventDefault(); e.dataTransfer.dropEffect = "move"; if (dropId !== task.id) setDropId(task.id); }}
+                  onDrop={e => { e.preventDefault(); handleDrop(task.id); }}
+                  onDoubleClick={() => !settingParentFor && setEditTask(task)}
+                  onClick={() => settingParentFor && handleSetParent(task)}
+                  onContextMenu={e => { if (!canEdit) return; e.preventDefault(); setCtxMenu({ x: e.clientX, y: e.clientY, task }); }}
+                  style={{
+                    background: rowBg, opacity: isDragging ? 0.3 : 1, transition: "opacity 0.1s",
+                    cursor: settingParentFor ? "crosshair" : isDragging ? "grabbing" : "default",
+                    boxShadow: isDropOver ? `inset 0 2px 0 ${GOLD}` : undefined,
+                  }}
                   className="hover:brightness-110"
                 >
-                  {/* # — sticky */}
-                  <td style={{ ...colStyle(40), position: "sticky", left: 0, background: rowBg, zIndex: 1, color: "#484f58", textAlign: "center" }}>
-                    {rn}
+                  {/* # drag handle */}
+                  <td style={{ ...col("num"), position: "sticky", left: 0, background: rowBg, zIndex: 1, color: "#484f58", textAlign: "center", cursor: canEdit ? "grab" : "default" }}>
+                    <span style={{ userSelect: "none", fontSize: 11 }}>{canEdit ? "⠿ " : ""}{rn}</span>
                   </td>
-                  {/* LINK */}
-                  <td style={{ ...colStyle(60), color: "#8b949e", textAlign: "center" }}>
-                    {linkStr}
-                  </td>
+                  {/* LINKED FROM */}
+                  <td style={{ ...col("link"), color: "#8b949e", textAlign: "center" }}>{linkStr}</td>
                   {/* WBS */}
-                  <td style={{ ...colStyle(70), color: "#8b949e" }}>
-                    {wbs}
-                  </td>
+                  <td style={{ ...col("wbs"), color: "#8b949e" }}>{wbs}</td>
                   {/* TASK NAME */}
-                  <td style={{ ...colStyle(240), paddingLeft: 8 + depth * 16, fontWeight: isParentRow ? 700 : 400, color: isParentRow ? GOLD : task.status === "DONE" ? "#484f58" : "#e6edf3" }}>
+                  <td style={{ ...col("name"), paddingLeft: 8 + depth * 16, fontWeight: isParent ? 700 : 400, color: isParent ? GOLD : task.status === "DONE" ? "#484f58" : "#e6edf3" }}>
                     <span style={{ display: "inline-flex", alignItems: "center", gap: 4, width: "100%", overflow: "hidden" }}>
                       {hasChildren && (
-                        <button
-                          onClick={e => { e.stopPropagation(); toggleCollapse(task.id); }}
-                          style={{ background: "none", border: "none", cursor: "pointer", color: "#8b949e", padding: 0, fontSize: 12, flexShrink: 0 }}
-                        >
+                        <button onClick={e => { e.stopPropagation(); toggleCollapse(task.id); }}
+                          style={{ background: "none", border: "none", cursor: "pointer", color: "#8b949e", padding: 0, fontSize: 12, flexShrink: 0 }}>
                           {collapsedIds.has(task.id) ? "⊞" : "⊟"}
                         </button>
                       )}
@@ -1789,36 +1889,33 @@ function ScheduleTableView({
                     </span>
                   </td>
                   {/* DURATION */}
-                  <td style={{ ...colStyle(80), textAlign: "center", color: "#8b949e" }}>
-                    {task.durationDays === 1 ? "1 day" : `${task.durationDays} days`}
-                  </td>
+                  <td style={{ ...col("dur"), textAlign: "center", color: "#8b949e" }}>{task.durationDays === 1 ? "1 day" : `${task.durationDays} days`}</td>
                   {/* % */}
-                  <td style={{ ...colStyle(50), textAlign: "center", color: task.percentComplete === 100 ? "#22c55e" : "#e6edf3" }}>
-                    {task.percentComplete}%
-                  </td>
+                  <td style={{ ...col("pct"), textAlign: "center", color: task.percentComplete === 100 ? "#22c55e" : "#e6edf3" }}>{task.percentComplete}%</td>
                   {/* PLANNED START */}
-                  <td style={{ ...colStyle(100), color: "#8b949e" }}>
-                    {fmtDate(task.startDate)}
-                  </td>
+                  <td style={{ ...col("start"), color: "#8b949e" }}>{fmtDate(task.startDate)}</td>
                   {/* PLANNED END */}
-                  <td style={{ ...colStyle(100), color: "#8b949e" }}>
-                    {fmtDate(task.endDate)}
-                  </td>
+                  <td style={{ ...col("end"), color: "#8b949e" }}>{fmtDate(task.endDate)}</td>
                   {/* ACTUAL FINISH */}
-                  <td style={{ ...colStyle(100), color: task.actualFinish ? "#22c55e" : "#484f58" }}>
-                    {fmtDate(task.actualFinish)}
-                  </td>
+                  <td style={{ ...col("actual"), color: task.actualFinish ? "#22c55e" : "#484f58" }}>{fmtDate(task.actualFinish)}</td>
                   {/* PRIORITY */}
-                  <td style={{ ...colStyle(80), color: priorityColor(task.priority), fontWeight: task.priority ? 600 : 400, textAlign: "center" }}>
-                    {task.priority ?? ""}
-                  </td>
+                  <td style={{ ...col("priority"), color: priorityColor(task.priority), fontWeight: task.priority ? 600 : 400, textAlign: "center" }}>{task.priority ?? ""}</td>
                   {/* STATUS */}
-                  <td style={{ ...colStyle(100), color: statusColor(task.status) }}>
-                    {statusLabel(task.status)}
-                  </td>
-                  {/* ASSIGNEE */}
-                  <td style={{ ...colStyle(110), color: "#8b949e", borderRight: "none" }}>
-                    {task.assignee ? (task.assignee.length > 14 ? task.assignee.slice(0, 14) + "…" : task.assignee) : ""}
+                  <td style={{ ...col("status"), color: statusColor(task.status) }}>{statusLabel(task.status)}</td>
+                  {/* ASSIGNEE + subtask button */}
+                  <td style={{ ...col("assignee"), borderRight: "none" }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
+                      <span style={{ flex: 1, overflow: "hidden", textOverflow: "ellipsis" }}>
+                        {task.assignee ? (task.assignee.length > 12 ? task.assignee.slice(0, 12) + "…" : task.assignee) : ""}
+                      </span>
+                      {canEdit && (
+                        <button onClick={e => { e.stopPropagation(); setAddSubFor(task); }}
+                          title="Add subtask"
+                          style={{ flexShrink: 0, background: "none", border: "1px solid #30373f", borderRadius: 4, color: "#8b949e", fontSize: 12, lineHeight: 1, cursor: "pointer", padding: "1px 5px" }}>
+                          +
+                        </button>
+                      )}
+                    </div>
                   </td>
                 </tr>
               );
@@ -1827,15 +1924,39 @@ function ScheduleTableView({
         </table>
       </div>
 
+      {/* Context menu */}
+      {ctxMenu && (
+        <div style={{ position: "fixed", left: ctxMenu.x, top: ctxMenu.y, background: "#1e2736", border: "1px solid #30373f", borderRadius: 8, zIndex: 200, minWidth: 190, boxShadow: "0 8px 32px rgba(0,0,0,0.7)", overflow: "hidden" }}
+          onClick={e => e.stopPropagation()}>
+          <button style={CTX_BTN} className="hover:bg-[#2d3748]" onClick={() => { setEditTask(ctxMenu.task); setCtxMenu(null); }}>✏️ Edit Task</button>
+          <button style={CTX_BTN} className="hover:bg-[#2d3748]" onClick={() => { setAddSubFor(ctxMenu.task); setCtxMenu(null); }}>⊕ Add Subtask</button>
+          <div style={{ height: 1, background: "#21262d", margin: "2px 0" }} />
+          <button style={CTX_BTN} className="hover:bg-[#2d3748]" onClick={() => { indent(ctxMenu.task); setCtxMenu(null); }} title="Make child of the task above it">
+            → Indent
+          </button>
+          <button style={{ ...CTX_BTN, color: ctxMenu.task.parentId ? "#e6edf3" : "#484f58" }} className="hover:bg-[#2d3748]"
+            onClick={() => { if (ctxMenu.task.parentId) { outdent(ctxMenu.task); setCtxMenu(null); } }}>
+            ← Outdent
+          </button>
+          <button style={CTX_BTN} className="hover:bg-[#2d3748]" onClick={() => { setSettingParentFor(ctxMenu.task); setCtxMenu(null); }}>🔗 Set Parent…</button>
+          {ctxMenu.task.parentId && (
+            <button style={{ ...CTX_BTN, color: "#f87171" }} className="hover:bg-[#2d3748]" onClick={() => { removeParent(ctxMenu.task); setCtxMenu(null); }}>✕ Remove Parent</button>
+          )}
+        </div>
+      )}
+
       {editTask && (
-        <EditTaskModal
-          task={editTask}
-          companyId={companyId}
-          clientId={clientId}
+        <EditTaskModal task={editTask} companyId={companyId} clientId={clientId}
           onUpdate={updated => { onTasksChange(tasks.map(t => t.id === updated.id ? updated : t)); setEditTask(null); }}
           onDelete={id => { onTasksChange(tasks.filter(t => t.id !== id)); setEditTask(null); }}
-          onClose={() => setEditTask(null)}
-        />
+          onClose={() => setEditTask(null)} />
+      )}
+
+      {addSubFor && (
+        <AddTaskModal companyId={companyId} clientId={clientId} phases={phases}
+          defaultParentId={addSubFor.id} defaultParentName={addSubFor.name}
+          onCreate={task => { onTasksChange([...tasks, task]); setAddSubFor(null); }}
+          onClose={() => setAddSubFor(null)} />
       )}
     </>
   );
@@ -2061,7 +2182,7 @@ export default function ClientScheduleTab({ companyId, clientId, initialTasks, c
           )}
         </div>
       ) : viewMode === "table" ? (
-        <ScheduleTableView tasks={tasks} companyId={companyId} clientId={clientId} onTasksChange={setTasks} />
+        <ScheduleTableView tasks={tasks} companyId={companyId} clientId={clientId} onTasksChange={setTasks} canEdit={canEdit} />
       ) : (
         <div className="rounded-xl overflow-hidden" style={{ border: "1px solid #30373f" }}>
           <ClientGanttChart tasks={tasks} projectStart={projectStart} companyId={companyId} clientId={clientId} canEdit={canEdit} onTasksChange={setTasks} collapsed={collapsed} setCollapsed={setCollapsed} />
