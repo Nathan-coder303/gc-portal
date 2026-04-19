@@ -26,7 +26,7 @@ export async function POST(
   if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const body = await req.json();
-  const { phase, name, durationDays, startDate, endDate, predecessorIds, parentId, trade, assignee, isMilestone, notes } = body;
+  const { phase, name, durationDays, startDate, endDate, predecessorIds, parentId, trade, assignee, isMilestone, notes, priority, actualFinish, sortOrder } = body;
 
   if (!name) return NextResponse.json({ error: "name is required" }, { status: 400 });
 
@@ -45,6 +45,9 @@ export async function POST(
       assignee: assignee ?? null,
       isMilestone: isMilestone ?? false,
       notes: notes ?? null,
+      priority: priority ?? null,
+      actualFinish: actualFinish ? new Date(actualFinish) : null,
+      sortOrder: sortOrder ?? 0,
     },
   });
 

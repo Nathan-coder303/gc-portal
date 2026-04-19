@@ -46,6 +46,9 @@ type ClientTask = {
   status: string;
   percentComplete: number;
   notes: string | null;
+  priority: string | null;
+  actualFinish: string | null;
+  sortOrder: number;
 };
 
 type DragState = {
@@ -436,6 +439,87 @@ const SCHEDULE_TEMPLATES: ScheduleTemplate[] = [
       { phase: "Final", name: "Certificate of Occupancy", durationDays: 1, offsetDays: 113, isMilestone: true },
     ],
   },
+  {
+    id: "additions-v1",
+    label: "Additions v1",
+    emoji: "🏗️",
+    description: "Home addition · full schedule · ~169 days",
+    tasks: [
+      // Pre-Construction
+      { phase: "Pre-Construction", name: "Demolition existing wood", durationDays: 3, offsetDays: 0 },
+      { phase: "Pre-Construction", name: "Excavation", durationDays: 3, offsetDays: 3 },
+      // Shell - Footings
+      { phase: "Shell - Footings", name: "Forming", durationDays: 1, offsetDays: 0 },
+      { phase: "Shell - Footings", name: "Footings Rebars Installation", durationDays: 3, offsetDays: 1, trade: "Concrete" },
+      { phase: "Shell - Footings", name: "Footings Inspection", durationDays: 1, offsetDays: 4, isMilestone: true },
+      { phase: "Shell - Footings", name: "Footings Pouring Concrete", durationDays: 1, offsetDays: 5, trade: "Concrete" },
+      // Shell - 1st Lift
+      { phase: "Shell - 1st Lift", name: "1st Lift Columns", durationDays: 4, offsetDays: 0, trade: "Concrete" },
+      { phase: "Shell - 1st Lift", name: "1st Lift Blocks", durationDays: 4, offsetDays: 0, trade: "Masonry" },
+      // Shell - Slab on Grade
+      { phase: "Shell - Slab on Grade", name: "SOG Rebars Installation", durationDays: 4, offsetDays: 0, trade: "Concrete" },
+      { phase: "Shell - Slab on Grade", name: "SOG Inspection", durationDays: 1, offsetDays: 4, isMilestone: true },
+      { phase: "Shell - Slab on Grade", name: "SOG Pouring Concrete", durationDays: 1, offsetDays: 5, trade: "Concrete" },
+      // Shell - Tie Beam
+      { phase: "Shell - Tie Beam", name: "Tie Beam Rebars Installation", durationDays: 5, offsetDays: 0, trade: "Concrete" },
+      { phase: "Shell - Tie Beam", name: "Tie Beam Rebars Inspection", durationDays: 1, offsetDays: 5, isMilestone: true },
+      { phase: "Shell - Tie Beam", name: "Tie Beam Pouring Concrete", durationDays: 1, offsetDays: 6, trade: "Concrete" },
+      // Shell - Trusses
+      { phase: "Shell - Trusses", name: "Trusses Installation", durationDays: 10, offsetDays: 0, trade: "Framing" },
+      { phase: "Shell - Trusses", name: "Plywood Sheathing", durationDays: 5, offsetDays: 10, trade: "Framing" },
+      // Plumbing
+      { phase: "Plumbing", name: "Plumbing Underground Installation", durationDays: 4, offsetDays: 0, trade: "Plumbing" },
+      { phase: "Plumbing", name: "Plumbing Underground Inspection", durationDays: 1, offsetDays: 4, isMilestone: true },
+      { phase: "Plumbing", name: "Plumbing Rough Installation", durationDays: 1, offsetDays: 5, trade: "Plumbing" },
+      { phase: "Plumbing", name: "Plumbing Rough Inspection", durationDays: 1, offsetDays: 6, isMilestone: true },
+      { phase: "Plumbing", name: "Toilets Installation", durationDays: 1, offsetDays: 7, trade: "Plumbing" },
+      { phase: "Plumbing", name: "Vanity Installation", durationDays: 1, offsetDays: 8, trade: "Plumbing" },
+      { phase: "Plumbing", name: "Bathtub Installation", durationDays: 1, offsetDays: 9, trade: "Plumbing" },
+      { phase: "Plumbing", name: "Plumbing Final Inspection", durationDays: 1, offsetDays: 10, isMilestone: true },
+      // Electrical
+      { phase: "Electrical", name: "Electrical Underground", durationDays: 1, offsetDays: 0, trade: "Electrical" },
+      { phase: "Electrical", name: "Electrical Rough", durationDays: 5, offsetDays: 1, trade: "Electrical" },
+      { phase: "Electrical", name: "Electrical Rough Inspection", durationDays: 1, offsetDays: 6, isMilestone: true },
+      { phase: "Electrical", name: "Electrical Trims and Outlets", durationDays: 4, offsetDays: 7, trade: "Electrical" },
+      { phase: "Electrical", name: "Electrical Final Inspection", durationDays: 1, offsetDays: 11, isMilestone: true },
+      // Roof
+      { phase: "Roof", name: "Flat Roof Installation", durationDays: 5, offsetDays: 0, trade: "Roofing" },
+      { phase: "Roof", name: "Flat Roof Final Inspection", durationDays: 1, offsetDays: 5, isMilestone: true },
+      // Windows
+      { phase: "Windows", name: "Windows Installation", durationDays: 3, offsetDays: 0, trade: "Windows" },
+      { phase: "Windows", name: "Windows Inspection", durationDays: 1, offsetDays: 3, isMilestone: true },
+      // Drywall
+      { phase: "Drywall", name: "Wall Insulation", durationDays: 3, offsetDays: 0, trade: "Insulation" },
+      { phase: "Drywall", name: "Roof Insulation", durationDays: 4, offsetDays: 0, trade: "Insulation" },
+      { phase: "Drywall", name: "Insulation Inspection", durationDays: 1, offsetDays: 4, isMilestone: true },
+      { phase: "Drywall", name: "Framing Installation", durationDays: 5, offsetDays: 5, trade: "Framing" },
+      { phase: "Drywall", name: "Framing Inspection", durationDays: 1, offsetDays: 10, isMilestone: true },
+      { phase: "Drywall", name: "Drywall Hanging", durationDays: 10, offsetDays: 11, trade: "Drywall" },
+      { phase: "Drywall", name: "Drywall Inspection", durationDays: 1, offsetDays: 21, isMilestone: true },
+      { phase: "Drywall", name: "Drywall Finish", durationDays: 7, offsetDays: 22, trade: "Drywall" },
+      { phase: "Drywall", name: "Drywall Finishes Touchup", durationDays: 1, offsetDays: 29, trade: "Drywall" },
+      { phase: "Drywall", name: "Ceilings Paint", durationDays: 3, offsetDays: 30, trade: "Painter" },
+      { phase: "Drywall", name: "Wall Paint", durationDays: 7, offsetDays: 33, trade: "Painter" },
+      // Tiles
+      { phase: "Tiles", name: "Flooring Tiles", durationDays: 7, offsetDays: 0, trade: "Tile" },
+      { phase: "Tiles", name: "Bathroom Wall Tiles", durationDays: 5, offsetDays: 0, trade: "Tile" },
+      // Fine Carpentry
+      { phase: "Fine Carpentry", name: "Baseboards Installation", durationDays: 10, offsetDays: 0, trade: "Carpenter" },
+      { phase: "Fine Carpentry", name: "Doors Installation", durationDays: 3, offsetDays: 0, trade: "Carpenter" },
+      { phase: "Fine Carpentry", name: "Doors Casings Installation", durationDays: 5, offsetDays: 3, trade: "Carpenter" },
+      // Exterior
+      { phase: "Exterior", name: "Stucco", durationDays: 60, offsetDays: 0, trade: "Stucco" },
+      { phase: "Exterior", name: "Exterior Paint", durationDays: 60, offsetDays: 60, trade: "Painter" },
+      // HVAC
+      { phase: "HVAC", name: "HVAC Ducts Installation", durationDays: 3, offsetDays: 0, trade: "HVAC" },
+      { phase: "HVAC", name: "HVAC Rough Inspection", durationDays: 1, offsetDays: 3, isMilestone: true },
+      { phase: "HVAC", name: "HVAC Mini Split Installation", durationDays: 1, offsetDays: 4, trade: "HVAC" },
+      { phase: "HVAC", name: "HVAC Final Inspection", durationDays: 1, offsetDays: 5, isMilestone: true },
+      // Closeout
+      { phase: "Closeout", name: "Final Cleaning", durationDays: 1, offsetDays: 0 },
+      { phase: "Closeout", name: "Building Final Inspection", durationDays: 1, offsetDays: 1, isMilestone: true },
+    ],
+  },
 ];
 
 // ── Load Template Modal ────────────────────────────────────────────────────────
@@ -476,7 +560,26 @@ function LoadTemplateModal({
           isMilestone: t.isMilestone ?? false,
         }),
       });
-      const task = await res.json();
+      const raw = await res.json();
+      const task: ClientTask = {
+        id: raw.id,
+        phase: raw.phase ?? t.phase,
+        name: raw.name ?? t.name,
+        durationDays: raw.durationDays ?? t.durationDays,
+        startDate: raw.startDate ?? null,
+        endDate: raw.endDate ?? null,
+        predecessorIds: raw.predecessorIds ?? [],
+        parentId: raw.parentId ?? null,
+        trade: raw.trade ?? t.trade ?? null,
+        assignee: raw.assignee ?? null,
+        isMilestone: raw.isMilestone ?? t.isMilestone ?? false,
+        status: raw.status ?? "NOT_STARTED",
+        percentComplete: raw.percentComplete ?? 0,
+        notes: raw.notes ?? null,
+        priority: raw.priority ?? null,
+        actualFinish: raw.actualFinish ?? null,
+        sortOrder: raw.sortOrder ?? 0,
+      };
       created.push(task);
     }
     setLoading(false);
@@ -679,7 +782,7 @@ function EditModal({
 
           {otherTasks.length > 0 && (
             <div>
-              <label className="block text-[11px] mb-1" style={{ color: "#8b949e" }}>Dependencies (predecessors)</label>
+              <label className="block text-[11px] mb-1" style={{ color: "#8b949e" }}>Linked From — tasks that must finish before this one can start</label>
               <div className="flex flex-wrap gap-1.5">
                 {otherTasks.map(t => {
                   const sel = form.predecessorIds.includes(t.id);
@@ -737,7 +840,13 @@ function AddTaskModal({ companyId, clientId, phases, onCreate, onClose, defaultP
         method: "POST", headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ name: form.name.trim(), phase: form.phase.trim() || "General", durationDays: dur, startDate: toDateStr(start), endDate: toDateStr(end), trade: form.trade.trim() || null, assignee: form.assignee.trim() || null, parentId: defaultParentId ?? null }),
       });
-      const task = await res.json();
+      const raw = await res.json();
+      const task: ClientTask = {
+        predecessorIds: [], parentId: null, trade: null, assignee: null,
+        isMilestone: false, status: "NOT_STARTED", percentComplete: 0, notes: null,
+        priority: null, actualFinish: null, sortOrder: 0,
+        ...raw,
+      };
       onCreate(task);
     } finally { setSaving(false); }
   }
@@ -991,8 +1100,14 @@ function ClientGanttChart({ tasks, projectStart, companyId, clientId, canEdit, o
       method: "POST", headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ name: task.name + " (copy)", phase: task.phase, durationDays: task.durationDays, startDate: task.startDate, endDate: task.endDate, trade: task.trade, assignee: task.assignee, isMilestone: task.isMilestone, parentId: task.parentId, notes: task.notes }),
     });
-    const created = await res.json();
-    onTasksChange([...tasks, { ...created, predecessorIds: [], parentId: created.parentId ?? null, notes: created.notes ?? null }]);
+    const raw = await res.json();
+    const created: ClientTask = {
+      predecessorIds: [], parentId: null, trade: null, assignee: null,
+      isMilestone: false, status: "NOT_STARTED", percentComplete: 0, notes: null,
+      priority: null, actualFinish: null, sortOrder: 0,
+      ...raw,
+    };
+    onTasksChange([...tasks, created]);
   }
 
   async function handleDeleteTask(task: ClientTask) {
@@ -1277,6 +1392,455 @@ function ClientGanttChart({ tasks, projectStart, companyId, clientId, canEdit, o
   );
 }
 
+// ── Edit Task Modal (for table view double-click) ─────────────────────────────
+
+function EditTaskModal({
+  task, companyId, clientId, onUpdate, onDelete, onClose,
+}: {
+  task: ClientTask; companyId: string; clientId: string;
+  onUpdate: (updated: ClientTask) => void; onDelete: (id: string) => void; onClose: () => void;
+}) {
+  const [form, setForm] = useState({
+    name: task.name,
+    phase: task.phase,
+    durationDays: String(task.durationDays),
+    startDate: task.startDate ?? "",
+    endDate: task.endDate ?? "",
+    actualFinish: task.actualFinish ?? "",
+    percentComplete: String(task.percentComplete),
+    status: task.status,
+    priority: task.priority ?? "",
+    assignee: task.assignee ?? "",
+    trade: task.trade ?? "",
+    notes: task.notes ?? "",
+    predecessorIds: task.predecessorIds.join(", "),
+    isMilestone: task.isMilestone,
+  });
+  const [saving, setSaving] = useState(false);
+  const [confirmDelete, setConfirmDelete] = useState(false);
+
+  async function handleSave() {
+    setSaving(true);
+    const dur = Math.max(1, parseInt(form.durationDays) || 1);
+    const body = {
+      name: form.name.trim() || task.name,
+      phase: form.phase.trim() || "General",
+      durationDays: dur,
+      startDate: form.startDate || null,
+      endDate: form.endDate || null,
+      actualFinish: form.actualFinish || null,
+      percentComplete: Math.min(100, Math.max(0, parseInt(form.percentComplete) || 0)),
+      status: form.status,
+      priority: form.priority || null,
+      assignee: form.assignee.trim() || null,
+      trade: form.trade.trim() || null,
+      notes: form.notes.trim() || null,
+      predecessorIds: form.predecessorIds.split(",").map(s => s.trim()).filter(Boolean),
+      isMilestone: form.isMilestone,
+    };
+    try {
+      const res = await fetch(`/api/${companyId}/clients/${clientId}/schedule/${task.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      });
+      const updated = await res.json();
+      onUpdate({ ...task, ...updated });
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function handleDelete() {
+    await fetch(`/api/${companyId}/clients/${clientId}/schedule/${task.id}`, { method: "DELETE" });
+    onDelete(task.id);
+  }
+
+  return (
+    <div
+      style={{ position: "fixed", inset: 0, zIndex: 80, background: "rgba(0,0,0,0.85)", display: "flex", alignItems: "center", justifyContent: "center", padding: 16 }}
+      onClick={onClose}
+    >
+      <div
+        style={{ background: "#161b22", border: "1px solid #30373f", borderRadius: 14, padding: 24, width: "100%", maxWidth: 600, maxHeight: "92vh", overflowY: "auto" }}
+        onClick={e => e.stopPropagation()}
+      >
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="text-sm font-bold" style={{ color: "#e6edf3" }}>Edit Task</h3>
+          <div className="flex gap-2 items-center">
+            {confirmDelete ? (
+              <>
+                <span className="text-xs" style={{ color: "#8b949e" }}>Delete this task?</span>
+                <button onClick={handleDelete} className="text-xs px-2 py-1 rounded font-bold" style={{ background: "#f8514922", color: "#f85149" }}>Yes, delete</button>
+                <button onClick={() => setConfirmDelete(false)} className="text-xs px-2 py-1 rounded" style={{ color: "#8b949e", border: "1px solid #30373f" }}>No</button>
+              </>
+            ) : (
+              <button onClick={() => setConfirmDelete(true)} className="text-xs px-2 py-1 rounded" style={{ background: "#2d1b1b", color: "#f87171" }}>Delete</button>
+            )}
+            <button onClick={onClose} className="text-lg leading-none ml-1" style={{ color: "#8b949e" }}>×</button>
+          </div>
+        </div>
+
+        <div className="space-y-3">
+          <div className="grid grid-cols-2 gap-3">
+            <div className="col-span-2">
+              <label className="block text-[11px] mb-1" style={{ color: "#8b949e" }}>Task Name *</label>
+              <input value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} style={INPUT} className="outline-none" autoFocus />
+            </div>
+            <div>
+              <label className="block text-[11px] mb-1" style={{ color: "#8b949e" }}>Phase</label>
+              <input value={form.phase} onChange={e => setForm(f => ({ ...f, phase: e.target.value }))} style={INPUT} className="outline-none" placeholder="General" />
+            </div>
+            <div>
+              <label className="block text-[11px] mb-1" style={{ color: "#8b949e" }}>Duration (days)</label>
+              <input type="number" min="1" value={form.durationDays} onChange={e => setForm(f => ({ ...f, durationDays: e.target.value }))} style={INPUT} className="outline-none" />
+            </div>
+            <div>
+              <label className="block text-[11px] mb-1" style={{ color: "#8b949e" }}>Planned Start</label>
+              <input type="date" value={form.startDate} onChange={e => setForm(f => ({ ...f, startDate: e.target.value }))} style={INPUT} className="outline-none" />
+            </div>
+            <div>
+              <label className="block text-[11px] mb-1" style={{ color: "#8b949e" }}>Planned End</label>
+              <input type="date" value={form.endDate} onChange={e => setForm(f => ({ ...f, endDate: e.target.value }))} style={INPUT} className="outline-none" />
+            </div>
+            <div>
+              <label className="block text-[11px] mb-1" style={{ color: "#8b949e" }}>Actual Finish</label>
+              <input type="date" value={form.actualFinish} onChange={e => setForm(f => ({ ...f, actualFinish: e.target.value }))} style={INPUT} className="outline-none" />
+            </div>
+            <div>
+              <label className="block text-[11px] mb-1" style={{ color: "#8b949e" }}>% Complete</label>
+              <input type="number" min="0" max="100" value={form.percentComplete} onChange={e => setForm(f => ({ ...f, percentComplete: e.target.value }))} style={INPUT} className="outline-none" />
+            </div>
+            <div>
+              <label className="block text-[11px] mb-1" style={{ color: "#8b949e" }}>Status</label>
+              <select value={form.status} onChange={e => setForm(f => ({ ...f, status: e.target.value }))} style={{ ...INPUT, cursor: "pointer", appearance: "none" }} className="outline-none">
+                <option value="NOT_STARTED">Not Started</option>
+                <option value="IN_PROGRESS">In Progress</option>
+                <option value="DONE">Done</option>
+                <option value="BLOCKED">Blocked</option>
+              </select>
+            </div>
+            <div>
+              <label className="block text-[11px] mb-1" style={{ color: "#8b949e" }}>Priority</label>
+              <select value={form.priority} onChange={e => setForm(f => ({ ...f, priority: e.target.value }))} style={{ ...INPUT, cursor: "pointer", appearance: "none" }} className="outline-none">
+                <option value="">— None —</option>
+                <option value="HIGH">HIGH</option>
+                <option value="MEDIUM">MEDIUM</option>
+                <option value="LOW">LOW</option>
+              </select>
+            </div>
+            <div>
+              <label className="block text-[11px] mb-1" style={{ color: "#8b949e" }}>Assignee</label>
+              <input value={form.assignee} onChange={e => setForm(f => ({ ...f, assignee: e.target.value }))} style={INPUT} className="outline-none" placeholder="e.g. Crew A" />
+            </div>
+            <div>
+              <label className="block text-[11px] mb-1" style={{ color: "#8b949e" }}>Trade</label>
+              <input value={form.trade} onChange={e => setForm(f => ({ ...f, trade: e.target.value }))} style={INPUT} className="outline-none" placeholder="e.g. Framing" />
+            </div>
+          </div>
+
+          <div>
+            <label className="block text-[11px] mb-1" style={{ color: "#8b949e" }}>Notes</label>
+            <textarea value={form.notes} onChange={e => setForm(f => ({ ...f, notes: e.target.value }))} rows={3} style={{ ...INPUT, resize: "none" }} className="outline-none" />
+          </div>
+
+          <div>
+            <label className="block text-[11px] mb-1" style={{ color: "#8b949e" }}>Linked From — task IDs that must finish before this task can start (comma-separated)</label>
+            <textarea value={form.predecessorIds} onChange={e => setForm(f => ({ ...f, predecessorIds: e.target.value }))} rows={2} style={{ ...INPUT, resize: "none", fontFamily: "monospace", fontSize: 11 }} className="outline-none" placeholder="task-id-1, task-id-2, ..." />
+          </div>
+
+          <label className="flex items-center gap-2 cursor-pointer select-none text-xs" style={{ color: "#8b949e" }}>
+            <input type="checkbox" checked={form.isMilestone} onChange={e => setForm(f => ({ ...f, isMilestone: e.target.checked }))} />
+            Milestone
+          </label>
+        </div>
+
+        <div className="flex gap-2 mt-5">
+          <button onClick={handleSave} disabled={!form.name.trim() || saving} className="flex-1 py-2 text-xs font-semibold rounded-lg disabled:opacity-50" style={{ background: GOLD, color: "#0d1117" }}>
+            {saving ? "Saving…" : "Save Changes"}
+          </button>
+          <button onClick={onClose} className="px-4 py-2 text-xs rounded-lg" style={{ background: "#30373f", color: "#8b949e" }}>Cancel</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ── Schedule Table View ────────────────────────────────────────────────────────
+
+function fmtDate(s: string | null | undefined): string {
+  if (!s) return "";
+  const d = parseDate(s);
+  if (!d) return "";
+  return `${d.getMonth() + 1}/${d.getDate()}/${d.getFullYear()}`;
+}
+
+type TableRow = {
+  task: ClientTask;
+  rowNum: number;    // 1-based sequential
+  depth: number;
+  wbs: string;
+  hasChildren: boolean;
+};
+
+function buildTableRows(tasks: ClientTask[], collapsedIds: Set<string>): TableRow[] {
+  // Sort tasks by sortOrder
+  const sorted = [...tasks].sort((a, b) => a.sortOrder - b.sortOrder);
+
+  // Build parent→children map
+  const childrenOf = new Map<string | null, ClientTask[]>();
+  for (const t of sorted) {
+    const pid = t.parentId ?? null;
+    if (!childrenOf.has(pid)) childrenOf.set(pid, []);
+    childrenOf.get(pid)!.push(t);
+  }
+
+  const hasChildrenSet = new Set<string>();
+  for (const t of sorted) {
+    if (t.parentId) hasChildrenSet.add(t.parentId);
+  }
+
+  // Compute depth
+  const depthOf = new Map<string, number>();
+  function getDepth(id: string): number {
+    if (depthOf.has(id)) return depthOf.get(id)!;
+    const task = sorted.find(t => t.id === id);
+    if (!task || !task.parentId) { depthOf.set(id, 0); return 0; }
+    const d = getDepth(task.parentId) + 1;
+    depthOf.set(id, d);
+    return d;
+  }
+  for (const t of sorted) getDepth(t.id);
+
+  // WBS numbering: assign sequential numbers at each level
+  const wbsOf = new Map<string, string>();
+  function assignWbs(parentId: string | null, prefix: string) {
+    const children = childrenOf.get(parentId) ?? [];
+    children.forEach((t, idx) => {
+      const wbs = prefix ? `${prefix}.${idx + 1}` : String(idx + 1);
+      wbsOf.set(t.id, wbs);
+      assignWbs(t.id, wbs);
+    });
+  }
+  assignWbs(null, "");
+
+  // Flatten in tree order, respecting collapse
+  const rows: TableRow[] = [];
+  let rowNum = 0;
+
+  function visit(parentId: string | null) {
+    const children = childrenOf.get(parentId) ?? [];
+    for (const t of children) {
+      rowNum++;
+      rows.push({
+        task: t,
+        rowNum,
+        depth: depthOf.get(t.id) ?? 0,
+        wbs: wbsOf.get(t.id) ?? "",
+        hasChildren: hasChildrenSet.has(t.id),
+      });
+      if (!collapsedIds.has(t.id)) {
+        visit(t.id);
+      }
+    }
+  }
+  visit(null);
+
+  return rows;
+}
+
+function ScheduleTableView({
+  tasks, companyId, clientId, onTasksChange,
+}: {
+  tasks: ClientTask[];
+  companyId: string;
+  clientId: string;
+  onTasksChange: (tasks: ClientTask[]) => void;
+}) {
+  const [collapsedIds, setCollapsedIds] = useState<Set<string>>(new Set());
+  const [editTask, setEditTask] = useState<ClientTask | null>(null);
+
+  const rows = useMemo(() => buildTableRows(tasks, collapsedIds), [tasks, collapsedIds]);
+
+  // Build rowNum→task id map for predecessor display
+  const idToRowNum = useMemo(() => {
+    const map = new Map<string, number>();
+    for (const r of rows) map.set(r.task.id, r.rowNum);
+    return map;
+  }, [rows]);
+
+  function toggleCollapse(id: string) {
+    setCollapsedIds(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      return next;
+    });
+  }
+
+  function statusLabel(s: string) {
+    const map: Record<string, string> = { NOT_STARTED: "To Do", IN_PROGRESS: "In Progress", DONE: "Done", BLOCKED: "Blocked" };
+    return map[s] ?? s;
+  }
+
+  function statusColor(s: string) {
+    const map: Record<string, string> = { NOT_STARTED: GOLD, IN_PROGRESS: "#3b82f6", DONE: "#22c55e", BLOCKED: "#f97316" };
+    return map[s] ?? "#8b949e";
+  }
+
+  function priorityColor(p: string | null) {
+    if (p === "HIGH") return "#f87171";
+    if (p === "MEDIUM") return GOLD;
+    if (p === "LOW") return "#22c55e";
+    return "#8b949e";
+  }
+
+  const colStyle = (width: number): React.CSSProperties => ({
+    minWidth: width,
+    maxWidth: width,
+    padding: "0 8px",
+    borderRight: "1px solid #21262d",
+    overflow: "hidden",
+    textOverflow: "ellipsis",
+    whiteSpace: "nowrap",
+    fontSize: 12,
+    color: "#e6edf3",
+    height: 36,
+    display: "table-cell",
+    verticalAlign: "middle",
+  });
+
+  const thStyle = (width: number): React.CSSProperties => ({
+    ...colStyle(width),
+    background: "#161b22",
+    color: "#8b949e",
+    fontWeight: 700,
+    fontSize: 11,
+    letterSpacing: "0.04em",
+    textTransform: "uppercase",
+    height: 32,
+    position: "sticky",
+    top: 0,
+    zIndex: 2,
+  });
+
+  return (
+    <>
+      <div style={{ overflowX: "auto", overflowY: "auto", maxHeight: "70vh", borderRadius: 8, border: "1px solid #21262d" }}>
+        <table style={{ borderCollapse: "collapse", minWidth: 1200, tableLayout: "fixed", width: "100%" }}>
+          <thead>
+            <tr>
+              <th style={{ ...thStyle(40), position: "sticky", left: 0, zIndex: 3, background: "#161b22" }}>#</th>
+              <th style={thStyle(70)} title="Finish-to-Start: this task cannot start until the linked tasks are finished">LINKED FROM</th>
+              <th style={thStyle(70)}>WBS</th>
+              <th style={{ ...thStyle(240), textAlign: "left" }}>TASK NAME</th>
+              <th style={thStyle(80)}>DURATION</th>
+              <th style={thStyle(50)}>%</th>
+              <th style={thStyle(100)}>PLANNED START</th>
+              <th style={thStyle(100)}>PLANNED END</th>
+              <th style={thStyle(100)}>ACTUAL FINISH</th>
+              <th style={thStyle(80)}>PRIORITY</th>
+              <th style={thStyle(100)}>STATUS</th>
+              <th style={{ ...thStyle(110), borderRight: "none" }}>ASSIGNEE</th>
+            </tr>
+          </thead>
+          <tbody>
+            {rows.map(r => {
+              const { task, rowNum: rn, depth, wbs, hasChildren } = r;
+              const isParentRow = hasChildren;
+              const rowBg = isParentRow ? "#1e2736" : rn % 2 === 0 ? "#0d1117" : "#0a0e14";
+              const linkStr = task.predecessorIds
+                .map(pid => idToRowNum.get(pid))
+                .filter(Boolean)
+                .join(", ");
+
+              return (
+                <tr
+                  key={task.id}
+                  onDoubleClick={() => setEditTask(task)}
+                  style={{ background: rowBg, cursor: "pointer" }}
+                  className="hover:brightness-110"
+                >
+                  {/* # — sticky */}
+                  <td style={{ ...colStyle(40), position: "sticky", left: 0, background: rowBg, zIndex: 1, color: "#484f58", textAlign: "center" }}>
+                    {rn}
+                  </td>
+                  {/* LINK */}
+                  <td style={{ ...colStyle(60), color: "#8b949e", textAlign: "center" }}>
+                    {linkStr}
+                  </td>
+                  {/* WBS */}
+                  <td style={{ ...colStyle(70), color: "#8b949e" }}>
+                    {wbs}
+                  </td>
+                  {/* TASK NAME */}
+                  <td style={{ ...colStyle(240), paddingLeft: 8 + depth * 16, fontWeight: isParentRow ? 700 : 400, color: isParentRow ? GOLD : task.status === "DONE" ? "#484f58" : "#e6edf3" }}>
+                    <span style={{ display: "inline-flex", alignItems: "center", gap: 4, width: "100%", overflow: "hidden" }}>
+                      {hasChildren && (
+                        <button
+                          onClick={e => { e.stopPropagation(); toggleCollapse(task.id); }}
+                          style={{ background: "none", border: "none", cursor: "pointer", color: "#8b949e", padding: 0, fontSize: 12, flexShrink: 0 }}
+                        >
+                          {collapsedIds.has(task.id) ? "⊞" : "⊟"}
+                        </button>
+                      )}
+                      <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                        {task.isMilestone ? "◆ " : ""}{task.name}
+                      </span>
+                    </span>
+                  </td>
+                  {/* DURATION */}
+                  <td style={{ ...colStyle(80), textAlign: "center", color: "#8b949e" }}>
+                    {task.durationDays === 1 ? "1 day" : `${task.durationDays} days`}
+                  </td>
+                  {/* % */}
+                  <td style={{ ...colStyle(50), textAlign: "center", color: task.percentComplete === 100 ? "#22c55e" : "#e6edf3" }}>
+                    {task.percentComplete}%
+                  </td>
+                  {/* PLANNED START */}
+                  <td style={{ ...colStyle(100), color: "#8b949e" }}>
+                    {fmtDate(task.startDate)}
+                  </td>
+                  {/* PLANNED END */}
+                  <td style={{ ...colStyle(100), color: "#8b949e" }}>
+                    {fmtDate(task.endDate)}
+                  </td>
+                  {/* ACTUAL FINISH */}
+                  <td style={{ ...colStyle(100), color: task.actualFinish ? "#22c55e" : "#484f58" }}>
+                    {fmtDate(task.actualFinish)}
+                  </td>
+                  {/* PRIORITY */}
+                  <td style={{ ...colStyle(80), color: priorityColor(task.priority), fontWeight: task.priority ? 600 : 400, textAlign: "center" }}>
+                    {task.priority ?? ""}
+                  </td>
+                  {/* STATUS */}
+                  <td style={{ ...colStyle(100), color: statusColor(task.status) }}>
+                    {statusLabel(task.status)}
+                  </td>
+                  {/* ASSIGNEE */}
+                  <td style={{ ...colStyle(110), color: "#8b949e", borderRight: "none" }}>
+                    {task.assignee ? (task.assignee.length > 14 ? task.assignee.slice(0, 14) + "…" : task.assignee) : ""}
+                  </td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
+
+      {editTask && (
+        <EditTaskModal
+          task={editTask}
+          companyId={companyId}
+          clientId={clientId}
+          onUpdate={updated => { onTasksChange(tasks.map(t => t.id === updated.id ? updated : t)); setEditTask(null); }}
+          onDelete={id => { onTasksChange(tasks.filter(t => t.id !== id)); setEditTask(null); }}
+          onClose={() => setEditTask(null)}
+        />
+      )}
+    </>
+  );
+}
+
 // ── Main Tab ───────────────────────────────────────────────────────────────────
 
 function printScheduleHtml(tasks: ClientTask[]) {
@@ -1325,6 +1889,7 @@ export default function ClientScheduleTab({ companyId, clientId, initialTasks, c
   const [loadingTemplate, setLoadingTemplate] = useState(false);
   const [collapsed, setCollapsed] = useState<Set<string>>(new Set());
   const [shiftingStart, setShiftingStart] = useState(false);
+  const [viewMode, setViewMode] = useState<"table" | "gantt">("table");
 
   const phases = useMemo(() => Array.from(new Set(tasks.map(t => t.phase))), [tasks]);
 
@@ -1422,23 +1987,44 @@ export default function ClientScheduleTab({ companyId, clientId, initialTasks, c
             </div>
           )}
         </div>
-        <div className="flex gap-2 flex-wrap">
+        <div className="flex gap-2 flex-wrap items-center">
+          {/* View toggle */}
+          <div className="flex rounded-lg overflow-hidden" style={{ border: "1px solid #30373f" }}>
+            <button
+              onClick={() => setViewMode("table")}
+              className="text-xs font-semibold px-3 py-1.5"
+              style={{ background: viewMode === "table" ? GOLD : "#1e2736", color: viewMode === "table" ? "#0d1117" : "#8b949e" }}
+            >
+              ☰ Table
+            </button>
+            <button
+              onClick={() => setViewMode("gantt")}
+              className="text-xs font-semibold px-3 py-1.5"
+              style={{ background: viewMode === "gantt" ? GOLD : "#1e2736", color: viewMode === "gantt" ? "#0d1117" : "#8b949e", borderLeft: "1px solid #30373f" }}
+            >
+              📊 Gantt
+            </button>
+          </div>
           {tasks.length > 0 && (
             <>
-              <button
-                onClick={() => setCollapsed(new Set(phases))}
-                className="text-xs font-semibold px-3 py-1.5 rounded-lg"
-                style={{ background: "#1e2736", border: "1px solid #30373f", color: "#8b949e" }}
-              >
-                ▶ Collapse All
-              </button>
-              <button
-                onClick={() => setCollapsed(new Set())}
-                className="text-xs font-semibold px-3 py-1.5 rounded-lg"
-                style={{ background: "#1e2736", border: "1px solid #30373f", color: "#8b949e" }}
-              >
-                ▼ Expand All
-              </button>
+              {viewMode === "gantt" && (
+                <>
+                  <button
+                    onClick={() => setCollapsed(new Set(phases))}
+                    className="text-xs font-semibold px-3 py-1.5 rounded-lg"
+                    style={{ background: "#1e2736", border: "1px solid #30373f", color: "#8b949e" }}
+                  >
+                    ▶ Collapse All
+                  </button>
+                  <button
+                    onClick={() => setCollapsed(new Set())}
+                    className="text-xs font-semibold px-3 py-1.5 rounded-lg"
+                    style={{ background: "#1e2736", border: "1px solid #30373f", color: "#8b949e" }}
+                  >
+                    ▼ Expand All
+                  </button>
+                </>
+              )}
               <button
                 onClick={() => printScheduleHtml(tasks)}
                 className="text-xs font-semibold px-3 py-1.5 rounded-lg"
@@ -1474,6 +2060,8 @@ export default function ClientScheduleTab({ companyId, clientId, initialTasks, c
             </p>
           )}
         </div>
+      ) : viewMode === "table" ? (
+        <ScheduleTableView tasks={tasks} companyId={companyId} clientId={clientId} onTasksChange={setTasks} />
       ) : (
         <div className="rounded-xl overflow-hidden" style={{ border: "1px solid #30373f" }}>
           <ClientGanttChart tasks={tasks} projectStart={projectStart} companyId={companyId} clientId={clientId} canEdit={canEdit} onTasksChange={setTasks} collapsed={collapsed} setCollapsed={setCollapsed} />

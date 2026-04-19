@@ -298,6 +298,9 @@ export default async function ClientDetailPage({
             status: t.status,
             percentComplete: t.percentComplete,
             notes: t.notes,
+            priority: t.priority ?? null,
+            actualFinish: t.actualFinish ? t.actualFinish.toISOString().slice(0, 10) : null,
+            sortOrder: t.sortOrder,
           }))}
         />
       )}
