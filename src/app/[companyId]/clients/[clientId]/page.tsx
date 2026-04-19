@@ -138,8 +138,10 @@ export default async function ClientDetailPage({
     }),
   ]);
 
+  const followUpCount = clientFollowUps.length;
   const tabs = [
     { key: "estimates", label: "Estimates" },
+    { key: "tasks", label: `Tasks${followUpCount > 0 ? ` (${followUpCount})` : ""}` },
     { key: "schedule", label: `Schedule${clientScheduleTasks.length > 0 ? ` (${clientScheduleTasks.length})` : ""}` },
     { key: "change-orders", label: `Change Orders${changeOrders.length > 0 ? ` (${changeOrders.length})` : ""}` },
     { key: "invoices", label: `Invoices${clientInvoices.length > 0 ? ` (${clientInvoices.length})` : ""}` },
@@ -189,39 +191,6 @@ export default async function ClientDetailPage({
         initialTitle={safeClient.coverTitle ?? null}
       /> */}
 
-      {/* Tasks for this client */}
-      {(() => {
-        const todayStr = new Date().toISOString().slice(0, 10);
-        const toItem = (f: typeof clientFollowUps[0]): FollowUpItem => ({
-          id: f.id,
-          text: f.text,
-          audioUrl: f.audioUrl,
-          audioMimeType: f.audioMimeType,
-          audioSize: f.audioSize,
-          clientId: f.clientId,
-          clientName: f.client?.name ?? null,
-          leadId: f.leadId,
-          leadName: f.lead?.name ?? null,
-          completedAt: f.completedAt ? f.completedAt.toISOString() : null,
-          createdAt: f.createdAt.toISOString(),
-          dueDate: f.dueDate ? f.dueDate.toISOString().slice(0, 10) : null,
-        });
-        const todayItems = clientFollowUps.filter(f => !f.dueDate || f.dueDate.toISOString().slice(0, 10) <= todayStr).map(toItem);
-        const upcomingItems = clientFollowUps.filter(f => f.dueDate && f.dueDate.toISOString().slice(0, 10) > todayStr).map(toItem);
-        return (
-          <div className="mb-6">
-            <TodayTaskCard
-              companyId={params.companyId}
-              category="TASK"
-              label="Tasks"
-              initialItems={todayItems}
-              initialUpcoming={upcomingItems}
-              clients={[{ id: safeClient.id, name: safeClient.name }]}
-              leads={[]}
-            />
-          </div>
-        );
-      })()}
 
       {/* Tab bar — wraps on mobile so all tabs are visible without scrolling */}
       <div className="flex flex-wrap gap-2 mb-6">
@@ -245,6 +214,37 @@ export default async function ClientDetailPage({
       </div>
 
       {/* Tab content */}
+      {activeTab === "tasks" && (() => {
+        const todayStr = new Date().toISOString().slice(0, 10);
+        const toItem = (f: typeof clientFollowUps[0]): FollowUpItem => ({
+          id: f.id,
+          text: f.text,
+          audioUrl: f.audioUrl,
+          audioMimeType: f.audioMimeType,
+          audioSize: f.audioSize,
+          clientId: f.clientId,
+          clientName: f.client?.name ?? null,
+          leadId: f.leadId,
+          leadName: f.lead?.name ?? null,
+          completedAt: f.completedAt ? f.completedAt.toISOString() : null,
+          createdAt: f.createdAt.toISOString(),
+          dueDate: f.dueDate ? f.dueDate.toISOString().slice(0, 10) : null,
+        });
+        const todayItems = clientFollowUps.filter(f => !f.dueDate || f.dueDate.toISOString().slice(0, 10) <= todayStr).map(toItem);
+        const upcomingItems = clientFollowUps.filter(f => f.dueDate && f.dueDate.toISOString().slice(0, 10) > todayStr).map(toItem);
+        return (
+          <TodayTaskCard
+            companyId={params.companyId}
+            category="TASK"
+            label="Tasks"
+            initialItems={todayItems}
+            initialUpcoming={upcomingItems}
+            clients={[{ id: safeClient.id, name: safeClient.name }]}
+            leads={[]}
+          />
+        );
+      })()}
+
       {activeTab === "estimates" && (
         <CollapsibleEstimateList
           estimates={safeClient.templates.map(est => ({

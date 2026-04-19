@@ -1324,14 +1324,52 @@ export default function ClientScheduleTab({ companyId, clientId, initialTasks, c
   const [adding, setAdding] = useState(false);
   const [loadingTemplate, setLoadingTemplate] = useState(false);
   const [collapsed, setCollapsed] = useState<Set<string>>(new Set());
+  const [shiftingStart, setShiftingStart] = useState(false);
 
   const phases = useMemo(() => Array.from(new Set(tasks.map(t => t.phase))), [tasks]);
-  const projectStart = useMemo(() => {
+
+  const scheduleStartDate = useMemo(() => {
     const dates = tasks.flatMap(t => [parseDate(t.startDate)]).filter(Boolean) as Date[];
-    if (!dates.length) return new Date();
-    const earliest = dates.reduce((min, d) => d < min ? d : min, dates[0]);
-    return addDays(earliest, -2);
+    if (!dates.length) return null;
+    return dates.reduce((min, d) => d < min ? d : min, dates[0]);
   }, [tasks]);
+
+  const scheduleEndDate = useMemo(() => {
+    const dates = tasks.flatMap(t => [parseDate(t.endDate)]).filter(Boolean) as Date[];
+    if (!dates.length) return null;
+    return dates.reduce((max, d) => d > max ? d : max, dates[0]);
+  }, [tasks]);
+
+  const projectStart = useMemo(() => {
+    return scheduleStartDate ? addDays(scheduleStartDate, -2) : new Date();
+  }, [scheduleStartDate]);
+
+  async function handleShiftStart(newStartStr: string) {
+    if (!scheduleStartDate || !newStartStr) return;
+    const newStart = parseDate(newStartStr);
+    if (!newStart) return;
+    const deltaDays = Math.round((newStart.getTime() - scheduleStartDate.getTime()) / 86400000);
+    if (deltaDays === 0) return;
+    setShiftingStart(true);
+    const updated = tasks.map(t => {
+      const s = parseDate(t.startDate);
+      const e = parseDate(t.endDate);
+      return {
+        ...t,
+        startDate: s ? toDateStr(addDays(s, deltaDays)) : t.startDate,
+        endDate: e ? toDateStr(addDays(e, deltaDays)) : t.endDate,
+      };
+    });
+    setTasks(updated);
+    await Promise.all(updated.map(t =>
+      fetch(`/api/${companyId}/clients/${clientId}/schedule/${t.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ startDate: t.startDate, endDate: t.endDate }),
+      })
+    ));
+    setShiftingStart(false);
+  }
 
   const done = tasks.filter(t => t.status === "DONE").length;
   const inProgress = tasks.filter(t => t.status === "IN_PROGRESS").length;
@@ -1339,6 +1377,39 @@ export default function ClientScheduleTab({ companyId, clientId, initialTasks, c
 
   return (
     <div className="space-y-4">
+      {/* Start / End date bar */}
+      <div className="flex items-center gap-4 px-4 py-3 rounded-xl flex-wrap" style={{ background: "#161b22", border: "1px solid #30373f" }}>
+        <div className="flex items-center gap-2 flex-1 min-w-0">
+          <span className="text-xs font-semibold uppercase tracking-widest shrink-0" style={{ color: "#8b949e" }}>Start</span>
+          {canEdit ? (
+            <input
+              type="date"
+              value={scheduleStartDate ? toDateStr(scheduleStartDate) : ""}
+              onChange={e => handleShiftStart(e.target.value)}
+              disabled={shiftingStart || tasks.length === 0}
+              className="outline-none rounded-lg px-2 py-1 text-sm font-semibold"
+              style={{ background: "#0d1117", border: "1px solid #C9A84C55", color: "#C9A84C", colorScheme: "dark", minWidth: 130 }}
+            />
+          ) : (
+            <span className="text-sm font-semibold" style={{ color: "#C9A84C" }}>
+              {scheduleStartDate ? format(scheduleStartDate, "MMM d, yyyy") : "—"}
+            </span>
+          )}
+          {shiftingStart && <span className="text-xs" style={{ color: "#8b949e" }}>Shifting…</span>}
+        </div>
+        <div className="flex items-center gap-2 flex-1 min-w-0">
+          <span className="text-xs font-semibold uppercase tracking-widest shrink-0" style={{ color: "#8b949e" }}>End</span>
+          <span className="text-sm font-semibold" style={{ color: scheduleEndDate ? "#22c55e" : "#484f58" }}>
+            {scheduleEndDate ? format(scheduleEndDate, "MMM d, yyyy") : "—"}
+          </span>
+          {scheduleStartDate && scheduleEndDate && (
+            <span className="text-xs ml-1" style={{ color: "#484f58" }}>
+              ({Math.ceil((scheduleEndDate.getTime() - scheduleStartDate.getTime()) / 86400000)} days)
+            </span>
+          )}
+        </div>
+      </div>
+
       <div className="flex items-center justify-between flex-wrap gap-3">
         <div>
           <h2 className="text-base font-semibold" style={{ color: "#e6edf3" }}>Schedule</h2>
