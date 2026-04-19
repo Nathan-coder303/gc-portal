@@ -1344,10 +1344,10 @@ export default function TemplateEditor({
 
       {/* Sticky total bar */}
       <div
-        className="sticky top-0 z-40 flex items-center justify-between gap-4 rounded-xl px-5 py-3 shadow-lg"
-        style={{ background: "#0d1117", border: "1px solid #30373f" }}
+        className="sticky top-0 z-40 flex items-center justify-between gap-4 px-5 py-3 shadow-xl"
+        style={{ background: "#161b22", borderTop: "3px solid #C9A84C", borderBottom: "1px solid #30373f" }}
       >
-        <span className="text-xs font-semibold uppercase tracking-widest" style={{ color: "#555" }}>Live Total</span>
+        <span className="text-xs font-bold uppercase tracking-widest" style={{ color: "#C9A84C" }}>💰 Live Total</span>
         <div className="flex items-center gap-6">
           {gcFeeAmount > 0 && (
             <>
@@ -1362,8 +1362,8 @@ export default function TemplateEditor({
             </>
           )}
           <div className="flex flex-col items-end">
-            <span className="text-[10px] uppercase tracking-wide" style={{ color: "#555" }}>Total w/ GC Fee</span>
-            <span className="text-xl font-bold" style={{ color: "#e6edf3" }}>${fmt(total)}</span>
+            <span className="text-[10px] uppercase tracking-wide" style={{ color: "#8b949e" }}>Total w/ GC Fee</span>
+            <span className="text-2xl font-bold" style={{ color: "#C9A84C" }}>${fmt(total)}</span>
           </div>
         </div>
       </div>

@@ -1285,7 +1285,31 @@ function TemplatePdfDocument({ companyName, template, client, divisions, showTer
         </View>
 
         {/* Divisions — grouped into super-sections (e.g. SHELL) */}
-        {grouped.map(({ groupLabel, divs }, gi) => {
+        {(() => {
+          // Build ordinal map here so grouped.map can use it
+          const visibleDivIds: string[] = [];
+          for (const { divs: ds } of grouped) {
+            for (const div of ds) {
+              const hasContent = div.items.some(i => isItemFilled(i) || !!i.detail) ||
+                div.groups.some(g => g.items.some(i => isItemFilled(i) || !!i.detail));
+              if (hasContent) visibleDivIds.push(div.id);
+            }
+          }
+          const ordinalMap = new Map(visibleDivIds.map((id, i) => [id, i + 1]));
+
+          function needsBreak(divId: string): boolean {
+            const ord = ordinalMap.get(divId);
+            if (ord === undefined) return false;
+            return (
+              (breakDiv04 && ord === 4) ||
+              (breakDiv05 && ord === 5) ||
+              ((breakDiv06 !== false) && ord === 6) ||
+              (breakDiv07 && ord === 7) ||
+              (breakDiv08 && ord === 8)
+            );
+          }
+
+          return grouped.map(({ groupLabel, divs }, gi) => {
           // Pre-filter each division's items (apply insulation type filter)
           const applyInsF = (item: Item) => {
             const filtered = applyInsulationFilter(item.name, insulationType);
@@ -1305,16 +1329,8 @@ function TemplatePdfDocument({ companyName, template, client, divisions, showTer
           const overrideTotal = groupLabel && summaryGroups?.[groupLabel] ? computeOverrideTotal(summaryGroups[groupLabel]) : null;
           const groupTotal = overrideTotal !== null ? overrideTotal : rawTotal;
 
-          // For ungrouped divisions (no super-label), the outer View IS the division —
-          // put break there so react-pdf sees it as a direct page-level break.
-          const firstCsi = !groupLabel ? (filteredDivs[0]?.div.csiCode ?? null) : null;
-          const outerBreak = firstCsi != null && (
-            (breakDiv04 && /^04\b/.test(firstCsi)) ||
-            (breakDiv05 && /^05\b/.test(firstCsi)) ||
-            ((breakDiv06 !== false) && /^06\b/.test(firstCsi)) ||
-            (breakDiv07 && /^07\b/.test(firstCsi)) ||
-            (breakDiv08 && /^08\b/.test(firstCsi))
-          );
+          // For ungrouped divisions, put break on the outer View (more reliable in react-pdf)
+          const outerBreak = !groupLabel && filteredDivs.length > 0 && needsBreak(filteredDivs[0].div.id);
 
           return (
             <View key={gi} break={outerBreak}>
@@ -1330,14 +1346,8 @@ function TemplatePdfDocument({ companyName, template, client, divisions, showTer
                 const divTotal = [...filledItems, ...filledGroups.flatMap(g => g.items)]
                   .reduce((s, i) => s + calcTotal(i.defaultQty, i.defaultUnitCost, i.defaultMarkupPct), 0);
 
-                // For grouped divisions (inside SHELL etc.), still support per-div breaks
-                const innerBreak = groupLabel != null && div.csiCode != null && (
-                  (breakDiv04 && /^04\b/.test(div.csiCode)) ||
-                  (breakDiv05 && /^05\b/.test(div.csiCode)) ||
-                  ((breakDiv06 !== false) && /^06\b/.test(div.csiCode)) ||
-                  (breakDiv07 && /^07\b/.test(div.csiCode)) ||
-                  (breakDiv08 && /^08\b/.test(div.csiCode))
-                );
+                // For divisions inside a super-group (SHELL etc.), use inner break
+                const innerBreak = !!groupLabel && needsBreak(div.id);
 
                 return (
                   <View key={div.id} minPresenceAhead={50} break={innerBreak}>
@@ -1375,7 +1385,8 @@ function TemplatePdfDocument({ companyName, template, client, divisions, showTer
               })}
             </View>
           );
-        })}
+        });
+        })()}
 
         {/* Totals block — all kept together so ESTIMATE TOTAL never lands alone on a new page */}
         <View wrap={false}>
