@@ -152,7 +152,7 @@ function ComposeModal({
                 <div className="flex items-center gap-2 min-w-0">
                   <span>📄</span>
                   <span className="truncate" style={{ color: "#e6edf3" }}>{f.name}</span>
-                  <span style={{ color: "#555", shrink: 0 }}>{formatBytes(f.size)}</span>
+                  <span style={{ color: "#555", flexShrink: 0 }}>{formatBytes(f.size)}</span>
                 </div>
                 <button onClick={() => removeAttachment(i)} className="ml-2 shrink-0" style={{ color: "#f87171" }}>✕</button>
               </div>
