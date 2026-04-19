@@ -1,6 +1,18 @@
 "use client";
 import { useState } from "react";
 
+const MIKE_CC = "mikebaruh@gmail.com";
+const MIKE_SIGNATURE = `Mike Baruh
+Founder/CEO | MIBH Construction
+Certified & Licensed General Contractor CGC 1527069
+Certified & Licensed Roofer CCC 1336817
+
+📱 Cell: 305.746.7307
+📧 Email: mike@mibhconstruction.com
+📍 Address: 2950 N 28 Terr, Hollywood, FL 33020
+🌐 Website: www.mibhconstruction.com
+📸 Instagram: @mibh_construction`;
+
 type Email = {
   id: string;
   fromEmail: string;
@@ -28,9 +40,9 @@ function ComposeModal({
   onSent: (email: Email) => void;
 }) {
   const [to, setTo] = useState(defaultTo);
-  const [cc, setCc] = useState("");
+  const [cc, setCc] = useState(MIKE_CC);
   const [subject, setSubject] = useState("");
-  const [body, setBody] = useState("");
+  const [body, setBody] = useState(`\n\n${MIKE_SIGNATURE}`);
   const [sending, setSending] = useState(false);
   const [error, setError] = useState("");
 

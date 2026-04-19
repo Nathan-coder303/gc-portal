@@ -204,14 +204,13 @@ function ClientCard({
 // ─── From Lead Modal ──────────────────────────────────────────────────────────
 
 function FromLeadModal({ companyId, defaultStatus, onDone, onClose }: {
-  companyId: string; defaultStatus: string; onDone: () => void; onClose: () => void;
+  companyId: string; defaultStatus: string; onDone: (newClient?: Client) => void; onClose: () => void;
 }) {
   const [leads, setLeads] = useState<LeadOption[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [selected, setSelected] = useState<LeadOption | null>(null);
   const [isPending, startTransition] = useTransition();
-  const router = useRouter();
 
   useEffect(() => {
     fetch(`/api/${companyId}/leads?all=true`)
@@ -238,12 +237,25 @@ function FromLeadModal({ companyId, defaultStatus, onDone, onClose }: {
         email: selected.email ?? "",
         phone: selected.phone ?? "",
       });
-      // If not the default PROSPECT status, update it
       if (defaultStatus !== "PROSPECT" && res?.id) {
         await patchClientStatus(companyId, res.id, { status: defaultStatus });
       }
-      onDone();
-      router.refresh();
+      onDone({
+        id: res.id,
+        name: res.name,
+        address: res.address,
+        city: res.city,
+        state: res.state,
+        zip: res.zip,
+        email: res.email,
+        phone: res.phone,
+        estimateCount: 0,
+        estimateTotal: 0,
+        internalProfit: 0,
+        gcFee: 0,
+        status: defaultStatus,
+        sortOrder: res.sortOrder ?? 0,
+      });
     });
   }
 
@@ -312,17 +324,30 @@ function FromLeadModal({ companyId, defaultStatus, onDone, onClose }: {
 
 // ─── Add Client Form ───────────────────────────────────────────────────────────
 
-function AddClientForm({ onDone, defaultStatus }: { onDone: () => void; defaultStatus: string }) {
+function AddClientForm({ onDone, defaultStatus }: { onDone: (newClient?: Client) => void; defaultStatus: string }) {
   const [isPending, startTransition] = useTransition();
-  const router = useRouter();
   const [form, setForm] = useState({ name: "", address: "", city: "", state: "FL", zip: "", email: "", phone: "" });
 
   function handleAdd() {
     if (!form.name.trim()) return;
     startTransition(async () => {
-      await upsertClient({ ...form });
-      onDone();
-      router.refresh();
+      const created = await upsertClient({ ...form });
+      onDone({
+        id: created.id,
+        name: created.name,
+        address: created.address,
+        city: created.city,
+        state: created.state,
+        zip: created.zip,
+        email: created.email,
+        phone: created.phone,
+        estimateCount: 0,
+        estimateTotal: 0,
+        internalProfit: 0,
+        gcFee: 0,
+        status: defaultStatus,
+        sortOrder: created.sortOrder ?? 0,
+      });
     });
   }
 
@@ -375,7 +400,7 @@ function ClientColumn({
   onAdd, onCancelAdd, onAddFromLead, accentColor, bgColor, onDragStart, onDrop,
 }: {
   title: string; status: string; clients: Client[]; companyId: string; isAdmin: boolean;
-  adding: boolean; onAdd: () => void; onCancelAdd: () => void; onAddFromLead: () => void;
+  adding: boolean; onAdd: () => void; onCancelAdd: (newClient?: Client) => void; onAddFromLead: () => void;
   accentColor: string; bgColor: string;
   onDragStart: (clientId: string) => void;
   onDrop: (targetClientId: string | null, targetStatus: string) => void;
@@ -536,7 +561,7 @@ export default function ClientsManager({ companyId, clients: initialClients, isA
         <FromLeadModal
           companyId={companyId}
           defaultStatus={fromLeadForStatus}
-          onDone={() => setFromLeadForStatus(null)}
+          onDone={(newClient) => { setFromLeadForStatus(null); if (newClient) setClients(prev => [...prev, newClient]); }}
           onClose={() => setFromLeadForStatus(null)}
         />
       )}
@@ -560,7 +585,7 @@ export default function ClientsManager({ companyId, clients: initialClients, isA
           isAdmin={isAdmin}
           adding={addingIn === "PROSPECT"}
           onAdd={() => setAddingIn("PROSPECT")}
-          onCancelAdd={() => setAddingIn(null)}
+          onCancelAdd={(newClient) => { setAddingIn(null); if (newClient) setClients(prev => [...prev, newClient]); }}
           onAddFromLead={() => setFromLeadForStatus("PROSPECT")}
           accentColor="#C9A84C"
           bgColor="#0d1117"
@@ -575,7 +600,7 @@ export default function ClientsManager({ companyId, clients: initialClients, isA
           isAdmin={isAdmin}
           adding={addingIn === "ACTIVE"}
           onAdd={() => setAddingIn("ACTIVE")}
-          onCancelAdd={() => setAddingIn(null)}
+          onCancelAdd={(newClient) => { setAddingIn(null); if (newClient) setClients(prev => [...prev, newClient]); }}
           onAddFromLead={() => setFromLeadForStatus("ACTIVE")}
           accentColor="#22c55e"
           bgColor="#0a1a0f"
@@ -590,7 +615,7 @@ export default function ClientsManager({ companyId, clients: initialClients, isA
           isAdmin={isAdmin}
           adding={addingIn === "COMPLETED"}
           onAdd={() => setAddingIn("COMPLETED")}
-          onCancelAdd={() => setAddingIn(null)}
+          onCancelAdd={(newClient) => { setAddingIn(null); if (newClient) setClients(prev => [...prev, newClient]); }}
           onAddFromLead={() => setFromLeadForStatus("COMPLETED")}
           accentColor="#8b949e"
           bgColor="#0d1117"
