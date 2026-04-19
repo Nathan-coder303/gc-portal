@@ -1288,15 +1288,13 @@ function TemplatePdfDocument({ companyName, template, client, divisions, showTer
         {(() => {
           // Build sequential break points: enabled toggles fire at the Nth
           // content group boundary (Page 4 = 1st break, Page 5 = 2nd, etc.)
-          const enabledPages = [
-            breakDiv04,
-            breakDiv05,
+          const breakPoints: boolean[] = [
+            !!breakDiv04,
+            !!breakDiv05,
             breakDiv06 !== false,
-            breakDiv07,
-            breakDiv08,
+            !!breakDiv07,
+            !!breakDiv08,
           ];
-          // breakPoints[i] = true means insert a forced page break before the (i+1)th content group
-          const breakPoints: boolean[] = enabledPages;
 
           // Collect visible group IDs in order (each gi is one "content group")
           const visibleGroupIds: number[] = [];
