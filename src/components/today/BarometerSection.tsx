@@ -49,7 +49,7 @@ export default function BarometerSection({ mibhIncome, clients }: { mibhIncome: 
         </div>
         <div className="text-right">
           <div className="text-base font-bold" style={{ color: "#22c55e" }}>${fmt(c.mibhIncome)}</div>
-          <div className="text-[10px]" style={{ color: "#484f58" }}>MIBH Income</div>
+          <div className="text-[10px]" style={{ color: "#484f58" }}>MIBH Profit</div>
         </div>
       </a>
     );
@@ -64,7 +64,7 @@ export default function BarometerSection({ mibhIncome, clients }: { mibhIncome: 
       >
         {/* Label */}
         <div className="text-center text-[36px] sm:text-[52px] font-black leading-none tracking-tight" style={{ color: "#C9A84C" }}>
-          MIBH INCOME 2026
+          MIBH PROFIT 2026
         </div>
 
         {/* Income left · % center · Goal right */}
@@ -124,7 +124,7 @@ export default function BarometerSection({ mibhIncome, clients }: { mibhIncome: 
             {/* Header */}
             <div className="flex items-center justify-between px-5 py-4" style={{ borderBottom: "1px solid #30373f", background: "#0a1a0f" }}>
               <div>
-                <div className="text-[10px] font-bold uppercase tracking-widest mb-0.5" style={{ color: "#22c55e66" }}>MIBH Income 2026</div>
+                <div className="text-[10px] font-bold uppercase tracking-widest mb-0.5" style={{ color: "#22c55e66" }}>MIBH Profit 2026</div>
                 <div className="text-3xl font-black" style={{ color: "#22c55e" }}>${fmt(mibhIncome)}</div>
               </div>
               <button onClick={() => setOpen(false)} className="w-8 h-8 flex items-center justify-center rounded-full text-lg" style={{ background: "#1e2736", color: "#8b949e" }}>×</button>
@@ -154,7 +154,7 @@ export default function BarometerSection({ mibhIncome, clients }: { mibhIncome: 
             </div>
 
             <div className="flex items-center justify-between px-5 py-3" style={{ borderTop: "1px solid #30373f", background: "#0d1117" }}>
-              <span className="text-xs font-semibold uppercase tracking-widest" style={{ color: "#8b949e" }}>Total MIBH Income</span>
+              <span className="text-xs font-semibold uppercase tracking-widest" style={{ color: "#8b949e" }}>Total MIBH Profit</span>
               <span className="text-xl font-black" style={{ color: "#22c55e" }}>${fmt(mibhIncome)}</span>
             </div>
           </div>
