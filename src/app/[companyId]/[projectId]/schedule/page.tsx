@@ -3,6 +3,7 @@ import { addDays, format } from "date-fns";
 import GanttChart from "@/components/schedule/GanttChart";
 import TaskTable from "@/components/schedule/TaskTable";
 import LoadTemplateButton from "@/components/schedule/LoadTemplateButton";
+import PrintScheduleButton from "@/components/schedule/PrintScheduleButton";
 import { computeCriticalPath } from "@/lib/schedule/gantt";
 import { auth } from "@/lib/auth";
 import { can } from "@/lib/auth/permissions";
@@ -80,6 +81,11 @@ export default async function SchedulePage({
         </div>
         <div className="flex items-center gap-2">
           {canEdit && <LoadTemplateButton projectId={params.projectId} />}
+          <PrintScheduleButton
+            tasks={ganttTasks}
+            projectName={project?.name ?? "Schedule"}
+            projectStart={project?.startDate ?? new Date()}
+          />
           <a
             href={`/api/${params.companyId}/${params.projectId}/export/schedule`}
             className="px-3 py-1.5 text-sm rounded-lg font-medium"
