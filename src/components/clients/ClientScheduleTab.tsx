@@ -562,7 +562,138 @@ const SCHEDULE_TEMPLATES: ScheduleTemplate[] = [
   },
 ];
 
+// ── Save Schedule Modal ────────────────────────────────────────────────────────
+
+function SaveScheduleModal({
+  companyId,
+  tasks,
+  existingId,
+  existingName,
+  onClose,
+  onSaved,
+}: {
+  companyId: string;
+  tasks: ClientTask[];
+  existingId?: string;
+  existingName?: string;
+  onClose: () => void;
+  onSaved: (id: string, name: string) => void;
+}) {
+  const [name, setName] = useState(existingName ?? "");
+  const [description, setDescription] = useState("");
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState("");
+
+  // Serialise tasks to template format (strip DB-specific ids, keep structure)
+  const taskPayload = tasks.map(t => ({
+    phase: t.phase,
+    name: t.name,
+    durationDays: t.durationDays,
+    offsetDays: 0,
+    trade: t.trade,
+    assignee: t.assignee,
+    isMilestone: t.isMilestone,
+    parentId: t.parentId,
+    predecessorIds: t.predecessorIds,
+    sortOrder: t.sortOrder,
+    notes: t.notes,
+  }));
+
+  async function handleSave() {
+    if (!name.trim()) { setError("Name is required"); return; }
+    setSaving(true);
+    setError("");
+    try {
+      let res: Response;
+      if (existingId) {
+        res = await fetch(`/api/${companyId}/schedule-templates/${existingId}`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ name: name.trim(), description: description || null, tasks: taskPayload }),
+        });
+      } else {
+        res = await fetch(`/api/${companyId}/schedule-templates`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ name: name.trim(), description: description || null, tasks: taskPayload }),
+        });
+      }
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error ?? "Failed to save");
+      onSaved(data.id, name.trim());
+      onClose();
+    } catch (e) {
+      setError(String(e));
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 px-4" onClick={onClose}>
+      <div
+        className="w-full max-w-md rounded-2xl p-6 flex flex-col gap-4"
+        style={{ background: "#161b22", border: "1px solid #30373f" }}
+        onClick={e => e.stopPropagation()}
+      >
+        <div className="flex items-center justify-between">
+          <h3 className="font-bold text-base" style={{ color: "#C9A84C" }}>
+            {existingId ? "Save Schedule" : "Save As New Template"}
+          </h3>
+          <button onClick={onClose} style={{ color: "#888" }} className="text-xl leading-none">✕</button>
+        </div>
+
+        <p className="text-xs" style={{ color: "#888" }}>
+          {taskPayload.length} tasks will be saved as a reusable template.
+        </p>
+
+        <div className="flex flex-col gap-3">
+          <div>
+            <label className="text-xs mb-1 block" style={{ color: "#888" }}>Template Name *</label>
+            <input
+              autoFocus
+              value={name}
+              onChange={e => setName(e.target.value)}
+              placeholder="e.g. Addition v2, Roof Replacement…"
+              className="w-full rounded-lg px-3 py-2 text-sm outline-none"
+              style={{ background: "#0d1117", border: "1px solid #30373f", color: "#e6edf3" }}
+            />
+          </div>
+          <div>
+            <label className="text-xs mb-1 block" style={{ color: "#888" }}>Description (optional)</label>
+            <input
+              value={description}
+              onChange={e => setDescription(e.target.value)}
+              placeholder="Short description…"
+              className="w-full rounded-lg px-3 py-2 text-sm outline-none"
+              style={{ background: "#0d1117", border: "1px solid #30373f", color: "#e6edf3" }}
+            />
+          </div>
+        </div>
+
+        {error && <p className="text-xs" style={{ color: "#f87171" }}>{error}</p>}
+
+        <div className="flex gap-3 mt-1">
+          <button onClick={onClose} className="flex-1 py-2 text-xs font-semibold rounded-lg" style={{ background: "#1e2736", color: "#888" }}>
+            Cancel
+          </button>
+          <button
+            onClick={handleSave}
+            disabled={saving || !name.trim()}
+            className="flex-1 py-2 text-xs font-semibold rounded-lg disabled:opacity-50"
+            style={{ background: "#C9A84C", color: "#0d1117" }}
+          >
+            {saving ? "Saving…" : existingId ? "Save" : "Save As Template"}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ── Load Template Modal ────────────────────────────────────────────────────────
+
+type SavedTplMeta = { id: string; name: string; description?: string | null; updatedAt: string };
 
 function LoadTemplateModal({
   companyId,
@@ -576,18 +707,53 @@ function LoadTemplateModal({
   onClose: () => void;
 }) {
   const [selected, setSelected] = useState<ScheduleTemplate | null>(null);
+  const [selectedSaved, setSelectedSaved] = useState<SavedTplMeta | null>(null);
+  const [savedTemplates, setSavedTemplates] = useState<SavedTplMeta[]>([]);
   const [startDate, setStartDate] = useState(todayStr());
   const [loading, setLoading] = useState(false);
+  const [deleting, setDeleting] = useState<string | null>(null);
+
+  useEffect(() => {
+    fetch(`/api/${companyId}/schedule-templates`)
+      .then(r => r.json())
+      .then(data => { if (Array.isArray(data)) setSavedTemplates(data); })
+      .catch(() => {});
+  }, [companyId]);
 
   async function handleLoad() {
-    if (!selected) return;
+    if (!selected && !selectedSaved) return;
     setLoading(true);
     const base = parseDate(startDate) ?? new Date();
-    const localIdMap = new Map<string, string>(); // localId → DB task id
+
+    // For saved templates, fetch the full tasks JSON first
+    let tasksToLoad: TplTask[] = [];
+    if (selected) {
+      tasksToLoad = selected.tasks;
+    } else if (selectedSaved) {
+      const r = await fetch(`/api/${companyId}/schedule-templates/${selectedSaved.id}`);
+      const data = await r.json();
+      // Saved tasks use parentId/predecessorIds directly — adapt to TplTask format
+      // We create a temp localId map using index
+      const rawTasks = (data.tasks ?? []) as Array<Record<string, unknown>>;
+      tasksToLoad = rawTasks.map((t, i) => ({
+        localId: `idx_${i}`,
+        phase: String(t.phase ?? "General"),
+        name: String(t.name ?? "Task"),
+        durationDays: Number(t.durationDays ?? 1),
+        offsetDays: 0,
+        trade: t.trade ? String(t.trade) : undefined,
+        assignee: t.assignee ? String(t.assignee) : undefined,
+        isMilestone: Boolean(t.isMilestone),
+        notes: t.notes ? String(t.notes) : undefined,
+        sortOrder: Number(t.sortOrder ?? i),
+      }));
+    }
+
+    const localIdMap = new Map<string, string>();
     const created: ClientTask[] = [];
     let sortIdx = 0;
-    for (const t of selected.tasks) {
-      const start = addDays(base, t.offsetDays);
+    for (const t of tasksToLoad) {
+      const start = addDays(base, t.offsetDays ?? 0);
       const end = addDays(start, t.durationDays - 1);
       const parentId = t.parentRef ? (localIdMap.get(t.parentRef) ?? null) : null;
       const predecessorIds = (t.predecessorRefs ?? []).map(ref => localIdMap.get(ref)).filter(Boolean) as string[];
@@ -620,6 +786,16 @@ function LoadTemplateModal({
     onLoaded(created);
   }
 
+  async function handleDelete(id: string, e: React.MouseEvent) {
+    e.stopPropagation();
+    if (!confirm("Delete this saved template?")) return;
+    setDeleting(id);
+    await fetch(`/api/${companyId}/schedule-templates/${id}`, { method: "DELETE" });
+    setSavedTemplates(prev => prev.filter(t => t.id !== id));
+    if (selectedSaved?.id === id) setSelectedSaved(null);
+    setDeleting(null);
+  }
+
   return (
     <div style={{ position: "fixed", inset: 0, zIndex: 70, background: "rgba(0,0,0,0.85)", display: "flex", alignItems: "center", justifyContent: "center", padding: 16 }}
       onClick={onClose}>
@@ -630,10 +806,11 @@ function LoadTemplateModal({
           <button onClick={onClose} className="text-lg leading-none" style={{ color: "#8b949e" }}>×</button>
         </div>
 
-        {/* Template cards */}
+        {/* Built-in templates */}
+        <p className="text-xs font-semibold mb-2" style={{ color: "#8b949e" }}>Built-in Templates</p>
         <div className="grid grid-cols-2 gap-3 mb-5">
           {SCHEDULE_TEMPLATES.map(tpl => (
-            <button key={tpl.id} onClick={() => setSelected(tpl)}
+            <button key={tpl.id} onClick={() => { setSelected(tpl); setSelectedSaved(null); }}
               className="text-left p-3 rounded-xl transition-all"
               style={{
                 background: selected?.id === tpl.id ? "#1e2736" : "#0d1117",
@@ -647,19 +824,51 @@ function LoadTemplateModal({
           ))}
         </div>
 
-        {selected && (
+        {/* Saved templates */}
+        {savedTemplates.length > 0 && (
           <>
-            {/* Phase preview */}
-            <div className="mb-4 rounded-xl p-3 text-xs" style={{ background: "#0d1117", border: "1px solid #30373f" }}>
-              <div className="font-semibold mb-2" style={{ color: "#8b949e" }}>Phases: {Array.from(new Set(selected.tasks.map(t => t.phase))).join(" → ")}</div>
-              <div className="flex flex-wrap gap-1">
-                {selected.tasks.filter(t => t.isMilestone).map(t => (
-                  <span key={t.name} className="px-2 py-0.5 rounded-full text-[10px]" style={{ background: "#1e2736", color: "#7c3aed", border: "1px solid #7c3aed44" }}>◆ {t.name}</span>
-                ))}
-              </div>
+            <p className="text-xs font-semibold mb-2" style={{ color: "#8b949e" }}>Saved Templates</p>
+            <div className="flex flex-col gap-2 mb-5">
+              {savedTemplates.map(tpl => (
+                <button key={tpl.id} onClick={() => { setSelectedSaved(tpl); setSelected(null); }}
+                  className="text-left p-3 rounded-xl transition-all flex items-center justify-between gap-3"
+                  style={{
+                    background: selectedSaved?.id === tpl.id ? "#1e2736" : "#0d1117",
+                    border: `1px solid ${selectedSaved?.id === tpl.id ? GOLD : "#30373f"}`,
+                  }}>
+                  <div>
+                    <div className="text-sm font-semibold" style={{ color: selectedSaved?.id === tpl.id ? GOLD : "#e6edf3" }}>📁 {tpl.name}</div>
+                    {tpl.description && <div className="text-xs mt-0.5" style={{ color: "#8b949e" }}>{tpl.description}</div>}
+                    <div className="text-[10px] mt-0.5" style={{ color: "#484f58" }}>
+                      Saved {new Date(tpl.updatedAt).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
+                    </div>
+                  </div>
+                  <button
+                    onClick={e => handleDelete(tpl.id, e)}
+                    disabled={deleting === tpl.id}
+                    className="text-xs px-2 py-1 rounded-lg shrink-0"
+                    style={{ background: "#2d1a1a", color: "#f87171", border: "1px solid #f8717133" }}
+                  >
+                    {deleting === tpl.id ? "…" : "Delete"}
+                  </button>
+                </button>
+              ))}
             </div>
+          </>
+        )}
 
-            {/* Start date */}
+        {(selected || selectedSaved) && (
+          <>
+            {selected && (
+              <div className="mb-4 rounded-xl p-3 text-xs" style={{ background: "#0d1117", border: "1px solid #30373f" }}>
+                <div className="font-semibold mb-2" style={{ color: "#8b949e" }}>Phases: {Array.from(new Set(selected.tasks.map(t => t.phase))).join(" → ")}</div>
+                <div className="flex flex-wrap gap-1">
+                  {selected.tasks.filter(t => t.isMilestone).map(t => (
+                    <span key={t.name} className="px-2 py-0.5 rounded-full text-[10px]" style={{ background: "#1e2736", color: "#7c3aed", border: "1px solid #7c3aed44" }}>◆ {t.name}</span>
+                  ))}
+                </div>
+              </div>
+            )}
             <div className="mb-4">
               <label className="block text-xs mb-1 font-medium" style={{ color: "#8b949e" }}>Project Start Date</label>
               <input type="date" value={startDate} onChange={e => setStartDate(e.target.value)}
@@ -669,10 +878,10 @@ function LoadTemplateModal({
         )}
 
         <div className="flex gap-3">
-          <button onClick={handleLoad} disabled={!selected || loading}
+          <button onClick={handleLoad} disabled={(!selected && !selectedSaved) || loading}
             className="flex-1 py-2 text-sm font-semibold rounded-xl disabled:opacity-50"
             style={{ background: GOLD, color: "#0d1117" }}>
-            {loading ? `Loading… (${selected?.tasks.length} tasks)` : `Load ${selected?.label ?? "Template"}`}
+            {loading ? "Loading…" : `Load ${selected?.label ?? selectedSaved?.name ?? "Template"}`}
           </button>
           <button onClick={onClose} className="px-5 py-2 text-sm rounded-xl" style={{ background: "#30373f", color: "#8b949e" }}>Cancel</button>
         </div>
@@ -2121,6 +2330,9 @@ export default function ClientScheduleTab({ companyId, clientId, clientName, ini
   const [tasks, setTasks] = useState<ClientTask[]>(initialTasks);
   const [adding, setAdding] = useState(false);
   const [loadingTemplate, setLoadingTemplate] = useState(false);
+  const [savingTemplate, setSavingTemplate] = useState<"save" | "saveas" | null>(null);
+  const [savedTemplateId, setSavedTemplateId] = useState<string | null>(null);
+  const [savedTemplateName, setSavedTemplateName] = useState<string | null>(null);
   const [collapsed, setCollapsed] = useState<Set<string>>(new Set());
   const [shiftingStart, setShiftingStart] = useState(false);
   const [viewMode, setViewMode] = useState<"table" | "gantt">("table");
@@ -2283,6 +2495,20 @@ export default function ClientScheduleTab({ companyId, clientId, clientName, ini
                 style={{ background: "#1e2736", border: "1px solid #30373f", color: "#8b949e" }}>
                 📋 Load Template
               </button>
+              {tasks.length > 0 && (
+                <>
+                  {savedTemplateId && (
+                    <button onClick={() => setSavingTemplate("save")} className="text-xs font-semibold px-3 py-1.5 rounded-lg"
+                      style={{ background: "#1e2736", border: "1px solid #30373f", color: "#8b949e" }}>
+                      💾 Save
+                    </button>
+                  )}
+                  <button onClick={() => setSavingTemplate("saveas")} className="text-xs font-semibold px-3 py-1.5 rounded-lg"
+                    style={{ background: "#1e2736", border: "1px solid #30373f", color: "#8b949e" }}>
+                    💾 Save As…
+                  </button>
+                </>
+              )}
               <button onClick={() => setAdding(true)} className="text-xs font-semibold px-3 py-1.5 rounded-lg"
                 style={{ background: GOLD, color: "#0d1117" }}>
                 + Add Task
@@ -2324,6 +2550,16 @@ export default function ClientScheduleTab({ companyId, clientId, clientName, ini
           companyId={companyId} clientId={clientId}
           onLoaded={newTasks => { setTasks(prev => [...prev, ...newTasks]); setLoadingTemplate(false); }}
           onClose={() => setLoadingTemplate(false)}
+        />
+      )}
+      {savingTemplate && (
+        <SaveScheduleModal
+          companyId={companyId}
+          tasks={tasks}
+          existingId={savingTemplate === "save" ? (savedTemplateId ?? undefined) : undefined}
+          existingName={savingTemplate === "save" ? (savedTemplateName ?? undefined) : undefined}
+          onClose={() => setSavingTemplate(null)}
+          onSaved={(id, name) => { setSavedTemplateId(id); setSavedTemplateName(name); setSavingTemplate(null); }}
         />
       )}
     </div>

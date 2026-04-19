@@ -194,6 +194,18 @@ model ClientNote {
   @@index([clientId])
 }
 
+model ScheduleSavedTemplate {
+  id          String   @id @default(cuid())
+  companyId   String
+  name        String
+  description String?
+  tasks       Json
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([companyId])
+}
+
 model ClientEmail {
   id        String   @id @default(cuid())
   clientId  String
