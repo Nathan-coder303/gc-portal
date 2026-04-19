@@ -1305,8 +1305,19 @@ function TemplatePdfDocument({ companyName, template, client, divisions, showTer
           const overrideTotal = groupLabel && summaryGroups?.[groupLabel] ? computeOverrideTotal(summaryGroups[groupLabel]) : null;
           const groupTotal = overrideTotal !== null ? overrideTotal : rawTotal;
 
+          // For ungrouped divisions (no super-label), the outer View IS the division —
+          // put break there so react-pdf sees it as a direct page-level break.
+          const firstCsi = !groupLabel ? (filteredDivs[0]?.div.csiCode ?? null) : null;
+          const outerBreak = firstCsi != null && (
+            (breakDiv04 && /^04\b/.test(firstCsi)) ||
+            (breakDiv05 && /^05\b/.test(firstCsi)) ||
+            ((breakDiv06 !== false) && /^06\b/.test(firstCsi)) ||
+            (breakDiv07 && /^07\b/.test(firstCsi)) ||
+            (breakDiv08 && /^08\b/.test(firstCsi))
+          );
+
           return (
-            <View key={gi}>
+            <View key={gi} break={outerBreak}>
               {/* Super-group header (e.g. SHELL) */}
               {groupLabel && (
                 <View style={styles.groupSuperHeader}>
@@ -1319,14 +1330,17 @@ function TemplatePdfDocument({ companyName, template, client, divisions, showTer
                 const divTotal = [...filledItems, ...filledGroups.flatMap(g => g.items)]
                   .reduce((s, i) => s + calcTotal(i.defaultQty, i.defaultUnitCost, i.defaultMarkupPct), 0);
 
+                // For grouped divisions (inside SHELL etc.), still support per-div breaks
+                const innerBreak = groupLabel != null && div.csiCode != null && (
+                  (breakDiv04 && /^04\b/.test(div.csiCode)) ||
+                  (breakDiv05 && /^05\b/.test(div.csiCode)) ||
+                  ((breakDiv06 !== false) && /^06\b/.test(div.csiCode)) ||
+                  (breakDiv07 && /^07\b/.test(div.csiCode)) ||
+                  (breakDiv08 && /^08\b/.test(div.csiCode))
+                );
+
                 return (
-                  <View key={div.id} minPresenceAhead={50} break={div.csiCode != null && (
-                    (breakDiv04 && /^04\b/.test(div.csiCode)) ||
-                    (breakDiv05 && /^05\b/.test(div.csiCode)) ||
-                    ((breakDiv06 !== false) && /^06\b/.test(div.csiCode)) ||
-                    (breakDiv07 && /^07\b/.test(div.csiCode)) ||
-                    (breakDiv08 && /^08\b/.test(div.csiCode))
-                  )}>
+                  <View key={div.id} minPresenceAhead={50} break={innerBreak}>
                     <View wrap={false} style={[styles.divisionHeader, groupLabel ? { marginTop: 6 } : {}]}>
                       <View style={styles.divisionLeft}>
                         {!isRoof && div.csiCode ? <Text style={styles.divisionCsi}>{div.csiCode}</Text> : null}
