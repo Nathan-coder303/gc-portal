@@ -289,6 +289,24 @@ export async function POST(
     data: { lastSentAt: new Date() },
   });
 
+  // Log to Communications
+  if (template.clientId) {
+    await prisma.clientEmail.create({
+      data: {
+        clientId: template.clientId,
+        companyId: params.companyId,
+        fromEmail,
+        to,
+        cc: cc ?? null,
+        bcc: bcc ?? null,
+        subject,
+        body: emailBody,
+        sentBy: session.user?.name ?? session.user?.email ?? null,
+        context: "estimate",
+      },
+    });
+  }
+
   return NextResponse.json({ success: true });
   } catch (err) {
     console.error("send-estimate-email unhandled error:", err);

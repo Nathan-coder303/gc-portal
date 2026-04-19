@@ -98,6 +98,23 @@ export async function POST(
       data: { status: "SENT", sentAt: new Date() },
     });
 
+    // Log to Communications
+    const fromProfile = await google.gmail({ version: "v1", auth: getOAuthClient() }).users.getProfile({ userId: "me" }).catch(() => null);
+    await prisma.clientEmail.create({
+      data: {
+        clientId: params.clientId,
+        companyId: params.companyId,
+        fromEmail: fromProfile?.data.emailAddress ?? "",
+        to,
+        cc: cc ?? null,
+        bcc: bcc ?? null,
+        subject: subject ?? `Invoice #${invoice.invoiceNumber}`,
+        body: bodyText ?? "",
+        sentBy: session.user?.name ?? session.user?.email ?? null,
+        context: "invoice",
+      },
+    });
+
     return NextResponse.json({ success: true });
   } catch (e) {
     return NextResponse.json({ error: String(e) }, { status: 500 });

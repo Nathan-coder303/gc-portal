@@ -160,6 +160,7 @@ model Client {
   invoices       Invoice[]
   changeOrders   ChangeOrder[]
   clientTasks    ClientTask[]
+  emails         ClientEmail[]
 }
 
 model ClientFile {
@@ -191,6 +192,25 @@ model ClientNote {
   createdBy      String?
 
   @@index([clientId])
+}
+
+model ClientEmail {
+  id        String   @id @default(cuid())
+  clientId  String
+  client    Client   @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  companyId String
+  fromEmail String
+  to        String
+  cc        String?
+  bcc       String?
+  subject   String
+  body      String
+  sentAt    DateTime @default(now())
+  sentBy    String?
+  context   String?  // e.g. "estimate", "invoice", "manual"
+
+  @@index([clientId])
+  @@index([companyId])
 }
 
 model FollowUp {

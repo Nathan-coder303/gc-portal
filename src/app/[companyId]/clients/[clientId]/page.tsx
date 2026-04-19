@@ -17,6 +17,7 @@ import ClientInvoicesTab from "@/components/clients/ClientInvoicesTab";
 import NurturingEmailTab from "@/components/clients/NurturingEmailTab";
 import ChangeOrdersTab from "@/components/clients/ChangeOrdersTab";
 import ClientScheduleTab from "@/components/clients/ClientScheduleTab";
+import ClientCommsTab from "@/components/clients/ClientCommsTab";
 import TodayTaskCard, { FollowUpItem } from "@/components/today/TodayTaskCard";
 
 export default async function ClientDetailPage({
@@ -116,7 +117,7 @@ export default async function ClientDetailPage({
     orderBy: { createdAt: "desc" },
   });
 
-  const [clientFollowUps, clientInvoices, changeOrders, clientScheduleTasks] = await Promise.all([
+  const [clientFollowUps, clientInvoices, changeOrders, clientScheduleTasks, clientEmails] = await Promise.all([
     prisma.followUp.findMany({
       where: { clientId: params.clientId, companyId: params.companyId },
       orderBy: { createdAt: "asc" },
@@ -136,6 +137,10 @@ export default async function ClientDetailPage({
       where: { clientId: params.clientId, companyId: params.companyId },
       orderBy: [{ phase: "asc" }, { startDate: "asc" }],
     }),
+    prisma.clientEmail.findMany({
+      where: { clientId: params.clientId, companyId: params.companyId },
+      orderBy: { sentAt: "desc" },
+    }),
   ]);
 
   const followUpCount = clientFollowUps.length;
@@ -150,6 +155,7 @@ export default async function ClientDetailPage({
     // { key: "client-bid", label: "Client Bid" },        // hidden per user request
     { key: "files", label: `Files${clientFiles.length > 0 ? ` (${clientFiles.length})` : ""}` },
     { key: "nurturing", label: "Nurturing" },
+    { key: "comms", label: `Comms${clientEmails.length > 0 ? ` (${clientEmails.length})` : ""}` },
   ];
 
   return (
@@ -421,6 +427,26 @@ export default async function ClientDetailPage({
           clientId={params.clientId}
           clientName={safeClient.name}
           clientEmail={safeClient.email ?? null}
+        />
+      )}
+
+      {activeTab === "comms" && (
+        <ClientCommsTab
+          companyId={params.companyId}
+          clientId={params.clientId}
+          clientEmail={safeClient.email ?? null}
+          initialEmails={clientEmails.map(e => ({
+            id: e.id,
+            fromEmail: e.fromEmail,
+            to: e.to,
+            cc: e.cc,
+            bcc: e.bcc,
+            subject: e.subject,
+            body: e.body,
+            sentAt: e.sentAt.toISOString(),
+            sentBy: e.sentBy,
+            context: e.context,
+          }))}
         />
       )}
 
