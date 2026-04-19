@@ -1350,7 +1350,7 @@ function TemplatePdfDocument({ companyName, template, client, divisions, showTer
                 const innerBreak = !!groupLabel && needsBreak(div.id);
 
                 return (
-                  <View key={div.id} minPresenceAhead={60} break={innerBreak}>
+                  <View key={div.id} minPresenceAhead={50} break={innerBreak}>
                     <View wrap={false} style={[styles.divisionHeader, groupLabel ? { marginTop: 6 } : {}]}>
                       <View style={styles.divisionLeft}>
                         {!isRoof && div.csiCode ? <Text style={styles.divisionCsi}>{div.csiCode}</Text> : null}
