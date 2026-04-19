@@ -569,6 +569,33 @@ export default function ProjectEstimateEditor({
     <DimensionsCtx.Provider value={{ sqFt: typeof sqFt === "number" ? sqFt : null, durationMonths: typeof durationMonths === "number" ? durationMonths : null }}>
     <DndContext collisionDetection={closestCenter} onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
     <div className="space-y-4">
+
+      {/* Sticky total bar */}
+      <div
+        className="sticky top-0 z-40 flex items-center justify-between gap-4 rounded-xl px-5 py-3 shadow-lg"
+        style={{ background: "#0d1117", border: "1px solid #30373f" }}
+      >
+        <span className="text-xs font-semibold uppercase tracking-widest" style={{ color: "#555" }}>Live Total</span>
+        <div className="flex items-center gap-6">
+          {gcFeeAmount > 0 && (
+            <>
+              <div className="flex flex-col items-end">
+                <span className="text-[10px] uppercase tracking-wide" style={{ color: "#555" }}>Subtotal</span>
+                <span className="text-sm font-semibold" style={{ color: "#8b949e" }}>${fmt(subtotal)}</span>
+              </div>
+              <div className="flex flex-col items-end">
+                <span className="text-[10px] uppercase tracking-wide" style={{ color: "#555" }}>GC O&amp;P {gcFeePercent}%</span>
+                <span className="text-sm font-semibold" style={{ color: "#C9A84C" }}>${fmt(gcFeeAmount)}</span>
+              </div>
+            </>
+          )}
+          <div className="flex flex-col items-end">
+            <span className="text-[10px] uppercase tracking-wide" style={{ color: "#555" }}>Total w/ GC Fee</span>
+            <span className="text-xl font-bold" style={{ color: "#e6edf3" }}>${fmt(grandTotal)}</span>
+          </div>
+        </div>
+      </div>
+
       {/* Header */}
       <div className="bg-white border border-slate-200 rounded-xl p-5">
         {editingHeader ? (
