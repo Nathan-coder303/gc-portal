@@ -1286,27 +1286,38 @@ function TemplatePdfDocument({ companyName, template, client, divisions, showTer
 
         {/* Divisions — grouped into super-sections (e.g. SHELL) */}
         {(() => {
-          // Build ordinal map here so grouped.map can use it
-          const visibleDivIds: string[] = [];
-          for (const { divs: ds } of grouped) {
-            for (const div of ds) {
-              const hasContent = div.items.some(i => isItemFilled(i) || !!i.detail) ||
-                div.groups.some(g => g.items.some(i => isItemFilled(i) || !!i.detail));
-              if (hasContent) visibleDivIds.push(div.id);
-            }
-          }
-          const ordinalMap = new Map(visibleDivIds.map((id, i) => [id, i + 1]));
+          // Build sequential break points: enabled toggles fire at the Nth
+          // content group boundary (Page 4 = 1st break, Page 5 = 2nd, etc.)
+          const enabledPages = [
+            breakDiv04,
+            breakDiv05,
+            breakDiv06 !== false,
+            breakDiv07,
+            breakDiv08,
+          ];
+          // breakPoints[i] = true means insert a forced page break before the (i+1)th content group
+          const breakPoints: boolean[] = enabledPages;
 
-          function needsBreak(divId: string): boolean {
-            const ord = ordinalMap.get(divId);
-            if (ord === undefined) return false;
-            return !!(
-              (breakDiv04 && ord === 4) ||
-              (breakDiv05 && ord === 5) ||
-              ((breakDiv06 !== false) && ord === 6) ||
-              (breakDiv07 && ord === 7) ||
-              (breakDiv08 && ord === 8)
+          // Collect visible group IDs in order (each gi is one "content group")
+          const visibleGroupIds: number[] = [];
+          for (let i = 0; i < grouped.length; i++) {
+            const { divs: ds } = grouped[i];
+            const hasContent = ds.some(div =>
+              div.items.some(i2 => isItemFilled(i2) || !!i2.detail) ||
+              div.groups.some(g => g.items.some(i2 => isItemFilled(i2) || !!i2.detail))
             );
+            if (hasContent) visibleGroupIds.push(i);
+          }
+
+          // Map each gi to its sequential position among visible groups
+          const groupPositionMap = new Map(visibleGroupIds.map((gi, pos) => [gi, pos]));
+
+          function needsBreak(gi: number): boolean {
+            const pos = groupPositionMap.get(gi);
+            if (pos === undefined || pos === 0) return false;
+            // pos 1 = first break point (Page 4), pos 2 = Page 5, etc.
+            const idx = pos - 1;
+            return idx < breakPoints.length ? !!breakPoints[idx] : false;
           }
 
           return grouped.map(({ groupLabel, divs }, gi) => {
@@ -1329,8 +1340,8 @@ function TemplatePdfDocument({ companyName, template, client, divisions, showTer
           const overrideTotal = groupLabel && summaryGroups?.[groupLabel] ? computeOverrideTotal(summaryGroups[groupLabel]) : null;
           const groupTotal = overrideTotal !== null ? overrideTotal : rawTotal;
 
-          // For ungrouped divisions, put break on the outer View (more reliable in react-pdf)
-          const outerBreak = !groupLabel && filteredDivs.length > 0 && needsBreak(filteredDivs[0].div.id);
+          // Put break on the outer View — fires for this content group's position
+          const outerBreak = needsBreak(gi);
 
           return (
             <View key={gi} break={outerBreak}>
@@ -1346,8 +1357,8 @@ function TemplatePdfDocument({ companyName, template, client, divisions, showTer
                 const divTotal = [...filledItems, ...filledGroups.flatMap(g => g.items)]
                   .reduce((s, i) => s + calcTotal(i.defaultQty, i.defaultUnitCost, i.defaultMarkupPct), 0);
 
-                // For divisions inside a super-group (SHELL etc.), use inner break
-                const innerBreak = !!groupLabel && needsBreak(div.id);
+                // Inner break not needed — break is handled at the group level above
+                const innerBreak = false;
 
                 return (
                   <View key={div.id} minPresenceAhead={50} break={innerBreak}>

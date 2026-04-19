@@ -303,14 +303,14 @@ export default function CoverPagePickerModal({
           <p className="text-xs font-semibold uppercase tracking-widest mb-2" style={{ color: "#8b949e" }}>Page Breaks</p>
           <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
             {([
-              { div: "04", label: "Div 04", desc: "Masonry",                    val: breakDiv04, set: setBreakDiv04 },
-              { div: "05", label: "Div 05", desc: "Metals",                     val: breakDiv05, set: setBreakDiv05 },
-              { div: "06", label: "Div 06", desc: "Wood & Plastics",             val: breakDiv06, set: setBreakDiv06 },
-              { div: "07", label: "Div 07", desc: "Thermal & Moisture",          val: breakDiv07, set: setBreakDiv07 },
-              { div: "08", label: "Div 08", desc: "Openings",                    val: breakDiv08, set: setBreakDiv08 },
-            ] as const).map(({ div, label, desc, val, set }) => (
+              { key: "04", label: "Page 4", desc: "Start new page 4",  val: breakDiv04, set: setBreakDiv04 },
+              { key: "05", label: "Page 5", desc: "Start new page 5",  val: breakDiv05, set: setBreakDiv05 },
+              { key: "06", label: "Page 6", desc: "Start new page 6",  val: breakDiv06, set: setBreakDiv06 },
+              { key: "07", label: "Page 7", desc: "Start new page 7",  val: breakDiv07, set: setBreakDiv07 },
+              { key: "08", label: "Page 8", desc: "Start new page 8",  val: breakDiv08, set: setBreakDiv08 },
+            ] as const).map(({ key, label, desc, val, set }) => (
               <button
-                key={div}
+                key={key}
                 onClick={() => set(v => !v)}
                 className="rounded-xl p-3 text-left transition-all"
                 style={{ border: `2px solid ${val ? "#C9A84C" : "#30373f"}`, background: val ? "#1e2a12" : "#1e2736", outline: "none" }}
