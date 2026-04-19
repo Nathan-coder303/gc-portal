@@ -171,6 +171,17 @@ export default function ClientCommsTab({
   const [emails, setEmails] = useState<Email[]>(initialEmails);
   const [composing, setComposing] = useState(false);
   const [viewing, setViewing] = useState<Email | null>(null);
+  const [deleting, setDeleting] = useState<string | null>(null);
+
+  async function handleDelete(id: string, e: React.MouseEvent) {
+    e.stopPropagation();
+    if (!confirm("Delete this email from the log?")) return;
+    setDeleting(id);
+    await fetch(`/api/${companyId}/clients/${clientId}/emails/${id}`, { method: "DELETE" });
+    setEmails(prev => prev.filter(em => em.id !== id));
+    if (viewing?.id === id) setViewing(null);
+    setDeleting(null);
+  }
 
   const contextBadge: Record<string, string> = {
     estimate: "#3b82f6",
@@ -211,11 +222,11 @@ export default function ClientCommsTab({
             const preview = email.body.replace(/\n/g, " ").slice(0, 100);
 
             return (
-              <button
+              <div
                 key={email.id}
-                onClick={() => setViewing(email)}
-                className="w-full text-left rounded-xl p-4 transition-all hover:scale-[1.005]"
+                className="rounded-xl p-4 transition-all hover:scale-[1.005] cursor-pointer"
                 style={{ background: "#161b22", border: "1px solid #30373f" }}
+                onClick={() => setViewing(email)}
               >
                 <div className="flex items-start justify-between gap-3">
                   <div className="flex flex-col gap-0.5 min-w-0">
@@ -229,9 +240,19 @@ export default function ClientCommsTab({
                     <div className="text-xs truncate" style={{ color: "#888" }}>To: {email.to}</div>
                     <div className="text-xs truncate mt-1" style={{ color: "#666" }}>{preview}{email.body.length > 100 ? "…" : ""}</div>
                   </div>
-                  <div className="text-xs shrink-0 mt-0.5" style={{ color: "#555" }}>{date}</div>
+                  <div className="flex items-center gap-2 shrink-0">
+                    <div className="text-xs" style={{ color: "#555" }}>{date}</div>
+                    <button
+                      onClick={e => handleDelete(email.id, e)}
+                      disabled={deleting === email.id}
+                      className="px-2 py-1 rounded-lg text-xs"
+                      style={{ background: "#2d1a1a", color: "#f87171", border: "1px solid #f8717133" }}
+                    >
+                      {deleting === email.id ? "…" : "Delete"}
+                    </button>
+                  </div>
                 </div>
-              </button>
+              </div>
             );
           })}
         </div>
