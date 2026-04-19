@@ -36,10 +36,28 @@ export async function POST(
   const session = await auth();
   if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-  const body = await req.json();
-  const { to, cc, bcc, subject, body: emailBody } = body as {
-    to: string; cc?: string; bcc?: string; subject: string; body: string;
-  };
+  // Accept both FormData (with attachments) and JSON
+  const contentType = req.headers.get("content-type") ?? "";
+  let to: string, cc: string | undefined, bcc: string | undefined, subject: string, emailBody: string;
+  let files: { name: string; mimeType: string; data: Buffer }[] = [];
+
+  if (contentType.includes("multipart/form-data")) {
+    const fd = await req.formData();
+    to = fd.get("to") as string;
+    cc = (fd.get("cc") as string) || undefined;
+    bcc = (fd.get("bcc") as string) || undefined;
+    subject = fd.get("subject") as string;
+    emailBody = fd.get("body") as string;
+    const rawFiles = fd.getAll("attachments") as File[];
+    files = await Promise.all(rawFiles.map(async f => ({
+      name: f.name,
+      mimeType: f.type || "application/octet-stream",
+      data: Buffer.from(await f.arrayBuffer()),
+    })));
+  } else {
+    const body = await req.json();
+    to = body.to; cc = body.cc; bcc = body.bcc; subject = body.subject; emailBody = body.body;
+  }
 
   if (!to || !subject || !emailBody)
     return NextResponse.json({ error: "to, subject, and body are required" }, { status: 400 });
@@ -54,17 +72,38 @@ export async function POST(
     ? subject
     : `=?UTF-8?B?${Buffer.from(subject).toString("base64")}?=`;
 
-  const mimeLines = [
+  const boundary = `----=_Part_${Date.now()}`;
+  const hasAttachments = files.length > 0;
+
+  const mimeLines: string[] = [
     `From: ${fromEmail}`,
     `To: ${to}`,
     ...(cc ? [`Cc: ${cc}`] : []),
     ...(bcc ? [`Bcc: ${bcc}`] : []),
     `Subject: ${encodedSubject}`,
     `MIME-Version: 1.0`,
-    `Content-Type: text/plain; charset=UTF-8`,
-    ``,
-    emailBody,
   ];
+
+  if (hasAttachments) {
+    mimeLines.push(`Content-Type: multipart/mixed; boundary="${boundary}"`, ``);
+    mimeLines.push(`--${boundary}`);
+    mimeLines.push(`Content-Type: text/plain; charset=UTF-8`, ``);
+    mimeLines.push(emailBody, ``);
+    for (const file of files) {
+      const encodedName = /^[\x00-\x7F]*$/.test(file.name)
+        ? file.name
+        : `=?UTF-8?B?${Buffer.from(file.name).toString("base64")}?=`;
+      mimeLines.push(`--${boundary}`);
+      mimeLines.push(`Content-Type: ${file.mimeType}; name="${encodedName}"`);
+      mimeLines.push(`Content-Transfer-Encoding: base64`);
+      mimeLines.push(`Content-Disposition: attachment; filename="${encodedName}"`, ``);
+      mimeLines.push(file.data.toString("base64"), ``);
+    }
+    mimeLines.push(`--${boundary}--`);
+  } else {
+    mimeLines.push(`Content-Type: text/plain; charset=UTF-8`, ``, emailBody);
+  }
+
   const raw = Buffer.from(mimeLines.join("\r\n")).toString("base64url");
 
   try {

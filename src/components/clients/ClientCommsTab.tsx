@@ -1,5 +1,5 @@
 "use client";
-import { useState } from "react";
+import { useState, useRef, useCallback } from "react";
 
 const MIKE_CC = "mikebaruh@gmail.com";
 const MIKE_SIGNATURE = `Mike Baruh
@@ -43,17 +43,44 @@ function ComposeModal({
   const [cc, setCc] = useState(MIKE_CC);
   const [subject, setSubject] = useState("");
   const [body, setBody] = useState(`\n\n${MIKE_SIGNATURE}`);
+  const [attachments, setAttachments] = useState<File[]>([]);
+  const [dragOver, setDragOver] = useState(false);
   const [sending, setSending] = useState(false);
   const [error, setError] = useState("");
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const addFiles = useCallback((files: FileList | null) => {
+    if (!files) return;
+    setAttachments(prev => {
+      const existing = new Set(prev.map(f => f.name + f.size));
+      const newFiles = Array.from(files).filter(f => !existing.has(f.name + f.size));
+      return [...prev, ...newFiles];
+    });
+  }, []);
+
+  function removeAttachment(index: number) {
+    setAttachments(prev => prev.filter((_, i) => i !== index));
+  }
+
+  function formatBytes(bytes: number) {
+    if (bytes < 1024) return `${bytes} B`;
+    if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+    return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+  }
 
   async function send() {
     if (!to || !subject || !body) { setError("To, subject, and body are required."); return; }
     setSending(true);
     setError("");
+    const fd = new FormData();
+    fd.append("to", to);
+    if (cc) fd.append("cc", cc);
+    fd.append("subject", subject);
+    fd.append("body", body);
+    attachments.forEach(f => fd.append("attachments", f));
     const res = await fetch(`/api/${companyId}/clients/${clientId}/emails`, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ to, cc: cc || undefined, subject, body }),
+      body: fd,
     });
     const data = await res.json();
     setSending(false);
@@ -93,11 +120,45 @@ function ComposeModal({
         <textarea
           value={body}
           onChange={e => setBody(e.target.value)}
-          rows={10}
+          rows={8}
           placeholder="Write your message…"
           className="rounded-lg px-3 py-2 text-sm outline-none resize-none"
           style={{ background: "#0d1117", border: "1px solid #30373f", color: "#e6edf3" }}
         />
+
+        {/* Attachments drop zone */}
+        <div
+          onDragOver={e => { e.preventDefault(); setDragOver(true); }}
+          onDragLeave={() => setDragOver(false)}
+          onDrop={e => { e.preventDefault(); setDragOver(false); addFiles(e.dataTransfer.files); }}
+          onClick={() => fileInputRef.current?.click()}
+          className="rounded-lg px-3 py-3 text-xs cursor-pointer transition-all flex items-center gap-2"
+          style={{
+            border: `1px dashed ${dragOver ? "#C9A84C" : "#30373f"}`,
+            background: dragOver ? "#1a1508" : "#0d1117",
+            color: dragOver ? "#C9A84C" : "#666",
+          }}
+        >
+          <span style={{ fontSize: 16 }}>📎</span>
+          <span>Drag & drop files here, or click to browse</span>
+          <input ref={fileInputRef} type="file" multiple className="hidden" onChange={e => addFiles(e.target.files)} />
+        </div>
+
+        {attachments.length > 0 && (
+          <div className="flex flex-col gap-1">
+            {attachments.map((f, i) => (
+              <div key={i} className="flex items-center justify-between rounded-lg px-3 py-1.5 text-xs"
+                style={{ background: "#0d1117", border: "1px solid #30373f" }}>
+                <div className="flex items-center gap-2 min-w-0">
+                  <span>📄</span>
+                  <span className="truncate" style={{ color: "#e6edf3" }}>{f.name}</span>
+                  <span style={{ color: "#555", shrink: 0 }}>{formatBytes(f.size)}</span>
+                </div>
+                <button onClick={() => removeAttachment(i)} className="ml-2 shrink-0" style={{ color: "#f87171" }}>✕</button>
+              </div>
+            ))}
+          </div>
+        )}
 
         {error && <p className="text-xs" style={{ color: "#f87171" }}>{error}</p>}
 
