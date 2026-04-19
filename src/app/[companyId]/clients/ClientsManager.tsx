@@ -388,7 +388,7 @@ function AddClientForm({ onDone, defaultStatus }: { onDone: (newClient?: Client)
       </div>
       <div className="flex gap-2">
         <button onClick={handleAdd} disabled={isPending || !form.name.trim()} className="px-4 py-1.5 text-sm rounded-lg font-medium" style={{ background: "#22c55e", color: "#fff" }}>Create</button>
-        <button onClick={onDone} className="px-4 py-1.5 text-sm rounded-lg" style={{ border: "1px solid #30373f", color: "#8b949e" }}>Cancel</button>
+        <button onClick={() => onDone()} className="px-4 py-1.5 text-sm rounded-lg" style={{ border: "1px solid #30373f", color: "#8b949e" }}>Cancel</button>
       </div>
     </div>
   );
