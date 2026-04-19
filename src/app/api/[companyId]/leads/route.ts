@@ -4,16 +4,18 @@ import { prisma } from "@/lib/prisma";
 
 export const runtime = "nodejs";
 
-// GET — list raw leads (no pipeline card yet)
+// GET — list leads; pass ?all=true to include those already in the pipeline
 export async function GET(
-  _req: NextRequest,
+  req: NextRequest,
   { params }: { params: { companyId: string } }
 ) {
   const session = await auth();
   if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
+  const all = req.nextUrl.searchParams.get("all") === "true";
+
   const leads = await prisma.lead.findMany({
-    where: { companyId: params.companyId, pipelineCard: null },
+    where: { companyId: params.companyId, ...(all ? {} : { pipelineCard: null }) },
     orderBy: { receivedAt: "desc" },
     select: {
       id: true, name: true, email: true, phone: true,

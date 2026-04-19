@@ -214,7 +214,7 @@ function FromLeadModal({ companyId, defaultStatus, onDone, onClose }: {
   const router = useRouter();
 
   useEffect(() => {
-    fetch(`/api/${companyId}/leads`)
+    fetch(`/api/${companyId}/leads?all=true`)
       .then(r => r.json())
       .then(data => { setLeads(Array.isArray(data) ? data : []); setLoading(false); })
       .catch(() => setLoading(false));
