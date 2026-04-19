@@ -282,6 +282,7 @@ export default async function ClientDetailPage({
         <ClientScheduleTab
           companyId={params.companyId}
           clientId={params.clientId}
+          clientName={safeClient.name}
           canEdit={canEdit}
           initialTasks={clientScheduleTasks.map(t => ({
             id: t.id,

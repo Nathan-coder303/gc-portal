@@ -2002,8 +2002,119 @@ function printScheduleHtml(tasks: ClientTask[]) {
   if (win) { win.document.write(html); win.document.close(); win.print(); }
 }
 
-export default function ClientScheduleTab({ companyId, clientId, initialTasks, canEdit }: {
-  companyId: string; clientId: string; initialTasks: ClientTask[]; canEdit: boolean;
+function printGanttDiagram(tasks: ClientTask[], projectStart: Date, clientName: string) {
+  const today = new Date();
+  const phases = new Map<string, ClientTask[]>();
+  for (const t of tasks) { const arr = phases.get(t.phase) ?? []; arr.push(t); phases.set(t.phase, arr); }
+
+  const parseD = (s: string | null): Date | null => {
+    if (!s) return null;
+    const d = new Date(s + "T12:00:00");
+    return isNaN(d.getTime()) ? null : d;
+  };
+
+  const allDates = tasks.flatMap(t => [parseD(t.startDate), parseD(t.endDate)]).filter(Boolean) as Date[];
+  const projectEnd = allDates.length ? allDates.reduce((m, d) => d > m ? d : m, allDates[0]) : addDays(projectStart, 30);
+  const totalDays = Math.ceil((projectEnd.getTime() - projectStart.getTime()) / 86400000) + 4;
+
+  const CELL_W = 12;
+  const ROW_H = 18;
+  const LABEL_W = 210;
+  const HEADER_H = 20;
+  const svgW = LABEL_W + totalDays * CELL_W;
+
+  const monthHeaders: string[] = [];
+  let cur = new Date(projectStart.getFullYear(), projectStart.getMonth(), 1);
+  while (cur <= projectEnd) {
+    const startDay = Math.max(0, Math.ceil((cur.getTime() - projectStart.getTime()) / 86400000));
+    const monthEnd = new Date(cur.getFullYear(), cur.getMonth() + 1, 0);
+    const end = monthEnd < projectEnd ? monthEnd : projectEnd;
+    const days = Math.ceil((end.getTime() - cur.getTime()) / 86400000) + 1;
+    monthHeaders.push(
+      `<rect x="${LABEL_W + startDay * CELL_W}" y="0" width="${days * CELL_W}" height="${HEADER_H}" fill="#f1f5f9" stroke="#cbd5e1" stroke-width="0.5"/>`,
+      `<text x="${LABEL_W + startDay * CELL_W + 3}" y="13" font-size="8" fill="#475569" font-weight="600">${format(cur, "MMM yyyy")}</text>`
+    );
+    cur = new Date(cur.getFullYear(), cur.getMonth() + 1, 1);
+  }
+
+  const todayDay = Math.ceil((today.getTime() - projectStart.getTime()) / 86400000);
+  const todayLine = today >= projectStart && today <= projectEnd
+    ? `<line x1="${LABEL_W + todayDay * CELL_W}" y1="0" x2="${LABEL_W + todayDay * CELL_W}" y2="9999" stroke="#ef4444" stroke-width="1" stroke-dasharray="3,2"/>`
+    : "";
+
+  const svgRows: string[] = [];
+  let yOff = HEADER_H;
+  let rowIdx = 0;
+  for (const [phase, phaseTasks] of Array.from(phases.entries())) {
+    const done = phaseTasks.filter(t => t.status === "DONE").length;
+    const pct = Math.round((done / phaseTasks.length) * 100);
+    svgRows.push(
+      `<rect x="0" y="${yOff}" width="${svgW}" height="16" fill="#e2e8f0"/>`,
+      `<text x="6" y="${yOff + 11}" font-size="9" fill="#334155" font-weight="700">${phase} (${phaseTasks.length} · ${pct}%)</text>`
+    );
+    yOff += 16;
+    for (const task of phaseTasks) {
+      const sd = parseD(task.startDate);
+      const ed = parseD(task.endDate);
+      const startDay = sd ? Math.max(0, Math.ceil((sd.getTime() - projectStart.getTime()) / 86400000)) : 0;
+      const dur = task.durationDays || (sd && ed ? Math.ceil((ed.getTime() - sd.getTime()) / 86400000) + 1 : 1);
+      const barW = Math.max(dur * CELL_W, CELL_W);
+      const barX = LABEL_W + startDay * CELL_W;
+      const color = task.status === "DONE" ? "#22c55e" : task.status === "IN_PROGRESS" ? "#3b82f6" : task.status === "BLOCKED" ? "#f97316" : "#C9A84C";
+      const label = task.name.length > 30 ? task.name.slice(0, 30) + "…" : task.name;
+      const bg = rowIdx % 2 === 0 ? "#ffffff" : "#f8fafc";
+      svgRows.push(
+        `<rect x="0" y="${yOff}" width="${svgW}" height="${ROW_H}" fill="${bg}"/>`,
+        `<line x1="0" y1="${yOff + ROW_H}" x2="${svgW}" y2="${yOff + ROW_H}" stroke="#e2e8f0" stroke-width="0.5"/>`,
+        `<text x="${task.parentId ? 14 : 6}" y="${yOff + 12}" font-size="9" fill="#1e293b">${task.parentId ? "↳ " : ""}${label}</text>`,
+        task.isMilestone
+          ? `<polygon points="${barX},${yOff + 3} ${barX + 7},${yOff + ROW_H / 2} ${barX},${yOff + ROW_H - 3} ${barX - 7},${yOff + ROW_H / 2}" fill="#7c3aed"/>`
+          : `<rect x="${barX}" y="${yOff + 4}" width="${barW}" height="${ROW_H - 8}" rx="2" fill="${color}" opacity="0.85"/>` +
+            (task.percentComplete > 0 ? `<rect x="${barX}" y="${yOff + 4}" width="${(barW * task.percentComplete) / 100}" height="${ROW_H - 8}" rx="2" fill="${color}"/>` : "")
+      );
+      yOff += ROW_H;
+      rowIdx++;
+    }
+  }
+  const svgH = yOff + 24;
+  const legendItems = [
+    { color: "#3b82f6", label: "In Progress" }, { color: "#22c55e", label: "Done" },
+    { color: "#f97316", label: "Blocked" }, { color: "#C9A84C", label: "Not Started" },
+    { color: "#7c3aed", label: "Milestone" }, { color: "#ef4444", label: "Today" },
+  ];
+  const legendSvg = legendItems.map((item, i) =>
+    `<rect x="${i * 100}" y="0" width="10" height="10" fill="${item.color}" rx="2"/><text x="${i * 100 + 13}" y="9" font-size="9" fill="#64748b">${item.label}</text>`
+  ).join("");
+
+  const doneTasks = tasks.filter(t => t.status === "DONE").length;
+  const lateTasks = tasks.filter(t => t.status !== "DONE" && parseD(t.endDate) && parseD(t.endDate)! < today).length;
+  const html = `<!DOCTYPE html><html><head><meta charset="UTF-8"><title>${clientName} — Schedule</title><style>
+    body{font-family:system-ui,sans-serif;padding:20px 24px;color:#1e293b}
+    h1{font-size:18px;margin:0 0 2px;color:#0f172a}.sub{font-size:11px;color:#64748b;margin-bottom:12px}
+    .stats{display:flex;gap:24px;margin-bottom:16px;padding:10px 14px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:6px}
+    .stat{text-align:center}.sv{font-size:20px;font-weight:700;line-height:1;color:#0f172a}.late{color:#dc2626}
+    .sl{font-size:10px;color:#64748b;margin-top:2px}.scroll{overflow-x:auto}svg{display:block}
+    @media print{.no-print{display:none}@page{size:landscape;margin:0.5in}}
+  </style></head><body>
+  <h1>${clientName} — Schedule</h1>
+  <p class="sub">Printed ${format(today, "MMMM d, yyyy")} · ${tasks.length} tasks · Start: ${format(projectStart, "MMM d, yyyy")}</p>
+  <div class="stats">
+    <div class="stat"><div class="sv">${tasks.length}</div><div class="sl">Total</div></div>
+    <div class="stat"><div class="sv">${doneTasks}</div><div class="sl">Done</div></div>
+    <div class="stat"><div class="sv ${lateTasks > 0 ? "late" : ""}">${lateTasks}</div><div class="sl">Late</div></div>
+    <div class="stat"><div class="sv">${tasks.length ? Math.round((doneTasks / tasks.length) * 100) : 0}%</div><div class="sl">Complete</div></div>
+  </div>
+  <button class="no-print" onclick="window.print()" style="margin-bottom:14px;padding:6px 16px;background:#1e293b;color:white;border:none;border-radius:5px;font-size:12px;cursor:pointer">Print / Save as PDF</button>
+  <div class="scroll">
+  <svg width="${svgW}" height="${svgH}">${monthHeaders.join("")}${todayLine}${svgRows.join("")}<g transform="translate(${LABEL_W + 4},${svgH - 12})">${legendSvg}</g></svg>
+  </div></body></html>`;
+
+  const win = window.open("", "_blank");
+  if (win) { win.document.write(html); win.document.close(); }
+}
+
+export default function ClientScheduleTab({ companyId, clientId, clientName, initialTasks, canEdit }: {
+  companyId: string; clientId: string; clientName: string; initialTasks: ClientTask[]; canEdit: boolean;
 }) {
   const [tasks, setTasks] = useState<ClientTask[]>(initialTasks);
   const [adding, setAdding] = useState(false);
@@ -2143,6 +2254,14 @@ export default function ClientScheduleTab({ companyId, clientId, initialTasks, c
                     style={{ background: "#1e2736", border: "1px solid #30373f", color: "#8b949e" }}
                   >
                     ▼ Expand All
+                  </button>
+                  <button
+                    onClick={() => printGanttDiagram(tasks, projectStart, clientName)}
+                    className="text-xs font-semibold px-3 py-1.5 rounded-lg"
+                    style={{ background: "#1e2736", border: "1px solid #30373f", color: "#8b949e" }}
+                    title="Preview and print the Gantt diagram"
+                  >
+                    🖨 Print Diagram
                   </button>
                 </>
               )}
