@@ -2497,16 +2497,16 @@ export default function ClientScheduleTab({ companyId, clientId, clientName, ini
               </button>
               {tasks.length > 0 && (
                 <>
+                  <button onClick={() => setSavingTemplate("save")} className="text-xs font-semibold px-3 py-1.5 rounded-lg"
+                    style={{ background: "#1e2736", border: "1px solid #30373f", color: "#8b949e" }}>
+                    💾 Save{savedTemplateId && savedTemplateName ? ` "${savedTemplateName}"` : ""}
+                  </button>
                   {savedTemplateId && (
-                    <button onClick={() => setSavingTemplate("save")} className="text-xs font-semibold px-3 py-1.5 rounded-lg"
+                    <button onClick={() => setSavingTemplate("saveas")} className="text-xs font-semibold px-3 py-1.5 rounded-lg"
                       style={{ background: "#1e2736", border: "1px solid #30373f", color: "#8b949e" }}>
-                      💾 Save
+                      💾 Save As…
                     </button>
                   )}
-                  <button onClick={() => setSavingTemplate("saveas")} className="text-xs font-semibold px-3 py-1.5 rounded-lg"
-                    style={{ background: "#1e2736", border: "1px solid #30373f", color: "#8b949e" }}>
-                    💾 Save As…
-                  </button>
                 </>
               )}
               <button onClick={() => setAdding(true)} className="text-xs font-semibold px-3 py-1.5 rounded-lg"
