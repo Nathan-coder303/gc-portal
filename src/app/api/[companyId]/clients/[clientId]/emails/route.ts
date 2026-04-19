@@ -50,7 +50,6 @@ export async function POST(
   const profile = await gmail.users.getProfile({ userId: "me" });
   const fromEmail = profile.data.emailAddress ?? "me";
 
-  const boundary = `----=_Part_${Date.now()}`;
   const encodedSubject = /^[\x00-\x7F]*$/.test(subject)
     ? subject
     : `=?UTF-8?B?${Buffer.from(subject).toString("base64")}?=`;
