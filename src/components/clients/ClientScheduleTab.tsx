@@ -2501,12 +2501,10 @@ export default function ClientScheduleTab({ companyId, clientId, clientName, ini
                     style={{ background: "#1e2736", border: "1px solid #30373f", color: "#8b949e" }}>
                     💾 Save{savedTemplateId && savedTemplateName ? ` "${savedTemplateName}"` : ""}
                   </button>
-                  {savedTemplateId && (
-                    <button onClick={() => setSavingTemplate("saveas")} className="text-xs font-semibold px-3 py-1.5 rounded-lg"
-                      style={{ background: "#1e2736", border: "1px solid #30373f", color: "#8b949e" }}>
-                      💾 Save As…
-                    </button>
-                  )}
+                  <button onClick={() => setSavingTemplate("saveas")} className="text-xs font-semibold px-3 py-1.5 rounded-lg"
+                    style={{ background: "#1e2736", border: "1px solid #30373f", color: "#8b949e" }}>
+                    💾 Save As…
+                  </button>
                 </>
               )}
               <button onClick={() => setAdding(true)} className="text-xs font-semibold px-3 py-1.5 rounded-lg"
