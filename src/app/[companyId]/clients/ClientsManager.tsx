@@ -151,13 +151,13 @@ function ClientCard({
         <div className="flex items-end gap-3">
           <div className="flex-1">
             <div className="text-[10px] font-medium mb-0.5" style={{ color: "#484f58" }}>ESTIMATE</div>
-            <div className="text-base font-black leading-none" style={{ color: client.estimateTotal > 0 ? "#22c55e" : "#30373f" }}>
+            <div className="font-black leading-none truncate" style={{ color: client.estimateTotal > 0 ? "#22c55e" : "#30373f", fontSize: client.estimateTotal >= 1000000 ? 11 : client.estimateTotal >= 100000 ? 13 : 15 }}>
               {client.estimateTotal > 0 ? `$${client.estimateTotal.toLocaleString("en-US", { maximumFractionDigits: 0 })}` : "—"}
             </div>
           </div>
           <div className="flex-1">
             <div className="text-[10px] font-medium mb-0.5" style={{ color: "#484f58" }}>GC PROFIT</div>
-            <div className="text-base font-black leading-none" style={{ color: (client.internalProfit + client.gcFee) > 0 ? "#C9A84C" : "#30373f" }}>
+            <div className="font-black leading-none truncate" style={{ color: (client.internalProfit + client.gcFee) > 0 ? "#C9A84C" : "#30373f", fontSize: (client.internalProfit + client.gcFee) >= 1000000 ? 11 : (client.internalProfit + client.gcFee) >= 100000 ? 13 : 15 }}>
               {(client.internalProfit + client.gcFee) > 0 ? `$${(client.internalProfit + client.gcFee).toLocaleString("en-US", { maximumFractionDigits: 0 })}` : "—"}
             </div>
           </div>
