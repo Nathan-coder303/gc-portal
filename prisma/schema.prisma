@@ -161,6 +161,7 @@ model Client {
   changeOrders   ChangeOrder[]
   clientTasks    ClientTask[]
   emails         ClientEmail[]
+  subAssignments SubAssignment[]
 }
 
 model ClientFile {
@@ -902,7 +903,31 @@ model SubContractor {
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 
+  subAssignments SubAssignment[]
+
   @@index([companyId])
   @@index([companyId, divisionCode])
   @@index([companyId, source])
+}
+
+model SubAssignment {
+  id              String         @id @default(cuid())
+  clientId        String
+  client          Client         @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  companyId       String
+  templateId      String?
+  divisionId      String?
+  itemId          String?
+  label           String
+  subContractorId String?
+  subContractor   SubContractor? @relation(fields: [subContractorId], references: [id], onDelete: SetNull)
+  subName         String?
+  cost            Decimal?       @db.Decimal(14, 2)
+  salePrice       Decimal?       @db.Decimal(14, 2)
+  notes           String?
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
+
+  @@index([clientId])
+  @@index([companyId])
 }

@@ -7,6 +7,7 @@ import Link from "next/link";
 import { initClientSubBids } from "../actions";
 import SubsBidsTab, { SubBidRow } from "@/components/clients/SubsBidsTab";
 import ClientBidTab from "@/components/clients/ClientBidTab";
+import ClientSubsTab from "@/components/clients/ClientSubsTab";
 import { can } from "@/lib/auth/permissions";
 import ClientFilesTab from "@/components/clients/ClientFilesTab";
 import CollapsibleEstimateList from "@/components/clients/CollapsibleEstimateList";
@@ -59,9 +60,9 @@ export default async function ClientDetailPage({
 
   const isCommercial = safeClient.isCommercial;
 
-  // Load sub bids for subs-bids and client-bid tabs
+  // Load sub bids for client-bid tab (legacy)
   let subBids: SubBidRow[] = [];
-  if (activeTab === "subs-bids" || activeTab === "client-bid") {
+  if (activeTab === "client-bid") {
     await initClientSubBids(params.clientId, params.companyId, isCommercial);
     const raw = await prisma.subBid.findMany({
       where: { clientId: params.clientId, status: { not: "EXCLUDED" } },
@@ -87,6 +88,33 @@ export default async function ClientDetailPage({
       });
     }
     subBids = Array.from(map.values()).sort((a, b) => a.divisionCode.localeCompare(b.divisionCode));
+  }
+
+  // Load subs + assignments for Subs tab
+  let subsList: { id: string; name: string; email: string | null; phone: string | null; divisionCode: string; divisionName: string }[] = [];
+  let subAssignments: { id: string; divisionId: string | null; itemId: string | null; label: string; subContractorId: string | null; subName: string | null; cost: number | null; salePrice: number | null; notes: string | null }[] = [];
+  if (activeTab === "subs-bids") {
+    [subsList, subAssignments] = await Promise.all([
+      prisma.subContractor.findMany({
+        where: { companyId: params.companyId },
+        orderBy: [{ divisionCode: "asc" }, { name: "asc" }],
+        select: { id: true, name: true, email: true, phone: true, divisionCode: true, divisionName: true },
+      }),
+      prisma.subAssignment.findMany({
+        where: { clientId: params.clientId },
+        orderBy: { createdAt: "asc" },
+      }).then(rows => rows.map(r => ({
+        id: r.id,
+        divisionId: r.divisionId,
+        itemId: r.itemId,
+        label: r.label,
+        subContractorId: r.subContractorId,
+        subName: r.subName,
+        cost: r.cost != null ? Number(r.cost) : null,
+        salePrice: r.salePrice != null ? Number(r.salePrice) : null,
+        notes: r.notes,
+      }))),
+    ]);
   }
 
   function calcEstimateTotal(divisions: typeof safeClient.templates[0]["divisions"], gcFeePercent: typeof safeClient.templates[0]["gcFeePercent"]): number {
@@ -402,18 +430,28 @@ export default async function ClientDetailPage({
       )}
 
       {activeTab === "subs-bids" && (
-        <div>
-          <SubsBidsTab
-            key={isCommercial ? "commercial" : "residential"}
-            clientId={params.clientId}
-            companyId={params.companyId}
-            subBids={subBids}
-            canEdit={canEdit}
-            canDelete={canDelete}
-            isCommercial={isCommercial}
-
-          />
-        </div>
+        <ClientSubsTab
+          companyId={params.companyId}
+          clientId={params.clientId}
+          estimates={safeClient.templates.map(est => ({
+            id: est.id,
+            name: est.name,
+            divisions: est.divisions
+              .slice()
+              .sort((a, b) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0))
+              .map(div => ({
+                id: div.id,
+                name: div.name,
+                csiCode: div.csiCode ?? null,
+                items: [
+                  ...div.items.map(i => ({ id: i.id, name: i.name, groupName: null })),
+                  ...div.groups.flatMap(g => g.items.map(i => ({ id: i.id, name: i.name, groupName: g.name }))),
+                ],
+              })),
+          }))}
+          initialSubs={subsList}
+          initialAssignments={subAssignments}
+        />
       )}
 
       {activeTab === "client-bid" && (
