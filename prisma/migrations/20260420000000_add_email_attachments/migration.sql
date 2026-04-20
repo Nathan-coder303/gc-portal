@@ -1,0 +1,1 @@
+ALTER TABLE "ClientEmail" ADD COLUMN IF NOT EXISTS "attachments" TEXT;

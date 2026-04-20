@@ -24,7 +24,13 @@ type Email = {
   sentAt: string;
   sentBy?: string | null;
   context?: string | null;
+  attachments?: string | null; // JSON array of filenames
 };
+
+function parseAttachments(raw?: string | null): string[] {
+  if (!raw) return [];
+  try { return JSON.parse(raw); } catch { return []; }
+}
 
 function ComposeModal({
   companyId,
@@ -225,6 +231,19 @@ function EmailDetailModal({ email, onClose }: { email: Email; onClose: () => voi
           style={{ background: "#0d1117", border: "1px solid #30373f", color: "#c9d1d9" }}>
           {email.body}
         </div>
+
+        {parseAttachments(email.attachments).length > 0 && (
+          <div className="flex flex-col gap-1">
+            <div className="text-xs font-semibold uppercase tracking-widest" style={{ color: "#555" }}>Attachments</div>
+            {parseAttachments(email.attachments).map((name, i) => (
+              <div key={i} className="flex items-center gap-2 rounded-lg px-3 py-1.5 text-xs"
+                style={{ background: "#0d1117", border: "1px solid #30373f" }}>
+                <span>📎</span>
+                <span style={{ color: "#e6edf3" }}>{name}</span>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
     </div>
   );
@@ -309,6 +328,9 @@ export default function ClientCommsTab({
                         style={{ background: contextBadge[ctx] + "22", color: contextBadge[ctx] }}>
                         {ctx}
                       </span>
+                      {parseAttachments(email.attachments).length > 0 && (
+                        <span className="text-xs shrink-0" style={{ color: "#555" }} title={parseAttachments(email.attachments).join(", ")}>📎 {parseAttachments(email.attachments).length}</span>
+                      )}
                     </div>
                     <div className="text-xs truncate" style={{ color: "#888" }}>To: {email.to}</div>
                     <div className="text-xs truncate mt-1" style={{ color: "#666" }}>{preview}{email.body.length > 100 ? "…" : ""}</div>

@@ -303,6 +303,7 @@ export async function POST(
         body: emailBody,
         sentBy: session.user?.name ?? session.user?.email ?? null,
         context: "estimate",
+        attachments: JSON.stringify([filename]),
       },
     });
   }

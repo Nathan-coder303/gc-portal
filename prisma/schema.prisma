@@ -218,8 +218,9 @@ model ClientEmail {
   subject   String
   body      String
   sentAt    DateTime @default(now())
-  sentBy    String?
-  context   String?  // e.g. "estimate", "invoice", "manual"
+  sentBy      String?
+  context     String?   // e.g. "estimate", "invoice", "manual"
+  attachments String?   // JSON array of filenames e.g. ["Estimate-2647.pdf"]
 
   @@index([clientId])
   @@index([companyId])

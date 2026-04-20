@@ -125,6 +125,7 @@ export async function POST(
       body: emailBody,
       sentBy: session.user?.name ?? session.user?.email ?? null,
       context: "manual",
+      attachments: files.length > 0 ? JSON.stringify(files.map(f => f.name)) : null,
     },
   });
 
