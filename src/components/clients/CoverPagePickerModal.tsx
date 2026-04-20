@@ -325,7 +325,7 @@ export default function CoverPagePickerModal({
                   </div>
                   {on && (
                     <div className="flex gap-1.5">
-                      {[30, 60, 90, 120].map(pt => (
+                      {[30, 60, 90, 120, 150].map(pt => (
                         <button
                           key={pt}
                           onClick={() => set(pt)}
