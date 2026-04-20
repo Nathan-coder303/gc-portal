@@ -19,6 +19,8 @@ type PipelineLead = {
     projectType: string | null;
     address?: string | null;
     city?: string | null;
+    state?: string | null;
+    zip?: string | null;
   } | null;
 };
 
@@ -30,6 +32,8 @@ type RawLead = {
   projectType: string | null;
   address?: string | null;
   city?: string | null;
+  state?: string | null;
+  zip?: string | null;
 };
 
 function parseAppt(text: string) {
