@@ -170,6 +170,7 @@ type TemplatePdfProps = {
   clientCoverPhotoType?: string | null;
   clientCoverPhotoUrl?: string | null;
   clientCoverTitle?: string | null;
+  insertPageOffset?: number;
   breakDiv04?: number | false;
   breakDiv05?: number | false;
   breakDiv06?: number | false;
@@ -1073,7 +1074,7 @@ function DivisionSummaryPage({ template, client, divisions, gcFeePercent }: Pick
   );
 }
 
-function TemplatePdfDocument({ companyName, template, client, divisions, showTerms, termsContent, paymentSchedule, gcFeePercent, summaryGroups, clientSignatureData, clientSignedByName, clientSignedAt, contractorSignatureData, contractorSignedAt, includeRoofUpgradesPage, includeCoverPage, includeAdditionPages, includeRetailPages, includeDivisionSummary, insulationType, clientCoverPhotoType, clientCoverPhotoUrl, clientCoverTitle, breakDiv04, breakDiv05, breakDiv06, breakDiv07, breakDiv08 }: TemplatePdfProps) {
+function TemplatePdfDocument({ companyName, template, client, divisions, showTerms, termsContent, paymentSchedule, gcFeePercent, summaryGroups, clientSignatureData, clientSignedByName, clientSignedAt, contractorSignatureData, contractorSignedAt, includeRoofUpgradesPage, includeCoverPage, includeAdditionPages, includeRetailPages, includeDivisionSummary, insertPageOffset, insulationType, clientCoverPhotoType, clientCoverPhotoUrl, clientCoverTitle, breakDiv04, breakDiv05, breakDiv06, breakDiv07, breakDiv08 }: TemplatePdfProps) {
   const grouped = groupDivisions(divisions);
 
   // Compute raw totals per group label (or null for ungrouped)
@@ -1313,6 +1314,8 @@ function TemplatePdfDocument({ companyName, template, client, divisions, showTer
           if (includeAdditionPages) prePages += 2;
           if (includeRetailPages) prePages += 2;
           if (includeDivisionSummary && !includeRoofUpgradesPage) prePages++;
+          // Insert file is spliced in after generation — it adds 1 page that shifts all subsequent pages
+          prePages += (insertPageOffset ?? 0);
 
           // Simulate layout: track PDF page for each division
           let simPage = prePages + 1;

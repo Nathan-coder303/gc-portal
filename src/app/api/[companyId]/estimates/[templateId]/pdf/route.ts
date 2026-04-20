@@ -57,11 +57,17 @@ export async function GET(
   const breakDiv07 = parseBreak(req.nextUrl.searchParams.get("breakDiv07"));
   const breakDiv08 = parseBreak(req.nextUrl.searchParams.get("breakDiv08"));
 
+  const includeInsert = req.nextUrl.searchParams.get("includeInsert") !== "0";
+
   const [template, company] = await Promise.all([
     prisma.estimateTemplate.findFirst({
       where: { id: params.templateId, companyId: params.companyId, archivedAt: null },
       include: {
-        client: true,
+        client: {
+          include: {
+            files: { where: { useInEstimate: true }, select: { fileUrl: true }, take: 1 },
+          },
+        },
         divisions: {
           where: { archivedAt: null },
           orderBy: { sortOrder: "asc" },
@@ -115,6 +121,10 @@ export async function GET(
     })),
   }));
 
+  // Determine if an insert file will be spliced in — it shifts all page numbers by 1
+  const insertFileUrl = includeInsert ? (template.client?.files?.[0]?.fileUrl?.trim() || null) : null;
+  const insertPageOffset = insertFileUrl ? 1 : 0;
+
   const buffer = await renderTemplatePdf({
     companyName: company.name,
     template: { name: template.name, description: template.description, estimateNumber: template.estimateNumber, estimateDate: template.estimateDate },
@@ -137,6 +147,7 @@ export async function GET(
     includeRetailPages: page2Param ? page2Param === "RETAIL" : template.name.toLowerCase().includes("retail"),
     includeCoverPage: cover,
     includeDivisionSummary,
+    insertPageOffset,
     insulationType: template.insulationType ?? "ISO",
     clientCoverPhotoType: coverTypeParam ?? template.client?.coverPhotoType ?? null,
     clientCoverPhotoUrl: await resolvePrivateCoverUrl(
@@ -151,19 +162,9 @@ export async function GET(
     breakDiv07,
     breakDiv08,
   });
-
-  // Insert client's marked PDF file as page 3 (if opted in and file exists)
-  const includeInsert = req.nextUrl.searchParams.get("includeInsert") !== "0";
   let finalBuffer = buffer;
-  if (includeInsert && template.client) {
-    const insertFile = await prisma.clientFile.findFirst({
-      where: { clientId: template.client.id, useInEstimate: true },
-      select: { fileUrl: true },
-    });
-    const fileUrl = insertFile?.fileUrl?.trim() || null;
-    if (fileUrl) {
-      finalBuffer = await insertClientPageIntoEstimate(buffer, fileUrl);
-    }
+  if (insertFileUrl) {
+    finalBuffer = await insertClientPageIntoEstimate(buffer, insertFileUrl);
   }
 
   const clientSlug = template.client ? `-for-${template.client.name.replace(/[^a-z0-9]/gi, "-")}` : "";
