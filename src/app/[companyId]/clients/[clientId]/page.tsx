@@ -5,7 +5,7 @@ import { redirect } from "next/navigation";
 export const dynamic = "force-dynamic";
 import Link from "next/link";
 import { initClientSubBids } from "../actions";
-import SubsBidsTab, { SubBidRow } from "@/components/clients/SubsBidsTab";
+import { SubBidRow } from "@/components/clients/SubsBidsTab";
 import ClientBidTab from "@/components/clients/ClientBidTab";
 import ClientSubsTab from "@/components/clients/ClientSubsTab";
 import { can } from "@/lib/auth/permissions";
