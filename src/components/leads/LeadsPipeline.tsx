@@ -543,20 +543,20 @@ export default function LeadsPipeline({ companyId, triageLeads, stagedCards }: P
   const [notesTitle, setNotesTitle] = useState("");
 
   // ── Edit lead modal ──────────────────────────────────────────────────────
-  type EditForm = { name: string; email: string; phone: string; address: string; city: string; state: string; projectType: string; message: string };
+  type EditForm = { name: string; email: string; phone: string; address: string; city: string; state: string; zip: string; projectType: string; message: string };
   const [editLeadId, setEditLeadId] = useState<string | null>(null);
-  const [editForm, setEditForm] = useState<EditForm>({ name: "", email: "", phone: "", address: "", city: "", state: "FL", projectType: "", message: "" });
+  const [editForm, setEditForm] = useState<EditForm>({ name: "", email: "", phone: "", address: "", city: "", state: "FL", zip: "", projectType: "", message: "" });
   const [editSaving, setEditSaving] = useState(false);
   const [editDeleting, setEditDeleting] = useState(false);
 
   async function openEdit(leadId: string) {
     setEditLeadId(leadId);
-    setEditForm({ name: "", email: "", phone: "", address: "", city: "", state: "", projectType: "", message: "" });
+    setEditForm({ name: "", email: "", phone: "", address: "", city: "", state: "", zip: "", projectType: "", message: "" });
     try {
       const res = await fetch(`/api/${companyId}/leads/${leadId}`);
       if (res.ok) {
         const d = await res.json();
-        setEditForm({ name: d.name ?? "", email: d.email ?? "", phone: d.phone ?? "", address: d.address ?? "", city: d.city ?? "", state: d.state ?? "FL", projectType: d.projectType ?? "", message: d.message ?? "" });
+        setEditForm({ name: d.name ?? "", email: d.email ?? "", phone: d.phone ?? "", address: d.address ?? "", city: d.city ?? "", state: d.state ?? "FL", zip: d.zip ?? "", projectType: d.projectType ?? "", message: d.message ?? "" });
       }
     } catch { /* ignore */ }
   }
@@ -1179,7 +1179,7 @@ export default function LeadsPipeline({ companyId, triageLeads, stagedCards }: P
             </div>
 
             <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-              {(["name", "email", "phone", "address", "city", "state"] as const).map((field) => (
+              {(["name", "email", "phone", "address", "city", "state", "zip"] as const).map((field) => (
                 <div key={field}>
                   <label style={{ color: "#8b949e", fontSize: 11, fontWeight: 600, display: "block", marginBottom: 4, textTransform: "capitalize" }}>{field}</label>
                   <input

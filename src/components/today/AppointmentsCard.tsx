@@ -764,7 +764,7 @@ export default function AppointmentsCard({
                         <div className="text-sm space-y-1 mb-1" style={{ color: "#8b949e" }}>
                           {popupLead.lead?.projectType && <div><span style={{ color: "#C9A84C" }}>Project:</span> {popupLead.lead.projectType}</div>}
                           {popupLead.lead?.email && <div><span style={{ color: "#C9A84C" }}>Email:</span> {popupLead.lead.email}</div>}
-                          {popupLead.lead?.address && <div><span style={{ color: "#C9A84C" }}>Address:</span> {popupLead.lead.address}</div>}
+                          {popupLead.lead?.address && <div><span style={{ color: "#C9A84C" }}>Address:</span> {popupLead.lead.address}{popupLead.lead.city ? `, ${popupLead.lead.city}` : ""}{popupLead.lead.state ? `, ${popupLead.lead.state}` : ""}{popupLead.lead.zip ? ` ${popupLead.lead.zip}` : ""}</div>}
                         </div>
                       )}
                       <div>
@@ -810,7 +810,7 @@ export default function AppointmentsCard({
                             : <div className="italic text-xs" style={{ color: "#484f58" }}>No phone on file — tap Edit lead to add</div>
                           }
                           {popupLead.lead?.email && <div><span style={{ color: "#C9A84C" }}>Email:</span> {popupLead.lead.email}</div>}
-                          {popupLead.lead?.address && <div><span style={{ color: "#C9A84C" }}>Address:</span> {popupLead.lead.address}{popupLead.lead.city ? `, ${popupLead.lead.city}` : ""}</div>}
+                          {popupLead.lead?.address && <div><span style={{ color: "#C9A84C" }}>Address:</span> {popupLead.lead.address}{popupLead.lead.city ? `, ${popupLead.lead.city}` : ""}{popupLead.lead.state ? `, ${popupLead.lead.state}` : ""}{popupLead.lead.zip ? ` ${popupLead.lead.zip}` : ""}</div>}
                           {popupLead.source && <div><span style={{ color: "#C9A84C" }}>Source:</span> {popupLead.source}</div>}
                         </>
                       ) : (
