@@ -26,6 +26,9 @@ type Item = {
   id: string;
   name: string;
   groupName?: string | null;
+  qty: number;
+  unitCost: number;
+  markupPct: number;
 };
 
 type Division = {
@@ -33,11 +36,13 @@ type Division = {
   name: string;
   csiCode: string | null;
   items: Item[];
+  total: number; // pre-computed sale total for the division
 };
 
 type Estimate = {
   id: string;
   name: string;
+  gcFeePercent: number;
   divisions: Division[];
 };
 
@@ -151,7 +156,7 @@ type PendingRow = {
   subId: string;
   subName: string;
   cost: string;
-  salePrice: string;
+  salePrice: number | null; // auto-filled from estimate, read-only
 };
 
 export default function ClientSubsTab({ companyId, clientId, estimates, initialSubs, initialAssignments }: Props) {
@@ -162,7 +167,7 @@ export default function ClientSubsTab({ companyId, clientId, estimates, initialS
   const [saving, setSaving] = useState<string | null>(null);
   const [deleting, setDeleting] = useState<string | null>(null);
   const [editingId, setEditingId] = useState<string | null>(null);
-  const [editForm, setEditForm] = useState<{ subId: string; subName: string; cost: string; salePrice: string }>({ subId: "", subName: "", cost: "", salePrice: "" });
+  const [editForm, setEditForm] = useState<{ subId: string; subName: string; cost: string }>({ subId: "", subName: "", cost: "" });
   const [showNewSub, setShowNewSub] = useState(false);
   const [newSubTarget, setNewSubTarget] = useState<string | null>(null); // pending key to assign new sub to
 
@@ -178,6 +183,26 @@ export default function ClientSubsTab({ companyId, clientId, estimates, initialS
     return s;
   }, [assignments]);
 
+  function calcSalePrice(divisionId: string | null, itemId: string | null): number | null {
+    if (!activeEstimate) return null;
+    const gcMult = 1 + (activeEstimate.gcFeePercent ?? 0) / 100;
+    if (itemId) {
+      for (const div of activeEstimate.divisions) {
+        const item = div.items.find(i => i.id === itemId);
+        if (item) {
+          const lineTotal = item.qty * item.unitCost * (1 + item.markupPct / 100);
+          return Math.round(lineTotal * gcMult);
+        }
+      }
+      return null;
+    }
+    if (divisionId) {
+      const div = activeEstimate.divisions.find(d => d.id === divisionId);
+      if (div) return Math.round(div.total * gcMult);
+    }
+    return null;
+  }
+
   function toggle(key: string, label: string, divisionId: string | null, itemId: string | null) {
     if (assignedKeys.has(key)) return; // already saved
     setChecked(prev => {
@@ -187,9 +212,10 @@ export default function ClientSubsTab({ companyId, clientId, estimates, initialS
         setPending(p => { const m = new Map(p); m.delete(key); return m; });
       } else {
         next.add(key);
+        const autoSalePrice = calcSalePrice(divisionId, itemId);
         setPending(p => {
           const m = new Map(p);
-          m.set(key, { key, label, divisionId, itemId, subId: "", subName: "", cost: "", salePrice: "" });
+          m.set(key, { key, label, divisionId, itemId, subId: "", subName: "", cost: "", salePrice: autoSalePrice });
           return m;
         });
       }
@@ -221,7 +247,7 @@ export default function ClientSubsTab({ companyId, clientId, estimates, initialS
         subContractorId: row.subId || null,
         subName: row.subName || null,
         cost: row.cost ? parseFloat(row.cost) : null,
-        salePrice: row.salePrice ? parseFloat(row.salePrice) : null,
+        salePrice: row.salePrice ?? null,
       }),
     });
     setSaving(null);
@@ -255,7 +281,6 @@ export default function ClientSubsTab({ companyId, clientId, estimates, initialS
       subId: a.subContractorId ?? "",
       subName: a.subName ?? "",
       cost: a.cost != null ? String(a.cost) : "",
-      salePrice: a.salePrice != null ? String(a.salePrice) : "",
     });
   }
 
@@ -268,7 +293,6 @@ export default function ClientSubsTab({ companyId, clientId, estimates, initialS
         subContractorId: editForm.subId || null,
         subName: editForm.subName || null,
         cost: editForm.cost ? parseFloat(editForm.cost) : null,
-        salePrice: editForm.salePrice ? parseFloat(editForm.salePrice) : null,
       }),
     });
     setSaving(null);
@@ -357,11 +381,7 @@ export default function ClientSubsTab({ companyId, clientId, estimates, initialS
                             onChange={e => setEditForm(f => ({ ...f, cost: e.target.value }))}
                             style={{ ...INPUT, width: 90 }} />
                         </td>
-                        <td className="px-3 py-2">
-                          <input type="number" placeholder="0" value={editForm.salePrice}
-                            onChange={e => setEditForm(f => ({ ...f, salePrice: e.target.value }))}
-                            style={{ ...INPUT, width: 90 }} />
-                        </td>
+                        <td className="px-3 py-2 text-xs font-medium" style={{ color: "#22c55e" }}>{a.salePrice != null ? $(a.salePrice) : "—"}</td>
                         <td className="px-3 py-2 text-xs font-semibold" style={{ color: "#888" }}>—</td>
                         <td className="px-3 py-2">
                           <div className="flex gap-2">
@@ -461,18 +481,20 @@ export default function ClientSubsTab({ companyId, clientId, estimates, initialS
                         onChange={e => updatePending(divKey, { cost: e.target.value })}
                         style={{ ...INPUT, width: 100 }} />
                     </div>
-                    <div className="flex flex-col gap-1">
-                      <label className="text-xs" style={{ color: "#555" }}>Sale Price ($)</label>
-                      <input type="number" placeholder="0" value={divPending.salePrice}
-                        onChange={e => updatePending(divKey, { salePrice: e.target.value })}
-                        style={{ ...INPUT, width: 100 }} />
-                    </div>
-                    {divPending.cost && divPending.salePrice && (
+                    {divPending.salePrice != null && (
+                      <div className="flex flex-col gap-1">
+                        <label className="text-xs" style={{ color: "#555" }}>Sale Price (from estimate)</label>
+                        <div className="text-sm font-semibold px-3 py-1.5 rounded-lg" style={{ background: "#0d1117", border: "1px solid #22c55e33", color: "#22c55e" }}>
+                          {$(divPending.salePrice)}
+                        </div>
+                      </div>
+                    )}
+                    {divPending.cost && divPending.salePrice != null && (
                       <div className="flex flex-col gap-1">
                         <label className="text-xs" style={{ color: "#555" }}>Profit</label>
                         <div className="text-sm font-bold px-3 py-1.5"
-                          style={{ color: (parseFloat(divPending.salePrice) - parseFloat(divPending.cost)) >= 0 ? "#C9A84C" : "#f87171" }}>
-                          {$(parseFloat(divPending.salePrice) - parseFloat(divPending.cost))}
+                          style={{ color: (divPending.salePrice - parseFloat(divPending.cost)) >= 0 ? "#C9A84C" : "#f87171" }}>
+                          {$(divPending.salePrice - parseFloat(divPending.cost))}
                         </div>
                       </div>
                     )}
@@ -529,18 +551,20 @@ export default function ClientSubsTab({ companyId, clientId, estimates, initialS
                                   onChange={e => updatePending(itemKey, { cost: e.target.value })}
                                   style={{ ...INPUT, width: 100 }} />
                               </div>
-                              <div className="flex flex-col gap-1">
-                                <label className="text-xs" style={{ color: "#555" }}>Sale Price ($)</label>
-                                <input type="number" placeholder="0" value={itemPending.salePrice}
-                                  onChange={e => updatePending(itemKey, { salePrice: e.target.value })}
-                                  style={{ ...INPUT, width: 100 }} />
-                              </div>
-                              {itemPending.cost && itemPending.salePrice && (
+                              {itemPending.salePrice != null && (
+                                <div className="flex flex-col gap-1">
+                                  <label className="text-xs" style={{ color: "#555" }}>Sale Price (from estimate)</label>
+                                  <div className="text-sm font-semibold px-3 py-1.5 rounded-lg" style={{ background: "#0d1117", border: "1px solid #22c55e33", color: "#22c55e" }}>
+                                    {$(itemPending.salePrice)}
+                                  </div>
+                                </div>
+                              )}
+                              {itemPending.cost && itemPending.salePrice != null && (
                                 <div className="flex flex-col gap-1">
                                   <label className="text-xs" style={{ color: "#555" }}>Profit</label>
                                   <div className="text-sm font-bold px-3 py-1.5"
-                                    style={{ color: (parseFloat(itemPending.salePrice) - parseFloat(itemPending.cost)) >= 0 ? "#C9A84C" : "#f87171" }}>
-                                    {$(parseFloat(itemPending.salePrice) - parseFloat(itemPending.cost))}
+                                    style={{ color: (itemPending.salePrice - parseFloat(itemPending.cost)) >= 0 ? "#C9A84C" : "#f87171" }}>
+                                    {$(itemPending.salePrice - parseFloat(itemPending.cost))}
                                   </div>
                                 </div>
                               )}

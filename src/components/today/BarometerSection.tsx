@@ -69,8 +69,18 @@ export default function BarometerSection({ mibhIncome, clients }: { mibhIncome: 
 
         {/* Income left · % center · Goal right */}
         <div className="grid grid-cols-3 items-center mt-1 gap-1">
-          <div className="text-[22px] sm:text-[52px] font-black leading-none tracking-tight" style={{ color: "#C9A84C" }}>
-            ${fmt(mibhIncome)}
+          <div>
+            <div className="text-[22px] sm:text-[52px] font-black leading-none tracking-tight" style={{ color: "#C9A84C" }}>
+              ${fmt(mibhIncome)}
+            </div>
+            <div className="flex gap-3 mt-1 text-[10px] font-semibold uppercase tracking-wide flex-wrap">
+              {clients.reduce((s, c) => s + c.gcFee, 0) > 0 && (
+                <span style={{ color: "#C9A84C99" }}>GC Fee: <span style={{ color: "#C9A84C" }}>${fmt(clients.reduce((s, c) => s + c.gcFee, 0))}</span></span>
+              )}
+              {clients.reduce((s, c) => s + c.internalProfit, 0) > 0 && (
+                <span style={{ color: "#3b82f688" }}>Int. Profit: <span style={{ color: "#3b82f6" }}>${fmt(clients.reduce((s, c) => s + c.internalProfit, 0))}</span></span>
+              )}
+            </div>
           </div>
           <div className="text-center">
             <span

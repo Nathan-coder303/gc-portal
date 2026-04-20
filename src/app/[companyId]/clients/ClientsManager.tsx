@@ -156,9 +156,15 @@ function ClientCard({
             </div>
           </div>
           <div className="flex-1">
-            <div className="text-[10px] font-medium mb-0.5" style={{ color: "#484f58" }}>GC PROFIT</div>
-            <div className="font-black leading-none truncate" style={{ color: (client.internalProfit + client.gcFee) > 0 ? "#C9A84C" : "#30373f", fontSize: (client.internalProfit + client.gcFee) >= 1000000 ? 11 : (client.internalProfit + client.gcFee) >= 100000 ? 13 : 15 }}>
-              {(client.internalProfit + client.gcFee) > 0 ? `$${(client.internalProfit + client.gcFee).toLocaleString("en-US", { maximumFractionDigits: 0 })}` : "—"}
+            <div className="text-[10px] font-medium mb-0.5" style={{ color: "#484f58" }}>GC FEE</div>
+            <div className="font-black leading-none truncate" style={{ color: client.gcFee > 0 ? "#C9A84C" : "#30373f", fontSize: client.gcFee >= 1000000 ? 11 : client.gcFee >= 100000 ? 13 : 15 }}>
+              {client.gcFee > 0 ? `$${client.gcFee.toLocaleString("en-US", { maximumFractionDigits: 0 })}` : "—"}
+            </div>
+          </div>
+          <div className="flex-1">
+            <div className="text-[10px] font-medium mb-0.5" style={{ color: "#484f58" }}>INT. PROFIT</div>
+            <div className="font-black leading-none truncate" style={{ color: client.internalProfit > 0 ? "#3b82f6" : "#30373f", fontSize: client.internalProfit >= 1000000 ? 11 : client.internalProfit >= 100000 ? 13 : 15 }}>
+              {client.internalProfit > 0 ? `$${client.internalProfit.toLocaleString("en-US", { maximumFractionDigits: 0 })}` : "—"}
             </div>
           </div>
         </div>

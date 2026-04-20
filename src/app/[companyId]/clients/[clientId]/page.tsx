@@ -433,22 +433,31 @@ export default async function ClientDetailPage({
         <ClientSubsTab
           companyId={params.companyId}
           clientId={params.clientId}
-          estimates={safeClient.templates.map(est => ({
-            id: est.id,
-            name: est.name,
-            divisions: est.divisions
-              .slice()
-              .sort((a, b) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0))
-              .map(div => ({
-                id: div.id,
-                name: div.name,
-                csiCode: div.csiCode ?? null,
-                items: [
-                  ...div.items.map(i => ({ id: i.id, name: i.name, groupName: null })),
-                  ...div.groups.flatMap(g => g.items.map(i => ({ id: i.id, name: i.name, groupName: g.name }))),
-                ],
-              })),
-          }))}
+          estimates={safeClient.templates.map(est => {
+            const gcPct = est.gcFeePercent ? Number(est.gcFeePercent) : 0;
+            return {
+              id: est.id,
+              name: est.name,
+              gcFeePercent: gcPct,
+              divisions: est.divisions
+                .slice()
+                .sort((a, b) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0))
+                .map(div => {
+                  const allItems = [
+                    ...div.items.map(i => ({ id: i.id, name: i.name, groupName: null as string | null, qty: i.defaultQty ? Number(i.defaultQty) : 0, unitCost: i.defaultUnitCost ? Number(i.defaultUnitCost) : 0, markupPct: i.defaultMarkupPct ? Number(i.defaultMarkupPct) : 0 })),
+                    ...div.groups.flatMap(g => g.items.map(i => ({ id: i.id, name: i.name, groupName: g.name, qty: i.defaultQty ? Number(i.defaultQty) : 0, unitCost: i.defaultUnitCost ? Number(i.defaultUnitCost) : 0, markupPct: i.defaultMarkupPct ? Number(i.defaultMarkupPct) : 0 }))),
+                  ];
+                  const divTotal = allItems.reduce((s, i) => s + i.qty * i.unitCost * (1 + i.markupPct / 100), 0);
+                  return {
+                    id: div.id,
+                    name: div.name,
+                    csiCode: div.csiCode ?? null,
+                    total: divTotal,
+                    items: allItems,
+                  };
+                }),
+            };
+          })}
           initialSubs={subsList}
           initialAssignments={subAssignments}
         />
