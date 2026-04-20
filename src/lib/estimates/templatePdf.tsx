@@ -1326,6 +1326,7 @@ function TemplatePdfDocument({ companyName, template, client, divisions, showTer
           // div.id → { page, remainingWhenPlaced }
           const divPageMap = new Map<string, number>();
           const divRemainingMap = new Map<string, number>();
+          const divNameMap = new Map<string, string>();
 
           for (const { groupLabel, divs: ds } of grouped) {
             const filteredDs = ds.map(div => ({
@@ -1344,6 +1345,7 @@ function TemplatePdfDocument({ companyName, template, client, divisions, showTer
               // Record which page this division lands on and how much space was left
               divPageMap.set(div.id, simPage);
               divRemainingMap.set(div.id, simRemaining);
+              divNameMap.set(div.id, div.name);
               simRemaining -= H_DIV;
 
               for (const grp of filledGroups) {
@@ -1371,6 +1373,14 @@ function TemplatePdfDocument({ companyName, template, client, divisions, showTer
             7: breakDiv07 ?? false,
             8: breakDiv08 ?? false,
           };
+          // DEBUG: log simulation results
+          console.log(`[PDF SIM] prePages=${prePages} firstPageH=${PAGE_H - HEADER_H}`);
+          divPageMap.forEach((pg, divId) => {
+            const rem = divRemainingMap.get(divId) ?? -1;
+            const name = divNameMap.get(divId) ?? divId;
+            console.log(`[PDF SIM] "${name}" → page ${pg}, rem ${Math.round(rem)}pt`);
+          });
+
           const forcedBreakDivIds = new Set<string>();
           divPageMap.forEach((pg, divId) => {
             const threshold = breakByPage[pg];
