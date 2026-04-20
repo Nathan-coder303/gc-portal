@@ -1286,45 +1286,95 @@ function TemplatePdfDocument({ companyName, template, client, divisions, showTer
 
         {/* Divisions — grouped into super-sections (e.g. SHELL) */}
         {(() => {
-          // Build sequential break points: enabled toggles fire at the Nth
-          // content group boundary (Page 4 = 1st break, Page 5 = 2nd, etc.)
-          const breakPoints: boolean[] = [
-            !!breakDiv04,
-            !!breakDiv05,
-            breakDiv06 !== false,
-            !!breakDiv07,
-            !!breakDiv08,
-          ];
-
-          // Collect visible group IDs in order (each gi is one "content group")
-          const visibleGroupIds: number[] = [];
-          for (let i = 0; i < grouped.length; i++) {
-            const { divs: ds } = grouped[i];
-            const hasContent = ds.some(div =>
-              div.items.some(i2 => isItemFilled(i2) || !!i2.detail) ||
-              div.groups.some(g => g.items.some(i2 => isItemFilled(i2) || !!i2.detail))
-            );
-            if (hasContent) visibleGroupIds.push(i);
-          }
-
-          // Map each gi to its sequential position among visible groups
-          const groupPositionMap = new Map(visibleGroupIds.map((gi, pos) => [gi, pos]));
-
-          function needsBreak(gi: number): boolean {
-            const pos = groupPositionMap.get(gi);
-            if (pos === undefined || pos === 0) return false;
-            // pos 1 = first break point (Page 4), pos 2 = Page 5, etc.
-            const idx = pos - 1;
-            return idx < breakPoints.length ? !!breakPoints[idx] : false;
-          }
-
-          return grouped.map(({ groupLabel, divs }, gi) => {
-          // Pre-filter each division's items (apply insulation type filter)
+          // Shared filter function
           const applyInsF = (item: Item) => {
             const filtered = applyInsulationFilter(item.name, insulationType);
             if (filtered === null) return null;
             return filtered === item.name ? item : { ...item, name: filtered };
           };
+
+          // ── Height simulation to find which PDF page each division lands on ──
+          // Page geometry (LETTER, paddingTop 22, paddingBottom 96 footer)
+          const PAGE_H = 674; // 792 - 22 - 96
+          const HEADER_H = 140; // estimate header on first page (logo + company info + client + border)
+
+          // Element height estimates (pt)
+          const H_SUPER = 34;  // super-group header (marginTop 12 + padding 10 + text ~12)
+          const H_DIV  = 32;   // division header (marginTop 8 + padding 8 + text ~10 + wrap=false)
+          const H_BLUE = 22;   // blue sub-group header (marginTop 4 + padding 8 + text ~10)
+          const H_TH   = 14;   // table header row
+          const H_ROW  = 15;   // item row
+
+          // Count pre-content pages (pages before the main estimate <Page>)
+          let prePages = 0;
+          const hasCover = (includeCoverPage || !!clientCoverPhotoType);
+          if (hasCover && !includeAdditionPages && !includeRoofUpgradesPage && !includeRetailPages) prePages++;
+          if (includeRoofUpgradesPage) prePages += 2; // CoverPages + RoofIntroPage
+          if (includeAdditionPages) prePages += 2;
+          if (includeRetailPages) prePages += 2;
+          if (includeDivisionSummary && !includeRoofUpgradesPage) prePages++;
+
+          // Simulate layout: track PDF page for each division
+          let simPage = prePages + 1;
+          let simRemaining = PAGE_H - HEADER_H; // first page has less room (header takes space)
+
+          function simAdvance(needed: number) {
+            if (simRemaining < needed) { simPage++; simRemaining = PAGE_H; }
+            simRemaining -= needed;
+          }
+
+          const divPageMap = new Map<string, number>(); // div.id → PDF page it starts on
+
+          for (const { groupLabel, divs: ds } of grouped) {
+            const filteredDs = ds.map(div => ({
+              div,
+              filledItems: div.items.map(applyInsF).filter((i): i is Item => i !== null && (isItemFilled(i) || !!i.detail)),
+              filledGroups: div.groups.map(g => ({ ...g, items: g.items.map(applyInsF).filter((i): i is Item => i !== null && (isItemFilled(i) || !!i.detail)) })).filter(g => g.items.length > 0),
+            })).filter(d => d.filledItems.length > 0 || d.filledGroups.length > 0);
+
+            if (filteredDs.length === 0) continue;
+
+            if (groupLabel) simAdvance(H_SUPER);
+
+            for (const { div, filledItems, filledGroups } of filteredDs) {
+              // Division header has minPresenceAhead=50 on its parent View
+              if (simRemaining < 50) { simPage++; simRemaining = PAGE_H; }
+              simRemaining -= H_DIV;
+              divPageMap.set(div.id, simPage);
+
+              for (const grp of filledGroups) {
+                const grpH = H_BLUE + H_TH + grp.items.length * H_ROW;
+                if (simRemaining < Math.min(70, grpH)) { simPage++; simRemaining = PAGE_H; }
+                simRemaining -= (H_BLUE + H_TH);
+                for (let r = 0; r < grp.items.length; r++) { simAdvance(H_ROW); }
+              }
+
+              if (filledItems.length > 0) {
+                const itemsH = H_TH + filledItems.length * H_ROW;
+                if (simRemaining < Math.min(55, itemsH)) { simPage++; simRemaining = PAGE_H; }
+                simRemaining -= H_TH;
+                for (let r = 0; r < filledItems.length; r++) { simAdvance(H_ROW); }
+              }
+            }
+          }
+
+          // For each toggled page, find the last division on that PDF page
+          const breakByPage: Record<number, boolean> = {
+            4: !!breakDiv04, 5: !!breakDiv05, 6: !!breakDiv06, 7: !!breakDiv07, 8: !!breakDiv08,
+          };
+          // Build: pdfPage → last div.id on that page
+          const lastDivOnPage = new Map<number, string>();
+          divPageMap.forEach((pg, divId) => { lastDivOnPage.set(pg, divId); });
+
+          const forcedBreakDivIds = new Set<string>();
+          for (const [pg, enabled] of Object.entries(breakByPage)) {
+            if (!enabled) continue;
+            const lastDiv = lastDivOnPage.get(Number(pg));
+            if (lastDiv) forcedBreakDivIds.add(lastDiv);
+          }
+
+          return grouped.map(({ groupLabel, divs }, gi) => {
+          // Pre-filter each division's items (apply insulation type filter)
           const filteredDivs = divs.map(div => ({
             div,
             filledItems: div.items.map(applyInsF).filter((i): i is Item => i !== null && (isItemFilled(i) || !!i.detail)),
@@ -1338,11 +1388,8 @@ function TemplatePdfDocument({ companyName, template, client, divisions, showTer
           const overrideTotal = groupLabel && summaryGroups?.[groupLabel] ? computeOverrideTotal(summaryGroups[groupLabel]) : null;
           const groupTotal = overrideTotal !== null ? overrideTotal : rawTotal;
 
-          // Put break on the outer View — fires for this content group's position
-          const outerBreak = needsBreak(gi);
-
           return (
-            <View key={gi} break={outerBreak}>
+            <View key={gi}>
               {/* Super-group header (e.g. SHELL) */}
               {groupLabel && (
                 <View style={styles.groupSuperHeader}>
@@ -1355,11 +1402,8 @@ function TemplatePdfDocument({ companyName, template, client, divisions, showTer
                 const divTotal = [...filledItems, ...filledGroups.flatMap(g => g.items)]
                   .reduce((s, i) => s + calcTotal(i.defaultQty, i.defaultUnitCost, i.defaultMarkupPct), 0);
 
-                // Inner break not needed — break is handled at the group level above
-                const innerBreak = false;
-
                 return (
-                  <View key={div.id} minPresenceAhead={50} break={innerBreak}>
+                  <View key={div.id} minPresenceAhead={50} break={forcedBreakDivIds.has(div.id)}>
                     <View wrap={false} style={[styles.divisionHeader, groupLabel ? { marginTop: 6 } : {}]}>
                       <View style={styles.divisionLeft}>
                         {!isRoof && div.csiCode ? <Text style={styles.divisionCsi}>{div.csiCode}</Text> : null}
