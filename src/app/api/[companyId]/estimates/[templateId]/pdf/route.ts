@@ -47,11 +47,15 @@ export async function GET(
   const page2Param = req.nextUrl.searchParams.get("page2"); // "ROOF" | "ADDITION" | "NONE" | null (auto)
   const isPreview = req.nextUrl.searchParams.get("preview") === "1";
   const includeDivisionSummary = req.nextUrl.searchParams.get("divSummary") === "1";
-  const breakDiv04 = req.nextUrl.searchParams.get("breakDiv04") === "1";
-  const breakDiv05 = req.nextUrl.searchParams.get("breakDiv05") === "1";
-  const breakDiv06 = req.nextUrl.searchParams.get("breakDiv06") !== "0"; // default true (was hardcoded)
-  const breakDiv07 = req.nextUrl.searchParams.get("breakDiv07") === "1";
-  const breakDiv08 = req.nextUrl.searchParams.get("breakDiv08") === "1";
+  function parseBreak(param: string | null): number | false {
+    const n = parseInt(param ?? "0");
+    return n > 0 ? n : false;
+  }
+  const breakDiv04 = parseBreak(req.nextUrl.searchParams.get("breakDiv04"));
+  const breakDiv05 = parseBreak(req.nextUrl.searchParams.get("breakDiv05"));
+  const breakDiv06 = parseBreak(req.nextUrl.searchParams.get("breakDiv06"));
+  const breakDiv07 = parseBreak(req.nextUrl.searchParams.get("breakDiv07"));
+  const breakDiv08 = parseBreak(req.nextUrl.searchParams.get("breakDiv08"));
 
   const [template, company] = await Promise.all([
     prisma.estimateTemplate.findFirst({

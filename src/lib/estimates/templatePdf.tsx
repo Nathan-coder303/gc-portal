@@ -170,11 +170,11 @@ type TemplatePdfProps = {
   clientCoverPhotoType?: string | null;
   clientCoverPhotoUrl?: string | null;
   clientCoverTitle?: string | null;
-  breakDiv04?: boolean;
-  breakDiv05?: boolean;
-  breakDiv06?: boolean;
-  breakDiv07?: boolean;
-  breakDiv08?: boolean;
+  breakDiv04?: number | false;
+  breakDiv05?: number | false;
+  breakDiv06?: number | false;
+  breakDiv07?: number | false;
+  breakDiv08?: number | false;
 };
 
 function ItemTableHeader({ showLineNum }: { showLineNum?: boolean }) {
@@ -1323,7 +1323,9 @@ function TemplatePdfDocument({ companyName, template, client, divisions, showTer
             simRemaining -= needed;
           }
 
-          const divPageMap = new Map<string, number>(); // div.id → PDF page it starts on
+          // div.id → { page, remainingWhenPlaced }
+          const divPageMap = new Map<string, number>();
+          const divRemainingMap = new Map<string, number>();
 
           for (const { groupLabel, divs: ds } of grouped) {
             const filteredDs = ds.map(div => ({
@@ -1337,10 +1339,12 @@ function TemplatePdfDocument({ companyName, template, client, divisions, showTer
             if (groupLabel) simAdvance(H_SUPER);
 
             for (const { div, filledItems, filledGroups } of filteredDs) {
-              // Division header has minPresenceAhead=50 on its parent View
+              // Division header has minPresenceAhead=50 — advance page if tight
               if (simRemaining < 50) { simPage++; simRemaining = PAGE_H; }
-              simRemaining -= H_DIV;
+              // Record which page this division lands on and how much space was left
               divPageMap.set(div.id, simPage);
+              divRemainingMap.set(div.id, simRemaining);
+              simRemaining -= H_DIV;
 
               for (const grp of filledGroups) {
                 const grpH = H_BLUE + H_TH + grp.items.length * H_ROW;
@@ -1358,20 +1362,22 @@ function TemplatePdfDocument({ companyName, template, client, divisions, showTer
             }
           }
 
-          // For each toggled page, find the last division on that PDF page
-          const breakByPage: Record<number, boolean> = {
-            4: !!breakDiv04, 5: !!breakDiv05, 6: !!breakDiv06, 7: !!breakDiv07, 8: !!breakDiv08,
+          // For each toggled page with a threshold, push any division on that page
+          // whose remaining space when placed was less than the threshold.
+          const breakByPage: Record<number, number | false> = {
+            4: breakDiv04 ?? false,
+            5: breakDiv05 ?? false,
+            6: breakDiv06 ?? false,
+            7: breakDiv07 ?? false,
+            8: breakDiv08 ?? false,
           };
-          // Build: pdfPage → last div.id on that page
-          const lastDivOnPage = new Map<number, string>();
-          divPageMap.forEach((pg, divId) => { lastDivOnPage.set(pg, divId); });
-
           const forcedBreakDivIds = new Set<string>();
-          for (const [pg, enabled] of Object.entries(breakByPage)) {
-            if (!enabled) continue;
-            const lastDiv = lastDivOnPage.get(Number(pg));
-            if (lastDiv) forcedBreakDivIds.add(lastDiv);
-          }
+          divPageMap.forEach((pg, divId) => {
+            const threshold = breakByPage[pg];
+            if (threshold === false) return;
+            const rem = divRemainingMap.get(divId) ?? PAGE_H;
+            if (rem < threshold) forcedBreakDivIds.add(divId);
+          });
 
           return grouped.map(({ groupLabel, divs }, gi) => {
           // Pre-filter each division's items (apply insulation type filter)
