@@ -1384,8 +1384,6 @@ function TemplatePdfDocument({ companyName, template, client, divisions, showTer
             if (rem < threshold) forcedBreakDivIds.add(divId);
           });
 
-          const extraRowPadV = 0;
-          const extraRowFont = 0;
 
           return grouped.map(({ groupLabel, divs }, gi) => {
           // Pre-filter each division's items (apply insulation type filter)
