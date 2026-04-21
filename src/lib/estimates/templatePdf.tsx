@@ -1376,14 +1376,6 @@ function TemplatePdfDocument({ companyName, template, client, divisions, showTer
             7: breakDiv07 ?? false,
             8: breakDiv08 ?? false,
           };
-          // DEBUG: log simulation results
-          console.log(`[PDF SIM] prePages=${prePages} firstPageH=${PAGE_H - HEADER_H}`);
-          divPageMap.forEach((pg, divId) => {
-            const rem = divRemainingMap.get(divId) ?? -1;
-            const name = divNameMap.get(divId) ?? divId;
-            console.log(`[PDF SIM] "${name}" → page ${pg}, rem ${Math.round(rem)}pt`);
-          });
-
           const forcedBreakDivIds = new Set<string>();
           divPageMap.forEach((pg, divId) => {
             const threshold = breakByPage[pg];
@@ -1459,6 +1451,9 @@ function TemplatePdfDocument({ companyName, template, client, divisions, showTer
           );
         });
         })()}
+
+        {/* Push ESTIMATE TOTAL to bottom of page when content is sparse */}
+        <View style={{ flex: 1 }} />
 
         {/* Totals block — all kept together so ESTIMATE TOTAL never lands alone on a new page */}
         <View wrap={false}>
