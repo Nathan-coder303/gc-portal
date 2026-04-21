@@ -1,5 +1,5 @@
 "use client";
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect, useCallback } from "react";
 
 export const COVER_OPTIONS = [
   { type: "FLAT_ROOFS",    label: "Flat Roofs",    img: "/flat-roofs-cover.jpg",      desc: "Flat / low-slope roofing" },
@@ -78,7 +78,6 @@ export default function CoverPagePickerModal({
   const [uploading, setUploading] = useState(false);
   const [uploadError, setUploadError] = useState<string | null>(null);
   const [dragOver, setDragOver] = useState(false);
-  const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Load existing custom covers
   useEffect(() => {
@@ -195,8 +194,8 @@ export default function CoverPagePickerModal({
 
             {/* Upload tile */}
             {companyId && clientId && (
-              <button
-                onClick={() => fileInputRef.current?.click()}
+              <label
+                htmlFor="cover-file-input"
                 onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
                 onDragLeave={() => setDragOver(false)}
                 onDrop={(e) => {
@@ -205,8 +204,8 @@ export default function CoverPagePickerModal({
                   const file = e.dataTransfer.files[0];
                   if (file) uploadFile(file);
                 }}
-                className="rounded-xl overflow-hidden text-left transition-all"
-                style={{ border: `2px dashed ${dragOver ? "#C9A84C" : "#30373f"}`, outline: "none", minHeight: 108 }}
+                className="rounded-xl overflow-hidden text-left transition-all cursor-pointer"
+                style={{ border: `2px dashed ${dragOver ? "#C9A84C" : "#30373f"}`, outline: "none", minHeight: 108, display: "block" }}
               >
                 <div style={{ width: "100%", height: 72, background: dragOver ? "#1e2a12" : "#0d1117", display: "flex", alignItems: "center", justifyContent: "center" }}>
                   {uploading
@@ -218,11 +217,11 @@ export default function CoverPagePickerModal({
                   <div className="text-xs font-semibold" style={{ color: "#e6edf3" }}>Upload</div>
                   <div className="text-[10px]" style={{ color: "#8b949e" }}>Drag or click</div>
                 </div>
-              </button>
+              </label>
             )}
           </div>
           <input
-            ref={fileInputRef}
+            id="cover-file-input"
             type="file"
             accept="image/*"
             className="hidden"
