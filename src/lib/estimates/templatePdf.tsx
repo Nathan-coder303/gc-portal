@@ -1401,8 +1401,12 @@ function TemplatePdfDocument({ companyName, template, client, divisions, showTer
             const H_GRAND_TOTAL_EST = 30; // grand total bar + marginTop
             const extraSpace = simRemaining - H_GRAND_TOTAL_EST;
             if (extraSpace > 0 && totalRows > 0) {
-              const perRow = extraSpace / totalRows;
-              extraRowPadV = perRow / 2; // split top + bottom
+              // Assume 2-line rows at 9pt to avoid overflow when text wraps
+              const H_ROW_REAL = 9 * 1.2 * 2 + 3; // ~24.6pt actual 2-line row height
+              const H_HEADERS = H_DIV + H_TH + H_GRAND_TOTAL_EST;
+              const safeExtra = (PAGE_H - HEADER_H - H_HEADERS - totalRows * H_ROW_REAL) * 0.9;
+              const perRow = Math.max(safeExtra, 0) / totalRows;
+              extraRowPadV = perRow / 2;
               extraRowFont = 1.5; // 7.5 base + 1.5 = 9pt
             }
           }
