@@ -71,28 +71,28 @@ const styles = StyleSheet.create({
   clientName: { fontSize: 13, fontFamily: "Helvetica-Bold", color: "#0f172a", marginBottom: 3, textAlign: "right" },
 
   // Division header row — text/total both white
-  divisionHeader: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", backgroundColor: DARK, paddingHorizontal: 8, paddingVertical: 4, marginTop: 8, borderRadius: 3 },
+  divisionHeader: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", backgroundColor: DARK, paddingHorizontal: 8, paddingVertical: 3, marginTop: 6, borderRadius: 3 },
   divisionLeft: { flexDirection: "row", alignItems: "center", gap: 6 },
-  divisionCsi: { fontSize: 10, fontFamily: "Helvetica-Bold", color: "#ffffff" },
-  divisionName: { fontSize: 10, fontFamily: "Helvetica-Bold", color: "#ffffff" },
-  divisionTotal: { fontSize: 10, fontFamily: "Helvetica-Bold", color: "#ffffff" },
+  divisionCsi: { fontSize: 9.5, fontFamily: "Helvetica-Bold", color: "#ffffff" },
+  divisionName: { fontSize: 9.5, fontFamily: "Helvetica-Bold", color: "#ffffff" },
+  divisionTotal: { fontSize: 9.5, fontFamily: "Helvetica-Bold", color: "#ffffff" },
 
-  groupHeader: { flexDirection: "row", justifyContent: "space-between", backgroundColor: "#f1f5f9", paddingHorizontal: 8, paddingVertical: 3, marginTop: 4 },
-  groupName: { fontSize: 8, fontFamily: "Helvetica-Bold", color: "#475569", textTransform: "uppercase" },
-  groupTotal: { fontSize: 8, fontFamily: "Helvetica-Bold", color: "#475569" },
-  tableHeader: { flexDirection: "row", backgroundColor: "#f8fafc", paddingHorizontal: 8, paddingVertical: 2, borderBottomWidth: 1, borderBottomColor: "#e2e8f0" },
-  tableRow: { flexDirection: "row", paddingHorizontal: 8, paddingVertical: 2, borderBottomWidth: 1, borderBottomColor: "#f1f5f9" },
-  tableRowAlt: { flexDirection: "row", paddingHorizontal: 8, paddingVertical: 2, borderBottomWidth: 1, borderBottomColor: "#f1f5f9", backgroundColor: "#fafafa" },
+  groupHeader: { flexDirection: "row", justifyContent: "space-between", backgroundColor: "#f1f5f9", paddingHorizontal: 8, paddingVertical: 2, marginTop: 3 },
+  groupName: { fontSize: 7.5, fontFamily: "Helvetica-Bold", color: "#475569", textTransform: "uppercase" },
+  groupTotal: { fontSize: 7.5, fontFamily: "Helvetica-Bold", color: "#475569" },
+  tableHeader: { flexDirection: "row", backgroundColor: "#f8fafc", paddingHorizontal: 8, paddingVertical: 1.5, borderBottomWidth: 1, borderBottomColor: "#e2e8f0" },
+  tableRow: { flexDirection: "row", paddingHorizontal: 8, paddingVertical: 1.5, borderBottomWidth: 1, borderBottomColor: "#f1f5f9" },
+  tableRowAlt: { flexDirection: "row", paddingHorizontal: 8, paddingVertical: 1.5, borderBottomWidth: 1, borderBottomColor: "#f1f5f9", backgroundColor: "#fafafa" },
   colLineNum: { width: 18, textAlign: "right", paddingRight: 4 },
   colName: { flex: 3 },
   colDetail: { width: 60, textAlign: "center" },
   colQty: { width: 40, textAlign: "right" },
   colUnit: { width: 40, textAlign: "center" },
   colTotal: { width: 80, textAlign: "right" },
-  headerText: { fontSize: 7, color: "#94a3b8", fontFamily: "Helvetica-Bold", textTransform: "uppercase" },
-  cellText: { fontSize: 8, color: "#334155" },
-  cellMuted: { fontSize: 8, color: "#94a3b8" },
-  cellBold: { fontSize: 8, color: "#0f172a", fontFamily: "Helvetica-Bold" },
+  headerText: { fontSize: 6.5, color: "#94a3b8", fontFamily: "Helvetica-Bold", textTransform: "uppercase" },
+  cellText: { fontSize: 7.5, color: "#334155" },
+  cellMuted: { fontSize: 7.5, color: "#94a3b8" },
+  cellBold: { fontSize: 7.5, color: "#0f172a", fontFamily: "Helvetica-Bold" },
 
   grandTotalBar: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", backgroundColor: DARK, paddingHorizontal: 10, paddingVertical: 6, marginTop: 6, borderRadius: 3 },
   grandTotalLabel: { fontSize: 11, fontFamily: "Helvetica-Bold", color: "#C9A84C" },
@@ -1300,11 +1300,11 @@ function TemplatePdfDocument({ companyName, template, client, divisions, showTer
           const HEADER_H = 140; // estimate header on first page (logo + company info + client + border)
 
           // Element height estimates (pt)
-          const H_SUPER = 34;  // super-group header (marginTop 12 + padding 10 + text ~12)
-          const H_DIV  = 32;   // division header (marginTop 8 + padding 8 + text ~10 + wrap=false)
-          const H_BLUE = 22;   // blue sub-group header (marginTop 4 + padding 8 + text ~10)
-          const H_TH   = 14;   // table header row
-          const H_ROW  = 15;   // item row
+          const H_SUPER = 31;  // super-group header (marginTop 12 + padding 10 + text ~9.5)
+          const H_DIV  = 27;   // division header (marginTop 6 + padding 6 + text ~9.5)
+          const H_BLUE = 19;   // blue sub-group header (marginTop 3 + padding 4 + text ~9.5)
+          const H_TH   = 12;   // table header row
+          const H_ROW  = 13;   // item row
 
           // Count pre-content pages (pages before the main estimate <Page>)
           let prePages = 0;
