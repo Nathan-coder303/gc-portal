@@ -28,6 +28,7 @@ export async function POST(
         allowedContentTypes: ["image/jpeg", "image/png", "image/webp", "image/gif", "image/heic", "image/heif"],
         maximumSizeInBytes: 20 * 1024 * 1024,
         tokenPayload: JSON.stringify({ clientId: params.clientId }),
+        addRandomSuffix: false,
       }),
       onUploadCompleted: async ({ blob, tokenPayload }) => {
         try {

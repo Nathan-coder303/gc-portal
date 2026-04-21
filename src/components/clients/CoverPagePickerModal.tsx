@@ -108,7 +108,7 @@ export default function CoverPagePickerModal({
         `client-covers/${clientId}/${Date.now()}-${safeName}`,
         file,
         {
-          access: "private",
+          access: "public",
           handleUploadUrl: `/api/${companyId}/clients/${clientId}/cover-upload`,
         }
       );

@@ -34,9 +34,13 @@ export async function GET(
     blobUrl = client.coverPhotoUrl;
   }
 
-  const res = await fetch(blobUrl, {
-    headers: { Authorization: `Bearer ${process.env.BLOB_READ_WRITE_TOKEN}` },
-  });
+  // Try without auth first (public blobs), fall back to Bearer for legacy private blobs
+  let res = await fetch(blobUrl);
+  if (!res.ok && process.env.BLOB_READ_WRITE_TOKEN) {
+    res = await fetch(blobUrl, {
+      headers: { Authorization: `Bearer ${process.env.BLOB_READ_WRITE_TOKEN}` },
+    });
+  }
   if (!res.ok) return new NextResponse("Blob not found", { status: 404 });
 
   const buffer = await res.arrayBuffer();
