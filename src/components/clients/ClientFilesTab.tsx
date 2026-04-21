@@ -3,6 +3,84 @@
 import { useState, useRef, useCallback } from "react";
 import { TrashIcon } from "@/components/ui/icons";
 
+function PdfOptionsModal({
+  file,
+  onToggleEstimate,
+  onClose,
+}: {
+  file: ClientFile;
+  onToggleEstimate: (fileId: string, current: boolean) => void;
+  onClose: () => void;
+}) {
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 px-4" onClick={onClose}>
+      <div
+        className="w-full max-w-sm rounded-2xl p-6 flex flex-col gap-4"
+        style={{ background: "#161b22", border: "1px solid #30373f" }}
+        onClick={e => e.stopPropagation()}
+      >
+        <div className="flex items-center justify-between">
+          <h3 className="font-bold text-sm truncate pr-2" style={{ color: "#e6edf3" }}>{file.fileName}</h3>
+          <button onClick={onClose} style={{ color: "#888" }} className="text-xl leading-none shrink-0">✕</button>
+        </div>
+
+        {/* Include in estimate */}
+        <div className="rounded-xl p-4 flex flex-col gap-3" style={{ background: "#0d1117", border: "1px solid #30373f" }}>
+          <div>
+            <div className="text-xs font-semibold uppercase tracking-widest mb-1" style={{ color: "#C9A84C" }}>Include in Estimate</div>
+            <div className="text-xs" style={{ color: "#8b949e" }}>Insert page 2 of this PDF as page 3 of the estimate PDF</div>
+          </div>
+          <div className="flex gap-2">
+            <button
+              onClick={() => { if (!file.useInEstimate) onToggleEstimate(file.id, file.useInEstimate); }}
+              className="flex-1 py-2 rounded-lg text-sm font-semibold"
+              style={{
+                background: file.useInEstimate ? "#C9A84C" : "#1e2736",
+                color: file.useInEstimate ? "#0d1117" : "#888",
+                border: `1px solid ${file.useInEstimate ? "#C9A84C" : "#30373f"}`,
+              }}
+            >
+              Yes
+            </button>
+            <button
+              onClick={() => { if (file.useInEstimate) onToggleEstimate(file.id, file.useInEstimate); }}
+              className="flex-1 py-2 rounded-lg text-sm font-semibold"
+              style={{
+                background: !file.useInEstimate ? "#C9A84C" : "#1e2736",
+                color: !file.useInEstimate ? "#0d1117" : "#888",
+                border: `1px solid ${!file.useInEstimate ? "#C9A84C" : "#30373f"}`,
+              }}
+            >
+              No
+            </button>
+          </div>
+        </div>
+
+        {/* Actions */}
+        <div className="flex gap-2">
+          <a
+            href={file.fileUrl}
+            target="_blank"
+            rel="noreferrer"
+            className="flex-1 py-2 rounded-lg text-sm font-semibold text-center"
+            style={{ background: "#C9A84C22", color: "#C9A84C", border: "1px solid #C9A84C44" }}
+          >
+            View PDF
+          </a>
+          <a
+            href={file.fileUrl}
+            download={file.fileName}
+            className="flex-1 py-2 rounded-lg text-sm font-semibold text-center"
+            style={{ background: "#1e2736", color: "#8b949e", border: "1px solid #30373f" }}
+          >
+            Download
+          </a>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 type ClientFile = {
   id: string;
   fileName: string;
@@ -43,6 +121,7 @@ export default function ClientFilesTab({
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [togglingId, setTogglingId] = useState<string | null>(null);
   const [errors, setErrors] = useState<string[]>([]);
+  const [pdfModal, setPdfModal] = useState<ClientFile | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const dragCounter = useRef(0);
 
@@ -110,8 +189,10 @@ export default function ClientFilesTab({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ fileId, useInEstimate: next }),
       });
-      // Clear all, then set the toggled one
-      setFiles(prev => prev.map(f => ({ ...f, useInEstimate: next && f.id === fileId })));
+      const updated = (prev: ClientFile[]) => prev.map(f => ({ ...f, useInEstimate: next && f.id === fileId }));
+      setFiles(updated);
+      // Keep modal in sync
+      setPdfModal(prev => prev ? { ...prev, useInEstimate: next && prev.id === fileId } : null);
     } finally {
       setTogglingId(null);
     }
@@ -190,15 +271,25 @@ export default function ClientFilesTab({
                   <FileIcon mimeType={file.mimeType} />
                 </div>
                 <div className="flex-1 min-w-0">
-                  <a
-                    href={file.fileUrl}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="text-sm font-medium hover:underline truncate block"
-                    style={{ color: "#e6edf3" }}
-                  >
-                    {file.fileName}
-                  </a>
+                  {isPdf ? (
+                    <button
+                      onClick={() => setPdfModal(file)}
+                      className="text-sm font-medium hover:underline truncate block text-left w-full"
+                      style={{ color: "#e6edf3", background: "none", border: "none", padding: 0, cursor: "pointer" }}
+                    >
+                      {file.fileName}
+                    </button>
+                  ) : (
+                    <a
+                      href={file.fileUrl}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="text-sm font-medium hover:underline truncate block"
+                      style={{ color: "#e6edf3" }}
+                    >
+                      {file.fileName}
+                    </a>
+                  )}
                   <div className="text-xs mt-0.5 flex items-center gap-2" style={{ color: "#8b949e" }}>
                     <span>{formatBytes(file.fileSize)} · {new Date(file.uploadedAt).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}</span>
                     {file.useInEstimate && (
@@ -250,6 +341,14 @@ export default function ClientFilesTab({
             );
           })}
         </div>
+      )}
+
+      {pdfModal && (
+        <PdfOptionsModal
+          file={pdfModal}
+          onToggleEstimate={handleToggleEstimate}
+          onClose={() => setPdfModal(null)}
+        />
       )}
     </div>
   );
