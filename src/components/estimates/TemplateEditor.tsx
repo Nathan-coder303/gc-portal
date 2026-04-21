@@ -3,6 +3,7 @@
 import { useState, useTransition, useRef, useCallback, createContext, useContext, useEffect, useReducer } from "react";
 import { useRouter } from "next/navigation";
 import { TrashIcon, PencilIcon } from "@/components/ui/icons";
+import CoverPagePickerModal, { PdfOptions, CoverType } from "@/components/clients/CoverPagePickerModal";
 import { lookupCsiCode, lookupItemCsiCode, formatCsiCode } from "@/lib/divisions";
 import { DndContext, DragOverlay, useDroppable, useDraggable, closestCenter } from "@dnd-kit/core";
 import type { DragStartEvent, DragEndEvent } from "@dnd-kit/core";
@@ -1088,6 +1089,10 @@ export default function TemplateEditor({
   allClients,
   termsTemplates: initialTermsTemplates,
   initialSummaryGroups,
+  hasInsertFile = false,
+  clientCoverPhotoType = null,
+  clientCoverPhotoUrl = null,
+  isCommercial = false,
 }: {
   template: Template;
   divisions: Division[];
@@ -1096,6 +1101,10 @@ export default function TemplateEditor({
   allClients: { id: string; name: string; address: string | null; city: string | null; state: string | null; zip: string | null; email: string | null; phone: string | null }[];
   termsTemplates: { id: string; name: string; content: string }[];
   initialSummaryGroups?: Record<string, SummaryGroupData> | null;
+  hasInsertFile?: boolean;
+  clientCoverPhotoType?: string | null;
+  clientCoverPhotoUrl?: string | null;
+  isCommercial?: boolean;
 }) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
@@ -1130,6 +1139,7 @@ export default function TemplateEditor({
   const [saveAsNew, setSaveAsNew] = useState(false);
   const [newName, setNewName] = useState(`${template.name} (copy)`);
   const [saveError, setSaveError] = useState("");
+  const [showPdfModal, setShowPdfModal] = useState(false);
   const [saveClientError, setSaveClientError] = useState("");
   const [savedToClient, setSavedToClient] = useState(false);
   const [globalSaveSignal, setGlobalSaveSignal] = useState(0);
@@ -1769,19 +1779,40 @@ export default function TemplateEditor({
                 <div className="hidden sm:block text-xs leading-relaxed" style={{ color: "#8b949e" }}>Download a ready-to-send PDF of the current estimate</div>
               </a>
 
-              {/* Card 4 — Export PDF with Cover */}
-              <a
-                href={`/api/${template.companyId}/estimates/${template.id}/pdf?cover=1`}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="block rounded-2xl p-3 sm:p-5 transition-all"
+              {/* Card 4 — Export PDF with Cover (opens options modal) */}
+              <button
+                onClick={() => setShowPdfModal(true)}
+                className="block w-full text-left rounded-2xl p-3 sm:p-5 transition-all cursor-pointer"
                 style={{ background: "#0d1a1a", border: "2px solid #C9A84C66" }}
               >
                 <div className="text-2xl mb-1 sm:mb-2">📋</div>
                 <div className="text-xs sm:text-sm font-bold sm:mb-1" style={{ color: "#C9A84C" }}>Export PDF + Cover</div>
-                <div className="hidden sm:block text-xs leading-relaxed" style={{ color: "#8b949e" }}>Includes MIBH presentation cover pages before the estimate</div>
-              </a>
+                <div className="hidden sm:block text-xs leading-relaxed" style={{ color: "#8b949e" }}>Choose cover, page 2 &amp; insert options</div>
+              </button>
             </div>
+
+            {showPdfModal && (
+              <CoverPagePickerModal
+                isCommercial={isCommercial}
+                initialCoverType={(clientCoverPhotoType as CoverType) ?? undefined}
+                customCoverUrl={clientCoverPhotoUrl}
+                hasInsertFile={hasInsertFile}
+                confirmLabel="Download PDF"
+                showPreview
+                companyId={template.companyId}
+                clientId={currentClient?.id}
+                onConfirm={(opts: PdfOptions) => {
+                  const url = `/api/${template.companyId}/estimates/${template.id}/pdf?cover=1&coverType=${opts.coverType}&page2=${opts.page2}&includeInsert=${opts.includeInsert ? 1 : 0}&divSummary=${opts.includeDivisionSummary ? 1 : 0}&breakDiv04=${opts.breakDiv04 || 0}&breakDiv05=${opts.breakDiv05 || 0}&breakDiv06=${opts.breakDiv06 || 0}&breakDiv07=${opts.breakDiv07 || 0}&breakDiv08=${opts.breakDiv08 || 0}`;
+                  window.open(url, "_blank");
+                  setShowPdfModal(false);
+                }}
+                onPreview={(opts: PdfOptions) => {
+                  const url = `/api/${template.companyId}/estimates/${template.id}/pdf?cover=1&coverType=${opts.coverType}&page2=${opts.page2}&includeInsert=${opts.includeInsert ? 1 : 0}&divSummary=${opts.includeDivisionSummary ? 1 : 0}&breakDiv04=${opts.breakDiv04 || 0}&breakDiv05=${opts.breakDiv05 || 0}&breakDiv06=${opts.breakDiv06 || 0}&breakDiv07=${opts.breakDiv07 || 0}&breakDiv08=${opts.breakDiv08 || 0}&preview=1`;
+                  window.open(url, "_blank");
+                }}
+                onClose={() => setShowPdfModal(false)}
+              />
+            )}
 
             <ClientSelector
               templateId={template.id}

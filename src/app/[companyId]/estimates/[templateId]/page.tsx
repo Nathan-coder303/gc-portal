@@ -17,7 +17,7 @@ export default async function TemplateEditorPage({
   if (!session) redirect("/login");
   if (!can(session.user.role, "estimate:read")) redirect(`/${params.companyId}`);
 
-  const [template, clients] = await Promise.all([
+  const [template, clients, clientFiles] = await Promise.all([
     prisma.estimateTemplate.findFirst({
       where: { id: params.templateId, companyId: params.companyId, archivedAt: null },
       include: {
@@ -42,6 +42,11 @@ export default async function TemplateEditorPage({
       },
     }),
     prisma.client.findMany({ where: { companyId: params.companyId }, orderBy: { name: "asc" } }),
+    prisma.estimateTemplate.findFirst({ where: { id: params.templateId } })
+      .then(async t => t?.clientId
+        ? prisma.clientFile.findMany({ where: { clientId: t.clientId } })
+        : []
+      ),
   ]);
   const termsTemplates = getFileTermsPresets();
 
@@ -139,6 +144,10 @@ export default async function TemplateEditorPage({
           allClients={clients.map(c => ({ id: c.id, name: c.name, address: c.address, city: c.city, state: c.state, zip: c.zip, email: c.email, phone: c.phone }))}
           termsTemplates={termsTemplates}
           initialSummaryGroups={template.summaryGroups as Record<string, { qty: number | null; unit: string | null; unitCost: number | null; markupPct: number | null; manualTotal: number | null }> | null}
+          hasInsertFile={clientFiles.some(f => f.useInEstimate)}
+          clientCoverPhotoType={template.client?.coverPhotoType ?? null}
+          clientCoverPhotoUrl={template.client?.coverPhotoType === "CUSTOM" ? `/api/${params.companyId}/clients/${template.client?.id}/cover` : null}
+          isCommercial={template.client?.isCommercial ?? false}
         />
     </div>
   );
