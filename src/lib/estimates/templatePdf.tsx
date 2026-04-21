@@ -191,38 +191,39 @@ function ItemTableHeader({ showLineNum }: { showLineNum?: boolean }) {
   );
 }
 
-function ItemRow({ item, index, lineNum }: { item: Item; index: number; lineNum?: number }) {
+function ItemRow({ item, index, lineNum, extraPadV = 0, extraFont = 0 }: { item: Item; index: number; lineNum?: number; extraPadV?: number; extraFont?: number }) {
   const isExcluded = item.detail === "Excluded";
   const total = calcTotal(item.defaultQty, item.defaultUnitCost, item.defaultMarkupPct);
-  const rowStyle = index % 2 === 0 ? styles.tableRow : styles.tableRowAlt;
   const detailColor = isExcluded ? "#dc2626" : item.detail === "Allowances" ? "#d97706" : "#334155";
+  const padV = 1.5 + extraPadV;
+  const fs = 7.5 + extraFont;
   return (
     <View wrap={false} minPresenceAhead={25} style={{ borderBottomWidth: 1, borderBottomColor: "#f1f5f9", backgroundColor: index % 2 === 0 ? undefined : "#fafafa" }}>
-      <View style={[rowStyle, { borderBottomWidth: 0 }]}>
-        {lineNum != null && <Text style={[styles.cellMuted, styles.colLineNum]}>{lineNum}</Text>}
+      <View style={{ flexDirection: "row", paddingHorizontal: 8, paddingVertical: padV, borderBottomWidth: 0 }}>
+        {lineNum != null && <Text style={[styles.cellMuted, styles.colLineNum, { fontSize: fs }]}>{lineNum}</Text>}
         <View style={styles.colName}>
-          <Text style={styles.cellText}>
-            {item.csiCode ? <Text style={{ fontSize: 7, color: "#94a3b8", fontFamily: "Helvetica-Bold" }}>{item.csiCode}{"  "}</Text> : null}
+          <Text style={[styles.cellText, { fontSize: fs }]}>
+            {item.csiCode ? <Text style={{ fontSize: Math.max(fs - 1, 7), color: "#94a3b8", fontFamily: "Helvetica-Bold" }}>{item.csiCode}{"  "}</Text> : null}
             {(item.name ?? "")}
           </Text>
         </View>
-        <Text style={[{ fontSize: 7, color: detailColor, textAlign: "center" }, styles.colDetail]}>{item.detail?.toUpperCase() ?? ""}</Text>
+        <Text style={[{ fontSize: Math.max(fs - 1, 7), color: detailColor, textAlign: "center" }, styles.colDetail]}>{item.detail?.toUpperCase() ?? ""}</Text>
         {isExcluded ? (
           <>
-            <Text style={[styles.cellMuted, styles.colQty]}>—</Text>
-            <Text style={[styles.cellMuted, styles.colUnit]}>{item.unit ?? ""}</Text>
-            <Text style={[styles.cellMuted, styles.colTotal]}>$0.00</Text>
+            <Text style={[styles.cellMuted, styles.colQty, { fontSize: fs }]}>—</Text>
+            <Text style={[styles.cellMuted, styles.colUnit, { fontSize: fs }]}>{item.unit ?? ""}</Text>
+            <Text style={[styles.cellMuted, styles.colTotal, { fontSize: fs }]}>$0.00</Text>
           </>
         ) : (
           <>
-            <Text style={[styles.cellMuted, styles.colQty]}>{item.defaultQty ?? "—"}</Text>
-            <Text style={[styles.cellMuted, styles.colUnit]}>{item.unit ?? ""}</Text>
-            <Text style={[styles.cellBold, styles.colTotal]}>{total > 0 ? `$${fmt(total)}` : "—"}</Text>
+            <Text style={[styles.cellMuted, styles.colQty, { fontSize: fs }]}>{item.defaultQty ?? "—"}</Text>
+            <Text style={[styles.cellMuted, styles.colUnit, { fontSize: fs }]}>{item.unit ?? ""}</Text>
+            <Text style={[styles.cellBold, styles.colTotal, { fontSize: fs }]}>{total > 0 ? `$${fmt(total)}` : "—"}</Text>
           </>
         )}
       </View>
       {item.notes ? (
-        <Text style={{ fontSize: 7, color: "#64748b", fontFamily: "Helvetica-Oblique", paddingHorizontal: 8, paddingBottom: 3 }}>{item.notes}</Text>
+        <Text style={{ fontSize: Math.max(fs - 1, 7), color: "#64748b", fontFamily: "Helvetica-Oblique", paddingHorizontal: 8, paddingBottom: 3 }}>{item.notes}</Text>
       ) : null}
     </View>
   );
@@ -1384,6 +1385,28 @@ function TemplatePdfDocument({ companyName, template, client, divisions, showTer
             if (rem < threshold) forcedBreakDivIds.add(divId);
           });
 
+          // ── Single-page row expansion ──────────────────────────────────────────
+          // If all content fits on the first estimate page, expand rows to fill it
+          let extraRowPadV = 0;
+          let extraRowFont = 0;
+          if (simPage === prePages + 1) {
+            // Count all visible rows across all divisions
+            const totalRows = grouped.reduce((total, { divs: ds }) =>
+              total + ds.reduce((t, div) => {
+                const fi = div.items.map(applyInsF).filter((i): i is Item => i !== null && (isItemFilled(i) || !!i.detail));
+                const fg = div.groups.map(g => ({ ...g, items: g.items.map(applyInsF).filter((i): i is Item => i !== null && (isItemFilled(i) || !!i.detail)) })).filter(g => g.items.length > 0);
+                return t + fi.length + fg.reduce((s, g) => s + g.items.length, 0);
+              }, 0)
+            , 0);
+            const H_GRAND_TOTAL_EST = 30; // grand total bar + marginTop
+            const extraSpace = simRemaining - H_GRAND_TOTAL_EST;
+            if (extraSpace > 0 && totalRows > 0) {
+              const perRow = extraSpace / totalRows;
+              extraRowPadV = perRow / 2; // split top + bottom
+              extraRowFont = Math.min(extraRowPadV * 0.28, 4); // max +4pt (7.5→11.5)
+            }
+          }
+
           return grouped.map(({ groupLabel, divs }, gi) => {
           // Pre-filter each division's items (apply insulation type filter)
           const filteredDivs = divs.map(div => ({
@@ -1433,7 +1456,7 @@ function TemplatePdfDocument({ companyName, template, client, divisions, showTer
                             {grpTotal > 0 && <Text style={{ fontSize: 7.5, fontFamily: "Helvetica-Bold", color: "#1e40af" }}>${fmt(grpTotal)}</Text>}
                           </View>
                           <ItemTableHeader showLineNum={isRoof} />
-                          {grp.items.map((item, idx) => <ItemRow key={item.id} item={item} index={idx} lineNum={lineNumMap.get(item.id)} />)}
+                          {grp.items.map((item, idx) => <ItemRow key={item.id} item={item} index={idx} lineNum={lineNumMap.get(item.id)} extraPadV={extraRowPadV} extraFont={extraRowFont} />)}
                         </View>
                       );
                     })}
@@ -1441,7 +1464,7 @@ function TemplatePdfDocument({ companyName, template, client, divisions, showTer
                     {filledItems.length > 0 && (
                       <View minPresenceAhead={55}>
                         <ItemTableHeader showLineNum={isRoof} />
-                        {filledItems.map((item, idx) => <ItemRow key={item.id} item={item} index={idx} lineNum={lineNumMap.get(item.id)} />)}
+                        {filledItems.map((item, idx) => <ItemRow key={item.id} item={item} index={idx} lineNum={lineNumMap.get(item.id)} extraPadV={extraRowPadV} extraFont={extraRowFont} />)}
                       </View>
                     )}
                   </View>
@@ -1451,9 +1474,6 @@ function TemplatePdfDocument({ companyName, template, client, divisions, showTer
           );
         });
         })()}
-
-        {/* Push ESTIMATE TOTAL to bottom of page when content is sparse */}
-        <View style={{ flex: 1 }} />
 
         {/* Totals block — all kept together so ESTIMATE TOTAL never lands alone on a new page */}
         <View wrap={false}>
