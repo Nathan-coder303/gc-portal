@@ -1,5 +1,6 @@
 "use client";
 import { useState, useEffect, useCallback } from "react";
+import { upload } from "@vercel/blob/client";
 
 export const COVER_OPTIONS = [
   { type: "FLAT_ROOFS",    label: "Flat Roofs",    img: "/flat-roofs-cover.jpg",      desc: "Flat / low-slope roofing" },
@@ -102,20 +103,20 @@ export default function CoverPagePickerModal({
     setUploading(true);
     setUploadError(null);
     try {
-      const fd = new FormData();
-      fd.append("file", file);
-      const res = await fetch(`/api/${companyId}/clients/${clientId}/cover`, { method: "POST", body: fd });
-      if (!res.ok) {
-        const body = await res.json().catch(() => ({}));
-        setUploadError(body.error ?? `Upload failed (${res.status})`);
-        return;
-      }
-      // Refresh the list
+      const safeName = file.name.replace(/[^a-z0-9.\-_]/gi, "_");
+      await upload(
+        `client-covers/${clientId}/${Date.now()}-${safeName}`,
+        file,
+        {
+          access: "private",
+          handleUploadUrl: `/api/${companyId}/clients/${clientId}/cover-upload`,
+        }
+      );
+      // Refresh the covers list
       const listRes = await fetch(`/api/${companyId}/clients/${clientId}/covers`);
       const data = await listRes.json();
       const covers: CustomCover[] = data.covers ?? [];
       setCustomCovers(covers);
-      // Auto-select the newly uploaded cover (it'll be newest = first)
       if (covers[0]) setSelectedBlobUrl(covers[0].blobUrl);
       setCover("CUSTOM");
     } catch (err) {
