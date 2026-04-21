@@ -1403,7 +1403,7 @@ function TemplatePdfDocument({ companyName, template, client, divisions, showTer
             if (extraSpace > 0 && totalRows > 0) {
               const perRow = extraSpace / totalRows;
               extraRowPadV = perRow / 2; // split top + bottom
-              extraRowFont = Math.min(extraRowPadV * 0.28, 4); // max +4pt (7.5→11.5)
+              extraRowFont = 1.5; // 7.5 base + 1.5 = 9pt
             }
           }
 
