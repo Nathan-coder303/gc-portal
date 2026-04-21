@@ -1,6 +1,5 @@
 "use client";
 import { useState, useEffect, useCallback } from "react";
-import { upload } from "@vercel/blob/client";
 
 export const COVER_OPTIONS = [
   { type: "FLAT_ROOFS",    label: "Flat Roofs",    img: "/flat-roofs-cover.jpg",      desc: "Flat / low-slope roofing" },
@@ -32,6 +31,25 @@ export type PdfOptions = {
 };
 
 type CustomCover = { blobUrl: string; proxyUrl: string };
+
+function compressImage(file: File, maxWidth = 1920, quality = 0.85): Promise<Blob> {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    const url = URL.createObjectURL(file);
+    img.onload = () => {
+      URL.revokeObjectURL(url);
+      const canvas = document.createElement("canvas");
+      let w = img.width, h = img.height;
+      if (w > maxWidth) { h = Math.round(h * maxWidth / w); w = maxWidth; }
+      canvas.width = w;
+      canvas.height = h;
+      canvas.getContext("2d")!.drawImage(img, 0, 0, w, h);
+      canvas.toBlob(blob => blob ? resolve(blob) : reject(new Error("Compression failed")), "image/jpeg", quality);
+    };
+    img.onerror = () => { URL.revokeObjectURL(url); reject(new Error("Image load failed")); };
+    img.src = url;
+  });
+}
 
 export default function CoverPagePickerModal({
   isCommercial,
@@ -103,15 +121,16 @@ export default function CoverPagePickerModal({
     setUploading(true);
     setUploadError(null);
     try {
-      const safeName = file.name.replace(/[^a-z0-9.\-_]/gi, "_");
-      await upload(
-        `client-covers/${clientId}/${Date.now()}-${safeName}`,
-        file,
-        {
-          access: "public",
-          handleUploadUrl: `/api/${companyId}/clients/${clientId}/cover-upload`,
-        }
-      );
+      // Compress image client-side so it stays well under Vercel's 4.5MB function limit
+      const compressed = await compressImage(file);
+      const fd = new FormData();
+      fd.append("file", compressed, file.name.replace(/\.[^.]+$/, ".jpg"));
+      const res = await fetch(`/api/${companyId}/clients/${clientId}/cover`, { method: "POST", body: fd });
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}));
+        setUploadError(body.error ?? `Upload failed (${res.status})`);
+        return;
+      }
       // Refresh the covers list
       const listRes = await fetch(`/api/${companyId}/clients/${clientId}/covers`);
       const data = await listRes.json();
