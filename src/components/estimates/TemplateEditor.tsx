@@ -1802,12 +1802,14 @@ export default function TemplateEditor({
                 companyId={template.companyId}
                 clientId={currentClient?.id}
                 onConfirm={(opts: PdfOptions) => {
-                  const url = `/api/${template.companyId}/estimates/${template.id}/pdf?cover=1&coverType=${opts.coverType}&page2=${opts.page2}&includeInsert=${opts.includeInsert ? 1 : 0}&divSummary=${opts.includeDivisionSummary ? 1 : 0}&breakDiv04=${opts.breakDiv04 || 0}&breakDiv05=${opts.breakDiv05 || 0}&breakDiv06=${opts.breakDiv06 || 0}&breakDiv07=${opts.breakDiv07 || 0}&breakDiv08=${opts.breakDiv08 || 0}`;
+                  let url = `/api/${template.companyId}/estimates/${template.id}/pdf?cover=1&coverType=${opts.coverType}&page2=${opts.page2}&includeInsert=${opts.includeInsert ? 1 : 0}&divSummary=${opts.includeDivisionSummary ? 1 : 0}&breakDiv04=${opts.breakDiv04 || 0}&breakDiv05=${opts.breakDiv05 || 0}&breakDiv06=${opts.breakDiv06 || 0}&breakDiv07=${opts.breakDiv07 || 0}&breakDiv08=${opts.breakDiv08 || 0}`;
+                  if (opts.coverType === "CUSTOM" && opts.coverBlobUrl) url += `&coverBlobUrl=${encodeURIComponent(opts.coverBlobUrl)}`;
                   window.open(url, "_blank");
                   setShowPdfModal(false);
                 }}
                 onPreview={(opts: PdfOptions) => {
-                  const url = `/api/${template.companyId}/estimates/${template.id}/pdf?cover=1&coverType=${opts.coverType}&page2=${opts.page2}&includeInsert=${opts.includeInsert ? 1 : 0}&divSummary=${opts.includeDivisionSummary ? 1 : 0}&breakDiv04=${opts.breakDiv04 || 0}&breakDiv05=${opts.breakDiv05 || 0}&breakDiv06=${opts.breakDiv06 || 0}&breakDiv07=${opts.breakDiv07 || 0}&breakDiv08=${opts.breakDiv08 || 0}&preview=1`;
+                  let url = `/api/${template.companyId}/estimates/${template.id}/pdf?cover=1&coverType=${opts.coverType}&page2=${opts.page2}&includeInsert=${opts.includeInsert ? 1 : 0}&divSummary=${opts.includeDivisionSummary ? 1 : 0}&breakDiv04=${opts.breakDiv04 || 0}&breakDiv05=${opts.breakDiv05 || 0}&breakDiv06=${opts.breakDiv06 || 0}&breakDiv07=${opts.breakDiv07 || 0}&breakDiv08=${opts.breakDiv08 || 0}&preview=1`;
+                  if (opts.coverType === "CUSTOM" && opts.coverBlobUrl) url += `&coverBlobUrl=${encodeURIComponent(opts.coverBlobUrl)}`;
                   window.open(url, "_blank");
                 }}
                 onClose={() => setShowPdfModal(false)}

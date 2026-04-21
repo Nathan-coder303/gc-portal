@@ -76,6 +76,7 @@ export default function CoverPagePickerModal({
   const [customCovers, setCustomCovers] = useState<CustomCover[]>([]);
   const [selectedBlobUrl, setSelectedBlobUrl] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
+  const [uploadError, setUploadError] = useState<string | null>(null);
   const [dragOver, setDragOver] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -100,11 +101,16 @@ export default function CoverPagePickerModal({
   const uploadFile = useCallback(async (file: File) => {
     if (!companyId || !clientId) return;
     setUploading(true);
+    setUploadError(null);
     try {
       const fd = new FormData();
       fd.append("file", file);
       const res = await fetch(`/api/${companyId}/clients/${clientId}/cover`, { method: "POST", body: fd });
-      if (!res.ok) return;
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}));
+        setUploadError(body.error ?? `Upload failed (${res.status})`);
+        return;
+      }
       // Refresh the list
       const listRes = await fetch(`/api/${companyId}/clients/${clientId}/covers`);
       const data = await listRes.json();
@@ -113,6 +119,8 @@ export default function CoverPagePickerModal({
       // Auto-select the newly uploaded cover (it'll be newest = first)
       if (covers[0]) setSelectedBlobUrl(covers[0].blobUrl);
       setCover("CUSTOM");
+    } catch (err) {
+      setUploadError(String(err));
     } finally {
       setUploading(false);
     }
@@ -220,6 +228,12 @@ export default function CoverPagePickerModal({
             className="hidden"
             onChange={(e) => { const f = e.target.files?.[0]; if (f) uploadFile(f); e.target.value = ""; }}
           />
+          {uploadError && (
+            <div className="mt-2 flex items-center justify-between gap-2 text-xs rounded px-3 py-2" style={{ background: "#2d1111", border: "1px solid #f8514944", color: "#f85149" }}>
+              <span>{uploadError}</span>
+              <button onClick={() => setUploadError(null)} style={{ color: "#f85149", flexShrink: 0 }}>✕</button>
+            </div>
+          )}
         </div>
 
         {/* ── Section 2: Presentation Page ── */}
