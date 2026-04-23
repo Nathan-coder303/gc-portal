@@ -8,6 +8,7 @@ import { initClientSubBids } from "../actions";
 import { SubBidRow } from "@/components/clients/SubsBidsTab";
 import ClientBidTab from "@/components/clients/ClientBidTab";
 import ClientSubsTab from "@/components/clients/ClientSubsTab";
+import ClientFinancialsTab from "@/components/clients/ClientFinancialsTab";
 import { can } from "@/lib/auth/permissions";
 import ClientFilesTab from "@/components/clients/ClientFilesTab";
 import CollapsibleEstimateList from "@/components/clients/CollapsibleEstimateList";
@@ -90,33 +91,6 @@ export default async function ClientDetailPage({
     subBids = Array.from(map.values()).sort((a, b) => a.divisionCode.localeCompare(b.divisionCode));
   }
 
-  // Load subs + assignments for Subs tab
-  let subsList: { id: string; name: string; email: string | null; phone: string | null; divisionCode: string; divisionName: string }[] = [];
-  let subAssignments: { id: string; divisionId: string | null; itemId: string | null; label: string; subContractorId: string | null; subName: string | null; cost: number | null; salePrice: number | null; notes: string | null }[] = [];
-  if (activeTab === "subs-bids") {
-    [subsList, subAssignments] = await Promise.all([
-      prisma.subContractor.findMany({
-        where: { companyId: params.companyId },
-        orderBy: [{ divisionCode: "asc" }, { name: "asc" }],
-        select: { id: true, name: true, email: true, phone: true, divisionCode: true, divisionName: true },
-      }),
-      prisma.subAssignment.findMany({
-        where: { clientId: params.clientId },
-        orderBy: { createdAt: "asc" },
-      }).then(rows => rows.map(r => ({
-        id: r.id,
-        divisionId: r.divisionId,
-        itemId: r.itemId,
-        label: r.label,
-        subContractorId: r.subContractorId,
-        subName: r.subName,
-        cost: r.cost != null ? Number(r.cost) : null,
-        salePrice: r.salePrice != null ? Number(r.salePrice) : null,
-        notes: r.notes,
-      }))),
-    ]);
-  }
-
   function calcEstimateTotal(divisions: typeof safeClient.templates[0]["divisions"], gcFeePercent: typeof safeClient.templates[0]["gcFeePercent"]): number {
     const raw = divisions.reduce((sum, div) => {
       const allItems = [...div.items, ...div.groups.flatMap((g) => g.items)];
@@ -179,7 +153,7 @@ export default async function ClientDetailPage({
     { key: "change-orders", label: `Change Orders${changeOrders.length > 0 ? ` (${changeOrders.length})` : ""}` },
     { key: "invoices", label: `Invoices${clientInvoices.length > 0 ? ` (${clientInvoices.length})` : ""}` },
     { key: "notes", label: `Notes${clientNotes.length > 0 ? ` (${clientNotes.length})` : ""}` },
-    { key: "subs-bids", label: "Subs" },
+    { key: "financials", label: "Financials" },
     { key: "files", label: `Files${clientFiles.length > 0 ? ` (${clientFiles.length})` : ""}` },
     { key: "nurturing", label: "Nurturing" },
     { key: "comms", label: `Comms${clientEmails.length > 0 ? ` (${clientEmails.length})` : ""}` },
@@ -429,37 +403,12 @@ export default async function ClientDetailPage({
         </>
       )}
 
-      {activeTab === "subs-bids" && (
-        <ClientSubsTab
+      {activeTab === "financials" && (
+        <ClientFinancialsTab
           companyId={params.companyId}
           clientId={params.clientId}
-          estimates={safeClient.templates.map(est => {
-            const gcPct = est.gcFeePercent ? Number(est.gcFeePercent) : 0;
-            return {
-              id: est.id,
-              name: est.name,
-              gcFeePercent: gcPct,
-              divisions: est.divisions
-                .slice()
-                .sort((a, b) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0))
-                .map(div => {
-                  const allItems = [
-                    ...div.items.map(i => ({ id: i.id, name: i.name, groupName: null as string | null, qty: i.defaultQty ? Number(i.defaultQty) : 0, unitCost: i.defaultUnitCost ? Number(i.defaultUnitCost) : 0, markupPct: i.defaultMarkupPct ? Number(i.defaultMarkupPct) : 0 })),
-                    ...div.groups.flatMap(g => g.items.map(i => ({ id: i.id, name: i.name, groupName: g.name, qty: i.defaultQty ? Number(i.defaultQty) : 0, unitCost: i.defaultUnitCost ? Number(i.defaultUnitCost) : 0, markupPct: i.defaultMarkupPct ? Number(i.defaultMarkupPct) : 0 }))),
-                  ];
-                  const divTotal = allItems.reduce((s, i) => s + i.qty * i.unitCost * (1 + i.markupPct / 100), 0);
-                  return {
-                    id: div.id,
-                    name: div.name,
-                    csiCode: div.csiCode ?? null,
-                    total: divTotal,
-                    items: allItems,
-                  };
-                }),
-            };
-          })}
-          initialSubs={subsList}
-          initialAssignments={subAssignments}
+          clientName={safeClient.name}
+          contractTotal={safeClient.templates.reduce((sum, est) => sum + calcEstimateTotal(est.divisions, est.gcFeePercent), 0)}
         />
       )}
 

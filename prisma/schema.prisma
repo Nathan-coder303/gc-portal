@@ -161,7 +161,66 @@ model Client {
   changeOrders   ChangeOrder[]
   clientTasks    ClientTask[]
   emails         ClientEmail[]
-  subAssignments SubAssignment[]
+  subAssignments    SubAssignment[]
+  clientSubs        ClientSub[]
+  materialPurchases MaterialPurchase[]
+}
+
+model ClientSub {
+  id              String         @id @default(cuid())
+  companyId       String
+  clientId        String
+  client          Client         @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  subContractorId String?
+  subContractor   SubContractor? @relation(fields: [subContractorId], references: [id], onDelete: SetNull)
+  subName         String?
+  contractAmount  Decimal        @default(0) @db.Decimal(14, 2)
+  notes           String?
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
+  payments        SubPayment[]
+  @@index([clientId])
+  @@index([companyId])
+}
+
+model SubPayment {
+  id          String    @id @default(cuid())
+  companyId   String
+  clientSubId String
+  clientSub   ClientSub @relation(fields: [clientSubId], references: [id], onDelete: Cascade)
+  amount      Decimal   @db.Decimal(14, 2)
+  method      String
+  paidAt      DateTime
+  checkNumber String?
+  notes       String?
+  createdAt   DateTime  @default(now())
+  @@index([clientSubId])
+  @@index([companyId])
+}
+
+model Supplier {
+  id        String             @id @default(cuid())
+  companyId String
+  name      String
+  createdAt DateTime           @default(now())
+  purchases MaterialPurchase[]
+  @@index([companyId])
+}
+
+model MaterialPurchase {
+  id          String   @id @default(cuid())
+  companyId   String
+  clientId    String
+  client      Client   @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  supplierId  String
+  supplier    Supplier @relation(fields: [supplierId], references: [id], onDelete: Cascade)
+  amount      Decimal  @db.Decimal(14, 2)
+  description String?
+  purchasedAt DateTime
+  notes       String?
+  createdAt   DateTime @default(now())
+  @@index([clientId])
+  @@index([companyId])
 }
 
 model ClientFile {
@@ -904,6 +963,7 @@ model SubContractor {
   updatedAt    DateTime @updatedAt
 
   subAssignments SubAssignment[]
+  clientSubs     ClientSub[]
 
   @@index([companyId])
   @@index([companyId, divisionCode])
