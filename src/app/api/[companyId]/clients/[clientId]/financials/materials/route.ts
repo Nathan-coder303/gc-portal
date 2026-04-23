@@ -54,7 +54,7 @@ export async function POST(req: NextRequest, { params }: { params: { companyId: 
   });
 }
 
-export async function DELETE(req: NextRequest, { params }: { params: { companyId: string; clientId: string } }) {
+export async function DELETE(req: NextRequest, _ctx: { params: { companyId: string; clientId: string } }) {
   const session = await auth();
   if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 

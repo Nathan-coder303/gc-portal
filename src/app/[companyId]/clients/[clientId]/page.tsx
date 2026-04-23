@@ -7,7 +7,6 @@ import Link from "next/link";
 import { initClientSubBids } from "../actions";
 import { SubBidRow } from "@/components/clients/SubsBidsTab";
 import ClientBidTab from "@/components/clients/ClientBidTab";
-import ClientSubsTab from "@/components/clients/ClientSubsTab";
 import ClientFinancialsTab from "@/components/clients/ClientFinancialsTab";
 import { can } from "@/lib/auth/permissions";
 import ClientFilesTab from "@/components/clients/ClientFilesTab";

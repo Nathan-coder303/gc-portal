@@ -15,10 +15,10 @@ const METHOD_LABELS: Record<string, string> = { CHECK: "Check", ZELLE: "Zelle", 
 
 // ─── Sub Card ─────────────────────────────────────────────────────────────────
 function SubCard({
-  sub, companyId, clientId, allSubs,
+  sub, companyId, clientId,
   onUpdate, onDelete,
 }: {
-  sub: ClientSub; companyId: string; clientId: string; allSubs: SubContractor[];
+  sub: ClientSub; companyId: string; clientId: string;
   onUpdate: (updated: ClientSub) => void;
   onDelete: (id: string) => void;
 }) {
@@ -185,11 +185,10 @@ function SubCard({
 
 // ─── Material Card (per supplier) ─────────────────────────────────────────────
 function SupplierCard({
-  supplierName, purchases, companyId, clientId,
+  supplierName, purchases,
   onDelete,
 }: {
   supplierName: string; purchases: MaterialPurchase[];
-  companyId: string; clientId: string;
   onDelete: (id: string) => void;
 }) {
   const total = purchases.reduce((s, p) => s + p.amount, 0);
@@ -328,7 +327,7 @@ export default function ClientFinancialsTab({
   // Computed totals
   const totalContracted = clientSubs.reduce((s, sub) => s + sub.contractAmount, 0);
   const totalLaborPaid = clientSubs.reduce((s, sub) => s + sub.payments.reduce((ps, p) => ps + p.amount, 0), 0);
-  const totalLaborBalance = totalContracted - totalLaborPaid;
+  const _totalLaborBalance = totalContracted - totalLaborPaid; void _totalLaborBalance;
   const totalMaterials = materials.reduce((s, p) => s + p.amount, 0);
   const totalExpenses = totalLaborPaid + totalMaterials;
   const netProfit = contractTotal - totalExpenses;
@@ -455,7 +454,6 @@ ${rows}
               sub={sub}
               companyId={companyId}
               clientId={clientId}
-              allSubs={allSubs}
               onUpdate={updated => setClientSubs(prev => prev.map(s => s.id === updated.id ? updated : s))}
               onDelete={id => setClientSubs(prev => prev.filter(s => s.id !== id))}
             />
@@ -516,8 +514,6 @@ ${rows}
               key={supplierName}
               supplierName={supplierName}
               purchases={purchases}
-              companyId={companyId}
-              clientId={clientId}
               onDelete={deleteMaterial}
             />
           ))}
