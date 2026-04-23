@@ -90,9 +90,9 @@ const styles = StyleSheet.create({
   colUnit: { width: 40, textAlign: "center" },
   colTotal: { width: 80, textAlign: "right" },
   headerText: { fontSize: 6.5, color: "#94a3b8", fontFamily: "Helvetica-Bold", textTransform: "uppercase" },
-  cellText: { fontSize: 7.5, color: "#334155" },
-  cellMuted: { fontSize: 7.5, color: "#94a3b8" },
-  cellBold: { fontSize: 7.5, color: "#0f172a", fontFamily: "Helvetica-Bold" },
+  cellText: { fontSize: 8.5, color: "#334155" },
+  cellMuted: { fontSize: 8.5, color: "#94a3b8" },
+  cellBold: { fontSize: 8.5, color: "#0f172a", fontFamily: "Helvetica-Bold" },
 
   grandTotalBar: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", backgroundColor: DARK, paddingHorizontal: 10, paddingVertical: 6, marginTop: 6, borderRadius: 3 },
   grandTotalLabel: { fontSize: 11, fontFamily: "Helvetica-Bold", color: "#C9A84C" },
