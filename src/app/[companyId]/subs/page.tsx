@@ -20,7 +20,7 @@ export default async function SubsDatabasePage({ params }: { params: { companyId
     prisma.client.findMany({
       where: { companyId: params.companyId },
       orderBy: { name: "asc" },
-      select: { id: true, name: true, address: true },
+      select: { id: true, name: true, address: true, city: true },
     }),
     prisma.subBid.count({
       where: { companyId: params.companyId, status: "TRIAGE" },
@@ -54,7 +54,7 @@ export default async function SubsDatabasePage({ params }: { params: { companyId
         </div>
         <BidTriage
           companyId={params.companyId}
-          clients={clients.map(c => ({ id: c.id, name: c.name, address: c.address ?? null }))}
+          clients={clients.map(c => ({ id: c.id, name: c.name, address: c.address ?? null, city: c.city ?? null }))}
         />
       </div>
 

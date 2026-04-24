@@ -39,6 +39,7 @@ type Client = {
   id: string;
   name: string;
   address: string | null;
+  city: string | null;
 };
 
 type SubInfo = {
@@ -260,7 +261,7 @@ export default function BidTriage({
                   <option value="">Assign to project…</option>
                   {clients.map(c => (
                     <option key={c.id} value={c.id}>
-                      {c.name}{c.address ? ` – ${c.address}` : ""}
+                      {c.name}{c.address ? ` – ${c.address}` : ""}{c.city ? `, ${c.city}` : ""}
                     </option>
                   ))}
                 </select>
