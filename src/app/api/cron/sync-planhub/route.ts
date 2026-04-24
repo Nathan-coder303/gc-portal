@@ -106,7 +106,7 @@ export async function GET(req: NextRequest) {
     do {
       const listRes = await gmail.users.messages.list({
         userId: "me",
-        q: "from:projectnotification@planhub.com after:2021/01/01",
+        q: "from:planhub.com after:2021/01/01",
         maxResults: 100,
         pageToken,
       });
@@ -175,6 +175,23 @@ Extract bid info. Respond ONLY with valid JSON, no markdown:
         }
 
         if (!parsed.isBidNotification) {
+          // Save as IGNORED so its gmail ID lands in processedMsgIds next run
+          await prisma.subBid.create({
+            data: {
+              clientId: null,
+              companyId: COMPANY_ID,
+              divisionCode: "00",
+              divisionName: "General",
+              contractorName: null,
+              amount: null,
+              notes: safeSubject.slice(0, 200) || from,
+              fileUrl: `gmail:${msg.id}`,
+              fileName: null,
+              status: "IGNORED",
+              emailSource: safeSubject || from,
+              isPlaceholder: false,
+            },
+          });
           skipped++;
           continue;
         }
