@@ -19,11 +19,14 @@
     "@dnd-kit/core": "^6.3.1",
     "@dnd-kit/sortable": "^10.0.0",
     "@dnd-kit/utilities": "^3.2.2",
+    "@neondatabase/serverless": "^1.1.0",
+    "@prisma/adapter-neon": "^7.8.0",
     "@prisma/adapter-pg": "^7.4.2",
     "@prisma/client": "^7.4.2",
     "@react-pdf/renderer": "^4.3.2",
     "@tanstack/react-table": "^8.21.3",
     "@types/pg": "^8.18.0",
+    "@types/ws": "^8.18.1",
     "@vercel/blob": "^2.3.1",
     "bcryptjs": "^3.0.3",
     "date-fns": "^4.1.0",
@@ -41,6 +44,7 @@
     "react-dom": "^18",
     "recharts": "^3.7.0",
     "twilio": "^5.13.1",
+    "ws": "^8.20.0",
     "zod": "^4.3.6"
   },
   "devDependencies": {
