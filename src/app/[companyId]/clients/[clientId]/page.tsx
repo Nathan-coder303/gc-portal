@@ -8,6 +8,7 @@ import { initClientSubBids } from "../actions";
 import { SubBidRow } from "@/components/clients/SubsBidsTab";
 import ClientBidTab from "@/components/clients/ClientBidTab";
 import ClientFinancialsTab from "@/components/clients/ClientFinancialsTab";
+import ClientPortalTab from "@/components/clients/ClientPortalTab";
 import { can } from "@/lib/auth/permissions";
 import ClientFilesTab from "@/components/clients/ClientFilesTab";
 import CollapsibleEstimateList from "@/components/clients/CollapsibleEstimateList";
@@ -153,6 +154,7 @@ export default async function ClientDetailPage({
     { key: "invoices", label: `Invoices${clientInvoices.length > 0 ? ` (${clientInvoices.length})` : ""}` },
     { key: "notes", label: `Notes${clientNotes.length > 0 ? ` (${clientNotes.length})` : ""}` },
     { key: "financials", label: "Financials" },
+    { key: "portal", label: "Portal" },
     { key: "files", label: `Files${clientFiles.length > 0 ? ` (${clientFiles.length})` : ""}` },
     { key: "nurturing", label: "Nurturing" },
     { key: "comms", label: `Comms${clientEmails.length > 0 ? ` (${clientEmails.length})` : ""}` },
@@ -408,6 +410,15 @@ export default async function ClientDetailPage({
           clientId={params.clientId}
           clientName={safeClient.name}
           contractTotal={safeClient.templates.reduce((sum, est) => sum + calcEstimateTotal(est.divisions, est.gcFeePercent), 0)}
+        />
+      )}
+
+      {activeTab === "portal" && (
+        <ClientPortalTab
+          companyId={params.companyId}
+          clientId={params.clientId}
+          clientName={safeClient.name}
+          clientEmail={safeClient.email ?? null}
         />
       )}
 

@@ -10,6 +10,7 @@ declare module "next-auth" {
       role: Role;
       companyId: string;
       lastName?: string | null;
+      clientId?: string | null;
     };
   }
 }

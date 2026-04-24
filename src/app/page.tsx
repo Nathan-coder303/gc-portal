@@ -5,5 +5,9 @@ export default async function Home() {
   const session = await auth();
   if (!session) redirect("/login");
 
+  if (session.user.role === "CLIENT" && session.user.clientId) {
+    redirect(`/client-portal/${session.user.clientId}`);
+  }
+
   redirect(`/${session.user.companyId}`);
 }

@@ -25,6 +25,7 @@ export const authConfig: NextAuthConfig = {
         token.companyId = (user as { companyId?: string }).companyId;
         token.userId = user.id;
         token.lastName = (user as { lastName?: string | null }).lastName ?? null;
+        token.clientId = (user as { clientId?: string | null }).clientId ?? null;
       }
       return token;
     },
@@ -34,6 +35,7 @@ export const authConfig: NextAuthConfig = {
         session.user.companyId = token.companyId as string;
         session.user.id = token.userId as string;
         session.user.lastName = (token.lastName as string | null | undefined) ?? null;
+        session.user.clientId = (token.clientId as string | null | undefined) ?? null;
       }
       return session;
     },

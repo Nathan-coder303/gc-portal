@@ -13,6 +13,7 @@ enum Role {
   PM
   BOOKKEEPER
   PARTNER
+  CLIENT
 }
 
 enum TaskStatus {
@@ -164,6 +165,9 @@ model Client {
   subAssignments    SubAssignment[]
   clientSubs        ClientSub[]
   materialPurchases MaterialPurchase[]
+  portalUser        User?              @relation("PortalUser")
+  portalPhotos      ClientPortalPhoto[]
+  portalDocs        ClientPortalDocument[]
 }
 
 model ClientSub {
@@ -219,6 +223,38 @@ model MaterialPurchase {
   purchasedAt DateTime
   notes       String?
   createdAt   DateTime @default(now())
+  @@index([clientId])
+  @@index([companyId])
+}
+
+model ClientPortalPhoto {
+  id         String   @id @default(cuid())
+  clientId   String
+  client     Client   @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  companyId  String
+  caption    String?
+  fileUrl    String
+  fileName   String
+  fileSize   Int      @default(0)
+  sortOrder  Int      @default(0)
+  uploadedAt DateTime @default(now())
+
+  @@index([clientId])
+  @@index([companyId])
+}
+
+model ClientPortalDocument {
+  id         String   @id @default(cuid())
+  clientId   String
+  client     Client   @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  companyId  String
+  category   String   // "PERMIT_CARD" | "PERMIT_APPLICATION" | "NOC" | "OTHER"
+  label      String
+  fileUrl    String
+  fileName   String
+  fileSize   Int      @default(0)
+  uploadedAt DateTime @default(now())
+
   @@index([clientId])
   @@index([companyId])
 }
@@ -382,6 +418,8 @@ model User {
   archivedAt     DateTime?
   archivedBy     String?
   projectAccess  UserProjectAccess[]
+  clientId       String?              @unique
+  clientLink     Client?              @relation("PortalUser", fields: [clientId], references: [id], onDelete: SetNull)
 }
 
 model UserProjectAccess {
