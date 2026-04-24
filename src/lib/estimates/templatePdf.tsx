@@ -1015,7 +1015,7 @@ function DivisionSummaryPage({ template, client, divisions, gcFeePercent }: Pick
       <View style={{ height: 3, backgroundColor: GOLD }} />
 
       {/* Main centered content */}
-      <View style={{ flex: 1, paddingHorizontal: 48, paddingTop: 32, paddingBottom: 32, justifyContent: "center" }}>
+      <View style={{ flex: 1, paddingHorizontal: 48, paddingTop: 32, paddingBottom: 32 }}>
         {/* Title */}
         <Text style={{ fontSize: 18, fontFamily: "Helvetica-Bold", color: DARK, textAlign: "center", letterSpacing: 1, marginBottom: 6 }}>
           ESTIMATE SUMMARY
@@ -1028,34 +1028,33 @@ function DivisionSummaryPage({ template, client, divisions, gcFeePercent }: Pick
 
         {/* Division rows */}
         {divTotals.map((d, idx) => (
-          <View key={idx} style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", paddingVertical: 7, paddingHorizontal: 16, borderBottomWidth: 1, borderBottomColor: "#e2e8f0", backgroundColor: idx % 2 === 0 ? "#f8fafc" : "#ffffff" }}>
-            <Text style={{ fontSize: 11.5, color: "#334155", fontFamily: "Helvetica-Bold" }}>{d.name}</Text>
-            <Text style={{ fontSize: 11.5, color: "#0f172a", fontFamily: "Helvetica-Bold" }}>${fmt(d.total)}</Text>
+          <View key={idx} style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", paddingVertical: 5, paddingHorizontal: 16, borderBottomWidth: 1, borderBottomColor: "#e2e8f0", backgroundColor: idx % 2 === 0 ? "#f8fafc" : "#ffffff" }}>
+            <Text style={{ fontSize: 10, color: "#334155", fontFamily: "Helvetica-Bold" }}>{d.name}</Text>
+            <Text style={{ fontSize: 10, color: "#0f172a", fontFamily: "Helvetica-Bold" }}>${fmt(d.total)}</Text>
           </View>
         ))}
 
         {/* GC Fee row */}
         {gcFeeAmount > 0 && (
           <>
-            <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", paddingVertical: 7, paddingHorizontal: 16, borderBottomWidth: 1, borderBottomColor: "#e2e8f0", backgroundColor: divTotals.length % 2 === 0 ? "#f8fafc" : "#ffffff" }}>
-              <Text style={{ fontSize: 11.5, color: "#334155", fontFamily: "Helvetica-Bold" }}>GC Overhead &amp; Profit</Text>
-              <Text style={{ fontSize: 11.5, color: "#0f172a", fontFamily: "Helvetica-Bold" }}>${fmt(gcFeeAmount)}</Text>
+            <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", paddingVertical: 5, paddingHorizontal: 16, borderBottomWidth: 1, borderBottomColor: "#e2e8f0", backgroundColor: divTotals.length % 2 === 0 ? "#f8fafc" : "#ffffff" }}>
+              <Text style={{ fontSize: 10, color: "#334155", fontFamily: "Helvetica-Bold" }}>GC Overhead &amp; Profit</Text>
+              <Text style={{ fontSize: 10, color: "#0f172a", fontFamily: "Helvetica-Bold" }}>${fmt(gcFeeAmount)}</Text>
             </View>
           </>
         )}
 
-        {/* Gold divider */}
-        <View style={{ height: 2, backgroundColor: GOLD, marginTop: 20, marginBottom: 0 }} />
-
-        {/* Grand total */}
-        <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", backgroundColor: DARK, paddingHorizontal: 16, paddingVertical: 12, borderRadius: 4, marginTop: 0 }}>
-          <Text style={{ fontSize: 14, fontFamily: "Helvetica-Bold", color: GOLD }}>ESTIMATE TOTAL</Text>
-          <Text style={{ fontSize: 16, fontFamily: "Helvetica-Bold", color: GOLD }}>${fmt(grandTotalWithGc)}</Text>
+        {/* Gold divider + Grand total + note — kept together, never orphaned */}
+        <View wrap={false} minPresenceAhead={80}>
+          <View style={{ height: 2, backgroundColor: GOLD, marginTop: 20, marginBottom: 0 }} />
+          <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", backgroundColor: DARK, paddingHorizontal: 16, paddingVertical: 12, borderRadius: 4, marginTop: 0 }}>
+            <Text style={{ fontSize: 14, fontFamily: "Helvetica-Bold", color: GOLD }}>ESTIMATE TOTAL</Text>
+            <Text style={{ fontSize: 16, fontFamily: "Helvetica-Bold", color: GOLD }}>${fmt(grandTotalWithGc)}</Text>
+          </View>
+          <Text style={{ fontSize: 8, color: "#94a3b8", textAlign: "center", marginTop: 20 }}>
+            Detailed scope of work and line items follow on the next pages.
+          </Text>
         </View>
-
-        <Text style={{ fontSize: 8, color: "#94a3b8", textAlign: "center", marginTop: 20 }}>
-          Detailed scope of work and line items follow on the next pages.
-        </Text>
       </View>
 
       {/* Footer */}
@@ -1415,7 +1414,7 @@ function TemplatePdfDocument({ companyName, template, client, divisions, showTer
                   .reduce((s, i) => s + calcTotal(i.defaultQty, i.defaultUnitCost, i.defaultMarkupPct), 0);
 
                 return (
-                  <View key={div.id} minPresenceAhead={50} break={forcedBreakDivIds.has(div.id)}>
+                  <View key={div.id} minPresenceAhead={160} break={forcedBreakDivIds.has(div.id)}>
                     <View wrap={false} style={[styles.divisionHeader, groupLabel ? { marginTop: 6 } : {}]}>
                       <View style={styles.divisionLeft}>
                         {!isRoof && div.csiCode ? <Text style={styles.divisionCsi}>{div.csiCode}</Text> : null}
