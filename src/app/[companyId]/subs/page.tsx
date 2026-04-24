@@ -66,6 +66,8 @@ export default async function SubsDatabasePage({ params }: { params: { companyId
         initialSubs={subs.map(s => ({
           id: s.id,
           name: s.name,
+          contactName: s.contactName ?? null,
+          address: s.address ?? null,
           email: s.email ?? null,
           phone: s.phone ?? null,
           divisionCode: s.divisionCode,

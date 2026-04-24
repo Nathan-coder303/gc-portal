@@ -991,6 +991,7 @@ model SubContractor {
   companyId    String
   company      Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
   name          String
+  contactName   String?
   address       String?
   email         String?
   phone         String?

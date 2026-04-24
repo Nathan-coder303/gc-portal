@@ -11,6 +11,8 @@ export async function PATCH(req: NextRequest, { params }: { params: { companyId:
     where: { id: params.subId },
     data: {
       name: body.name,
+      contactName: body.contactName ?? null,
+      address: body.address ?? null,
       email: body.email ?? null,
       phone: body.phone ?? null,
       divisionCode: body.divisionCode,

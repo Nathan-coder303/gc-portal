@@ -5,6 +5,8 @@ import { useState, useRef } from "react";
 type Sub = {
   id: string;
   name: string;
+  contactName: string | null;
+  address: string | null;
   email: string | null;
   phone: string | null;
   divisionCode: string;
@@ -162,8 +164,13 @@ function SubCard({
         {isSelected && <span className="text-[10px] font-bold" style={{ color: "#0d1117" }}>✓</span>}
       </button>
 
-      {/* Name */}
-      <div className="font-semibold text-sm leading-tight pr-6" style={{ color: "#e6edf3" }}>{sub.name}</div>
+      {/* Company name */}
+      <div className="font-semibold text-sm leading-tight pr-6 truncate" style={{ color: "#e6edf3" }}>{sub.name}</div>
+
+      {/* Contact name */}
+      {sub.contactName && (
+        <div className="text-xs truncate" style={{ color: "#8b949e" }}>👤 {sub.contactName}</div>
+      )}
 
       {/* Phone */}
       {sub.phone && (
@@ -266,7 +273,7 @@ function SubModal({
   title, initial, onSave, onClose,
 }: {
   title: string;
-  initial: { name: string; email: string; phone: string; divisionCode: string; divisionName: string; tags: string[] };
+  initial: { name: string; contactName: string; address: string; email: string; phone: string; divisionCode: string; divisionName: string; tags: string[] };
   onSave: (data: typeof initial) => Promise<void>;
   onClose: () => void;
 }) {
@@ -286,7 +293,7 @@ function SubModal({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ background: "rgba(0,0,0,0.8)" }} onClick={onClose}>
-      <div className="rounded-2xl p-6 w-full max-w-md" style={{ background: "#161b22", border: "1px solid #30373f" }} onClick={e => e.stopPropagation()}>
+      <div className="rounded-2xl p-6 w-full max-w-md overflow-y-auto max-h-[90vh]" style={{ background: "#161b22", border: "1px solid #30373f" }} onClick={e => e.stopPropagation()}>
         <h2 className="text-base font-bold mb-5" style={{ color: "#e6edf3" }}>{title}</h2>
         <div className="space-y-3">
           <div>
@@ -301,12 +308,20 @@ function SubModal({
             <input type="text" value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} style={INPUT} className="outline-none" placeholder="ABC Roofing Inc." autoFocus />
           </div>
           <div>
+            <label className="block text-xs mb-1" style={{ color: "#8b949e" }}>Contact Name</label>
+            <input type="text" value={form.contactName} onChange={e => setForm(f => ({ ...f, contactName: e.target.value }))} style={INPUT} className="outline-none" placeholder="John Smith" />
+          </div>
+          <div>
+            <label className="block text-xs mb-1" style={{ color: "#8b949e" }}>Address <span style={{ color: "#484f58" }}>(FL default)</span></label>
+            <input type="text" value={form.address} onChange={e => setForm(f => ({ ...f, address: e.target.value }))} style={INPUT} className="outline-none" placeholder="123 Main St, Miami, FL 33101" />
+          </div>
+          <div>
             <label className="block text-xs mb-1" style={{ color: "#8b949e" }}>Email</label>
             <input type="email" value={form.email} onChange={e => setForm(f => ({ ...f, email: e.target.value }))} style={INPUT} className="outline-none" placeholder="contact@abc.com" />
           </div>
           <div>
             <label className="block text-xs mb-1" style={{ color: "#8b949e" }}>Phone</label>
-            <input type="tel" value={form.phone} onChange={e => setForm(f => ({ ...f, phone: e.target.value }))} style={INPUT} className="outline-none" placeholder="(555) 000-0000" />
+            <input type="tel" value={form.phone} onChange={e => setForm(f => ({ ...f, phone: e.target.value }))} style={INPUT} className="outline-none" placeholder="(305) 000-0000" />
           </div>
           <div>
             <label className="block text-xs mb-1" style={{ color: "#8b949e" }}>Tags <span style={{ color: "#484f58" }}>(Enter or comma)</span></label>
@@ -615,11 +630,11 @@ export default function SubsDatabase({
 
   // ── CRUD ──────────────────────────────────────────────────────────────────
   async function handleSave(
-    form: { name: string; email: string; phone: string; divisionCode: string; divisionName: string; tags: string[] },
+    form: { name: string; contactName: string; address: string; email: string; phone: string; divisionCode: string; divisionName: string; tags: string[] },
     editId?: string
   ) {
     const notes = form.tags.length > 0 ? JSON.stringify(form.tags) : null;
-    const body = { name: form.name, email: form.email || null, phone: form.phone || null, divisionCode: form.divisionCode, divisionName: form.divisionName, notes };
+    const body = { name: form.name, contactName: form.contactName || null, address: form.address || null, email: form.email || null, phone: form.phone || null, divisionCode: form.divisionCode, divisionName: form.divisionName, notes };
     if (editId) {
       const res = await fetch(`/api/${companyId}/subs/${editId}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
       const updated = await res.json();
@@ -627,7 +642,7 @@ export default function SubsDatabase({
     } else {
       const res = await fetch(`/api/${companyId}/subs`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
       const created = await res.json();
-      setSubs(prev => [...prev, { ...created, email: created.email ?? null, phone: created.phone ?? null, notes: created.notes ?? null }]);
+      setSubs(prev => [...prev, { ...created, contactName: created.contactName ?? null, address: created.address ?? null, email: created.email ?? null, phone: created.phone ?? null, notes: created.notes ?? null }]);
     }
     setModal(null);
   }
@@ -697,7 +712,7 @@ export default function SubsDatabase({
     const data: Sub[] = await fresh.json();
     setSubs(data.map(s => {
       const { code, name } = normalizeDivision(s.divisionCode, s.divisionName);
-      return { ...s, divisionCode: code, divisionName: name, email: s.email ?? null, phone: s.phone ?? null, notes: s.notes ?? null };
+      return { ...s, divisionCode: code, divisionName: name, contactName: s.contactName ?? null, address: s.address ?? null, email: s.email ?? null, phone: s.phone ?? null, notes: s.notes ?? null };
     }));
   }
 
@@ -726,8 +741,8 @@ export default function SubsDatabase({
 
   const defaultDivision = ALL_DIVISIONS[0];
   const modalInitial = modal?.mode === "edit" && modal.sub
-    ? { name: modal.sub.name, email: modal.sub.email ?? "", phone: modal.sub.phone ?? "", divisionCode: modal.sub.divisionCode, divisionName: modal.sub.divisionName, tags: parseTags(modal.sub.notes) }
-    : { name: "", email: "", phone: "", divisionCode: modal?.prefillDiv?.code ?? defaultDivision.code, divisionName: modal?.prefillDiv?.name ?? defaultDivision.name, tags: [] };
+    ? { name: modal.sub.name, contactName: modal.sub.contactName ?? "", address: modal.sub.address ?? "", email: modal.sub.email ?? "", phone: modal.sub.phone ?? "", divisionCode: modal.sub.divisionCode, divisionName: modal.sub.divisionName, tags: parseTags(modal.sub.notes) }
+    : { name: "", contactName: "", address: "", email: "", phone: "", divisionCode: modal?.prefillDiv?.code ?? defaultDivision.code, divisionName: modal?.prefillDiv?.name ?? defaultDivision.name, tags: [] };
 
   return (
     <div>

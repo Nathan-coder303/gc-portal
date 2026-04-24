@@ -1,0 +1,1 @@
+ALTER TABLE "SubContractor" ADD COLUMN IF NOT EXISTS "contactName" TEXT;
