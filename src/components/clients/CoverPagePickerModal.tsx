@@ -23,11 +23,6 @@ export type PdfOptions = {
   page2: Page2Type;
   includeInsert: boolean;
   includeDivisionSummary: boolean;
-  breakDiv04: number | false;
-  breakDiv05: number | false;
-  breakDiv06: number | false;
-  breakDiv07: number | false;
-  breakDiv08: number | false;
   forcedBreakCsiPrefixes: string[];
 };
 
@@ -86,11 +81,6 @@ export default function CoverPagePickerModal({
   const [page2, setPage2]               = useState<Page2Type>(initialPage2 === "NONE" ? "ROOF" : initialPage2);
   const [includeInsert, setIncludeInsert] = useState(true);
   const [includeDivisionSummary, setIncludeDivisionSummary] = useState(false);
-  const [breakDiv04, setBreakDiv04] = useState<number | false>(false);
-  const [breakDiv05, setBreakDiv05] = useState<number | false>(false);
-  const [breakDiv06, setBreakDiv06] = useState<number | false>(false);
-  const [breakDiv07, setBreakDiv07] = useState<number | false>(false);
-  const [breakDiv08, setBreakDiv08] = useState<number | false>(false);
   const [forcedBreakCsiPrefixes, setForcedBreakCsiPrefixes] = useState<string[]>([]);
 
   // Custom cover gallery
@@ -153,11 +143,6 @@ export default function CoverPagePickerModal({
     page2,
     includeInsert,
     includeDivisionSummary,
-    breakDiv04,
-    breakDiv05,
-    breakDiv06,
-    breakDiv07,
-    breakDiv08,
     forcedBreakCsiPrefixes,
   };
 
@@ -334,54 +319,6 @@ export default function CoverPagePickerModal({
           </div>
         )}
 
-        {/* ── Section: Page Breaks ── */}
-        <div>
-          <p className="text-xs font-semibold uppercase tracking-widest mb-2" style={{ color: "#8b949e" }}>Page Breaks</p>
-          <p className="text-[10px] mb-3" style={{ color: "#555" }}>Toggle a page, then pick how close to the footer triggers a push to the next page.</p>
-          <div className="flex flex-col gap-2">
-            {([
-              { label: "Page 4", val: breakDiv04, set: setBreakDiv04 },
-              { label: "Page 5", val: breakDiv05, set: setBreakDiv05 },
-              { label: "Page 6", val: breakDiv06, set: setBreakDiv06 },
-              { label: "Page 7", val: breakDiv07, set: setBreakDiv07 },
-              { label: "Page 8", val: breakDiv08, set: setBreakDiv08 },
-            ] as { label: string; val: number | false; set: (v: number | false) => void }[]).map(({ label, val, set }) => {
-              const on = val !== false;
-              return (
-                <div key={label} className="rounded-xl p-3" style={{ border: `1px solid ${on ? "#C9A84C44" : "#30373f"}`, background: on ? "#12180f" : "#1e2736" }}>
-                  <div className="flex items-center justify-between mb-2">
-                    <span className="text-xs font-bold" style={{ color: on ? "#C9A84C" : "#e6edf3" }}>{label}</span>
-                    <button
-                      onClick={() => set(on ? false : 60)}
-                      className="text-[10px] font-bold px-2 py-0.5 rounded"
-                      style={{ background: on ? "#C9A84C" : "#30373f", color: on ? "#0d1117" : "#8b949e" }}
-                    >
-                      {on ? "ON" : "OFF"}
-                    </button>
-                  </div>
-                  {on && (
-                    <div className="flex gap-1.5">
-                      {[30, 60, 90, 120, 150].map(pt => (
-                        <button
-                          key={pt}
-                          onClick={() => set(pt)}
-                          className="flex-1 rounded-lg py-1 text-[11px] font-semibold transition-all"
-                          style={{
-                            background: val === pt ? "#C9A84C" : "#0d1117",
-                            color: val === pt ? "#0d1117" : "#8b949e",
-                            border: `1px solid ${val === pt ? "#C9A84C" : "#30373f"}`,
-                          }}
-                        >
-                          {pt}pt
-                        </button>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              );
-            })}
-          </div>
-        </div>
 
         {/* ── Section: Force New Page Before Division ── */}
         <div>

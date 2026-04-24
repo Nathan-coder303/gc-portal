@@ -171,11 +171,6 @@ type TemplatePdfProps = {
   clientCoverPhotoUrl?: string | null;
   clientCoverTitle?: string | null;
   insertPageOffset?: number;
-  breakDiv04?: number | false;
-  breakDiv05?: number | false;
-  breakDiv06?: number | false;
-  breakDiv07?: number | false;
-  breakDiv08?: number | false;
   forcedBreakCsiPrefixes?: string[];
 };
 
@@ -1074,7 +1069,7 @@ function DivisionSummaryPage({ template, client, divisions, gcFeePercent }: Pick
   );
 }
 
-function TemplatePdfDocument({ companyName, template, client, divisions, showTerms, termsContent, paymentSchedule, gcFeePercent, summaryGroups, clientSignatureData, clientSignedByName, clientSignedAt, contractorSignatureData, contractorSignedAt, includeRoofUpgradesPage, includeCoverPage, includeAdditionPages, includeRetailPages, includeDivisionSummary, insertPageOffset, insulationType, clientCoverPhotoType, clientCoverPhotoUrl, clientCoverTitle, breakDiv04, breakDiv05, breakDiv06, breakDiv07, breakDiv08, forcedBreakCsiPrefixes = [] }: TemplatePdfProps) {
+function TemplatePdfDocument({ companyName, template, client, divisions, showTerms, termsContent, paymentSchedule, gcFeePercent, summaryGroups, clientSignatureData, clientSignedByName, clientSignedAt, contractorSignatureData, contractorSignedAt, includeRoofUpgradesPage, includeCoverPage, includeAdditionPages, includeRetailPages, includeDivisionSummary, insertPageOffset, insulationType, clientCoverPhotoType, clientCoverPhotoUrl, clientCoverTitle, forcedBreakCsiPrefixes = [] }: TemplatePdfProps) {
   const grouped = groupDivisions(divisions);
 
   // Compute raw totals per group label (or null for ungrouped)
@@ -1367,23 +1362,8 @@ function TemplatePdfDocument({ companyName, template, client, divisions, showTer
             }
           }
 
-          // For each toggled page with a threshold, push any division on that page
-          // whose remaining space when placed was less than the threshold.
-          const breakByPage: Record<number, number | false> = {
-            4: breakDiv04 ?? false,
-            5: breakDiv05 ?? false,
-            6: breakDiv06 ?? false,
-            7: breakDiv07 ?? false,
-            8: breakDiv08 ?? false,
-          };
+          // Force break for divisions whose CSI code matches a selected prefix
           const forcedBreakDivIds = new Set<string>();
-          divPageMap.forEach((pg, divId) => {
-            const threshold = breakByPage[pg];
-            if (threshold === false) return;
-            const rem = divRemainingMap.get(divId) ?? PAGE_H;
-            if (rem < threshold) forcedBreakDivIds.add(divId);
-          });
-          // Always force break for any division whose CSI code matches a forced prefix
           if (forcedBreakCsiPrefixes.length > 0) {
             for (const { divs } of grouped) {
               for (const div of divs) {

@@ -101,7 +101,7 @@ function EstimateCard({
   const initialPage2: Page2Type = n.includes("retail") ? "RETAIL" : n.includes("roof") ? "ROOF" : n.includes("addition") ? "ADDITION" : "NONE";
 
   function buildPdfUrl(opts: PdfOptions, preview = false) {
-    const base = `/api/${companyId}/estimates/${est.id}/pdf?cover=1&coverType=${opts.coverType}&page2=${opts.page2}&includeInsert=${opts.includeInsert ? 1 : 0}&divSummary=${opts.includeDivisionSummary ? 1 : 0}&breakDiv04=${opts.breakDiv04 || 0}&breakDiv05=${opts.breakDiv05 || 0}&breakDiv06=${opts.breakDiv06 || 0}&breakDiv07=${opts.breakDiv07 || 0}&breakDiv08=${opts.breakDiv08 || 0}${preview ? "&preview=1" : ""}`;
+    const base = `/api/${companyId}/estimates/${est.id}/pdf?cover=1&coverType=${opts.coverType}&page2=${opts.page2}&includeInsert=${opts.includeInsert ? 1 : 0}&divSummary=${opts.includeDivisionSummary ? 1 : 0}&forcedBreakCsi=${opts.forcedBreakCsiPrefixes.join(",")}${preview ? "&preview=1" : ""}`;
     if (opts.coverType === "CUSTOM" && opts.coverBlobUrl) {
       return `${base}&coverBlobUrl=${encodeURIComponent(opts.coverBlobUrl)}`;
     }

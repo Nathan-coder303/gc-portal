@@ -47,15 +47,6 @@ export async function GET(
   const page2Param = req.nextUrl.searchParams.get("page2"); // "ROOF" | "ADDITION" | "NONE" | null (auto)
   const isPreview = req.nextUrl.searchParams.get("preview") === "1";
   const includeDivisionSummary = req.nextUrl.searchParams.get("divSummary") === "1";
-  function parseBreak(param: string | null): number | false {
-    const n = parseInt(param ?? "0");
-    return n > 0 ? n : false;
-  }
-  const breakDiv04 = parseBreak(req.nextUrl.searchParams.get("breakDiv04"));
-  const breakDiv05 = parseBreak(req.nextUrl.searchParams.get("breakDiv05"));
-  const breakDiv06 = parseBreak(req.nextUrl.searchParams.get("breakDiv06"));
-  const breakDiv07 = parseBreak(req.nextUrl.searchParams.get("breakDiv07"));
-  const breakDiv08 = parseBreak(req.nextUrl.searchParams.get("breakDiv08"));
   const forcedBreakCsiPrefixes = (req.nextUrl.searchParams.get("forcedBreakCsi") ?? "").split(",").map(s => s.trim()).filter(Boolean);
 
   const includeInsert = req.nextUrl.searchParams.get("includeInsert") !== "0";
@@ -157,11 +148,6 @@ export async function GET(
         : (template.client?.coverPhotoUrl ?? null)
     ),
     clientCoverTitle: template.client?.coverTitle ?? null,
-    breakDiv04,
-    breakDiv05,
-    breakDiv06,
-    breakDiv07,
-    breakDiv08,
     forcedBreakCsiPrefixes,
   });
   let finalBuffer = buffer;
