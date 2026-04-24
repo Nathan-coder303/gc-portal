@@ -44,7 +44,7 @@ const styles = StyleSheet.create({
     fontFamily: "Helvetica",
     fontSize: 9,
     paddingTop: 36,
-    paddingBottom: 48,
+    paddingBottom: 72,
     paddingHorizontal: 40,
     color: "#1e293b",
   },
@@ -464,7 +464,7 @@ export function EstimatePdfDocument({ companyName, projectName, estimate, divisi
 
             {filteredDivs.map(({ div, filledItems, filledGroups }, di) => {
               return (
-                <View key={div.id} minPresenceAhead={150}>
+                <View key={div.id} minPresenceAhead={220}>
                   {/* Sub-division header (only when grouped under a super-section) */}
                   {groupLabel && (
                     <View style={[styles.divisionHeader, { marginTop: di === 0 ? 8 : 6 }]}>
@@ -478,7 +478,7 @@ export function EstimatePdfDocument({ companyName, projectName, estimate, divisi
                   {filledGroups.map((grp) => {
                     const grpTotal = computeGroupTotal(grp.items);
                     return (
-                      <View key={grp.id} minPresenceAhead={60}>
+                      <View key={grp.id} minPresenceAhead={100}>
                         <View style={styles.groupHeader}>
                           <Text style={styles.groupName}>{grp.name}</Text>
                           <Text style={styles.groupTotal}>${fmt(grpTotal)}</Text>
