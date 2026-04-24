@@ -230,6 +230,7 @@ Extract bid info. Respond ONLY with valid JSON, no markdown:
     }
 
     return NextResponse.json({
+      companyId: COMPANY_ID,
       total: allMessages.length,
       new: newMessages.length,
       processed: toProcess.length,
