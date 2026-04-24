@@ -115,7 +115,7 @@ export async function GET(req: NextRequest) {
     } while (pageToken && allMessages.length < 2000);
 
     const newMessages = allMessages.filter(m => m.id && !processedMsgIds.has(m.id));
-    const toProcess = newMessages.slice(0, 50); // process up to 50 per cron run
+    const toProcess = newMessages.slice(0, 8); // 8 per run keeps well within 60s limit
 
     let added = 0;
     let skipped = 0;
@@ -187,61 +187,8 @@ Extract bid info. Respond ONLY with valid JSON, no markdown:
           : `gmail:${msg.id}`;
         const fileName = pdfParts[0]?.filename ?? null;
 
-        // Extract richer data from PDF attachment at sync time
-        let bidDate: string | null = null;
-        if (pdfParts.length > 0 && pdfParts[0].body?.attachmentId) {
-          try {
-            const attRes = await gmail.users.messages.attachments.get({
-              userId: "me",
-              messageId: msg.id!,
-              id: pdfParts[0].body.attachmentId,
-            });
-            const pdfBase64 = (attRes.data.data ?? "").replace(/-/g, "+").replace(/_/g, "/");
-            if (pdfBase64) {
-              const pdfRes = await fetch("https://api.anthropic.com/v1/messages", {
-                method: "POST",
-                headers: {
-                  "content-type": "application/json",
-                  "x-api-key": process.env.ANTHROPIC_API_KEY ?? "",
-                  "anthropic-version": "2023-06-01",
-                  "anthropic-beta": "pdfs-2024-09-25",
-                },
-                body: JSON.stringify({
-                  model: "claude-haiku-4-5-20251001",
-                  max_tokens: 400,
-                  messages: [{
-                    role: "user",
-                    content: [
-                      { type: "document", source: { type: "base64", media_type: "application/pdf", data: pdfBase64 } },
-                      {
-                        type: "text",
-                        text: `Extract from this subcontractor bid/proposal PDF. Respond ONLY with valid JSON, no markdown:
-{
-  "contractorName": "<company name that submitted this bid>",
-  "contractorAddress": "<full address of the bidding company, or null>",
-  "contractorPhone": "<phone number, or null>",
-  "contractorEmail": "<email address, or null>",
-  "amount": <grand total as number or null>,
-  "date": "<proposal/bid date as YYYY-MM-DD or null>",
-  "scope": "<one sentence describing the scope of work>"
-}`,
-                      },
-                    ],
-                  }],
-                }),
-              });
-              const pdfJson = await pdfRes.json() as { content?: { type: string; text: string }[] };
-              const pdfText = pdfJson.content?.[0]?.type === "text" ? pdfJson.content[0].text.trim() : "{}";
-              const pdfData = JSON.parse(pdfText.replace(/```json\n?|\n?```/g, ""));
-              if (pdfData.amount != null && Number(pdfData.amount) > 0) parsed.amount = Number(pdfData.amount);
-              if (pdfData.date && pdfData.date !== "null") bidDate = String(pdfData.date);
-              if (pdfData.contractorName) parsed.contractorName = pdfData.contractorName;
-              if (pdfData.scope) parsed.notes = pdfData.scope;
-            }
-          } catch (e) {
-            errors.push(`[pdf] ${String(e).slice(0, 60)}`);
-          }
-        }
+        // PDF data is extracted on-demand when user clicks "Add to database" in the triage inbox.
+        // Doing it here would exceed the 60s function timeout on Hobby plan.
 
         await prisma.subBid.create({
           data: {
@@ -257,7 +204,6 @@ Extract bid info. Respond ONLY with valid JSON, no markdown:
             status: "TRIAGE",
             emailSource: safeSubject || from,
             isPlaceholder: false,
-            bidDate: bidDate,
           },
         });
         added++;
