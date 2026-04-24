@@ -6,7 +6,7 @@ import { usePathname, useSearchParams } from "next/navigation";
 const NAV = [
   { label: "Mike's Tasks", icon: "✅", href: (c: string) => `/${c}/today` },
   { label: "Bids",      icon: "📋", href: (c: string) => `/${c}/projects` },
-  { label: "Projects",  icon: "🏗️", href: (c: string) => `/${c}/project-pipeline` },
+  { label: "Subs",      icon: "🔧", href: (c: string) => `/${c}/subs` },
   { label: "Estimates", icon: "📊", href: (c: string) => `/${c}/estimates` },
   { label: "Clients",   icon: "👤", href: (c: string) => `/${c}/clients` },
   { label: "Sales",     icon: "🎯", href: (c: string) => `/${c}/leads` },
@@ -25,7 +25,7 @@ function isActive(label: string, pathname: string, companyId: string, tab: strin
     return pathname.startsWith(`/${companyId}/projects`) ||
       (pathname === `/${companyId}` && (!tab || tab === "projects"));
   }
-  if (label === "Projects") return pathname.startsWith(`/${companyId}/project-pipeline`);
+  if (label === "Subs") return pathname.startsWith(`/${companyId}/subs`);
   if (label === "Estimates") return pathname.startsWith(`/${companyId}/estimates`);
   if (label === "Clients") return pathname.startsWith(`/${companyId}/clients`);
   if (label === "Sales") return pathname.startsWith(`/${companyId}/leads`);
