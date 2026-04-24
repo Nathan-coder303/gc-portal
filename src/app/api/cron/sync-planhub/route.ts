@@ -229,8 +229,13 @@ Extract bid info. Respond ONLY with valid JSON, no markdown:
       }
     }
 
+    const triageInDb = await prisma.subBid.count({
+      where: { companyId: COMPANY_ID, status: "TRIAGE" },
+    });
+
     return NextResponse.json({
       companyId: COMPANY_ID,
+      triageInDb,
       total: allMessages.length,
       new: newMessages.length,
       processed: toProcess.length,
