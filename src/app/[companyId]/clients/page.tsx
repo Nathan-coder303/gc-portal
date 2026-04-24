@@ -4,6 +4,8 @@ import { redirect } from "next/navigation";
 import { can } from "@/lib/auth/permissions";
 import ClientsManager from "./ClientsManager";
 
+export const dynamic = "force-dynamic";
+
 type DivisionLike = { items: { defaultQty: unknown; defaultUnitCost: unknown; defaultMarkupPct: unknown }[]; groups: { items: { defaultQty: unknown; defaultUnitCost: unknown; defaultMarkupPct: unknown }[] }[] };
 
 function calcRaw(divisions: DivisionLike[]): number {

@@ -66,8 +66,8 @@ function EstimateCard({
   const scope = est.description || est.name;
   const subjectParts = ["Estimate"];
   if (est.estimateNumber) subjectParts.push(`#${est.estimateNumber}`);
-  subjectParts.push("from MIBH CONSTRUCTION");
-  if (scope) subjectParts.push(`for ${scope}`);
+  subjectParts.push(`for ${clientName}`);
+  if (scope) subjectParts.push(`– ${scope}`);
   if (clientAddress) subjectParts.push(`at ${clientAddress}`);
 
   const [to, setTo] = useState(clientEmail ?? "");
