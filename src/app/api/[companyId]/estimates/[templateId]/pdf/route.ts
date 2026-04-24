@@ -56,6 +56,7 @@ export async function GET(
   const breakDiv06 = parseBreak(req.nextUrl.searchParams.get("breakDiv06"));
   const breakDiv07 = parseBreak(req.nextUrl.searchParams.get("breakDiv07"));
   const breakDiv08 = parseBreak(req.nextUrl.searchParams.get("breakDiv08"));
+  const forcedBreakCsiPrefixes = (req.nextUrl.searchParams.get("forcedBreakCsi") ?? "").split(",").map(s => s.trim()).filter(Boolean);
 
   const includeInsert = req.nextUrl.searchParams.get("includeInsert") !== "0";
 
@@ -161,6 +162,7 @@ export async function GET(
     breakDiv06,
     breakDiv07,
     breakDiv08,
+    forcedBreakCsiPrefixes,
   });
   let finalBuffer = buffer;
   if (insertFileUrl) {

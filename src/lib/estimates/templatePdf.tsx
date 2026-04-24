@@ -176,6 +176,7 @@ type TemplatePdfProps = {
   breakDiv06?: number | false;
   breakDiv07?: number | false;
   breakDiv08?: number | false;
+  forcedBreakCsiPrefixes?: string[];
 };
 
 function ItemTableHeader({ showLineNum }: { showLineNum?: boolean }) {
@@ -1073,7 +1074,7 @@ function DivisionSummaryPage({ template, client, divisions, gcFeePercent }: Pick
   );
 }
 
-function TemplatePdfDocument({ companyName, template, client, divisions, showTerms, termsContent, paymentSchedule, gcFeePercent, summaryGroups, clientSignatureData, clientSignedByName, clientSignedAt, contractorSignatureData, contractorSignedAt, includeRoofUpgradesPage, includeCoverPage, includeAdditionPages, includeRetailPages, includeDivisionSummary, insertPageOffset, insulationType, clientCoverPhotoType, clientCoverPhotoUrl, clientCoverTitle, breakDiv04, breakDiv05, breakDiv06, breakDiv07, breakDiv08 }: TemplatePdfProps) {
+function TemplatePdfDocument({ companyName, template, client, divisions, showTerms, termsContent, paymentSchedule, gcFeePercent, summaryGroups, clientSignatureData, clientSignedByName, clientSignedAt, contractorSignatureData, contractorSignedAt, includeRoofUpgradesPage, includeCoverPage, includeAdditionPages, includeRetailPages, includeDivisionSummary, insertPageOffset, insulationType, clientCoverPhotoType, clientCoverPhotoUrl, clientCoverTitle, breakDiv04, breakDiv05, breakDiv06, breakDiv07, breakDiv08, forcedBreakCsiPrefixes = [] }: TemplatePdfProps) {
   const grouped = groupDivisions(divisions);
 
   // Compute raw totals per group label (or null for ungrouped)
@@ -1382,6 +1383,16 @@ function TemplatePdfDocument({ companyName, template, client, divisions, showTer
             const rem = divRemainingMap.get(divId) ?? PAGE_H;
             if (rem < threshold) forcedBreakDivIds.add(divId);
           });
+          // Always force break for any division whose CSI code matches a forced prefix
+          if (forcedBreakCsiPrefixes.length > 0) {
+            for (const { divs } of grouped) {
+              for (const div of divs) {
+                if (div.csiCode && forcedBreakCsiPrefixes.some(p => div.csiCode!.replace(/\s/g, "").startsWith(p))) {
+                  forcedBreakDivIds.add(div.id);
+                }
+              }
+            }
+          }
 
 
           return grouped.map(({ groupLabel, divs }, gi) => {

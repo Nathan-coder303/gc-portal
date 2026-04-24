@@ -28,6 +28,7 @@ export type PdfOptions = {
   breakDiv06: number | false;
   breakDiv07: number | false;
   breakDiv08: number | false;
+  forcedBreakCsiPrefixes: string[];
 };
 
 type CustomCover = { blobUrl: string; proxyUrl: string };
@@ -90,6 +91,7 @@ export default function CoverPagePickerModal({
   const [breakDiv06, setBreakDiv06] = useState<number | false>(false);
   const [breakDiv07, setBreakDiv07] = useState<number | false>(false);
   const [breakDiv08, setBreakDiv08] = useState<number | false>(false);
+  const [forcedBreakCsiPrefixes, setForcedBreakCsiPrefixes] = useState<string[]>([]);
 
   // Custom cover gallery
   const [customCovers, setCustomCovers] = useState<CustomCover[]>([]);
@@ -156,6 +158,7 @@ export default function CoverPagePickerModal({
     breakDiv06,
     breakDiv07,
     breakDiv08,
+    forcedBreakCsiPrefixes,
   };
 
   return (
@@ -375,6 +378,26 @@ export default function CoverPagePickerModal({
                     </div>
                   )}
                 </div>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* ── Section: Force New Page Before Division ── */}
+        <div>
+          <p className="text-xs font-semibold uppercase tracking-widest mb-2" style={{ color: "#8b949e" }}>Force New Page Before Division</p>
+          <div className="flex flex-wrap gap-2">
+            {["03","04","05","06","07","08","09","10","11","14"].map(prefix => {
+              const on = forcedBreakCsiPrefixes.includes(prefix);
+              return (
+                <button
+                  key={prefix}
+                  onClick={() => setForcedBreakCsiPrefixes(prev => on ? prev.filter(p => p !== prefix) : [...prev, prefix])}
+                  className="px-3 py-1 rounded-lg text-xs font-bold transition-all"
+                  style={{ background: on ? "#C9A84C" : "#1e2736", color: on ? "#0d1117" : "#8b949e", border: `1px solid ${on ? "#C9A84C" : "#30373f"}` }}
+                >
+                  Div {prefix}
+                </button>
               );
             })}
           </div>
