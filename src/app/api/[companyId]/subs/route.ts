@@ -22,12 +22,14 @@ export async function POST(req: NextRequest, { params }: { params: { companyId: 
     data: {
       companyId: params.companyId,
       name: body.name,
+      address: body.address ?? null,
       email: body.email ?? null,
       phone: body.phone ?? null,
+      licenseNumber: body.licenseNumber ?? null,
       divisionCode: body.divisionCode,
       divisionName: body.divisionName,
       notes: body.notes ?? null,
-      source: "manual",
+      source: body.source ?? "manual",
     },
   });
   return NextResponse.json(sub, { status: 201 });

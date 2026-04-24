@@ -350,8 +350,8 @@ enum FollowUpCategory {
 
 model SubBid {
   id             String   @id @default(cuid())
-  clientId       String
-  client         Client   @relation(fields: [clientId], references: [id])
+  clientId       String?
+  client         Client?  @relation(fields: [clientId], references: [id])
   companyId      String
   divisionCode   String
   divisionName   String
@@ -990,13 +990,15 @@ model SubContractor {
   id           String   @id @default(cuid())
   companyId    String
   company      Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
-  name         String
-  email        String?
-  phone        String?
-  divisionCode String
-  divisionName String
-  notes        String?
-  source       String   @default("manual") // "sheet" | "bid" | "manual"
+  name          String
+  address       String?
+  email         String?
+  phone         String?
+  licenseNumber String?
+  divisionCode  String
+  divisionName  String
+  notes         String?
+  source        String   @default("manual") // "sheet" | "bid" | "manual"
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 

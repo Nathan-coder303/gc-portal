@@ -11,6 +11,10 @@
     {
       "path": "/api/cron/fetch-leads",
       "schedule": "0 8 * * *"
+    },
+    {
+      "path": "/api/cron/sync-planhub",
+      "schedule": "0 */4 * * *"
     }
   ]
 }

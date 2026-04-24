@@ -105,7 +105,7 @@ export async function POST(
   );
 
   const BID_QUERY = [
-    "from:projectnotification@planhub.com",
+    "from:projectnotification@planhub.com after:2021/01/01",
     "from:noreply@buildingconnected.com",
     "from:noreply@smartbid.net",
     "is:starred",
@@ -322,12 +322,6 @@ Respond ONLY with valid JSON, no markdown:
         });
       }
 
-      if (!clientId) {
-        noInfo++;
-        errors.push(`No client info for: "${safeSubject.slice(0, 60)}"`);
-        continue;
-      }
-
       const divCode = parsed.divisionCode ?? "01";
       const division = STANDARD_DIVISIONS.find(d => d.code === divCode) ?? STANDARD_DIVISIONS[0];
 
@@ -335,6 +329,29 @@ Respond ONLY with valid JSON, no markdown:
         ? `gmail:${msg.id}:${pdfParts[0].body?.attachmentId ?? ""}`
         : `gmail:${msg.id}`;
       const fileName = pdfParts[0]?.filename ?? null;
+
+      if (!clientId) {
+        // Save as TRIAGE so user can manually assign to a project
+        await prisma.subBid.create({
+          data: {
+            clientId: null,
+            companyId: params.companyId,
+            divisionCode: division.code,
+            divisionName: division.name,
+            contractorName: parsed.contractorName ?? from,
+            amount: parsed.amount ?? null,
+            notes: parsed.notes ?? null,
+            fileUrl,
+            fileName,
+            status: "TRIAGE",
+            emailSource: safeSubject || from,
+            isPlaceholder: false,
+            bidDate: bidDate,
+          },
+        });
+        noInfo++;
+        continue;
+      }
 
       await prisma.subBid.create({
         data: {
@@ -368,7 +385,7 @@ Respond ONLY with valid JSON, no markdown:
     processed: toProcess.length,
     added,
     notBid,
-    noInfo,
+    triage: noInfo,
     remaining,
     errors: errors.slice(0, 10),
   });
