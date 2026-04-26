@@ -2872,8 +2872,13 @@ function ScheduleTableView({
       </div>
 
       {/* Context menu */}
-      {ctxMenu && (
-        <div style={{ position: "fixed", left: ctxMenu.x, top: ctxMenu.y, background: "#1e2736", border: "1px solid #30373f", borderRadius: 8, zIndex: 200, minWidth: 190, boxShadow: "0 8px 32px rgba(0,0,0,0.7)", overflow: "hidden" }}
+      {ctxMenu && (() => {
+        const menuW = 210;
+        const menuH = ctxMenu.task.parentId ? 310 : 280;
+        const top = ctxMenu.y + menuH > window.innerHeight - 8 ? Math.max(8, ctxMenu.y - menuH) : ctxMenu.y;
+        const left = ctxMenu.x + menuW > window.innerWidth - 8 ? ctxMenu.x - menuW : ctxMenu.x;
+        return (
+        <div style={{ position: "fixed", left, top, background: "#1e2736", border: "1px solid #30373f", borderRadius: 8, zIndex: 200, minWidth: menuW, boxShadow: "0 8px 32px rgba(0,0,0,0.7)", overflow: "hidden" }}
           onClick={e => e.stopPropagation()}>
           <button style={CTX_BTN} className="hover:bg-[#2d3748]" onClick={() => { setEditTask(ctxMenu.task); setCtxMenu(null); }}>✏️ Edit Task</button>
           <button style={CTX_BTN} className="hover:bg-[#2d3748]" onClick={() => { setAddSubFor(ctxMenu.task); setCtxMenu(null); }}>⊕ Add Subtask</button>
@@ -2892,7 +2897,8 @@ function ScheduleTableView({
             <button style={{ ...CTX_BTN, color: "#f87171" }} className="hover:bg-[#2d3748]" onClick={() => { removeParent(ctxMenu.task); setCtxMenu(null); }}>✕ Remove Parent</button>
           )}
         </div>
-      )}
+        );
+      })()}
 
       {editTask && (
         <EditTaskModal task={editTask} companyId={companyId} clientId={clientId}
