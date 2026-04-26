@@ -1070,24 +1070,35 @@ function EditModal({
 
 // ── Add Task Modal ─────────────────────────────────────────────────────────────
 
-function AddTaskModal({ companyId, clientId, phases, onCreate, onClose, defaultParentId, defaultParentName }: {
+function AddTaskModal({ companyId, clientId, phases, onCreate, onClose, defaultParentId, defaultParentName, defaultMode }: {
   companyId: string; clientId: string; phases: string[];
   onCreate: (task: ClientTask) => void; onClose: () => void;
   defaultParentId?: string; defaultParentName?: string;
+  defaultMode?: "task" | "phase";
 }) {
+  const [mode, setMode] = useState<"task" | "phase">(defaultMode ?? "task");
   const [form, setForm] = useState({ name: "", phase: phases[0] ?? "General", durationDays: "5", startDate: todayStr(), trade: "", assignee: "" });
   const [saving, setSaving] = useState(false);
 
   async function handleCreate() {
     if (!form.name.trim()) return;
     setSaving(true);
-    const dur = Math.max(1, parseInt(form.durationDays) || 1);
+    const dur = mode === "phase" ? 1 : Math.max(1, parseInt(form.durationDays) || 1);
     const start = form.startDate ? new Date(form.startDate + "T00:00:00") : new Date();
     const end = addDays(start, dur - 1);
     try {
       const res = await fetch(`/api/${companyId}/clients/${clientId}/schedule`, {
         method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name: form.name.trim(), phase: form.phase.trim() || "General", durationDays: dur, startDate: toDateStr(start), endDate: toDateStr(end), trade: form.trade.trim() || null, assignee: form.assignee.trim() || null, parentId: defaultParentId ?? null }),
+        body: JSON.stringify({
+          name: form.name.trim(),
+          phase: mode === "phase" ? form.name.trim() : (form.phase.trim() || "General"),
+          durationDays: dur,
+          startDate: toDateStr(start),
+          endDate: toDateStr(end),
+          trade: mode === "phase" ? null : (form.trade.trim() || null),
+          assignee: mode === "phase" ? null : (form.assignee.trim() || null),
+          parentId: mode === "phase" ? null : (defaultParentId ?? null),
+        }),
       });
       const raw = await res.json();
       const task: ClientTask = {
@@ -1105,36 +1116,50 @@ function AddTaskModal({ companyId, clientId, phases, onCreate, onClose, defaultP
       onClick={onClose}>
       <div style={{ background: "#161b22", border: "1px solid #30373f", borderRadius: 14, padding: 24, width: "100%", maxWidth: 440 }}
         onClick={e => e.stopPropagation()}>
-        <h3 className="text-sm font-bold mb-1" style={{ color: "#e6edf3" }}>{defaultParentId ? "Add Sub-task" : "Add Task"}</h3>
-        {defaultParentName && <p className="text-xs mb-4" style={{ color: "#8b949e" }}>Child of: <span style={{ color: GOLD }}>{defaultParentName}</span></p>}
+        {/* Mode toggle */}
+        <div className="flex gap-1 mb-4" style={{ background: "#0d1117", borderRadius: 8, padding: 4 }}>
+          {(["task", "phase"] as const).map(m => (
+            <button key={m} onClick={() => setMode(m)}
+              className="flex-1 py-1.5 text-xs font-semibold rounded-md"
+              style={{ background: mode === m ? GOLD : "transparent", color: mode === m ? "#0d1117" : "#8b949e" }}>
+              {m === "task" ? "📋 Task" : "📁 Phase"}
+            </button>
+          ))}
+        </div>
+        <h3 className="text-sm font-bold mb-1" style={{ color: "#e6edf3" }}>
+          {mode === "phase" ? "Add Phase" : (defaultParentId ? "Add Sub-task" : "Add Task")}
+        </h3>
+        {mode === "task" && defaultParentName && <p className="text-xs mb-4" style={{ color: "#8b949e" }}>Child of: <span style={{ color: GOLD }}>{defaultParentName}</span></p>}
         <div className="space-y-3">
           <div>
-            <label className="block text-[11px] mb-1" style={{ color: "#8b949e" }}>Task Name *</label>
+            <label className="block text-[11px] mb-1" style={{ color: "#8b949e" }}>{mode === "phase" ? "Phase Name *" : "Task Name *"}</label>
             <input value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} style={INPUT} className="outline-none" autoFocus onKeyDown={e => e.key === "Enter" && handleCreate()} />
           </div>
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label className="block text-[11px] mb-1" style={{ color: "#8b949e" }}>Phase</label>
-              <input value={form.phase} onChange={e => setForm(f => ({ ...f, phase: e.target.value }))} style={INPUT} className="outline-none" list="phase-list" />
-              <datalist id="phase-list">{phases.map(p => <option key={p} value={p} />)}</datalist>
+          {mode === "task" && (
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="block text-[11px] mb-1" style={{ color: "#8b949e" }}>Phase</label>
+                <input value={form.phase} onChange={e => setForm(f => ({ ...f, phase: e.target.value }))} style={INPUT} className="outline-none" list="phase-list" />
+                <datalist id="phase-list">{phases.map(p => <option key={p} value={p} />)}</datalist>
+              </div>
+              <div>
+                <label className="block text-[11px] mb-1" style={{ color: "#8b949e" }}>Duration (days)</label>
+                <input type="number" min="1" value={form.durationDays} onChange={e => setForm(f => ({ ...f, durationDays: e.target.value }))} style={INPUT} className="outline-none" />
+              </div>
+              <div>
+                <label className="block text-[11px] mb-1" style={{ color: "#8b949e" }}>Start Date</label>
+                <input type="date" value={form.startDate} onChange={e => setForm(f => ({ ...f, startDate: e.target.value }))} style={INPUT} className="outline-none" />
+              </div>
+              <div>
+                <label className="block text-[11px] mb-1" style={{ color: "#8b949e" }}>Trade</label>
+                <input value={form.trade} onChange={e => setForm(f => ({ ...f, trade: e.target.value }))} style={INPUT} className="outline-none" placeholder="Optional" />
+              </div>
             </div>
-            <div>
-              <label className="block text-[11px] mb-1" style={{ color: "#8b949e" }}>Duration (days)</label>
-              <input type="number" min="1" value={form.durationDays} onChange={e => setForm(f => ({ ...f, durationDays: e.target.value }))} style={INPUT} className="outline-none" />
-            </div>
-            <div>
-              <label className="block text-[11px] mb-1" style={{ color: "#8b949e" }}>Start Date</label>
-              <input type="date" value={form.startDate} onChange={e => setForm(f => ({ ...f, startDate: e.target.value }))} style={INPUT} className="outline-none" />
-            </div>
-            <div>
-              <label className="block text-[11px] mb-1" style={{ color: "#8b949e" }}>Trade</label>
-              <input value={form.trade} onChange={e => setForm(f => ({ ...f, trade: e.target.value }))} style={INPUT} className="outline-none" placeholder="Optional" />
-            </div>
-          </div>
+          )}
         </div>
         <div className="flex gap-2 mt-4">
           <button onClick={handleCreate} disabled={!form.name.trim() || saving} className="flex-1 py-2 text-xs font-semibold rounded-lg disabled:opacity-50" style={{ background: GOLD, color: "#0d1117" }}>
-            {saving ? "Adding…" : "Add Task"}
+            {saving ? "Adding…" : (mode === "phase" ? "Add Phase" : "Add Task")}
           </button>
           <button onClick={onClose} className="px-4 py-2 text-xs rounded-lg" style={{ background: "#30373f", color: "#8b949e" }}>Cancel</button>
         </div>
@@ -1952,6 +1977,8 @@ function ScheduleTableView({
   const [collapsedIds, setCollapsedIds] = useState<Set<string>>(new Set());
   const [editTask, setEditTask] = useState<ClientTask | null>(null);
   const [addSubFor, setAddSubFor] = useState<ClientTask | null>(null);
+  const [addPhaseOpen, setAddPhaseOpen] = useState(false);
+  const [addTaskSiblingFor, setAddTaskSiblingFor] = useState<ClientTask | null>(null);
   const [dragId, setDragId] = useState<string | null>(null);
   const [dropId, setDropId] = useState<string | null>(null);
   const [settingParentFor, setSettingParentFor] = useState<ClientTask | null>(null);
@@ -2296,6 +2323,8 @@ function ScheduleTableView({
           onClick={e => e.stopPropagation()}>
           <button style={CTX_BTN} className="hover:bg-[#2d3748]" onClick={() => { setEditTask(ctxMenu.task); setCtxMenu(null); }}>✏️ Edit Task</button>
           <button style={CTX_BTN} className="hover:bg-[#2d3748]" onClick={() => { setAddSubFor(ctxMenu.task); setCtxMenu(null); }}>⊕ Add Subtask</button>
+          <button style={CTX_BTN} className="hover:bg-[#2d3748]" onClick={() => { setAddTaskSiblingFor(ctxMenu.task); setCtxMenu(null); }}>📋 Add Task here</button>
+          <button style={CTX_BTN} className="hover:bg-[#2d3748]" onClick={() => { setAddPhaseOpen(true); setCtxMenu(null); }}>📁 Add Phase</button>
           <div style={{ height: 1, background: "#21262d", margin: "2px 0" }} />
           <button style={CTX_BTN} className="hover:bg-[#2d3748]" onClick={() => { indent(ctxMenu.task); setCtxMenu(null); }} title="Make child of the task above it">
             → Indent
@@ -2323,6 +2352,21 @@ function ScheduleTableView({
           defaultParentId={addSubFor.id} defaultParentName={addSubFor.name}
           onCreate={task => { onTasksChange([...tasks, task]); setAddSubFor(null); }}
           onClose={() => setAddSubFor(null)} />
+      )}
+
+      {addPhaseOpen && (
+        <AddTaskModal companyId={companyId} clientId={clientId} phases={phases}
+          defaultMode="phase"
+          onCreate={task => { onTasksChange([...tasks, task]); setAddPhaseOpen(false); }}
+          onClose={() => setAddPhaseOpen(false)} />
+      )}
+
+      {addTaskSiblingFor && (
+        <AddTaskModal companyId={companyId} clientId={clientId} phases={phases}
+          defaultParentId={addTaskSiblingFor.parentId ?? undefined}
+          defaultMode="task"
+          onCreate={task => { onTasksChange([...tasks, task]); setAddTaskSiblingFor(null); }}
+          onClose={() => setAddTaskSiblingFor(null)} />
       )}
     </>
   );
@@ -2486,6 +2530,7 @@ export default function ClientScheduleTab({ companyId, clientId, clientName, ini
 }) {
   const [tasks, setTasks] = useState<ClientTask[]>(initialTasks);
   const [adding, setAdding] = useState(false);
+  const [addingPhase, setAddingPhase] = useState(false);
   const [loadingTemplate, setLoadingTemplate] = useState(false);
   const [savingTemplate, setSavingTemplate] = useState<"save" | "saveas" | null>(null);
   const [savedTemplateId, setSavedTemplateId] = useState<string | null>(null);
@@ -2677,6 +2722,10 @@ export default function ClientScheduleTab({ companyId, clientId, clientName, ini
                   </button>
                 </>
               )}
+              <button onClick={() => setAddingPhase(true)} className="text-xs font-semibold px-3 py-1.5 rounded-lg"
+                style={{ background: "#1e2736", border: `1px solid ${GOLD}`, color: GOLD }}>
+                + Add Phase
+              </button>
               <button onClick={() => setAdding(true)} className="text-xs font-semibold px-3 py-1.5 rounded-lg"
                 style={{ background: GOLD, color: "#0d1117" }}>
                 + Add Task
@@ -2710,6 +2759,16 @@ export default function ClientScheduleTab({ companyId, clientId, clientName, ini
           phases={phases.length ? phases : ["Pre-Construction", "Construction", "Finishing"]}
           onCreate={task => { setTasks(prev => [...prev, task]); setAdding(false); }}
           onClose={() => setAdding(false)}
+        />
+      )}
+
+      {addingPhase && (
+        <AddTaskModal
+          companyId={companyId} clientId={clientId}
+          phases={phases.length ? phases : ["Pre-Construction", "Construction", "Finishing"]}
+          defaultMode="phase"
+          onCreate={task => { setTasks(prev => [...prev, task]); setAddingPhase(false); }}
+          onClose={() => setAddingPhase(false)}
         />
       )}
 
