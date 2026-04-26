@@ -50,6 +50,7 @@ export async function GET(
   const forcedBreakCsiPrefixes = (req.nextUrl.searchParams.get("forcedBreakCsi") ?? "").split(",").map(s => s.trim()).filter(Boolean);
 
   const includeInsert = req.nextUrl.searchParams.get("includeInsert") !== "0";
+  const noPresentation = req.nextUrl.searchParams.get("noPresent") === "1";
 
   const [template, company] = await Promise.all([
     prisma.estimateTemplate.findFirst({
@@ -122,7 +123,7 @@ export async function GET(
     template: { name: template.name, description: template.description, estimateNumber: template.estimateNumber, estimateDate: template.estimateDate },
     client: template.client ? { name: template.client.name, address: template.client.address, city: template.client.city, state: template.client.state, zip: template.client.zip, phone: template.client.phone, email: template.client.email } : null,
     divisions,
-    showTerms: true,
+    showTerms: !noPresentation,
     termsContent: template.termsContent,
     paymentSchedule: (template.paymentSchedule as { payment: string; trigger: string; pct: number }[] | null) ?? DEFAULT_PAYMENT_SCHEDULE,
     gcFeePercent: template.gcFeePercent ? Number(template.gcFeePercent) : null,

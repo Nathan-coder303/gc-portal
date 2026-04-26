@@ -1802,13 +1802,13 @@ export default function TemplateEditor({
                 companyId={template.companyId}
                 clientId={currentClient?.id}
                 onConfirm={(opts: PdfOptions) => {
-                  let url = `/api/${template.companyId}/estimates/${template.id}/pdf?cover=1&coverType=${opts.coverType}&page2=${opts.page2}&includeInsert=${opts.includeInsert ? 1 : 0}&divSummary=${opts.includeDivisionSummary ? 1 : 0}&forcedBreakCsi=${opts.forcedBreakCsiPrefixes.join(",")}`;
+                  let url = `/api/${template.companyId}/estimates/${template.id}/pdf?cover=1&coverType=${opts.coverType}&page2=${opts.page2}&includeInsert=${opts.includeInsert ? 1 : 0}&divSummary=${opts.includeDivisionSummary ? 1 : 0}&forcedBreakCsi=${opts.forcedBreakCsiPrefixes.join(",")}&noPresent=${opts.noPresentation ? 1 : 0}`;
                   if (opts.coverType === "CUSTOM" && opts.coverBlobUrl) url += `&coverBlobUrl=${encodeURIComponent(opts.coverBlobUrl)}`;
                   window.open(url, "_blank");
                   setShowPdfModal(false);
                 }}
                 onPreview={(opts: PdfOptions) => {
-                  let url = `/api/${template.companyId}/estimates/${template.id}/pdf?cover=1&coverType=${opts.coverType}&page2=${opts.page2}&includeInsert=${opts.includeInsert ? 1 : 0}&divSummary=${opts.includeDivisionSummary ? 1 : 0}&forcedBreakCsi=${opts.forcedBreakCsiPrefixes.join(",")}&preview=1`;
+                  let url = `/api/${template.companyId}/estimates/${template.id}/pdf?cover=1&coverType=${opts.coverType}&page2=${opts.page2}&includeInsert=${opts.includeInsert ? 1 : 0}&divSummary=${opts.includeDivisionSummary ? 1 : 0}&forcedBreakCsi=${opts.forcedBreakCsiPrefixes.join(",")}&noPresent=${opts.noPresentation ? 1 : 0}&preview=1`;
                   if (opts.coverType === "CUSTOM" && opts.coverBlobUrl) url += `&coverBlobUrl=${encodeURIComponent(opts.coverBlobUrl)}`;
                   window.open(url, "_blank");
                 }}

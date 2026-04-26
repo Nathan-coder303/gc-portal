@@ -24,6 +24,7 @@ export type PdfOptions = {
   includeInsert: boolean;
   includeDivisionSummary: boolean;
   forcedBreakCsiPrefixes: string[];
+  noPresentation: boolean; // skip presentation pages + T&C
 };
 
 type CustomCover = { blobUrl: string; proxyUrl: string };
@@ -82,6 +83,7 @@ export default function CoverPagePickerModal({
   const [includeInsert, setIncludeInsert] = useState(true);
   const [includeDivisionSummary, setIncludeDivisionSummary] = useState(false);
   const [forcedBreakCsiPrefixes, setForcedBreakCsiPrefixes] = useState<string[]>([]);
+  const [noPresentation, setNoPresentation] = useState(false);
 
   // Custom cover gallery
   const [customCovers, setCustomCovers] = useState<CustomCover[]>([]);
@@ -140,10 +142,11 @@ export default function CoverPagePickerModal({
   const opts: PdfOptions = {
     coverType: cover,
     coverBlobUrl: cover === "CUSTOM" ? selectedBlobUrl : null,
-    page2,
+    page2: noPresentation ? "NONE" : page2,
     includeInsert,
     includeDivisionSummary,
     forcedBreakCsiPrefixes,
+    noPresentation,
   };
 
   return (
@@ -243,7 +246,29 @@ export default function CoverPagePickerModal({
           )}
         </div>
 
+        {/* ── No Presentation toggle ── */}
+        <div>
+          <p className="text-xs font-semibold uppercase tracking-widest mb-2" style={{ color: "#8b949e" }}>Presentation</p>
+          <button
+            onClick={() => setNoPresentation(p => !p)}
+            className="w-full rounded-xl p-3 text-left transition-all"
+            style={{ border: `2px solid ${noPresentation ? "#f85149" : "#30373f"}`, background: noPresentation ? "#2d1b1b" : "#1e2736", outline: "none" }}
+          >
+            <div className="flex items-center gap-3">
+              <span className="text-xl">🚫</span>
+              <div>
+                <div className="text-xs font-semibold" style={{ color: noPresentation ? "#f87171" : "#e6edf3" }}>No Presentation</div>
+                <div className="text-[10px] mt-0.5" style={{ color: "#8b949e" }}>Skip presentation pages and Terms &amp; Conditions — jump straight to estimate total</div>
+              </div>
+              <div className="ml-auto w-4 h-4 rounded-full border-2 flex items-center justify-center" style={{ borderColor: noPresentation ? "#f85149" : "#484f58", background: noPresentation ? "#f85149" : "transparent" }}>
+                {noPresentation && <div className="w-2 h-2 rounded-full bg-white" />}
+              </div>
+            </div>
+          </button>
+        </div>
+
         {/* ── Section 2: Presentation Page ── */}
+        {!noPresentation && (
         <div>
           <p className="text-xs font-semibold uppercase tracking-widest mb-2" style={{ color: "#8b949e" }}>Page 2 — Presentation</p>
           <div className="grid grid-cols-3 gap-2">
@@ -264,6 +289,7 @@ export default function CoverPagePickerModal({
             })}
           </div>
         </div>
+        )}
 
         {/* ── Section 3: Insert File ── */}
         {hasInsertFile && (
