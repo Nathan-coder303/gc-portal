@@ -1842,9 +1842,14 @@ function ClientGanttChart({ tasks, projectStart, companyId, clientId, canEdit, o
       )}
 
       {/* Right-click context menu */}
-      {contextMenu && (
+      {contextMenu && (() => {
+        const menuW = 200;
+        const menuH = contextMenu.confirmDelete ? 360 : (contextMenu.task.parentId ? 290 : 255);
+        const top = contextMenu.y + menuH > window.innerHeight - 8 ? Math.max(8, contextMenu.y - menuH) : contextMenu.y;
+        const left = contextMenu.x + menuW > window.innerWidth - 8 ? contextMenu.x - menuW : contextMenu.x;
+        return (
         <div
-          style={{ position: "fixed", top: contextMenu.y, left: contextMenu.x, zIndex: 200, minWidth: 180, background: "#161b22", border: "1px solid #30373f", borderRadius: 10, boxShadow: "0 8px 32px rgba(0,0,0,0.5)", overflow: "hidden" }}
+          style={{ position: "fixed", top, left, zIndex: 200, minWidth: menuW, background: "#161b22", border: "1px solid #30373f", borderRadius: 10, boxShadow: "0 8px 32px rgba(0,0,0,0.5)", overflow: "hidden" }}
           onClick={e => e.stopPropagation()}
           onContextMenu={e => e.preventDefault()}
         >
@@ -1889,7 +1894,8 @@ function ClientGanttChart({ tasks, projectStart, companyId, clientId, canEdit, o
             </div>
           )}
         </div>
-      )}
+        );
+      })()}
 
       {/* Add child task modal */}
       {addChildFor && (
@@ -3149,6 +3155,69 @@ export default function ClientScheduleTab({ companyId, clientId, clientName, ini
   companyId: string; clientId: string; clientName: string; initialTasks: ClientTask[]; canEdit: boolean;
 }) {
   const [tasks, setTasks] = useState<ClientTask[]>(initialTasks);
+  const historyRef = useRef<ClientTask[][]>([initialTasks]);
+  const historyIdxRef = useRef(0);
+  const isTimeTravelRef = useRef(false);
+  const [canUndo, setCanUndo] = useState(false);
+  const [canRedo, setCanRedo] = useState(false);
+
+  function commitTasks(newTasks: ClientTask[]) {
+    if (isTimeTravelRef.current) { setTasks(newTasks); return; }
+    historyRef.current = historyRef.current.slice(0, historyIdxRef.current + 1);
+    historyRef.current.push(newTasks);
+    if (historyRef.current.length > 30) historyRef.current = historyRef.current.slice(historyRef.current.length - 30);
+    historyIdxRef.current = historyRef.current.length - 1;
+    setCanUndo(historyIdxRef.current > 0);
+    setCanRedo(false);
+    setTasks(newTasks);
+  }
+
+  async function applySnapshot(snapshot: ClientTask[], current: ClientTask[]) {
+    isTimeTravelRef.current = true;
+    setTasks(snapshot);
+    isTimeTravelRef.current = false;
+    const curMap = new Map(current.map(t => [t.id, t]));
+    const patches = snapshot.filter(t => {
+      const old = curMap.get(t.id);
+      return old && (old.startDate !== t.startDate || old.endDate !== t.endDate || old.durationDays !== t.durationDays || old.status !== t.status || old.percentComplete !== t.percentComplete || old.phase !== t.phase || old.name !== t.name);
+    });
+    await Promise.all(patches.map(t =>
+      fetch(`/api/${companyId}/clients/${clientId}/schedule/${t.id}`, {
+        method: "PATCH", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ startDate: t.startDate, endDate: t.endDate, durationDays: t.durationDays, status: t.status, percentComplete: t.percentComplete, phase: t.phase, name: t.name }),
+      })
+    ));
+  }
+
+  async function undo() {
+    if (historyIdxRef.current <= 0) return;
+    const current = historyRef.current[historyIdxRef.current];
+    historyIdxRef.current--;
+    const snapshot = historyRef.current[historyIdxRef.current];
+    setCanUndo(historyIdxRef.current > 0);
+    setCanRedo(true);
+    await applySnapshot(snapshot, current);
+  }
+
+  async function redo() {
+    if (historyIdxRef.current >= historyRef.current.length - 1) return;
+    const current = historyRef.current[historyIdxRef.current];
+    historyIdxRef.current++;
+    const snapshot = historyRef.current[historyIdxRef.current];
+    setCanUndo(true);
+    setCanRedo(historyIdxRef.current < historyRef.current.length - 1);
+    await applySnapshot(snapshot, current);
+  }
+
+  useEffect(() => {
+    function onKey(e: KeyboardEvent) {
+      if ((e.metaKey || e.ctrlKey) && e.key === "z" && !e.shiftKey) { e.preventDefault(); undo(); }
+      if ((e.metaKey || e.ctrlKey) && (e.key === "y" || (e.key === "z" && e.shiftKey))) { e.preventDefault(); redo(); }
+    }
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  });
+
   const [adding, setAdding] = useState(false);
   const [addingPhase, setAddingPhase] = useState(false);
   const [assigningPhase, setAssigningPhase] = useState<ClientTask | null>(null);
@@ -3194,7 +3263,7 @@ export default function ClientScheduleTab({ companyId, clientId, clientName, ini
         endDate: e ? toDateStr(addDays(e, deltaDays)) : t.endDate,
       };
     });
-    setTasks(updated);
+    commitTasks(updated);
     await Promise.all(updated.map(t =>
       fetch(`/api/${companyId}/clients/${clientId}/schedule/${t.id}`, {
         method: "PATCH",
@@ -3213,7 +3282,7 @@ export default function ClientScheduleTab({ companyId, clientId, clientName, ini
     await Promise.all(tasks.map(t =>
       fetch(`/api/${companyId}/clients/${clientId}/schedule/${t.id}`, { method: "DELETE" })
     ));
-    setTasks([]);
+    commitTasks([]);
   }
 
   return (
@@ -3264,6 +3333,27 @@ export default function ClientScheduleTab({ companyId, clientId, clientName, ini
           )}
         </div>
         <div className="flex gap-2 flex-wrap items-center">
+          {/* Undo / Redo */}
+          {canEdit && (
+            <div className="flex rounded-lg overflow-hidden" style={{ border: "1px solid #30373f" }}>
+              <button
+                onClick={undo} disabled={!canUndo}
+                title="Undo (⌘Z)"
+                className="text-xs font-semibold px-3 py-1.5 transition-colors"
+                style={{ background: "#1e2736", color: canUndo ? "#e6edf3" : "#484f58", cursor: canUndo ? "pointer" : "not-allowed" }}
+              >
+                ↩ Undo
+              </button>
+              <button
+                onClick={redo} disabled={!canRedo}
+                title="Redo (⌘Y)"
+                className="text-xs font-semibold px-3 py-1.5 transition-colors"
+                style={{ background: "#1e2736", color: canRedo ? "#e6edf3" : "#484f58", cursor: canRedo ? "pointer" : "not-allowed", borderLeft: "1px solid #30373f" }}
+              >
+                ↪ Redo
+              </button>
+            </div>
+          )}
           {/* View toggle */}
           <div className="flex rounded-lg overflow-hidden" style={{ border: "1px solid #30373f" }}>
             <button
@@ -3367,10 +3457,10 @@ export default function ClientScheduleTab({ companyId, clientId, clientName, ini
           )}
         </div>
       ) : viewMode === "table" ? (
-        <ScheduleTableView tasks={tasks} companyId={companyId} clientId={clientId} onTasksChange={setTasks} canEdit={canEdit} />
+        <ScheduleTableView tasks={tasks} companyId={companyId} clientId={clientId} onTasksChange={commitTasks} canEdit={canEdit} />
       ) : (
         <div className="rounded-xl overflow-hidden" style={{ border: "1px solid #30373f" }}>
-          <ClientGanttChart tasks={tasks} projectStart={projectStart} companyId={companyId} clientId={clientId} canEdit={canEdit} onTasksChange={setTasks} collapsed={collapsed} setCollapsed={setCollapsed} />
+          <ClientGanttChart tasks={tasks} projectStart={projectStart} companyId={companyId} clientId={clientId} canEdit={canEdit} onTasksChange={commitTasks} collapsed={collapsed} setCollapsed={setCollapsed} />
         </div>
       )}
 
@@ -3378,7 +3468,7 @@ export default function ClientScheduleTab({ companyId, clientId, clientName, ini
         <AddTaskModal
           companyId={companyId} clientId={clientId}
           phases={phases.length ? phases : ["Pre-Construction", "Construction", "Finishing"]}
-          onCreate={task => { setTasks(prev => [...prev, task]); setAdding(false); }}
+          onCreate={task => { commitTasks([...tasks, task]); setAdding(false); }}
           onClose={() => setAdding(false)}
         />
       )}
@@ -3388,21 +3478,21 @@ export default function ClientScheduleTab({ companyId, clientId, clientName, ini
           companyId={companyId} clientId={clientId}
           phases={phases.length ? phases : ["Pre-Construction", "Construction", "Finishing"]}
           defaultMode="phase"
-          onCreate={task => { setTasks(prev => [...prev, task]); setAddingPhase(false); setAssigningPhase(task); }}
+          onCreate={task => { commitTasks([...tasks, task]); setAddingPhase(false); setAssigningPhase(task); }}
           onClose={() => setAddingPhase(false)}
         />
       )}
 
       {assigningPhase && (
         <AssignTasksModal phaseTask={assigningPhase} tasks={tasks} companyId={companyId} clientId={clientId}
-          onAssigned={updated => { setTasks(updated); setAssigningPhase(null); }}
+          onAssigned={updated => { commitTasks(updated); setAssigningPhase(null); }}
           onClose={() => setAssigningPhase(null)} />
       )}
 
       {loadingTemplate && (
         <LoadTemplateModal
           companyId={companyId} clientId={clientId}
-          onLoaded={newTasks => { setTasks(prev => [...prev, ...newTasks]); setLoadingTemplate(false); }}
+          onLoaded={newTasks => { commitTasks([...tasks, ...newTasks]); setLoadingTemplate(false); }}
           onClose={() => setLoadingTemplate(false)}
         />
       )}
