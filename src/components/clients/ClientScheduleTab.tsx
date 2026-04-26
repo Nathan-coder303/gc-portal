@@ -1156,6 +1156,21 @@ function ClientGanttChart({ tasks, projectStart, companyId, clientId, canEdit, o
   const [setParentFor, setSetParentFor] = useState<ClientTask | null>(null);
   const [contextMenu, setContextMenu] = useState<{ x: number; y: number; task: ClientTask } | null>(null);
   const svgRef = useRef<SVGSVGElement>(null);
+  const [labelW, setLabelW] = useState(LABEL_WIDTH);
+
+  // ── Label column resize ─────────────────────────────────────────────────────
+  const labelResizeRef = useRef<{ startX: number; startW: number } | null>(null);
+  useEffect(() => {
+    function onMove(e: MouseEvent) {
+      const r = labelResizeRef.current;
+      if (!r) return;
+      setLabelW(Math.max(120, r.startW + e.clientX - r.startX));
+    }
+    function onUp() { labelResizeRef.current = null; }
+    document.addEventListener("mousemove", onMove);
+    document.addEventListener("mouseup", onUp);
+    return () => { document.removeEventListener("mousemove", onMove); document.removeEventListener("mouseup", onUp); };
+  }, []);
 
   // Track last click for double-click detection
   const lastClickRef = useRef<{ time: number; taskId: string } | null>(null);
@@ -1219,7 +1234,7 @@ function ClientGanttChart({ tasks, projectStart, companyId, clientId, canEdit, o
   const rowYs: number[] = [];
   for (const row of rows) { rowYs.push(yOffset); yOffset += row.kind === "phase" ? PHASE_ROW_HEIGHT : ROW_HEIGHT; }
   const svgHeight = yOffset + 30;
-  const svgWidth = LABEL_WIDTH + totalDays * CELL_WIDTH;
+  const svgWidth = labelW + totalDays * CELL_WIDTH;
 
   // Keep refs up to date for phase drag handler
   phaseOrderRef.current = phaseOrder;
@@ -1363,12 +1378,15 @@ function ClientGanttChart({ tasks, projectStart, companyId, clientId, canEdit, o
       <div className="overflow-x-auto select-none" style={{ cursor: drag || phaseDrag ? "grabbing" : "default" }}>
         <svg ref={svgRef} width={svgWidth} height={svgHeight} style={{ display: "block" }}>
           <rect x={0} y={0} width={svgWidth} height={svgHeight} fill="#0d1117" />
+          {/* Label column header */}
+          <rect x={0} y={0} width={labelW} height={HEADER_H} fill="#161b22" />
+          <text x={16} y={15} fontSize={10} fill="#8b949e" fontWeight={700} letterSpacing={1}>TASK NAME</text>
 
           {/* Month headers */}
           {months.map(m => (
             <g key={m.label}>
-              <rect x={LABEL_WIDTH + m.startDay * CELL_WIDTH} y={0} width={m.days * CELL_WIDTH} height={HEADER_H} fill="#161b22" stroke="#30373f" strokeWidth={0.5} />
-              <text x={LABEL_WIDTH + m.startDay * CELL_WIDTH + 6} y={15} fontSize={10} fill="#8b949e" fontWeight={600}>{m.label}</text>
+              <rect x={labelW + m.startDay * CELL_WIDTH} y={0} width={m.days * CELL_WIDTH} height={HEADER_H} fill="#161b22" stroke="#30373f" strokeWidth={0.5} />
+              <text x={labelW + m.startDay * CELL_WIDTH + 6} y={15} fontSize={10} fill="#8b949e" fontWeight={600}>{m.label}</text>
             </g>
           ))}
 
@@ -1376,15 +1394,15 @@ function ClientGanttChart({ tasks, projectStart, companyId, clientId, canEdit, o
           {Array.from({ length: totalDays }).map((_, d) => {
             const date = addDays(projectStart, d);
             const isWeekend = date.getDay() === 0 || date.getDay() === 6;
-            return <rect key={d} x={LABEL_WIDTH + d * CELL_WIDTH} y={HEADER_H} width={CELL_WIDTH} height={svgHeight - HEADER_H - 30} fill={isWeekend ? "#0a0e14" : "transparent"} />;
+            return <rect key={d} x={labelW + d * CELL_WIDTH} y={HEADER_H} width={CELL_WIDTH} height={svgHeight - HEADER_H - 30} fill={isWeekend ? "#0a0e14" : "transparent"} />;
           })}
           {Array.from({ length: totalDays }).map((_, d) => (
-            <line key={`v${d}`} x1={LABEL_WIDTH + d * CELL_WIDTH} y1={HEADER_H} x2={LABEL_WIDTH + d * CELL_WIDTH} y2={svgHeight - 30} stroke="#30373f" strokeWidth={0.5} />
+            <line key={`v${d}`} x1={labelW + d * CELL_WIDTH} y1={HEADER_H} x2={labelW + d * CELL_WIDTH} y2={svgHeight - 30} stroke="#30373f" strokeWidth={0.5} />
           ))}
 
           {/* Today line */}
           {today >= projectStart && today <= addDays(projectEnd, 8) && (() => {
-            const x = LABEL_WIDTH + differenceInDays(today, projectStart) * CELL_WIDTH;
+            const x = labelW + differenceInDays(today, projectStart) * CELL_WIDTH;
             return (
               <g>
                 <line x1={x} y1={0} x2={x} y2={svgHeight - 30} stroke="#ef4444" strokeWidth={1.5} strokeDasharray="4,3" />
@@ -1416,7 +1434,7 @@ function ClientGanttChart({ tasks, projectStart, companyId, clientId, canEdit, o
               );
               const phaseStart = phaseDates.reduce((min, d) => d < min ? d : min, phaseDates[0]);
               const phaseEnd = phaseDates.reduce((max, d) => d > max ? d : max, phaseDates[0]);
-              const barX = LABEL_WIDTH + differenceInDays(phaseStart, projectStart) * CELL_WIDTH;
+              const barX = labelW + differenceInDays(phaseStart, projectStart) * CELL_WIDTH;
               const barW = Math.max((differenceInDays(phaseEnd, phaseStart) + 1) * CELL_WIDTH, CELL_WIDTH);
               const done = row.phaseTasks.filter(t => t.status === "DONE").length;
               const pct = Math.round((done / row.phaseTasks.length) * 100);
@@ -1426,7 +1444,7 @@ function ClientGanttChart({ tasks, projectStart, companyId, clientId, canEdit, o
                   <line x1={0} y1={y} x2={svgWidth} y2={y} stroke="#30373f" strokeWidth={0.5} />
                   {canEdit && <text x={4} y={y + 17} fontSize={10} fill="#484f58" style={{ cursor: "grab" }} onMouseDown={e => { e.preventDefault(); e.stopPropagation(); setPhaseDrag({ phase: row.phase, startClientY: e.clientY, currentClientY: e.clientY }); }}>⠿</text>}
                   <g onClick={() => toggle(row.phase)} style={{ cursor: "pointer" }}>
-                    <rect x={canEdit ? 16 : 0} y={y} width={LABEL_WIDTH - (canEdit ? 16 : 0)} height={PHASE_ROW_HEIGHT} fill="transparent" />
+                    <rect x={canEdit ? 16 : 0} y={y} width={labelW - (canEdit ? 16 : 0)} height={PHASE_ROW_HEIGHT} fill="transparent" />
                     <text x={canEdit ? 18 : 10} y={y + 17} fontSize={10} fill="#8b949e" fontWeight={700}>{isCollapsed ? "▶" : "▼"}</text>
                     <text x={canEdit ? 32 : 24} y={y + 17} fontSize={11} fill={GOLD} fontWeight={700}>{row.phase}</text>
                     <text x={(canEdit ? 32 : 24) + row.phase.length * 7} y={y + 17} fontSize={10} fill="#484f58"> ({row.phaseTasks.length} tasks · {pct}%)</text>
@@ -1451,7 +1469,7 @@ function ClientGanttChart({ tasks, projectStart, companyId, clientId, canEdit, o
             let endDay = differenceInDays(endDate, projectStart);
             if (drag?.type === "move" && isDragging) { startDay += deltaDays; endDay += deltaDays; }
             if (drag?.type === "resize" && isDragging) { endDay += deltaDays; }
-            const barX = LABEL_WIDTH + startDay * CELL_WIDTH;
+            const barX = labelW + startDay * CELL_WIDTH;
             const barW = Math.max((endDay - startDay + 1) * CELL_WIDTH, CELL_WIDTH);
 
             return (
@@ -1476,7 +1494,7 @@ function ClientGanttChart({ tasks, projectStart, companyId, clientId, canEdit, o
                   <g>
                     {isDragging && drag?.type === "move" && (
                       <rect
-                        x={LABEL_WIDTH + differenceInDays(startDate, projectStart) * CELL_WIDTH}
+                        x={labelW + differenceInDays(startDate, projectStart) * CELL_WIDTH}
                         y={y + 9} width={barW} height={ROW_HEIGHT - 18} rx={4}
                         fill={barColor} opacity={0.15} stroke={barColor} strokeWidth={1} strokeDasharray="4,3"
                       />
@@ -1535,8 +1553,15 @@ function ClientGanttChart({ tasks, projectStart, companyId, clientId, canEdit, o
             );
           })()}
 
+          {/* Resize handle for label column */}
+          <g style={{ cursor: "col-resize" }}
+            onMouseDown={e => { e.preventDefault(); labelResizeRef.current = { startX: e.clientX, startW: labelW }; }}>
+            <rect x={labelW - 2} y={0} width={6} height={svgHeight - 30} fill="transparent" />
+            <line x1={labelW} y1={0} x2={labelW} y2={svgHeight - 30} stroke="#C9A84C44" strokeWidth={2} />
+          </g>
+
           {/* Legend */}
-          <g transform={`translate(${LABEL_WIDTH + 8}, ${svgHeight - 16})`}>
+          <g transform={`translate(${labelW + 8}, ${svgHeight - 16})`}>
             {[
               { color: GOLD, label: "Not Started" }, { color: "#3b82f6", label: "In Progress" },
               { color: "#22c55e", label: "Done" }, { color: "#f97316", label: "Blocked" }, { color: "#7c3aed", label: "Milestone" },
@@ -1997,7 +2022,7 @@ function ScheduleTableView({
 
   // ── Style helpers ─────────────────────────────────────────────────────────
   type CK = keyof typeof colWidths;
-  const RHANDLE: React.CSSProperties = { position: "absolute", right: 0, top: 0, bottom: 0, width: 5, cursor: "col-resize", zIndex: 1 };
+  const RHANDLE: React.CSSProperties = { position: "absolute", right: 0, top: "15%", bottom: "15%", width: 3, cursor: "col-resize", zIndex: 1, background: "#30373f", borderRadius: 2, opacity: 0.7 };
 
   const col = (k: CK, extra?: React.CSSProperties): React.CSSProperties => ({
     minWidth: colWidths[k], maxWidth: colWidths[k], padding: "0 8px", borderRight: "1px solid #21262d",
@@ -2017,6 +2042,13 @@ function ScheduleTableView({
 
   const CTX_BTN: React.CSSProperties = { display: "block", width: "100%", padding: "9px 16px", textAlign: "left", background: "none", border: "none", color: "#e6edf3", fontSize: 13, cursor: "pointer" };
 
+  // Compute all IDs that have children (for collapse all)
+  const parentIdSet = useMemo(() => {
+    const s = new Set<string>();
+    for (const t of tasks) { if (t.parentId) s.add(t.parentId); }
+    return s;
+  }, [tasks]);
+
   return (
     <>
       {/* Parent-set banner */}
@@ -2026,6 +2058,18 @@ function ScheduleTableView({
           <button onClick={() => setSettingParentFor(null)} style={{ background: "none", border: "none", color: "#8b949e", cursor: "pointer", fontSize: 20, lineHeight: 1 }}>×</button>
         </div>
       )}
+
+      {/* Collapse/expand toolbar */}
+      <div style={{ display: "flex", gap: 6, marginBottom: 6 }}>
+        <button onClick={() => setCollapsedIds(new Set(parentIdSet))}
+          style={{ background: "#1e2736", border: "1px solid #30373f", color: "#8b949e", borderRadius: 6, padding: "3px 10px", fontSize: 11, cursor: "pointer", fontWeight: 600 }}>
+          ▶ Collapse All
+        </button>
+        <button onClick={() => setCollapsedIds(new Set())}
+          style={{ background: "#1e2736", border: "1px solid #30373f", color: "#8b949e", borderRadius: 6, padding: "3px 10px", fontSize: 11, cursor: "pointer", fontWeight: 600 }}>
+          ▼ Expand All
+        </button>
+      </div>
 
       <div style={{ overflowX: "auto", overflowY: "auto", maxHeight: "70vh", borderRadius: 8, border: "1px solid #21262d" }}>
         <table style={{ borderCollapse: "collapse", tableLayout: "fixed", width: "100%" }}>
