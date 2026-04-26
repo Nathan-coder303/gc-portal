@@ -742,48 +742,49 @@ function SaveScheduleModal({
   onClose: () => void;
   onSaved: (id: string, name: string) => void;
 }) {
+  const [mode, setMode] = useState<"overwrite" | "new">(existingId ? "overwrite" : "overwrite");
   const [name, setName] = useState(existingName ?? "");
-  const [description, setDescription] = useState("");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
+  const [savedTemplates, setSavedTemplates] = useState<{ id: string; name: string }[]>([]);
+  const [overwriteId, setOverwriteId] = useState<string>(existingId ?? "");
+  const [overwriteName, setOverwriteName] = useState<string>(existingName ?? "");
 
-  // Serialise tasks to template format (strip DB-specific ids, keep structure)
+  useEffect(() => {
+    fetch(`/api/${companyId}/schedule-templates`)
+      .then(r => r.json())
+      .then(data => { if (Array.isArray(data)) setSavedTemplates(data); })
+      .catch(() => {});
+  }, [companyId]);
+
   const taskPayload = tasks.map(t => ({
-    phase: t.phase,
-    name: t.name,
-    durationDays: t.durationDays,
-    offsetDays: 0,
-    trade: t.trade,
-    assignee: t.assignee,
-    isMilestone: t.isMilestone,
-    parentId: t.parentId,
-    predecessorIds: t.predecessorIds,
-    sortOrder: t.sortOrder,
-    notes: t.notes,
+    phase: t.phase, name: t.name, durationDays: t.durationDays, offsetDays: 0,
+    trade: t.trade, assignee: t.assignee, isMilestone: t.isMilestone,
+    parentId: t.parentId, predecessorIds: t.predecessorIds, sortOrder: t.sortOrder, notes: t.notes,
   }));
 
   async function handleSave() {
-    if (!name.trim()) { setError("Name is required"); return; }
-    setSaving(true);
-    setError("");
+    setSaving(true); setError("");
     try {
       let res: Response;
-      if (existingId) {
-        res = await fetch(`/api/${companyId}/schedule-templates/${existingId}`, {
-          method: "PATCH",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ name: name.trim(), description: description || null, tasks: taskPayload }),
+      if (mode === "overwrite" && overwriteId) {
+        res = await fetch(`/api/${companyId}/schedule-templates/${overwriteId}`, {
+          method: "PATCH", headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ name: overwriteName, tasks: taskPayload }),
         });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error ?? "Failed to save");
+        onSaved(data.id, overwriteName);
       } else {
+        if (!name.trim()) { setError("Name is required"); setSaving(false); return; }
         res = await fetch(`/api/${companyId}/schedule-templates`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ name: name.trim(), description: description || null, tasks: taskPayload }),
+          method: "POST", headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ name: name.trim(), tasks: taskPayload }),
         });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error ?? "Failed to save");
+        onSaved(data.id, name.trim());
       }
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error ?? "Failed to save");
-      onSaved(data.id, name.trim());
       onClose();
     } catch (e) {
       setError(String(e));
@@ -792,61 +793,64 @@ function SaveScheduleModal({
     }
   }
 
+  const canSave = mode === "overwrite" ? !!overwriteId : !!name.trim();
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 px-4" onClick={onClose}>
-      <div
-        className="w-full max-w-md rounded-2xl p-6 flex flex-col gap-4"
-        style={{ background: "#161b22", border: "1px solid #30373f" }}
-        onClick={e => e.stopPropagation()}
-      >
+      <div className="w-full max-w-md rounded-2xl p-6 flex flex-col gap-4" style={{ background: "#161b22", border: "1px solid #30373f" }} onClick={e => e.stopPropagation()}>
         <div className="flex items-center justify-between">
-          <h3 className="font-bold text-base" style={{ color: "#C9A84C" }}>
-            {existingId ? "Save Schedule" : "Save As New Template"}
-          </h3>
+          <h3 className="font-bold text-base" style={{ color: "#C9A84C" }}>Save Template</h3>
           <button onClick={onClose} style={{ color: "#888" }} className="text-xl leading-none">✕</button>
         </div>
 
-        <p className="text-xs" style={{ color: "#888" }}>
-          {taskPayload.length} tasks will be saved as a reusable template.
-        </p>
+        <p className="text-xs" style={{ color: "#8b949e" }}>{taskPayload.length} tasks will be saved as a reusable template.</p>
 
-        <div className="flex flex-col gap-3">
-          <div>
-            <label className="text-xs mb-1 block" style={{ color: "#888" }}>Template Name *</label>
-            <input
-              autoFocus
-              value={name}
-              onChange={e => setName(e.target.value)}
-              placeholder="e.g. Addition v2, Roof Replacement…"
-              className="w-full rounded-lg px-3 py-2 text-sm outline-none"
-              style={{ background: "#0d1117", border: "1px solid #30373f", color: "#e6edf3" }}
-            />
-          </div>
-          <div>
-            <label className="text-xs mb-1 block" style={{ color: "#888" }}>Description (optional)</label>
-            <input
-              value={description}
-              onChange={e => setDescription(e.target.value)}
-              placeholder="Short description…"
-              className="w-full rounded-lg px-3 py-2 text-sm outline-none"
-              style={{ background: "#0d1117", border: "1px solid #30373f", color: "#e6edf3" }}
-            />
-          </div>
+        {/* Mode toggle */}
+        <div className="flex rounded-lg overflow-hidden" style={{ border: "1px solid #30373f" }}>
+          <button onClick={() => setMode("overwrite")} className="flex-1 text-xs font-semibold py-2"
+            style={{ background: mode === "overwrite" ? "#C9A84C" : "#1e2736", color: mode === "overwrite" ? "#0d1117" : "#8b949e" }}>
+            Overwrite existing
+          </button>
+          <button onClick={() => setMode("new")} className="flex-1 text-xs font-semibold py-2"
+            style={{ background: mode === "new" ? "#C9A84C" : "#1e2736", color: mode === "new" ? "#0d1117" : "#8b949e", borderLeft: "1px solid #30373f" }}>
+            Save as new
+          </button>
         </div>
+
+        {mode === "overwrite" ? (
+          <div className="flex flex-col gap-2">
+            <label className="text-xs" style={{ color: "#8b949e" }}>Choose template to overwrite</label>
+            {savedTemplates.length === 0 ? (
+              <p className="text-xs italic" style={{ color: "#484f58" }}>No saved templates yet — use &ldquo;Save as new&rdquo; first.</p>
+            ) : (
+              <div className="flex flex-col gap-1 max-h-48 overflow-y-auto">
+                {savedTemplates.map(t => (
+                  <button key={t.id} onClick={() => { setOverwriteId(t.id); setOverwriteName(t.name); }}
+                    className="text-left px-3 py-2 rounded-lg text-sm transition-colors"
+                    style={{ background: overwriteId === t.id ? "#1e3a2f" : "#0d1117", border: `1px solid ${overwriteId === t.id ? "#22c55e55" : "#30373f"}`, color: overwriteId === t.id ? "#22c55e" : "#e6edf3" }}>
+                    {overwriteId === t.id ? "✓ " : ""}{t.name}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+        ) : (
+          <div>
+            <label className="text-xs mb-1 block" style={{ color: "#8b949e" }}>New template name *</label>
+            <input autoFocus value={name} onChange={e => setName(e.target.value)}
+              placeholder="e.g. Addition v3, Roof Replacement…"
+              className="w-full rounded-lg px-3 py-2 text-sm outline-none"
+              style={{ background: "#0d1117", border: "1px solid #30373f", color: "#e6edf3" }} />
+          </div>
+        )}
 
         {error && <p className="text-xs" style={{ color: "#f87171" }}>{error}</p>}
 
-        <div className="flex gap-3 mt-1">
-          <button onClick={onClose} className="flex-1 py-2 text-xs font-semibold rounded-lg" style={{ background: "#1e2736", color: "#888" }}>
-            Cancel
-          </button>
-          <button
-            onClick={handleSave}
-            disabled={saving || !name.trim()}
-            className="flex-1 py-2 text-xs font-semibold rounded-lg disabled:opacity-50"
-            style={{ background: "#C9A84C", color: "#0d1117" }}
-          >
-            {saving ? "Saving…" : existingId ? "Save" : "Save As Template"}
+        <div className="flex gap-3">
+          <button onClick={onClose} className="flex-1 py-2 text-xs font-semibold rounded-lg" style={{ background: "#1e2736", color: "#888" }}>Cancel</button>
+          <button onClick={handleSave} disabled={saving || !canSave} className="flex-1 py-2 text-xs font-semibold rounded-lg disabled:opacity-40"
+            style={{ background: "#C9A84C", color: "#0d1117" }}>
+            {saving ? "Saving…" : mode === "overwrite" ? `Overwrite "${overwriteName}"` : "Save as New"}
           </button>
         </div>
       </div>
