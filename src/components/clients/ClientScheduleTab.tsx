@@ -1757,10 +1757,11 @@ function ClientGanttChart({ tasks, projectStart, companyId, clientId, canEdit, o
 // ── Edit Task Modal (for table view double-click) ─────────────────────────────
 
 function EditTaskModal({
-  task, companyId, clientId, onUpdate, onDelete, onClose,
+  task, companyId, clientId, onUpdate, onDelete, onClose, currentRow, totalRows, onMove,
 }: {
   task: ClientTask; companyId: string; clientId: string;
   onUpdate: (updated: ClientTask) => void; onDelete: (id: string) => void; onClose: () => void;
+  currentRow?: number; totalRows?: number; onMove?: (toRow: number) => void;
 }) {
   const [form, setForm] = useState({
     name: task.name,
@@ -1777,6 +1778,7 @@ function EditTaskModal({
     notes: task.notes ?? "",
     predecessorIds: task.predecessorIds.join(", "),
     isMilestone: task.isMilestone,
+    moveToRow: currentRow != null ? String(currentRow) : "",
   });
   const [saving, setSaving] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
@@ -1828,6 +1830,12 @@ function EditTaskModal({
         actualFinish: normDate(raw.actualFinish),
         durationDays: raw.durationDays ?? dur,
       });
+      // Move to row if requested
+      const targetRow = parseInt(form.moveToRow);
+      if (onMove && !isNaN(targetRow) && targetRow !== currentRow) {
+        onMove(targetRow);
+        return; // onMove will close the modal
+      }
     } finally {
       setSaving(false);
     }
@@ -1936,6 +1944,19 @@ function EditTaskModal({
             Milestone
           </label>
         </div>
+
+        {onMove && currentRow != null && (
+          <div className="flex items-center gap-3 mt-4 pt-4" style={{ borderTop: "1px solid #21262d" }}>
+            <span className="text-xs" style={{ color: "#8b949e" }}>Move to row #</span>
+            <input
+              type="number" min="1" max={totalRows ?? 999}
+              value={form.moveToRow}
+              onChange={e => setForm(f => ({ ...f, moveToRow: e.target.value }))}
+              style={{ ...INPUT, width: 72, textAlign: "center" }} className="outline-none"
+            />
+            <span className="text-[10px]" style={{ color: "#484f58" }}>currently row {currentRow} of {totalRows}</span>
+          </div>
+        )}
 
         <div className="flex gap-2 mt-5">
           <button onClick={handleSave} disabled={!form.name.trim() || saving} className="flex-1 py-2 text-xs font-semibold rounded-lg disabled:opacity-50" style={{ background: GOLD, color: "#0d1117" }}>
@@ -2080,19 +2101,33 @@ function ScheduleTableView({
   }
 
   // ── Drag-to-reorder ──────────────────────────────────────────────────────
+  async function reorderToPosition(movingId: string, targetIdx: number) {
+    // Build flat visible order; assign positions based on where we want the item
+    const flatIds = rows.map(r => r.task.id);
+    const clamped = Math.max(0, Math.min(flatIds.length - 1, targetIdx));
+    // Remove moving item, then insert at clamped position
+    const reordered = flatIds.filter(id => id !== movingId);
+    reordered.splice(clamped, 0, movingId);
+    // Assign new sortOrders (use *2 gaps so hidden children fall between parents naturally)
+    const newOrders = new Map(reordered.map((id, i) => [id, i * 2]));
+    const updated = tasks.map(t => ({ ...t, sortOrder: newOrders.get(t.id) ?? t.sortOrder }));
+    onTasksChange(updated);
+    // PATCH all visible rows (their sort orders all changed)
+    await Promise.all(reordered.map(id => {
+      const t = updated.find(x => x.id === id);
+      if (!t) return Promise.resolve();
+      return fetch(`/api/${companyId}/clients/${clientId}/schedule/${t.id}`, {
+        method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ sortOrder: t.sortOrder }),
+      });
+    }));
+  }
+
   async function handleDrop(targetId: string) {
     if (!dragId || dragId === targetId) { setDragId(null); setDropId(null); return; }
     const flatIds = rows.map(r => r.task.id);
-    const from = flatIds.indexOf(dragId); const to = flatIds.indexOf(targetId);
-    if (from === -1 || to === -1) { setDragId(null); setDropId(null); return; }
-    const reordered = [...flatIds]; reordered.splice(from, 1); reordered.splice(reordered.indexOf(targetId), 0, dragId);
-    const newOrders = new Map(reordered.map((id, i) => [id, i]));
-    const updated = tasks.map(t => ({ ...t, sortOrder: newOrders.get(t.id) ?? t.sortOrder }));
-    onTasksChange(updated);
-    const changed = updated.filter(t => t.sortOrder !== tasks.find(o => o.id === t.id)?.sortOrder);
-    await Promise.all(changed.map(t => fetch(`/api/${companyId}/clients/${clientId}/schedule/${t.id}`, {
-      method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ sortOrder: t.sortOrder }),
-    })));
+    const targetIdx = flatIds.indexOf(targetId);
+    if (targetIdx === -1 || !flatIds.includes(dragId)) { setDragId(null); setDropId(null); return; }
+    await reorderToPosition(dragId, targetIdx);
     setDragId(null); setDropId(null);
   }
 
@@ -2303,7 +2338,7 @@ function ScheduleTableView({
               return (
                 <tr key={task.id}
                   draggable={canEdit}
-                  onDragStart={e => { e.dataTransfer.effectAllowed = "move"; setDragId(task.id); }}
+                  onDragStart={e => { e.dataTransfer.effectAllowed = "move"; e.dataTransfer.setData("text/plain", task.id); setDragId(task.id); }}
                   onDragEnd={() => { setDragId(null); setDropId(null); }}
                   onDragOver={e => { e.preventDefault(); e.dataTransfer.dropEffect = "move"; if (dropId !== task.id) setDropId(task.id); }}
                   onDrop={e => { e.preventDefault(); handleDrop(task.id); }}
@@ -2406,8 +2441,11 @@ function ScheduleTableView({
 
       {editTask && (
         <EditTaskModal task={editTask} companyId={companyId} clientId={clientId}
+          currentRow={rows.find(r => r.task.id === editTask.id)?.rowNum}
+          totalRows={rows.length}
           onUpdate={async updated => { const cascaded = await cascadeFromTask(updated); onTasksChange(cascaded); setEditTask(null); }}
           onDelete={id => { onTasksChange(tasks.filter(t => t.id !== id)); setEditTask(null); }}
+          onMove={async toRow => { await reorderToPosition(editTask.id, toRow - 1); setEditTask(null); }}
           onClose={() => setEditTask(null)} />
       )}
 
