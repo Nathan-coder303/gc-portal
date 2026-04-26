@@ -446,10 +446,10 @@ function ClientColumn({
           <div className="relative">
             <button
               onClick={() => setShowAddMenu(v => !v)}
-              className="text-xs px-3 py-1 rounded-lg font-medium"
+              className="w-7 h-7 rounded-full flex items-center justify-center font-bold text-base leading-none"
               style={{ background: `${accentColor}22`, color: accentColor, border: `1px solid ${accentColor}44` }}
             >
-              + Add
+              +
             </button>
             {showAddMenu && (
               <>
