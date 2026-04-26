@@ -1830,6 +1830,11 @@ function EditTaskModal({
         actualFinish: normDate(raw.actualFinish),
         durationDays: raw.durationDays ?? dur,
       });
+      // Queue row move (fires after modal closes via pendingMoveRef)
+      const targetRow = parseInt(form.moveToRow);
+      if (onMove && !isNaN(targetRow) && currentRow != null && targetRow !== currentRow) {
+        onMove(targetRow);
+      }
     } finally {
       setSaving(false);
     }
@@ -1849,7 +1854,7 @@ function EditTaskModal({
         style={{ background: "#161b22", border: "1px solid #30373f", borderRadius: 14, padding: 24, width: "100%", maxWidth: 600, maxHeight: "92vh", overflowY: "auto" }}
         onClick={e => e.stopPropagation()}
       >
-        <div className="flex items-center justify-between mb-4">
+        <div className="flex items-center justify-between mb-3">
           <h3 className="text-sm font-bold" style={{ color: "#e6edf3" }}>Edit Task</h3>
           <div className="flex gap-2 items-center">
             {confirmDelete ? (
@@ -1864,6 +1869,16 @@ function EditTaskModal({
             <button onClick={onClose} className="text-lg leading-none ml-1" style={{ color: "#8b949e" }}>×</button>
           </div>
         </div>
+
+        {onMove && currentRow != null && (
+          <div className="flex items-center gap-2 mb-4 pb-3" style={{ borderBottom: "1px solid #21262d" }}>
+            <span className="text-xs shrink-0" style={{ color: "#8b949e" }}>Row #</span>
+            <input type="number" min="1" max={totalRows ?? 999} value={form.moveToRow}
+              onChange={e => setForm(f => ({ ...f, moveToRow: e.target.value }))}
+              style={{ ...INPUT, width: 60, textAlign: "center" }} className="outline-none" />
+            <span className="text-[10px]" style={{ color: "#484f58" }}>currently {currentRow} of {totalRows} — change and Save to move</span>
+          </div>
+        )}
 
         <div className="space-y-3">
           <div className="grid grid-cols-2 gap-3">
@@ -1939,24 +1954,6 @@ function EditTaskModal({
           </label>
         </div>
 
-        {onMove && currentRow != null && (
-          <div className="flex items-center gap-2 mt-4 pt-4" style={{ borderTop: "1px solid #21262d" }}>
-            <span className="text-xs shrink-0" style={{ color: "#8b949e" }}>Move to row</span>
-            <input
-              type="number" min="1" max={totalRows ?? 999}
-              value={form.moveToRow}
-              onChange={e => setForm(f => ({ ...f, moveToRow: e.target.value }))}
-              style={{ ...INPUT, width: 64, textAlign: "center" }} className="outline-none"
-            />
-            <button
-              onClick={() => { const r = parseInt(form.moveToRow); if (!isNaN(r) && r !== currentRow) onMove(r); }}
-              className="px-3 py-1.5 text-xs font-semibold rounded-lg"
-              style={{ background: "#1e2736", border: "1px solid #30373f", color: "#e6edf3", whiteSpace: "nowrap" }}>
-              Move ↑↓
-            </button>
-            <span className="text-[10px] shrink-0" style={{ color: "#484f58" }}>row {currentRow} of {totalRows}</span>
-          </div>
-        )}
 
         <div className="flex gap-2 mt-5">
           <button onClick={handleSave} disabled={!form.name.trim() || saving} className="flex-1 py-2 text-xs font-semibold rounded-lg disabled:opacity-50" style={{ background: GOLD, color: "#0d1117" }}>
@@ -2074,6 +2071,36 @@ function ScheduleTableView({
   const rows = useMemo(() => buildTableRows(tasks, collapsedIds), [tasks, collapsedIds]);
   const idToRow = useMemo(() => { const m = new Map<string, number>(); for (const r of rows) m.set(r.task.id, r.rowNum); return m; }, [rows]);
 
+  // Refs so drag/move callbacks always see latest data (no stale closure)
+  const rowsRef = useRef<TableRow[]>([]);
+  const tasksRef = useRef<ClientTask[]>(tasks);
+  const dropIdRef = useRef<string | null>(null);
+  const pendingMoveRef = useRef<{ taskId: string; toRow: number } | null>(null);
+  useEffect(() => { rowsRef.current = rows; }, [rows]);
+  useEffect(() => { tasksRef.current = tasks; }, [tasks]);
+
+  // After edit modal closes, execute any pending row-move
+  useEffect(() => {
+    if (editTask) return;
+    if (!pendingMoveRef.current) return;
+    const { taskId, toRow } = pendingMoveRef.current;
+    pendingMoveRef.current = null;
+    const flatIds = rowsRef.current.map(r => r.task.id);
+    if (!flatIds.includes(taskId)) return;
+    const filtered = flatIds.filter(id => id !== taskId);
+    filtered.splice(Math.max(0, Math.min(filtered.length, toRow - 1)), 0, taskId);
+    const newOrders = new Map(filtered.map((id, i) => [id, i]));
+    const updated = tasksRef.current.map(t => ({ ...t, sortOrder: newOrders.get(t.id) ?? t.sortOrder }));
+    onTasksChange(updated);
+    Promise.all(filtered.map(id => {
+      const t = updated.find(x => x.id === id);
+      if (!t) return Promise.resolve();
+      return fetch(`/api/${companyId}/clients/${clientId}/schedule/${t.id}`, {
+        method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ sortOrder: t.sortOrder }),
+      });
+    }));
+  }, [editTask]);
+
   // Close context menu on outside click; ESC cancels parent-set mode
   useEffect(() => {
     if (!ctxMenu) return;
@@ -2100,39 +2127,38 @@ function ScheduleTableView({
     window.addEventListener("mousemove", onMove); window.addEventListener("mouseup", onUp);
   }
 
-  // ── Drag-to-reorder ──────────────────────────────────────────────────────
-  async function applyNewOrder(reordered: string[]) {
-    const newOrders = new Map(reordered.map((id, i) => [id, i]));
-    const updated = tasks.map(t => ({ ...t, sortOrder: newOrders.get(t.id) ?? t.sortOrder }));
-    onTasksChange(updated);
-    await Promise.all(reordered.map(id => {
-      const t = updated.find(x => x.id === id);
-      if (!t) return Promise.resolve();
-      return fetch(`/api/${companyId}/clients/${clientId}/schedule/${t.id}`, {
-        method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ sortOrder: t.sortOrder }),
-      });
-    }));
-  }
+  // ── Mouse-based drag to reorder (works in all browsers) ──────────────────
+  function startDrag(taskId: string, e: React.MouseEvent) {
+    e.preventDefault();
+    e.stopPropagation();
+    setDragId(taskId);
+    dropIdRef.current = null;
 
-  async function handleDrop(targetId: string) {
-    if (!dragId || dragId === targetId) { setDragId(null); setDropId(null); return; }
-    const flatIds = rows.map(r => r.task.id);
-    if (!flatIds.includes(dragId) || !flatIds.includes(targetId)) { setDragId(null); setDropId(null); return; }
-    // Remove dragged item, then insert BEFORE the target (using target's shifted index)
-    const filtered = flatIds.filter(id => id !== dragId);
-    filtered.splice(filtered.indexOf(targetId), 0, dragId);
-    await applyNewOrder(filtered);
-    setDragId(null); setDropId(null);
-  }
+    function handleUp() {
+      const target = dropIdRef.current;
+      setDragId(null);
+      setDropId(null);
+      dropIdRef.current = null;
+      window.removeEventListener("mouseup", handleUp);
 
-  async function handleMoveToRow(taskId: string, targetRow: number) {
-    const flatIds = rows.map(r => r.task.id);
-    if (!flatIds.includes(taskId)) return;
-    // Remove task, then insert at targetRow-1 (0-based) in filtered array
-    const filtered = flatIds.filter(id => id !== taskId);
-    const insertAt = Math.max(0, Math.min(filtered.length, targetRow - 1));
-    filtered.splice(insertAt, 0, taskId);
-    await applyNewOrder(filtered);
+      if (!target || target === taskId) return;
+      const flatIds = rowsRef.current.map(r => r.task.id);
+      if (!flatIds.includes(taskId) || !flatIds.includes(target)) return;
+      const filtered = flatIds.filter(id => id !== taskId);
+      filtered.splice(filtered.indexOf(target), 0, taskId); // insert before drop target
+      const newOrders = new Map(filtered.map((id, i) => [id, i]));
+      const updated = tasksRef.current.map(t => ({ ...t, sortOrder: newOrders.get(t.id) ?? t.sortOrder }));
+      onTasksChange(updated);
+      Promise.all(filtered.map(id => {
+        const t = updated.find(x => x.id === id);
+        if (!t) return Promise.resolve();
+        return fetch(`/api/${companyId}/clients/${clientId}/schedule/${t.id}`, {
+          method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ sortOrder: t.sortOrder }),
+        });
+      }));
+    }
+
+    window.addEventListener("mouseup", handleUp, { once: true });
   }
 
   // ── Indent: make task child of the task immediately above it ─────────────
@@ -2341,23 +2367,20 @@ function ScheduleTableView({
 
               return (
                 <tr key={task.id}
-                  draggable={canEdit}
-                  onDragStart={e => { e.dataTransfer.effectAllowed = "move"; e.dataTransfer.setData("text/plain", task.id); setDragId(task.id); }}
-                  onDragEnd={() => { setDragId(null); setDropId(null); }}
-                  onDragOver={e => { e.preventDefault(); e.dataTransfer.dropEffect = "move"; if (dropId !== task.id) setDropId(task.id); }}
-                  onDrop={e => { e.preventDefault(); handleDrop(task.id); }}
+                  onMouseEnter={() => { if (dragId && dragId !== task.id) { dropIdRef.current = task.id; setDropId(task.id); } }}
                   onDoubleClick={() => !settingParentFor && setEditTask(task)}
                   onClick={() => settingParentFor && handleSetParent(task)}
                   onContextMenu={e => { if (!canEdit) return; e.preventDefault(); setCtxMenu({ x: e.clientX, y: e.clientY, task }); }}
                   style={{
                     background: rowBg, opacity: isDragging ? 0.3 : 1, transition: "opacity 0.1s",
-                    cursor: settingParentFor ? "crosshair" : isDragging ? "grabbing" : "default",
+                    cursor: settingParentFor ? "crosshair" : "default",
                     boxShadow: isDropOver ? `inset 0 2px 0 ${GOLD}` : isSection ? `inset 3px 0 0 ${GOLD}44` : undefined,
                   }}
                   className="hover:brightness-110"
                 >
                   {/* # drag handle */}
-                  <td style={{ ...col("num"), position: "sticky", left: 0, background: rowBg, zIndex: 1, color: "#484f58", textAlign: "center", cursor: canEdit ? "grab" : "default" }}>
+                  <td style={{ ...col("num"), position: "sticky", left: 0, background: rowBg, zIndex: 1, color: "#484f58", textAlign: "center", cursor: canEdit ? (dragId ? "grabbing" : "grab") : "default" }}
+                    onMouseDown={e => canEdit && startDrag(task.id, e)}>
                     <span style={{ userSelect: "none", fontSize: 11 }}>{canEdit ? "⠿ " : ""}{rn}</span>
                   </td>
                   {/* LINKED FROM */}
@@ -2449,7 +2472,7 @@ function ScheduleTableView({
           totalRows={rows.length}
           onUpdate={async updated => { const cascaded = await cascadeFromTask(updated); onTasksChange(cascaded); setEditTask(null); }}
           onDelete={id => { onTasksChange(tasks.filter(t => t.id !== id)); setEditTask(null); }}
-          onMove={async toRow => { await handleMoveToRow(editTask.id, toRow); setEditTask(null); }}
+          onMove={toRow => { pendingMoveRef.current = { taskId: editTask.id, toRow }; }}
           onClose={() => setEditTask(null)} />
       )}
 
