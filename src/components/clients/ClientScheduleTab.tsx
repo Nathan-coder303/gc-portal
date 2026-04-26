@@ -31,6 +31,9 @@ const INPUT: React.CSSProperties = {
   width: "100%",
 };
 
+type LinkType = "FS" | "SS" | "FF" | "SF";
+type TaskLink = { id: string; type: LinkType; lag: number };
+
 type ClientTask = {
   id: string;
   phase: string;
@@ -39,6 +42,7 @@ type ClientTask = {
   startDate: string | null;
   endDate: string | null;
   predecessorIds: string[];
+  predecessors?: TaskLink[] | null;
   parentId: string | null;
   trade: string | null;
   assignee: string | null;
@@ -2051,6 +2055,183 @@ function buildTableRows(tasks: ClientTask[], collapsedIds: Set<string>): TableRo
   return rows;
 }
 
+// ── Task Info Panel ────────────────────────────────────────────────────────────
+const LINK_TYPE_LABELS: Record<LinkType, string> = {
+  FS: "Finish to Start",
+  SS: "Start to Start",
+  FF: "Finish to Finish",
+  SF: "Start to Finish",
+};
+
+function TaskInfoPanel({
+  task, tasks, companyId, clientId, tab, onTabChange, onClose, onTasksChange,
+}: {
+  task: ClientTask; tasks: ClientTask[]; companyId: string; clientId: string;
+  tab: "links"; onTabChange: (t: "links") => void; onClose: () => void;
+  onTasksChange: (tasks: ClientTask[]) => void;
+}) {
+  const links: TaskLink[] = task.predecessors && task.predecessors.length > 0
+    ? task.predecessors
+    : task.predecessorIds.map(id => ({ id, type: "FS" as LinkType, lag: 0 }));
+
+  const [addingLink, setAddingLink] = useState(false);
+  const [newLinkTaskId, setNewLinkTaskId] = useState("");
+  const [newLinkType, setNewLinkType] = useState<LinkType>("FS");
+  const [newLinkLag, setNewLinkLag] = useState(0);
+  const [saving, setSaving] = useState(false);
+
+  const sortedTasks = useMemo(
+    () => [...tasks].sort((a, b) => a.sortOrder - b.sortOrder).filter(t => t.id !== task.id),
+    [tasks, task.id]
+  );
+
+  async function saveLinks(newLinks: TaskLink[]) {
+    setSaving(true);
+    try {
+      const res = await fetch(`/api/${companyId}/clients/${clientId}/schedule/${task.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          predecessors: newLinks,
+          predecessorIds: newLinks.map(l => l.id),
+        }),
+      });
+      const raw = await res.json();
+      onTasksChange(tasks.map(t => t.id === task.id ? { ...t, predecessors: newLinks, predecessorIds: newLinks.map(l => l.id), ...raw } : t));
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function addLink() {
+    if (!newLinkTaskId) return;
+    const exists = links.find(l => l.id === newLinkTaskId);
+    if (exists) return;
+    const newLinks = [...links, { id: newLinkTaskId, type: newLinkType, lag: newLinkLag }];
+    await saveLinks(newLinks);
+    setAddingLink(false);
+    setNewLinkTaskId("");
+    setNewLinkType("FS");
+    setNewLinkLag(0);
+  }
+
+  async function updateLink(idx: number, patch: Partial<TaskLink>) {
+    const newLinks = links.map((l, i) => i === idx ? { ...l, ...patch } : l);
+    await saveLinks(newLinks);
+  }
+
+  async function removeLink(idx: number) {
+    const newLinks = links.filter((_, i) => i !== idx);
+    await saveLinks(newLinks);
+  }
+
+  const SEL: React.CSSProperties = { background: "#0d1117", border: "1px solid #30373f", borderRadius: 6, color: "#e6edf3", fontSize: 12, padding: "3px 6px" };
+
+  return (
+    <div style={{ borderTop: "1px solid #30373f", background: "#0d1117", padding: "0 0 16px" }}>
+      {/* Header */}
+      <div className="flex items-center justify-between px-4 pt-3 pb-2">
+        <div className="flex items-center gap-3">
+          <span className="text-sm font-semibold" style={{ color: GOLD }}>{task.name}</span>
+          <div className="flex gap-1">
+            {(["links"] as const).map(t => (
+              <button key={t} onClick={() => onTabChange(t)}
+                className="px-3 py-1 text-xs font-semibold rounded-md uppercase tracking-widest"
+                style={{ background: tab === t ? GOLD : "transparent", color: tab === t ? "#0d1117" : "#8b949e", border: "1px solid " + (tab === t ? GOLD : "#30373f") }}>
+                {t}
+              </button>
+            ))}
+          </div>
+        </div>
+        <button onClick={onClose} style={{ color: "#484f58", fontSize: 18, lineHeight: 1 }}>×</button>
+      </div>
+
+      {/* Links tab */}
+      {tab === "links" && (
+        <div className="px-4">
+          <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
+            <thead>
+              <tr style={{ borderBottom: "1px solid #21262d" }}>
+                <th style={{ padding: "4px 8px", textAlign: "left", color: "#484f58", fontWeight: 600, width: 50 }}>#</th>
+                <th style={{ padding: "4px 8px", textAlign: "left", color: "#484f58", fontWeight: 600 }}>TASK NAME</th>
+                <th style={{ padding: "4px 8px", textAlign: "left", color: "#484f58", fontWeight: 600, width: 160 }}>LINK TYPE</th>
+                <th style={{ padding: "4px 8px", textAlign: "left", color: "#484f58", fontWeight: 600, width: 90 }}>LAG (days)</th>
+                <th style={{ width: 32 }} />
+              </tr>
+            </thead>
+            <tbody>
+              {links.map((link, idx) => {
+                const pred = tasks.find(t => t.id === link.id);
+                const predRow = [...tasks].sort((a,b) => a.sortOrder - b.sortOrder).findIndex(t => t.id === link.id) + 1;
+                return (
+                  <tr key={link.id} style={{ borderBottom: "1px solid #161b22" }}>
+                    <td style={{ padding: "5px 8px", color: "#484f58" }}>{predRow}</td>
+                    <td style={{ padding: "5px 8px", color: "#e6edf3" }}>{pred?.name ?? link.id}</td>
+                    <td style={{ padding: "5px 8px" }}>
+                      <select value={link.type} onChange={e => updateLink(idx, { type: e.target.value as LinkType })} style={SEL} disabled={saving}>
+                        {(Object.keys(LINK_TYPE_LABELS) as LinkType[]).map(lt => (
+                          <option key={lt} value={lt}>{LINK_TYPE_LABELS[lt]}</option>
+                        ))}
+                      </select>
+                    </td>
+                    <td style={{ padding: "5px 8px" }}>
+                      <input type="number" value={link.lag} min={-999} max={999}
+                        onChange={e => updateLink(idx, { lag: parseInt(e.target.value) || 0 })}
+                        style={{ ...SEL, width: 60, textAlign: "center" }} disabled={saving} />
+                    </td>
+                    <td style={{ padding: "5px 4px" }}>
+                      <button onClick={() => removeLink(idx)} style={{ color: "#f85149", fontSize: 16, lineHeight: 1 }} disabled={saving}>×</button>
+                    </td>
+                  </tr>
+                );
+              })}
+
+              {addingLink && (
+                <tr style={{ borderBottom: "1px solid #161b22" }}>
+                  <td />
+                  <td style={{ padding: "5px 8px" }}>
+                    <select value={newLinkTaskId} onChange={e => setNewLinkTaskId(e.target.value)} style={{ ...SEL, width: "100%" }}>
+                      <option value="">— select task —</option>
+                      {sortedTasks.map((t, i) => (
+                        <option key={t.id} value={t.id}>{i + 1}. {t.name}</option>
+                      ))}
+                    </select>
+                  </td>
+                  <td style={{ padding: "5px 8px" }}>
+                    <select value={newLinkType} onChange={e => setNewLinkType(e.target.value as LinkType)} style={SEL}>
+                      {(Object.keys(LINK_TYPE_LABELS) as LinkType[]).map(lt => (
+                        <option key={lt} value={lt}>{LINK_TYPE_LABELS[lt]}</option>
+                      ))}
+                    </select>
+                  </td>
+                  <td style={{ padding: "5px 8px" }}>
+                    <input type="number" value={newLinkLag} min={-999} max={999}
+                      onChange={e => setNewLinkLag(parseInt(e.target.value) || 0)}
+                      style={{ ...SEL, width: 60, textAlign: "center" }} />
+                  </td>
+                  <td style={{ padding: "5px 4px", display: "flex", gap: 4 }}>
+                    <button onClick={addLink} disabled={!newLinkTaskId || saving}
+                      style={{ fontSize: 11, padding: "2px 8px", borderRadius: 5, background: GOLD, color: "#0d1117", fontWeight: 700 }}>Add</button>
+                    <button onClick={() => setAddingLink(false)} style={{ fontSize: 11, padding: "2px 6px", color: "#484f58" }}>✕</button>
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+
+          {!addingLink && (
+            <button onClick={() => setAddingLink(true)}
+              className="mt-2 text-xs px-3 py-1.5 rounded-lg font-semibold"
+              style={{ background: "#1e2736", border: `1px solid ${GOLD}44`, color: GOLD }}>
+              + Add Link
+            </button>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
 function ScheduleTableView({
   tasks, companyId, clientId, onTasksChange, canEdit,
 }: {
@@ -2067,6 +2248,8 @@ function ScheduleTableView({
   const [dropId, setDropId] = useState<string | null>(null);
   const [settingParentFor, setSettingParentFor] = useState<ClientTask | null>(null);
   const [ctxMenu, setCtxMenu] = useState<{ x: number; y: number; task: ClientTask } | null>(null);
+  const [selectedTask, setSelectedTask] = useState<ClientTask | null>(null);
+  const [infoTab, setInfoTab] = useState<"links">("links");
   const [colWidths, setColWidths] = useState({ num: 44, link: 72, wbs: 76, name: 260, dur: 82, pct: 52, start: 106, end: 106, actual: 106, priority: 82, status: 108, assignee: 120 });
 
   const phases = useMemo(() => Array.from(new Set(tasks.map(t => t.phase))), [tasks]);
@@ -2081,6 +2264,8 @@ function ScheduleTableView({
   const dragIdRef = useRef<string | null>(null);
   useEffect(() => { rowsRef.current = rows; }, [rows]);
   useEffect(() => { tasksRef.current = tasks; }, [tasks]);
+  // Keep selectedTask in sync with latest task data
+  useEffect(() => { if (selectedTask) setSelectedTask(tasks.find(t => t.id === selectedTask.id) ?? null); }, [tasks]);
 
   // Close context menu on outside click; ESC cancels parent-set mode
   useEffect(() => {
@@ -2197,28 +2382,67 @@ function ScheduleTableView({
     onTasksChange(tasks.map(t => t.id === task.id ? { ...t, parentId: null } : t));
   }
 
-  // ── Predecessor cascade ────────────────────────────────────────────────────
+  // ── Predecessor cascade (respects link type: FS, SS, FF, SF) ─────────────
   async function cascadeFromTask(updatedTask: ClientTask): Promise<ClientTask[]> {
     let current = tasks.map(t => t.id === updatedTask.id ? updatedTask : t);
     const queue = [updatedTask.id];
     const visited = new Set<string>();
+
+    // Helper: resolve effective link list for a task (use predecessors if set, else predecessorIds as FS)
+    function getLinks(t: ClientTask): TaskLink[] {
+      if (t.predecessors && t.predecessors.length > 0) return t.predecessors;
+      return t.predecessorIds.map(id => ({ id, type: "FS" as LinkType, lag: 0 }));
+    }
+
     while (queue.length > 0) {
       const taskId = queue.shift()!;
       if (visited.has(taskId)) continue;
       visited.add(taskId);
       const source = current.find(t => t.id === taskId);
-      if (!source?.endDate) continue;
-      const dependents = current.filter(t => t.predecessorIds.includes(taskId));
+      if (!source) continue;
+
+      const dependents = current.filter(t => getLinks(t).some(l => l.id === taskId));
       for (const dep of dependents) {
-        const predEnds = dep.predecessorIds
-          .map(pid => current.find(t => t.id === pid)?.endDate)
-          .filter(Boolean) as string[];
-        if (!predEnds.length) continue;
-        const latestEnd = predEnds.reduce((m, d) => d > m ? d : m, predEnds[0]);
-        const predEnd = parseDate(latestEnd);
-        if (!predEnd) continue;
-        const newStart = toDateStr(addDays(predEnd, 1));
-        const newEnd = toDateStr(addDays(addDays(predEnd, 1), dep.durationDays - 1));
+        const links = getLinks(dep);
+        // Compute earliest start and latest end from all linked predecessors
+        let newStart = dep.startDate;
+        let newEnd = dep.endDate;
+
+        for (const link of links) {
+          const pred = current.find(t => t.id === link.id);
+          if (!pred) continue;
+          const lag = link.lag ?? 0;
+          const dur = dep.durationDays;
+
+          if (link.type === "FS") {
+            // dep starts after pred ends + lag
+            if (!pred.endDate) continue;
+            const predEnd = parseDate(pred.endDate);
+            if (!predEnd) continue;
+            const s = toDateStr(addDays(predEnd, 1 + lag));
+            const e = toDateStr(addDays(parseDate(s)!, dur - 1));
+            if (!newStart || s > newStart) { newStart = s; newEnd = e; }
+          } else if (link.type === "SS") {
+            // dep starts when pred starts + lag
+            if (!pred.startDate) continue;
+            const s = toDateStr(addDays(parseDate(pred.startDate)!, lag));
+            const e = toDateStr(addDays(parseDate(s)!, dur - 1));
+            if (!newStart || s > newStart) { newStart = s; newEnd = e; }
+          } else if (link.type === "FF") {
+            // dep ends when pred ends + lag
+            if (!pred.endDate) continue;
+            const e = toDateStr(addDays(parseDate(pred.endDate)!, lag));
+            const s = toDateStr(addDays(parseDate(e)!, -(dur - 1)));
+            if (!newEnd || e > newEnd) { newStart = s; newEnd = e; }
+          } else if (link.type === "SF") {
+            // dep ends when pred starts + lag
+            if (!pred.startDate) continue;
+            const e = toDateStr(addDays(parseDate(pred.startDate)!, lag));
+            const s = toDateStr(addDays(parseDate(e)!, -(dur - 1)));
+            if (!newEnd || e > newEnd) { newStart = s; newEnd = e; }
+          }
+        }
+
         if (newStart === dep.startDate && newEnd === dep.endDate) continue;
         await fetch(`/api/${companyId}/clients/${clientId}/schedule/${dep.id}`, {
           method: "PATCH", headers: { "Content-Type": "application/json" },
@@ -2363,7 +2587,7 @@ function ScheduleTableView({
               return (
                 <tr key={task.id} data-task-id={task.id}
                   onDoubleClick={() => !settingParentFor && setEditTask(task)}
-                  onClick={() => settingParentFor && handleSetParent(task)}
+                  onClick={() => { if (settingParentFor) { handleSetParent(task); } else { setSelectedTask(t => t?.id === task.id ? null : task); } }}
                   onContextMenu={e => { if (!canEdit) return; e.preventDefault(); setCtxMenu({ x: e.clientX, y: e.clientY, task }); }}
                   style={{
                     background: rowBg, opacity: isDragging ? 0.3 : 1, transition: "opacity 0.1s",
@@ -2530,6 +2754,20 @@ function ScheduleTableView({
         <AssignTasksModal phaseTask={assignTasksFor} tasks={tasks} companyId={companyId} clientId={clientId}
           onAssigned={updated => { onTasksChange(updated); setAssignTasksFor(null); }}
           onClose={() => setAssignTasksFor(null)} />
+      )}
+
+      {/* ── Task Info Panel ── */}
+      {selectedTask && (
+        <TaskInfoPanel
+          task={selectedTask}
+          tasks={tasks}
+          companyId={companyId}
+          clientId={clientId}
+          tab={infoTab}
+          onTabChange={setInfoTab}
+          onClose={() => setSelectedTask(null)}
+          onTasksChange={onTasksChange}
+        />
       )}
     </>
   );

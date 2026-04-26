@@ -12,7 +12,7 @@ export async function PATCH(
   if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const body = await req.json();
-  const { phase, name, durationDays, startDate, endDate, predecessorIds, parentId, trade, assignee, isMilestone, status, percentComplete, notes, priority, actualFinish, sortOrder } = body;
+  const { phase, name, durationDays, startDate, endDate, predecessorIds, predecessors, parentId, trade, assignee, isMilestone, status, percentComplete, notes, priority, actualFinish, sortOrder } = body;
 
   const task = await prisma.clientTask.update({
     where: { id: params.taskId },
@@ -23,6 +23,7 @@ export async function PATCH(
       ...(startDate !== undefined && { startDate: startDate ? new Date(startDate) : null }),
       ...(endDate !== undefined && { endDate: endDate ? new Date(endDate) : null }),
       ...(predecessorIds !== undefined && { predecessorIds }),
+      ...(predecessors !== undefined && { predecessors }),
       ...(parentId !== undefined && { parentId }),
       ...(trade !== undefined && { trade }),
       ...(assignee !== undefined && { assignee }),

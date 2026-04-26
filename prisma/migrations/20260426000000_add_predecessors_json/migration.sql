@@ -1,0 +1,1 @@
+ALTER TABLE "ClientTask" ADD COLUMN IF NOT EXISTS "predecessors" JSONB;

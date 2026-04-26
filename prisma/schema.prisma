@@ -532,6 +532,7 @@ model ClientTask {
   startDate       DateTime? @db.Date
   endDate         DateTime? @db.Date
   predecessorIds  String[]
+  predecessors    Json?     // [{id, type: "FS"|"SS"|"FF"|"SF", lag: number}]
   parentId        String?   // parent task id for sub-task hierarchy
   trade           String?
   assignee        String?
