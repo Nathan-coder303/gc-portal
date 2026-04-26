@@ -2688,7 +2688,22 @@ function ScheduleTableView({
         <EditTaskModal task={editTask} companyId={companyId} clientId={clientId}
           currentRow={(() => { const s = [...tasks].sort((a,b) => a.sortOrder - b.sortOrder); const i = s.findIndex(t => t.id === editTask.id); return i >= 0 ? i + 1 : undefined; })()}
           totalRows={tasks.length}
-          onUpdate={async updated => { const cascaded = await cascadeFromTask(updated); onTasksChange(cascaded); }}
+          onUpdate={async updated => {
+            let cascaded = await cascadeFromTask(updated);
+            // If phase changed to match an existing phase-header task, auto-nest under it
+            const prevPhase = editTask.phase;
+            if (updated.phase !== prevPhase) {
+              const header = tasks.find(t => t.name === updated.phase && t.id !== updated.id && !t.parentId);
+              if (header) {
+                await fetch(`/api/${companyId}/clients/${clientId}/schedule/${updated.id}`, {
+                  method: "PATCH", headers: { "Content-Type": "application/json" },
+                  body: JSON.stringify({ parentId: header.id }),
+                });
+                cascaded = cascaded.map(t => t.id === updated.id ? { ...t, parentId: header.id } : t);
+              }
+            }
+            onTasksChange(cascaded);
+          }}
           onDelete={id => { onTasksChange(tasks.filter(t => t.id !== id)); setEditTask(null); }}
           onMove={toRow => {
             const taskId = editTask.id;
