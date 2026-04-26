@@ -105,6 +105,7 @@ model Lead {
   pipelineCard  PipelineCard?
   notes         Note[]
   followUps     FollowUp[]
+  subBids       SubBid[]
 
   @@index([companyId])
   @@index([receivedAt])
@@ -352,6 +353,8 @@ model SubBid {
   id             String   @id @default(cuid())
   clientId       String?
   client         Client?  @relation(fields: [clientId], references: [id])
+  leadId         String?
+  lead           Lead?    @relation(fields: [leadId], references: [id])
   companyId      String
   divisionCode   String
   divisionName   String
@@ -368,6 +371,7 @@ model SubBid {
   updatedAt      DateTime @updatedAt
 
   @@index([clientId])
+  @@index([leadId])
   @@index([clientId, divisionCode])
   @@index([companyId])
 }

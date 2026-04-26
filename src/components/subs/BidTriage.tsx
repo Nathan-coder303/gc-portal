@@ -42,6 +42,13 @@ type Client = {
   city: string | null;
 };
 
+type Lead = {
+  id: string;
+  name: string;
+  address: string | null;
+  city: string | null;
+};
+
 type SubInfo = {
   name: string | null;
   address: string | null;
@@ -53,8 +60,9 @@ type SubInfo = {
 
 type AddSubModal = {
   bid: TriageBid;
-  clientId: string;
-  clientName: string;
+  clientId: string | null;
+  leadId: string | null;
+  targetName: string;
   subInfo: SubInfo | null;
   loading: boolean;
 };
@@ -62,14 +70,19 @@ type AddSubModal = {
 export default function BidTriage({
   companyId,
   clients,
+  leads = [],
 }: {
   companyId: string;
   clients: Client[];
+  leads?: Lead[];
 }) {
   const [bids, setBids] = useState<TriageBid[]>([]);
   const [loading, setLoading] = useState(true);
   const [assigningId, setAssigningId] = useState<string | null>(null);
-  const [selectedProject, setSelectedProject] = useState<Record<string, string>>({});
+  // "client:ID" or "lead:ID"
+  const [selectedTarget, setSelectedTarget] = useState<Record<string, string>>({});
+  // Per-bid division override (divisionCode)
+  const [selectedDivision, setSelectedDivision] = useState<Record<string, string>>({});
   const [addSubModal, setAddSubModal] = useState<AddSubModal | null>(null);
 
   // Sub form state
@@ -98,26 +111,49 @@ export default function BidTriage({
   useEffect(() => { loadBids(); }, [loadBids]);
 
   async function assignBid(bid: TriageBid) {
-    const clientId = selectedProject[bid.id];
-    if (!clientId) return;
+    const target = selectedTarget[bid.id];
+    if (!target) return;
+
+    const isLead = target.startsWith("lead:");
+    const targetId = target.replace(/^(client:|lead:)/, "");
+    const divCode = selectedDivision[bid.id] ?? bid.divisionCode;
+    const divName = ALL_DIVISIONS.find(d => d.code === divCode)?.name ?? bid.divisionName;
+
     setAssigningId(bid.id);
     try {
+      const body: Record<string, string | null> = { divisionCode: divCode, divisionName: divName };
+      if (isLead) {
+        body.leadId = targetId;
+        body.clientId = null;
+      } else {
+        body.clientId = targetId;
+        body.leadId = null;
+      }
+
       const res = await fetch(`/api/${companyId}/bids/triage/${bid.id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ clientId }),
+        body: JSON.stringify(body),
       });
       if (!res.ok) return;
 
       // Remove from list
       setBids(prev => prev.filter(b => b.id !== bid.id));
 
+      // Find target name
+      let targetName = targetId;
+      if (isLead) {
+        targetName = leads.find(l => l.id === targetId)?.name ?? targetId;
+      } else {
+        targetName = clients.find(c => c.id === targetId)?.name ?? targetId;
+      }
+
       // Open "add sub?" modal and start extracting
-      const client = clients.find(c => c.id === clientId);
       const modal: AddSubModal = {
-        bid,
-        clientId,
-        clientName: client?.name ?? clientId,
+        bid: { ...bid, divisionCode: divCode, divisionName: divName },
+        clientId: isLead ? null : targetId,
+        leadId: isLead ? targetId : null,
+        targetName,
         subInfo: null,
         loading: true,
       };
@@ -128,8 +164,8 @@ export default function BidTriage({
         phone: "",
         email: "",
         licenseNumber: "",
-        divisionCode: bid.divisionCode,
-        divisionName: bid.divisionName,
+        divisionCode: divCode,
+        divisionName: divName,
         notes: "",
       });
 
@@ -205,86 +241,114 @@ export default function BidTriage({
   return (
     <>
       <div className="space-y-3">
-        {bids.map(bid => (
-          <div
-            key={bid.id}
-            className="rounded-xl px-4 py-4"
-            style={{ background: "#161b22", border: "1px solid #30373f" }}
-          >
-            <div className="flex flex-col sm:flex-row sm:items-start gap-3">
-              <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-2 flex-wrap">
-                  <span className="text-sm font-semibold" style={{ color: "#e6edf3" }}>
-                    {bid.contractorName ?? "Unknown contractor"}
-                  </span>
-                  <span className="text-xs px-2 py-0.5 rounded-full font-mono" style={{ background: "#1e2736", color: "#C9A84C", border: "1px solid #C9A84C33" }}>
-                    Div {bid.divisionCode} · {bid.divisionName}
-                  </span>
-                  {bid.amount && (
-                    <span className="text-xs font-semibold" style={{ color: "#22c55e" }}>
-                      {fmt(bid.amount)}
+        {bids.map(bid => {
+          const divCode = selectedDivision[bid.id] ?? bid.divisionCode;
+          return (
+            <div
+              key={bid.id}
+              className="rounded-xl px-4 py-4"
+              style={{ background: "#161b22", border: "1px solid #30373f" }}
+            >
+              <div className="flex flex-col sm:flex-row sm:items-start gap-3">
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <span className="text-sm font-semibold" style={{ color: "#e6edf3" }}>
+                      {bid.contractorName ?? "Unknown contractor"}
                     </span>
+                    {bid.amount && (
+                      <span className="text-xs font-semibold" style={{ color: "#22c55e" }}>
+                        {fmt(bid.amount)}
+                      </span>
+                    )}
+                  </div>
+                  {bid.notes && (
+                    <div className="text-xs mt-1" style={{ color: "#8b949e" }}>{bid.notes}</div>
                   )}
+                  <div className="text-xs mt-1 flex items-center gap-3" style={{ color: "#484f58" }}>
+                    <span>
+                      {bid.emailSource && <span>{bid.emailSource} · </span>}
+                      {new Date(bid.createdAt).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
+                    </span>
+                    {bid.fileUrl && (() => {
+                      const href = getPdfHref(bid.fileUrl, companyId);
+                      return href ? (
+                        <a
+                          href={href}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="font-semibold"
+                          style={{ color: "#C9A84C" }}
+                        >
+                          📄 {bid.fileName ?? "View PDF"}
+                        </a>
+                      ) : null;
+                    })()}
+                  </div>
                 </div>
-                {bid.notes && (
-                  <div className="text-xs mt-1" style={{ color: "#8b949e" }}>{bid.notes}</div>
-                )}
-                <div className="text-xs mt-1 flex items-center gap-3" style={{ color: "#484f58" }}>
-                  <span>
-                    {bid.emailSource && <span>{bid.emailSource} · </span>}
-                    {new Date(bid.createdAt).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
-                  </span>
-                  {bid.fileUrl && (() => {
-                    const href = getPdfHref(bid.fileUrl, companyId);
-                    return href ? (
-                      <a
-                        href={href}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="font-semibold"
-                        style={{ color: "#C9A84C" }}
-                      >
-                        📄 {bid.fileName ?? "View PDF"}
-                      </a>
-                    ) : null;
-                  })()}
-                </div>
-              </div>
 
-              <div className="flex items-center gap-2 shrink-0">
-                <select
-                  value={selectedProject[bid.id] ?? ""}
-                  onChange={e => setSelectedProject(prev => ({ ...prev, [bid.id]: e.target.value }))}
-                  className="text-xs rounded-lg px-2 py-1.5"
-                  style={{ background: "#1e2736", border: "1px solid #30373f", color: "#e6edf3", minWidth: 160 }}
-                >
-                  <option value="">Assign to project…</option>
-                  {clients.map(c => (
-                    <option key={c.id} value={c.id}>
-                      {c.name}{c.address ? ` – ${c.address}` : ""}{c.city ? `, ${c.city}` : ""}
-                    </option>
-                  ))}
-                </select>
-                <button
-                  onClick={() => assignBid(bid)}
-                  disabled={!selectedProject[bid.id] || assigningId === bid.id}
-                  className="text-xs px-3 py-1.5 rounded-lg font-semibold disabled:opacity-40"
-                  style={{ background: "#C9A84C", color: "#0d1117" }}
-                >
-                  {assigningId === bid.id ? "…" : "Move"}
-                </button>
-                <button
-                  onClick={() => discardBid(bid.id)}
-                  className="text-xs px-2 py-1.5 rounded-lg"
-                  style={{ background: "#1e2736", border: "1px solid #30373f", color: "#484f58" }}
-                  title="Discard"
-                >
-                  ✕
-                </button>
+                <div className="flex flex-col gap-2 shrink-0 min-w-[200px]">
+                  {/* Division picker */}
+                  <select
+                    value={divCode}
+                    onChange={e => setSelectedDivision(prev => ({ ...prev, [bid.id]: e.target.value }))}
+                    className="text-xs rounded-lg px-2 py-1.5"
+                    style={{ background: "#1e2736", border: "1px solid #C9A84C44", color: "#C9A84C" }}
+                  >
+                    {ALL_DIVISIONS.map(d => (
+                      <option key={d.code} value={d.code}>{d.code} – {d.name}</option>
+                    ))}
+                  </select>
+
+                  {/* Target + Move */}
+                  <div className="flex items-center gap-2">
+                    <select
+                      value={selectedTarget[bid.id] ?? ""}
+                      onChange={e => setSelectedTarget(prev => ({ ...prev, [bid.id]: e.target.value }))}
+                      className="text-xs rounded-lg px-2 py-1.5 flex-1"
+                      style={{ background: "#1e2736", border: "1px solid #30373f", color: "#e6edf3" }}
+                    >
+                      <option value="">Assign to project…</option>
+                      {clients.length > 0 && (
+                        <optgroup label="── Clients ──">
+                          {clients.map(c => (
+                            <option key={c.id} value={`client:${c.id}`}>
+                              {c.name}{c.address ? ` – ${c.address}` : ""}{c.city ? `, ${c.city}` : ""}
+                            </option>
+                          ))}
+                        </optgroup>
+                      )}
+                      {leads.length > 0 && (
+                        <optgroup label="── Leads / Bids ──">
+                          {leads.map(l => (
+                            <option key={l.id} value={`lead:${l.id}`}>
+                              {l.name}{l.address ? ` – ${l.address}` : ""}{l.city ? `, ${l.city}` : ""}
+                            </option>
+                          ))}
+                        </optgroup>
+                      )}
+                    </select>
+                    <button
+                      onClick={() => assignBid(bid)}
+                      disabled={!selectedTarget[bid.id] || assigningId === bid.id}
+                      className="text-xs px-3 py-1.5 rounded-lg font-semibold disabled:opacity-40"
+                      style={{ background: "#C9A84C", color: "#0d1117" }}
+                    >
+                      {assigningId === bid.id ? "…" : "Move"}
+                    </button>
+                    <button
+                      onClick={() => discardBid(bid.id)}
+                      className="text-xs px-2 py-1.5 rounded-lg"
+                      style={{ background: "#1e2736", border: "1px solid #30373f", color: "#484f58" }}
+                      title="Discard"
+                    >
+                      ✕
+                    </button>
+                  </div>
+                </div>
               </div>
             </div>
-          </div>
-        ))}
+          );
+        })}
       </div>
 
       {/* Add Sub Modal */}
@@ -299,7 +363,7 @@ export default function BidTriage({
           >
             <div>
               <div className="text-xs font-bold uppercase tracking-widest mb-1" style={{ color: "#C9A84C" }}>
-                Bid moved to {addSubModal.clientName}
+                Bid moved to {addSubModal.targetName}
               </div>
               <div className="text-base font-bold" style={{ color: "#e6edf3" }}>
                 Add this sub to the database?

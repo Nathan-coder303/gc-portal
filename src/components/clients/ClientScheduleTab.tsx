@@ -1700,7 +1700,7 @@ function ClientGanttChart({ tasks, projectStart, companyId, clientId, canEdit, o
           {[
             { label: "✏️  Edit task", action: () => { setEditTask(contextMenu.task); setContextMenu(null); } },
             { label: "➕  Add sub-task", action: () => { setAddChildFor(contextMenu.task); setContextMenu(null); } },
-            { label: "🔗  Set parent…", action: () => { setSetParentFor(contextMenu.task); setContextMenu(null); } },
+            { label: "📂  Nest under…", action: () => { setSetParentFor(contextMenu.task); setContextMenu(null); } },
             ...(contextMenu.task.parentId ? [{ label: "🔓  Remove parent", action: () => { handleSetParent(contextMenu.task, null); setContextMenu(null); } }] : []),
             { label: "⧉  Duplicate", action: () => { handleDuplicate(contextMenu.task); setContextMenu(null); } },
             { label: "🗑  Delete", action: () => { handleDeleteTask(contextMenu.task); setContextMenu(null); }, danger: true },
@@ -1730,31 +1730,61 @@ function ClientGanttChart({ tasks, projectStart, companyId, clientId, canEdit, o
       )}
 
       {/* Set parent modal */}
-      {setParentFor && (
-        <div style={{ position: "fixed", inset: 0, zIndex: 80, background: "rgba(0,0,0,0.8)", display: "flex", alignItems: "center", justifyContent: "center", padding: 16 }}
-          onClick={() => setSetParentFor(null)}>
-          <div style={{ background: "#161b22", border: "1px solid #30373f", borderRadius: 14, padding: 20, width: "100%", maxWidth: 400, maxHeight: "70vh", overflowY: "auto" }}
-            onClick={e => e.stopPropagation()}>
-            <h3 className="text-sm font-bold mb-3" style={{ color: "#e6edf3" }}>
-              Set parent for <span style={{ color: GOLD }}>{setParentFor.name}</span>
-            </h3>
-            <div className="space-y-1">
-              {tasks.filter(t => t.id !== setParentFor.id && !t.parentId).map(t => (
-                <button
-                  key={t.id}
-                  onClick={() => handleSetParent(setParentFor, t.id)}
-                  className="w-full text-left px-3 py-2 rounded-lg text-sm transition-colors hover:bg-[#1e2736]"
-                  style={{ color: "#e6edf3", background: setParentFor.parentId === t.id ? "#1e2736" : "transparent" }}
-                >
-                  {setParentFor.parentId === t.id ? "✓ " : ""}{t.name}
-                  <span className="ml-2 text-[10px]" style={{ color: "#484f58" }}>{t.phase}</span>
-                </button>
-              ))}
+      {setParentFor && (() => {
+        // collect all descendants of setParentFor to exclude (prevent circular)
+        const excluded = new Set<string>([setParentFor.id]);
+        const queue = [setParentFor.id];
+        while (queue.length > 0) {
+          const cur = queue.pop()!;
+          tasks.filter(t => t.parentId === cur).forEach(t => { excluded.add(t.id); queue.push(t.id); });
+        }
+        const rows = buildTableRows(tasks, new Set()).filter(r => !excluded.has(r.task.id));
+        return (
+          <div style={{ position: "fixed", inset: 0, zIndex: 80, background: "rgba(0,0,0,0.8)", display: "flex", alignItems: "center", justifyContent: "center", padding: 16 }}
+            onClick={() => setSetParentFor(null)}>
+            <div style={{ background: "#161b22", border: "1px solid #30373f", borderRadius: 14, padding: 20, width: "100%", maxWidth: 420, maxHeight: "75vh", overflowY: "auto" }}
+              onClick={e => e.stopPropagation()}>
+              <h3 className="text-sm font-bold mb-1" style={{ color: "#e6edf3" }}>
+                Nest <span style={{ color: GOLD }}>{setParentFor.name}</span> under…
+              </h3>
+              <p className="text-[11px] mb-3" style={{ color: "#484f58" }}>Pick any task to make it the parent. Full tree shown.</p>
+              <div className="space-y-0.5">
+                {setParentFor.parentId && (
+                  <button
+                    onClick={() => handleSetParent(setParentFor, null)}
+                    className="w-full text-left px-3 py-2 rounded-lg text-xs transition-colors hover:bg-[#2d1a1a]"
+                    style={{ color: "#f87171", border: "1px solid #f8717133" }}
+                  >
+                    🔓 Remove parent (make top-level)
+                  </button>
+                )}
+                {rows.map(row => {
+                  const isCurrentParent = setParentFor.parentId === row.task.id;
+                  return (
+                    <button
+                      key={row.task.id}
+                      onClick={() => handleSetParent(setParentFor, row.task.id)}
+                      className="w-full text-left rounded-lg text-sm transition-colors hover:bg-[#1e2736]"
+                      style={{
+                        paddingLeft: 12 + row.depth * 18,
+                        paddingRight: 12, paddingTop: 7, paddingBottom: 7,
+                        color: isCurrentParent ? GOLD : "#e6edf3",
+                        background: isCurrentParent ? "#1e2736" : "transparent",
+                        fontWeight: row.hasChildren ? 600 : 400,
+                      }}
+                    >
+                      <span className="text-[10px] font-mono mr-2" style={{ color: "#484f58" }}>{row.wbs}</span>
+                      {isCurrentParent && <span style={{ color: GOLD }}>✓ </span>}
+                      {row.task.name}
+                    </button>
+                  );
+                })}
+              </div>
+              <button onClick={() => setSetParentFor(null)} className="mt-3 text-xs w-full py-2 rounded-lg" style={{ background: "#30373f", color: "#8b949e" }}>Cancel</button>
             </div>
-            <button onClick={() => setSetParentFor(null)} className="mt-3 text-xs w-full py-2 rounded-lg" style={{ background: "#30373f", color: "#8b949e" }}>Cancel</button>
           </div>
-        </div>
-      )}
+        );
+      })()}
     </>
   );
 }
