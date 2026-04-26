@@ -570,6 +570,159 @@ const SCHEDULE_TEMPLATES: ScheduleTemplate[] = [
       { localId: "bldg-final", phase: "Closeout", name: "Building Final Inspection", durationDays: 1, offsetDays: 168, parentRef: "closeout", isMilestone: true, predecessorRefs: ["final-clean"] },
     ],
   },
+  {
+    id: "additions-v2",
+    label: "Additions v2",
+    emoji: "🏗️",
+    description: "Allison's Addition · updated WBS hierarchy · linked from/to respected",
+    tasks: [
+      // ── ROOT ──────────────────────────────────────────────────────────────────
+      { localId: "root", phase: "Project", name: "Allison's Addition", durationDays: 100, offsetDays: 0 },
+
+      // ── ARCHITECT'S DELAY (WBS 1.14) — predecessor to Forming ─────────────────
+      { localId: "arch-delay", phase: "Delays", name: "Architect's Delay", durationDays: 1, offsetDays: 0, parentRef: "root" },
+
+      // ── SHELL ────────────────────────────────────────────────────────────────
+      { localId: "shell", phase: "Shell", name: "Shell", durationDays: 32, offsetDays: 0, parentRef: "root" },
+
+      // Existing Conditions (WBS 1.1.1)
+      { localId: "existing-cond", phase: "Shell", name: "Existing Conditions", durationDays: 3, offsetDays: 0, parentRef: "shell" },
+      { localId: "demo", phase: "Shell", name: "Demolition existing wood structure", durationDays: 2, offsetDays: 0, parentRef: "existing-cond" },
+      { localId: "excav", phase: "Shell", name: "Excavation", durationDays: 1, offsetDays: 2, parentRef: "existing-cond", predecessorRefs: ["demo"] },
+
+      // Footings (WBS 1.1.2)
+      { localId: "footings", phase: "Shell", name: "Footings", durationDays: 5, offsetDays: 2, parentRef: "shell" },
+      { localId: "forming", phase: "Shell", name: "Forming", durationDays: 1, offsetDays: 2, parentRef: "footings", predecessorRefs: ["arch-delay"] },
+      { localId: "foot-rebars", phase: "Shell", name: "Footings Rebars Installation", durationDays: 3, offsetDays: 3, parentRef: "footings", trade: "Concrete", predecessorRefs: ["forming"] },
+      { localId: "foot-insp", phase: "Shell", name: "Footings Inspection", durationDays: 1, offsetDays: 6, parentRef: "footings", isMilestone: true, predecessorRefs: ["foot-rebars"] },
+      { localId: "foot-pour", phase: "Shell", name: "Footings Pouring Concrete", durationDays: 1, offsetDays: 7, parentRef: "footings", trade: "Concrete", predecessorRefs: ["foot-insp"] },
+
+      // Slab on Grade section (WBS 1.1.3) — sog-rebars links to plumb-ug-insp below
+      { localId: "sog", phase: "Shell", name: "Slab on Grade", durationDays: 6, offsetDays: 17, parentRef: "shell" },
+
+      // 1st Lift (WBS 1.1.4)
+      { localId: "lift", phase: "Shell", name: "1st Lift", durationDays: 4, offsetDays: 8, parentRef: "shell" },
+      { localId: "lift-col", phase: "Shell", name: "1st Lift Columns", durationDays: 4, offsetDays: 8, parentRef: "lift" },
+      { localId: "lift-blk", phase: "Shell", name: "1st Lift Blocks", durationDays: 4, offsetDays: 8, parentRef: "lift" },
+
+      // Tie Beam (WBS 1.1.5)
+      { localId: "tie-beam", phase: "Shell", name: "Tie Beam", durationDays: 7, offsetDays: 12, parentRef: "shell" },
+      { localId: "tb-rebars", phase: "Shell", name: "Tie Beam Rebars Installation", durationDays: 5, offsetDays: 12, parentRef: "tie-beam", trade: "Concrete", predecessorRefs: ["lift-blk"] },
+      { localId: "tb-insp", phase: "Shell", name: "Tie Beam Rebars Inspection", durationDays: 1, offsetDays: 17, parentRef: "tie-beam", isMilestone: true, predecessorRefs: ["tb-rebars"] },
+      { localId: "tb-pour", phase: "Shell", name: "Tie Beam Pouring Concrete", durationDays: 1, offsetDays: 18, parentRef: "tie-beam", trade: "Concrete", predecessorRefs: ["tb-insp"] },
+
+      // Trusses (WBS 1.1.6) — truss-inst predecessor is tb-insp (not tb-pour per v2)
+      { localId: "trusses", phase: "Shell", name: "Trusses", durationDays: 15, offsetDays: 18, parentRef: "shell" },
+      { localId: "truss-inst", phase: "Shell", name: "Trusses installation", durationDays: 10, offsetDays: 18, parentRef: "trusses", trade: "Framing", predecessorRefs: ["tb-insp"] },
+      { localId: "plywood", phase: "Shell", name: "Plywood Sheathing", durationDays: 5, offsetDays: 28, parentRef: "trusses", trade: "Framing", predecessorRefs: ["truss-inst"] },
+
+      // ── PLUMBING (WBS 1.2) ────────────────────────────────────────────────────
+      { localId: "plumbing", phase: "Plumbing", name: "Plumbing", durationDays: 82, offsetDays: 12, parentRef: "root" },
+
+      // Plumbing Underground (WBS 1.2.1)
+      { localId: "plumb-ug", phase: "Plumbing", name: "Plumbing Underground", durationDays: 5, offsetDays: 12, parentRef: "plumbing" },
+      { localId: "plumb-ug-inst", phase: "Plumbing", name: "Plumbing Underground Installation", durationDays: 4, offsetDays: 12, parentRef: "plumb-ug", trade: "Plumbing", predecessorRefs: ["lift-blk"] },
+      { localId: "plumb-ug-insp", phase: "Plumbing", name: "Plumbing Underground Inspection", durationDays: 1, offsetDays: 16, parentRef: "plumb-ug", isMilestone: true, predecessorRefs: ["plumb-ug-inst"] },
+
+      // SOG children — sog-rebars depends on plumb-ug-insp (cross-phase)
+      { localId: "sog-rebars", phase: "Shell", name: "SOG Rebars Installation", durationDays: 4, offsetDays: 17, parentRef: "sog", trade: "Concrete", predecessorRefs: ["plumb-ug-insp"] },
+      { localId: "sog-insp", phase: "Shell", name: "SOG Inspection", durationDays: 1, offsetDays: 21, parentRef: "sog", isMilestone: true, predecessorRefs: ["sog-rebars"] },
+      { localId: "sog-pour", phase: "Shell", name: "SOG Pouring Concrete", durationDays: 1, offsetDays: 22, parentRef: "sog", trade: "Concrete", predecessorRefs: ["sog-insp"] },
+
+      // Plumbing Rough (WBS 1.2.2)
+      { localId: "plumb-rough-sect", phase: "Plumbing", name: "Plumbing Rough", durationDays: 2, offsetDays: 44, parentRef: "plumbing" },
+      { localId: "plumb-rough", phase: "Plumbing", name: "Plumbing Rough Installation", durationDays: 1, offsetDays: 44, parentRef: "plumb-rough-sect", trade: "Plumbing" },
+      { localId: "plumb-rough-insp", phase: "Plumbing", name: "Plumbing Rough Inspection", durationDays: 1, offsetDays: 45, parentRef: "plumb-rough-sect", isMilestone: true },
+
+      // ── ELECTRICAL (WBS 1.3) ─────────────────────────────────────────────────
+      { localId: "elec", phase: "Electrical", name: "Electrical", durationDays: 78, offsetDays: 6, parentRef: "root" },
+      { localId: "elec-ug", phase: "Electrical", name: "Electrical Underground", durationDays: 1, offsetDays: 6, parentRef: "elec", trade: "Electrical", predecessorRefs: ["foot-rebars"] },
+
+      // ── ROOF (WBS 1.4) ────────────────────────────────────────────────────────
+      { localId: "roof", phase: "Roof", name: "Roof", durationDays: 6, offsetDays: 33, parentRef: "root" },
+      { localId: "roof-inst", phase: "Roof", name: "Flat Roof Installation", durationDays: 5, offsetDays: 33, parentRef: "roof", trade: "Roofing", predecessorRefs: ["plywood"] },
+      { localId: "roof-insp", phase: "Roof", name: "Flat Roof Final Inspection", durationDays: 1, offsetDays: 38, parentRef: "roof", isMilestone: true, predecessorRefs: ["roof-inst"] },
+
+      // ── WINDOWS (WBS 1.5) ─────────────────────────────────────────────────────
+      { localId: "windows", phase: "Windows", name: "Windows Installation", durationDays: 4, offsetDays: 39, parentRef: "root" },
+      { localId: "win-inst", phase: "Windows", name: "Windows Installation", durationDays: 3, offsetDays: 39, parentRef: "windows", trade: "Windows", predecessorRefs: ["roof-insp"] },
+      { localId: "win-insp", phase: "Windows", name: "Windows Inspection", durationDays: 1, offsetDays: 42, parentRef: "windows", isMilestone: true, predecessorRefs: ["win-inst"] },
+
+      // ── DRYWALL (WBS 1.6) ─────────────────────────────────────────────────────
+      { localId: "drywall", phase: "Drywall", name: "Drywall", durationDays: 40, offsetDays: 39, parentRef: "root" },
+
+      // Framing (WBS 1.6.2) — framing-inst depends on roof-insp
+      { localId: "framing", phase: "Drywall", name: "Framing", durationDays: 6, offsetDays: 39, parentRef: "drywall" },
+      { localId: "framing-inst", phase: "Drywall", name: "Framing Installation", durationDays: 5, offsetDays: 39, parentRef: "framing", trade: "Framing", predecessorRefs: ["roof-insp"] },
+      { localId: "framing-insp", phase: "Drywall", name: "Framing Inspection", durationDays: 1, offsetDays: 44, parentRef: "framing", isMilestone: true, predecessorRefs: ["framing-inst"] },
+
+      // Insulation (WBS 1.6.1) — wall-insul depends on framing-insp
+      { localId: "insulation", phase: "Drywall", name: "Insulation", durationDays: 9, offsetDays: 45, parentRef: "drywall" },
+      { localId: "wall-insul", phase: "Drywall", name: "Wall Insulation", durationDays: 3, offsetDays: 45, parentRef: "insulation", trade: "Insulation", predecessorRefs: ["framing-insp"] },
+      { localId: "roof-insul", phase: "Drywall", name: "Roof Insulation", durationDays: 4, offsetDays: 48, parentRef: "insulation", trade: "Insulation", predecessorRefs: ["wall-insul"] },
+      { localId: "insul-insp", phase: "Drywall", name: "Insulation Inspection", durationDays: 1, offsetDays: 52, parentRef: "insulation", isMilestone: true, predecessorRefs: ["roof-insul", "wall-insul"] },
+
+      // ── HVAC (WBS 1.11) — hvac-ducts depends on framing-insp ──────────────────
+      { localId: "hvac", phase: "HVAC", name: "HVAC", durationDays: 5, offsetDays: 45, parentRef: "root" },
+      { localId: "hvac-ducts", phase: "HVAC", name: "HVAC Ducts Installation", durationDays: 3, offsetDays: 45, parentRef: "hvac", trade: "HVAC", predecessorRefs: ["framing-insp"] },
+      { localId: "hvac-rough-insp", phase: "HVAC", name: "HVAC Rough Inspection", durationDays: 1, offsetDays: 48, parentRef: "hvac", isMilestone: true, predecessorRefs: ["hvac-ducts"] },
+
+      // Electrical Rough — depends on framing-insp (v2 change)
+      { localId: "elec-rough", phase: "Electrical", name: "Electrical Rough", durationDays: 5, offsetDays: 45, parentRef: "elec", trade: "Electrical", predecessorRefs: ["framing-insp"] },
+      { localId: "elec-rough-insp", phase: "Electrical", name: "Electrical Rough Inspection", durationDays: 1, offsetDays: 50, parentRef: "elec", isMilestone: true, predecessorRefs: ["elec-rough"] },
+
+      // Drywall Hanging (WBS 1.6.3) — depends on HVAC, insulation, electrical, plumbing rough inspections
+      { localId: "dw-hang-sect", phase: "Drywall", name: "Drywall Hanging", durationDays: 11, offsetDays: 53, parentRef: "drywall" },
+      { localId: "dw-hang", phase: "Drywall", name: "Drywall Hanging", durationDays: 10, offsetDays: 53, parentRef: "dw-hang-sect", trade: "Drywall", predecessorRefs: ["hvac-rough-insp", "insul-insp", "elec-rough-insp", "plumb-rough-insp"] },
+      { localId: "dw-insp", phase: "Drywall", name: "Drywall Inspection", durationDays: 1, offsetDays: 63, parentRef: "dw-hang-sect", isMilestone: true, predecessorRefs: ["dw-hang"] },
+
+      // Drywall Finish (WBS 1.6.4)
+      { localId: "dw-finish-sect", phase: "Drywall", name: "Drywall Finish", durationDays: 8, offsetDays: 64, parentRef: "drywall" },
+      { localId: "dw-finish", phase: "Drywall", name: "Drywall Finish", durationDays: 7, offsetDays: 64, parentRef: "dw-finish-sect", trade: "Drywall", predecessorRefs: ["dw-insp"] },
+      { localId: "dw-touch", phase: "Drywall", name: "Drywall Finishes Touch Ups", durationDays: 1, offsetDays: 71, parentRef: "dw-finish-sect", trade: "Drywall", predecessorRefs: ["dw-finish"] },
+
+      // Interior Painting (WBS 1.6.8)
+      { localId: "painting", phase: "Drywall", name: "Interior Painting", durationDays: 10, offsetDays: 72, parentRef: "drywall" },
+      { localId: "ceil-paint", phase: "Drywall", name: "Ceilings Paint", durationDays: 3, offsetDays: 72, parentRef: "painting", trade: "Painter", predecessorRefs: ["dw-touch"] },
+      { localId: "wall-paint", phase: "Drywall", name: "Wall Paint", durationDays: 7, offsetDays: 75, parentRef: "painting", trade: "Painter", predecessorRefs: ["ceil-paint"] },
+
+      // ── TILES (WBS 1.7) ───────────────────────────────────────────────────────
+      { localId: "tiles", phase: "Tiles", name: "Tiles", durationDays: 12, offsetDays: 82, parentRef: "root" },
+      { localId: "floor-tiles", phase: "Tiles", name: "Flooring Tiles", durationDays: 7, offsetDays: 82, parentRef: "tiles", trade: "Tile", predecessorRefs: ["wall-paint"] },
+      { localId: "bath-tiles", phase: "Tiles", name: "Bathroom Wall Tiles", durationDays: 5, offsetDays: 64, parentRef: "tiles", trade: "Tile", predecessorRefs: ["dw-insp"] },
+
+      // ── FINE CARPENTRY (WBS 1.8) ──────────────────────────────────────────────
+      { localId: "carpentry", phase: "Fine Carpentry", name: "Fine Carpentry", durationDays: 13, offsetDays: 89, parentRef: "root" },
+      { localId: "doors", phase: "Fine Carpentry", name: "Doors Installation", durationDays: 3, offsetDays: 89, parentRef: "carpentry", trade: "Carpenter", predecessorRefs: ["floor-tiles"] },
+      { localId: "baseboards", phase: "Fine Carpentry", name: "Baseboards Installation", durationDays: 10, offsetDays: 92, parentRef: "carpentry", trade: "Carpenter", predecessorRefs: ["doors"] },
+      { localId: "door-casings", phase: "Fine Carpentry", name: "Doors Casings Installation", durationDays: 5, offsetDays: 92, parentRef: "carpentry", trade: "Carpenter", predecessorRefs: ["doors"] },
+
+      // ── STUCCO & EXTERIOR PAINT (WBS 1.9 / 1.10) — no linked from/to in v2 ───
+      { localId: "stucco", phase: "Exterior", name: "Stucco", durationDays: 60, offsetDays: 33, parentRef: "root", trade: "Stucco" },
+      { localId: "ext-paint", phase: "Exterior", name: "Exterior Paint", durationDays: 60, offsetDays: 93, parentRef: "root", trade: "Painter" },
+
+      // Electrical Trims — depends on ceil-paint and wall-paint (v2 change)
+      { localId: "elec-trims", phase: "Electrical", name: "Electrical Trims and outlets", durationDays: 4, offsetDays: 82, parentRef: "elec", trade: "Electrical", predecessorRefs: ["ceil-paint", "wall-paint"] },
+      { localId: "elec-final", phase: "Electrical", name: "Electrical Final Inspection", durationDays: 1, offsetDays: 86, parentRef: "elec", isMilestone: true, predecessorRefs: ["elec-trims"] },
+
+      // Plumbing Trims (WBS 1.2.3) — in v2, plumb-tub deps framing-insp, plumb-vanity deps wall-paint, plumb-toilets deps floor-tiles
+      { localId: "plumb-trims", phase: "Plumbing", name: "Plumbing Trims", durationDays: 3, offsetDays: 82, parentRef: "plumbing" },
+      { localId: "plumb-toilets", phase: "Plumbing", name: "Toilets Installation", durationDays: 1, offsetDays: 89, parentRef: "plumb-trims", trade: "Plumbing", predecessorRefs: ["floor-tiles"] },
+      { localId: "plumb-vanity", phase: "Plumbing", name: "Vanity Installation", durationDays: 1, offsetDays: 82, parentRef: "plumb-trims", trade: "Plumbing", predecessorRefs: ["wall-paint"] },
+      { localId: "plumb-tub", phase: "Plumbing", name: "Bathtub Installation", durationDays: 1, offsetDays: 45, parentRef: "plumb-trims", trade: "Plumbing", predecessorRefs: ["framing-insp"] },
+
+      // Plumbing Final Inspection (WBS 1.2.4) — depends on bathtub (not toilets/vanity per v2)
+      { localId: "plumb-final", phase: "Plumbing", name: "Plumbing Final Inspection", durationDays: 1, offsetDays: 46, parentRef: "plumbing", isMilestone: true, predecessorRefs: ["plumb-tub"] },
+
+      // HVAC Trims — hvac-split depends on wall-paint (v2 change)
+      { localId: "hvac-split", phase: "HVAC", name: "HVAC Mini Split Installation", durationDays: 1, offsetDays: 82, parentRef: "hvac", trade: "HVAC", predecessorRefs: ["wall-paint"] },
+      { localId: "hvac-final", phase: "HVAC", name: "HVAC Final Inspection", durationDays: 1, offsetDays: 83, parentRef: "hvac", isMilestone: true, predecessorRefs: ["hvac-split"] },
+
+      // ── CLOSEOUT (WBS 1.12 / 1.13) — no linked from/to in v2 ──────────────────
+      { localId: "final-clean", phase: "Closeout", name: "Final Cleaning", durationDays: 1, offsetDays: 99, parentRef: "root" },
+      { localId: "bldg-final-insp", phase: "Closeout", name: "Building Final Inspection", durationDays: 1, offsetDays: 100, parentRef: "root", isMilestone: true },
+    ],
+  },
 ];
 
 // ── Save Schedule Modal ────────────────────────────────────────────────────────
