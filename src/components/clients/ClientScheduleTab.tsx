@@ -2022,7 +2022,19 @@ function ScheduleTableView({
 
   // ── Style helpers ─────────────────────────────────────────────────────────
   type CK = keyof typeof colWidths;
-  const RHANDLE: React.CSSProperties = { position: "absolute", right: 0, top: 0, bottom: 0, width: 10, cursor: "col-resize", zIndex: 10 };
+  function onThMouseDown(key: keyof typeof colWidths, e: React.MouseEvent<HTMLTableCellElement>) {
+    const rect = e.currentTarget.getBoundingClientRect();
+    if (e.clientX >= rect.right - 12) {
+      startResize(key, e);
+    }
+  }
+  function onThMouseMove(e: React.MouseEvent<HTMLTableCellElement>) {
+    const rect = e.currentTarget.getBoundingClientRect();
+    e.currentTarget.style.cursor = e.clientX >= rect.right - 12 ? "col-resize" : "default";
+  }
+  function onThMouseLeave(e: React.MouseEvent<HTMLTableCellElement>) {
+    e.currentTarget.style.cursor = "default";
+  }
 
   const col = (k: CK, extra?: React.CSSProperties): React.CSSProperties => ({
     minWidth: colWidths[k], maxWidth: colWidths[k], padding: "0 8px", borderRight: "1px solid #21262d",
@@ -2076,21 +2088,28 @@ function ScheduleTableView({
         <table style={{ borderCollapse: "collapse", tableLayout: "fixed", width: "100%" }}>
           <thead>
             <tr>
-              <th style={{ ...th("num"), position: "sticky", left: 0, zIndex: 3, textAlign: "center" }}>
-                #<div style={RHANDLE} onMouseDown={e => startResize("num", e)} />
-              </th>
-              <th style={th("link")} title="Finish-to-Start: this task cannot start until the linked tasks are finished">
-                LINKED FROM<div style={RHANDLE} onMouseDown={e => startResize("link", e)} />
-              </th>
-              <th style={th("wbs")}>WBS<div style={RHANDLE} onMouseDown={e => startResize("wbs", e)} /></th>
-              <th style={{ ...th("name"), textAlign: "left" }}>TASK NAME<div style={RHANDLE} onMouseDown={e => startResize("name", e)} /></th>
-              <th style={{ ...th("dur"), textAlign: "center" }}>DURATION<div style={RHANDLE} onMouseDown={e => startResize("dur", e)} /></th>
-              <th style={{ ...th("pct"), textAlign: "center" }}>%<div style={RHANDLE} onMouseDown={e => startResize("pct", e)} /></th>
-              <th style={th("start")}>PLANNED START<div style={RHANDLE} onMouseDown={e => startResize("start", e)} /></th>
-              <th style={th("end")}>PLANNED END<div style={RHANDLE} onMouseDown={e => startResize("end", e)} /></th>
-              <th style={th("actual")}>ACTUAL FINISH<div style={RHANDLE} onMouseDown={e => startResize("actual", e)} /></th>
-              <th style={{ ...th("priority"), textAlign: "center" }}>PRIORITY<div style={RHANDLE} onMouseDown={e => startResize("priority", e)} /></th>
-              <th style={th("status")}>STATUS<div style={RHANDLE} onMouseDown={e => startResize("status", e)} /></th>
+              <th style={{ ...th("num"), position: "sticky", left: 0, zIndex: 3, textAlign: "center" }}
+                onMouseDown={e => onThMouseDown("num", e)} onMouseMove={onThMouseMove} onMouseLeave={onThMouseLeave}>#</th>
+              <th style={th("link")} title="Predecessor row numbers"
+                onMouseDown={e => onThMouseDown("link", e)} onMouseMove={onThMouseMove} onMouseLeave={onThMouseLeave}>LINKED FROM</th>
+              <th style={th("wbs")}
+                onMouseDown={e => onThMouseDown("wbs", e)} onMouseMove={onThMouseMove} onMouseLeave={onThMouseLeave}>WBS</th>
+              <th style={{ ...th("name"), textAlign: "left" }}
+                onMouseDown={e => onThMouseDown("name", e)} onMouseMove={onThMouseMove} onMouseLeave={onThMouseLeave}>TASK NAME</th>
+              <th style={{ ...th("dur"), textAlign: "center" }}
+                onMouseDown={e => onThMouseDown("dur", e)} onMouseMove={onThMouseMove} onMouseLeave={onThMouseLeave}>DURATION</th>
+              <th style={{ ...th("pct"), textAlign: "center" }}
+                onMouseDown={e => onThMouseDown("pct", e)} onMouseMove={onThMouseMove} onMouseLeave={onThMouseLeave}>%</th>
+              <th style={th("start")}
+                onMouseDown={e => onThMouseDown("start", e)} onMouseMove={onThMouseMove} onMouseLeave={onThMouseLeave}>PLANNED START</th>
+              <th style={th("end")}
+                onMouseDown={e => onThMouseDown("end", e)} onMouseMove={onThMouseMove} onMouseLeave={onThMouseLeave}>PLANNED END</th>
+              <th style={th("actual")}
+                onMouseDown={e => onThMouseDown("actual", e)} onMouseMove={onThMouseMove} onMouseLeave={onThMouseLeave}>ACTUAL FINISH</th>
+              <th style={{ ...th("priority"), textAlign: "center" }}
+                onMouseDown={e => onThMouseDown("priority", e)} onMouseMove={onThMouseMove} onMouseLeave={onThMouseLeave}>PRIORITY</th>
+              <th style={th("status")}
+                onMouseDown={e => onThMouseDown("status", e)} onMouseMove={onThMouseMove} onMouseLeave={onThMouseLeave}>STATUS</th>
               <th style={{ ...th("assignee"), borderRight: "none" }}>ASSIGNEE</th>
             </tr>
           </thead>
