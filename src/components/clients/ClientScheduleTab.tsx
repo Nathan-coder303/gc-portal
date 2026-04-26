@@ -1874,11 +1874,11 @@ function EditTaskModal({
 
         {onMove && currentRow != null && (
           <div className="flex items-center gap-2 mb-4 pb-3" style={{ borderBottom: "1px solid #21262d" }}>
-            <span className="text-xs shrink-0" style={{ color: "#8b949e" }}>Row #</span>
+            <span className="text-xs shrink-0" style={{ color: "#8b949e" }}>Task #</span>
             <input type="number" min="1" max={totalRows ?? 999} value={form.moveToRow}
               onChange={e => setForm(f => ({ ...f, moveToRow: e.target.value }))}
               style={{ ...INPUT, width: 60, textAlign: "center" }} className="outline-none" />
-            <span className="text-[10px]" style={{ color: "#484f58" }}>currently {currentRow} of {totalRows} — change and Save to move</span>
+            <span className="text-[10px]" style={{ color: "#484f58" }}>currently #{currentRow} of {totalRows} — change and Save to move</span>
           </div>
         )}
 
@@ -2461,15 +2461,15 @@ function ScheduleTableView({
 
       {editTask && (
         <EditTaskModal task={editTask} companyId={companyId} clientId={clientId}
-          currentRow={rows.find(r => r.task.id === editTask.id)?.rowNum}
-          totalRows={rows.length}
+          currentRow={(() => { const s = [...tasks].sort((a,b) => a.sortOrder - b.sortOrder); const i = s.findIndex(t => t.id === editTask.id); return i >= 0 ? i + 1 : undefined; })()}
+          totalRows={tasks.length}
           onUpdate={async updated => { const cascaded = await cascadeFromTask(updated); onTasksChange(cascaded); }}
           onDelete={id => { onTasksChange(tasks.filter(t => t.id !== id)); setEditTask(null); }}
           onMove={toRow => {
             const taskId = editTask.id;
-            const flatIds = rowsRef.current.map(r => r.task.id);
-            if (!flatIds.includes(taskId)) return;
-            const filtered = flatIds.filter(id => id !== taskId);
+            const sortedIds = [...tasksRef.current].sort((a, b) => a.sortOrder - b.sortOrder).map(t => t.id);
+            if (!sortedIds.includes(taskId)) return;
+            const filtered = sortedIds.filter(id => id !== taskId);
             filtered.splice(Math.max(0, Math.min(filtered.length, toRow - 1)), 0, taskId);
             const newOrders = new Map(filtered.map((id, i) => [id, i]));
             const updated = tasksRef.current.map(t => ({ ...t, sortOrder: newOrders.get(t.id) ?? t.sortOrder }));
