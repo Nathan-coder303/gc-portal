@@ -3283,6 +3283,25 @@ export default function ClientScheduleTab({ companyId, clientId, clientName, ini
   const done = tasks.filter(t => t.status === "DONE").length;
   const inProgress = tasks.filter(t => t.status === "IN_PROGRESS").length;
   const blocked = tasks.filter(t => t.status === "BLOCKED").length;
+  const [quickSaving, setQuickSaving] = useState(false);
+  const [quickSaved, setQuickSaved] = useState(false);
+
+  async function handleQuickSave() {
+    if (!savedTemplateId) { setSavingTemplate("saveas"); return; }
+    setQuickSaving(true);
+    const taskPayload = tasks.map(t => ({
+      phase: t.phase, name: t.name, durationDays: t.durationDays, offsetDays: 0,
+      trade: t.trade, assignee: t.assignee, isMilestone: t.isMilestone,
+      parentId: t.parentId, predecessorIds: t.predecessorIds, sortOrder: t.sortOrder, notes: t.notes,
+    }));
+    await fetch(`/api/${companyId}/schedule-templates/${savedTemplateId}`, {
+      method: "PATCH", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ name: savedTemplateName, tasks: taskPayload }),
+    });
+    setQuickSaving(false);
+    setQuickSaved(true);
+    setTimeout(() => setQuickSaved(false), 2000);
+  }
 
   async function handleDeleteAll() {
     await Promise.all(tasks.map(t =>
@@ -3429,9 +3448,9 @@ export default function ClientScheduleTab({ companyId, clientId, clientName, ini
               )}
               {tasks.length > 0 && (
                 <>
-                  <button onClick={() => setSavingTemplate("save")} className="text-xs font-semibold px-3 py-1.5 rounded-lg"
-                    style={{ background: "#1e2736", border: "1px solid #30373f", color: "#8b949e" }}>
-                    💾 Save{savedTemplateId && savedTemplateName ? ` "${savedTemplateName}"` : ""}
+                  <button onClick={handleQuickSave} disabled={quickSaving} className="text-xs font-semibold px-3 py-1.5 rounded-lg"
+                    style={{ background: quickSaved ? "#162312" : "#1e2736", border: `1px solid ${quickSaved ? "#22c55e55" : "#30373f"}`, color: quickSaved ? "#22c55e" : "#8b949e" }}>
+                    {quickSaved ? "✓ Saved" : quickSaving ? "Saving…" : `💾 Save${savedTemplateId && savedTemplateName ? ` "${savedTemplateName}"` : ""}`}
                   </button>
                   <button onClick={() => setSavingTemplate("saveas")} className="text-xs font-semibold px-3 py-1.5 rounded-lg"
                     style={{ background: "#1e2736", border: "1px solid #30373f", color: "#8b949e" }}>
