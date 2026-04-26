@@ -147,33 +147,46 @@ function ClientCard({
           <div className="font-bold text-sm leading-tight truncate flex-1" style={{ color: "#e6edf3" }}>{client.name}</div>
         </div>
 
+        {/* Phone row — full width, clickable */}
+        <div className="w-full">
+          {client.phone ? (
+            <a
+              href={`tel:${client.phone}`}
+              onClick={(e) => e.stopPropagation()}
+              className="block w-full text-xs font-medium py-1 px-2 rounded text-center"
+              style={{ color: "#e6edf3", background: "#1e2736", border: "1px solid #30373f" }}
+            >
+              {formatPhone(client.phone)}
+            </a>
+          ) : (
+            <div className="text-xs text-center py-1" style={{ color: "#30373f" }}>no phone</div>
+          )}
+        </div>
+
         {/* Amounts row */}
-        <div className="flex items-end gap-3">
-          <div className="flex-1">
-            <div className="text-[10px] font-medium mb-0.5" style={{ color: "#484f58" }}>ESTIMATE</div>
-            <div className="font-black leading-none truncate" style={{ color: client.estimateTotal > 0 ? "#22c55e" : "#30373f", fontSize: client.estimateTotal >= 1000000 ? 11 : client.estimateTotal >= 100000 ? 13 : 15 }}>
+        <div className="flex items-end gap-1.5">
+          <div className="flex-1 min-w-0">
+            <div className="text-[8px] font-medium mb-0.5 truncate" style={{ color: "#484f58" }}>ESTIMATE</div>
+            <div className="font-black leading-none truncate" style={{ color: client.estimateTotal > 0 ? "#22c55e" : "#30373f", fontSize: client.estimateTotal >= 1000000 ? 10 : client.estimateTotal >= 100000 ? 11 : 13 }}>
               {client.estimateTotal > 0 ? `$${client.estimateTotal.toLocaleString("en-US", { maximumFractionDigits: 0 })}` : "—"}
             </div>
           </div>
-          <div className="flex-1">
-            <div className="text-[10px] font-medium mb-0.5" style={{ color: "#484f58" }}>GC FEE</div>
-            <div className="font-black leading-none truncate" style={{ color: client.gcFee > 0 ? "#C9A84C" : "#30373f", fontSize: client.gcFee >= 1000000 ? 11 : client.gcFee >= 100000 ? 13 : 15 }}>
+          <div className="flex-1 min-w-0">
+            <div className="text-[8px] font-medium mb-0.5 truncate" style={{ color: "#484f58" }}>GC FEE</div>
+            <div className="font-black leading-none truncate" style={{ color: client.gcFee > 0 ? "#C9A84C" : "#30373f", fontSize: client.gcFee >= 1000000 ? 10 : client.gcFee >= 100000 ? 11 : 13 }}>
               {client.gcFee > 0 ? `$${client.gcFee.toLocaleString("en-US", { maximumFractionDigits: 0 })}` : "—"}
             </div>
           </div>
-          <div className="flex-1">
-            <div className="text-[10px] font-medium mb-0.5" style={{ color: "#484f58" }}>INT. PROFIT</div>
-            <div className="font-black leading-none truncate" style={{ color: client.internalProfit > 0 ? "#3b82f6" : "#30373f", fontSize: client.internalProfit >= 1000000 ? 11 : client.internalProfit >= 100000 ? 13 : 15 }}>
+          <div className="flex-1 min-w-0">
+            <div className="text-[8px] font-medium mb-0.5 truncate" style={{ color: "#484f58" }}>INT. PROFIT</div>
+            <div className="font-black leading-none truncate" style={{ color: client.internalProfit > 0 ? "#3b82f6" : "#30373f", fontSize: client.internalProfit >= 1000000 ? 10 : client.internalProfit >= 100000 ? 11 : 13 }}>
               {client.internalProfit > 0 ? `$${client.internalProfit.toLocaleString("en-US", { maximumFractionDigits: 0 })}` : "—"}
             </div>
           </div>
         </div>
 
-        {/* Phone + buttons row */}
-        <div className="flex items-center justify-between gap-2">
-          <div className="text-xs truncate" style={{ color: "#8b949e" }}>
-            {client.phone ? formatPhone(client.phone) : <span style={{ color: "#30373f" }}>no phone</span>}
-          </div>
+        {/* Buttons row */}
+        <div className="flex items-center justify-end gap-2">
           {isAdmin && (
             <div className="flex gap-1.5 shrink-0" onClick={(e) => e.stopPropagation()}>
               <button
