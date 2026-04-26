@@ -1276,8 +1276,9 @@ function ClientGanttChart({ tasks, projectStart, companyId, clientId, canEdit, o
   });
 
   const phases = useMemo(() => {
+    const sorted = [...tasks].sort((a, b) => a.sortOrder - b.sortOrder);
     const map = new Map<string, ClientTask[]>();
-    for (const t of tasks) { const arr = map.get(t.phase) ?? []; arr.push(t); map.set(t.phase, arr); }
+    for (const t of sorted) { const arr = map.get(t.phase) ?? []; arr.push(t); map.set(t.phase, arr); }
     return map;
   }, [tasks]);
 
@@ -2077,31 +2078,8 @@ function ScheduleTableView({
   const tasksRef = useRef<ClientTask[]>(tasks);
   const dropIdRef = useRef<string | null>(null);
   const dragIdRef = useRef<string | null>(null);
-  const pendingMoveRef = useRef<{ taskId: string; toRow: number } | null>(null);
   useEffect(() => { rowsRef.current = rows; }, [rows]);
   useEffect(() => { tasksRef.current = tasks; }, [tasks]);
-
-  // After edit modal closes, execute any pending row-move
-  useEffect(() => {
-    if (editTask) return;
-    if (!pendingMoveRef.current) return;
-    const { taskId, toRow } = pendingMoveRef.current;
-    pendingMoveRef.current = null;
-    const flatIds = rowsRef.current.map(r => r.task.id);
-    if (!flatIds.includes(taskId)) return;
-    const filtered = flatIds.filter(id => id !== taskId);
-    filtered.splice(Math.max(0, Math.min(filtered.length, toRow - 1)), 0, taskId);
-    const newOrders = new Map(filtered.map((id, i) => [id, i]));
-    const updated = tasksRef.current.map(t => ({ ...t, sortOrder: newOrders.get(t.id) ?? t.sortOrder }));
-    onTasksChange(updated);
-    Promise.all(filtered.map(id => {
-      const t = updated.find(x => x.id === id);
-      if (!t) return Promise.resolve();
-      return fetch(`/api/${companyId}/clients/${clientId}/schedule/${t.id}`, {
-        method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ sortOrder: t.sortOrder }),
-      });
-    }));
-  }, [editTask]);
 
   // Close context menu on outside click; ESC cancels parent-set mode
   useEffect(() => {
@@ -2487,7 +2465,23 @@ function ScheduleTableView({
           totalRows={rows.length}
           onUpdate={async updated => { const cascaded = await cascadeFromTask(updated); onTasksChange(cascaded); }}
           onDelete={id => { onTasksChange(tasks.filter(t => t.id !== id)); setEditTask(null); }}
-          onMove={toRow => { pendingMoveRef.current = { taskId: editTask.id, toRow }; }}
+          onMove={toRow => {
+            const taskId = editTask.id;
+            const flatIds = rowsRef.current.map(r => r.task.id);
+            if (!flatIds.includes(taskId)) return;
+            const filtered = flatIds.filter(id => id !== taskId);
+            filtered.splice(Math.max(0, Math.min(filtered.length, toRow - 1)), 0, taskId);
+            const newOrders = new Map(filtered.map((id, i) => [id, i]));
+            const updated = tasksRef.current.map(t => ({ ...t, sortOrder: newOrders.get(t.id) ?? t.sortOrder }));
+            onTasksChange(updated);
+            Promise.all(filtered.map(id => {
+              const t = updated.find(x => x.id === id);
+              if (!t) return Promise.resolve();
+              return fetch(`/api/${companyId}/clients/${clientId}/schedule/${t.id}`, {
+                method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ sortOrder: t.sortOrder }),
+              });
+            }));
+          }}
           onClose={() => setEditTask(null)} />
       )}
 
