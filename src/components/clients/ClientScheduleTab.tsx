@@ -2037,7 +2037,7 @@ function ScheduleTableView({
   }
 
   const col = (k: CK, extra?: React.CSSProperties): React.CSSProperties => ({
-    minWidth: colWidths[k], maxWidth: colWidths[k], padding: "0 8px", borderRight: "1px solid #21262d",
+    width: colWidths[k], minWidth: colWidths[k], maxWidth: colWidths[k], padding: "0 8px", borderRight: "1px solid #21262d",
     overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
     fontSize: 12, color: "#e6edf3", height: 36, display: "table-cell", verticalAlign: "middle",
     position: "relative", ...extra,
@@ -2085,7 +2085,7 @@ function ScheduleTableView({
       </div>
 
       <div style={{ overflowX: "auto", overflowY: "auto", maxHeight: "70vh", borderRadius: 8, border: "1px solid #21262d" }}>
-        <table style={{ borderCollapse: "collapse", tableLayout: "fixed", width: "100%" }}>
+        <table style={{ borderCollapse: "collapse", tableLayout: "fixed", minWidth: "100%" }}>
           <thead>
             <tr>
               <th style={{ ...th("num"), position: "sticky", left: 0, zIndex: 3, textAlign: "center" }}
