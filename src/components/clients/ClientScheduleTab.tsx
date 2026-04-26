@@ -1876,9 +1876,9 @@ function EditTaskModal({
           <div className="flex items-center gap-2 mb-4 pb-3" style={{ borderBottom: "1px solid #21262d" }}>
             <span className="text-xs shrink-0" style={{ color: "#8b949e" }}>Task #</span>
             <input type="number" min="1" max={totalRows ?? 999} step="1" value={form.moveToRow}
-              onChange={e => setForm(f => ({ ...f, moveToRow: e.target.value.replace(/[^0-9]/g, "") }))}
+              onChange={e => setForm(f => ({ ...f, moveToRow: e.target.value }))}
               style={{ ...INPUT, width: 60, textAlign: "center" }} className="outline-none" />
-            <span className="text-[10px]" style={{ color: "#484f58" }}>whole number · currently #{currentRow} of {totalRows}</span>
+            <span className="text-[10px]" style={{ color: "#484f58" }}>sequential # (not WBS) · currently #{currentRow} of {totalRows}</span>
           </div>
         )}
 
@@ -2070,6 +2070,7 @@ function ScheduleTableView({
   const [colWidths, setColWidths] = useState({ num: 44, link: 72, wbs: 76, name: 260, dur: 82, pct: 52, start: 106, end: 106, actual: 106, priority: 82, status: 108, assignee: 120 });
 
   const phases = useMemo(() => Array.from(new Set(tasks.map(t => t.phase))), [tasks]);
+  const phaseNames = useMemo(() => new Set(tasks.map(t => t.phase)), [tasks]);
   const rows = useMemo(() => buildTableRows(tasks, collapsedIds), [tasks, collapsedIds]);
   const idToRow = useMemo(() => { const m = new Map<string, number>(); for (const r of rows) m.set(r.task.id, r.rowNum); return m; }, [rows]);
 
@@ -2328,7 +2329,7 @@ function ScheduleTableView({
               const { task, rowNum: rn, depth, wbs, hasChildren } = r;
               const isDragging = dragId === task.id;
               const isDropOver = dropId === task.id && dragId !== task.id;
-              const isSection = hasChildren || (!task.parentId && task.name === task.phase);
+              const isSection = hasChildren || (!task.parentId && phaseNames.has(task.name));
               const rowBg = isDropOver ? "#1f3a5f" : isSection ? "#191f2b" : rn % 2 === 0 ? "#0d1117" : "#0a0e14";
               const linkStr = task.predecessorIds.map(pid => idToRow.get(pid)).filter(Boolean).join(", ");
 
