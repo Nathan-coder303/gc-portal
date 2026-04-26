@@ -1760,7 +1760,7 @@ function EditTaskModal({
   task, companyId, clientId, onUpdate, onDelete, onClose, currentRow, totalRows, onMove,
 }: {
   task: ClientTask; companyId: string; clientId: string;
-  onUpdate: (updated: ClientTask) => void; onDelete: (id: string) => void; onClose: () => void;
+  onUpdate: (updated: ClientTask) => void | Promise<void>; onDelete: (id: string) => void; onClose: () => void;
   currentRow?: number; totalRows?: number; onMove?: (toRow: number) => void;
 }) {
   const [form, setForm] = useState({
@@ -1823,18 +1823,19 @@ function EditTaskModal({
         body: JSON.stringify(body),
       });
       const raw = await res.json();
-      onUpdate({
+      await onUpdate({
         ...task, ...raw,
         startDate: normDate(raw.startDate) ?? body.startDate,
         endDate: normDate(raw.endDate) ?? body.endDate,
         actualFinish: normDate(raw.actualFinish),
         durationDays: raw.durationDays ?? dur,
       });
-      // Queue row move (fires after modal closes via pendingMoveRef)
+      // Queue row move then close (pendingMoveRef fires in useEffect after editTask → null)
       const targetRow = parseInt(form.moveToRow);
       if (onMove && !isNaN(targetRow) && currentRow != null && targetRow !== currentRow) {
         onMove(targetRow);
       }
+      onClose();
     } finally {
       setSaving(false);
     }
@@ -2075,6 +2076,7 @@ function ScheduleTableView({
   const rowsRef = useRef<TableRow[]>([]);
   const tasksRef = useRef<ClientTask[]>(tasks);
   const dropIdRef = useRef<string | null>(null);
+  const dragIdRef = useRef<string | null>(null);
   const pendingMoveRef = useRef<{ taskId: string; toRow: number } | null>(null);
   useEffect(() => { rowsRef.current = rows; }, [rows]);
   useEffect(() => { tasksRef.current = tasks; }, [tasks]);
@@ -2131,14 +2133,27 @@ function ScheduleTableView({
   function startDrag(taskId: string, e: React.MouseEvent) {
     e.preventDefault();
     e.stopPropagation();
+    dragIdRef.current = taskId;
     setDragId(taskId);
     dropIdRef.current = null;
 
+    function handleMove(ev: MouseEvent) {
+      const el = document.elementFromPoint(ev.clientX, ev.clientY);
+      const tr = el?.closest("tr[data-task-id]");
+      const rowId = tr?.getAttribute("data-task-id");
+      if (rowId && rowId !== taskId && rowId !== dropIdRef.current) {
+        dropIdRef.current = rowId;
+        setDropId(rowId);
+      }
+    }
+
     function handleUp() {
       const target = dropIdRef.current;
+      dragIdRef.current = null;
       setDragId(null);
       setDropId(null);
       dropIdRef.current = null;
+      window.removeEventListener("mousemove", handleMove);
       window.removeEventListener("mouseup", handleUp);
 
       if (!target || target === taskId) return;
@@ -2158,7 +2173,8 @@ function ScheduleTableView({
       }));
     }
 
-    window.addEventListener("mouseup", handleUp, { once: true });
+    window.addEventListener("mousemove", handleMove);
+    window.addEventListener("mouseup", handleUp);
   }
 
   // ── Indent: make task child of the task immediately above it ─────────────
@@ -2366,8 +2382,7 @@ function ScheduleTableView({
               }
 
               return (
-                <tr key={task.id}
-                  onMouseEnter={() => { if (dragId && dragId !== task.id) { dropIdRef.current = task.id; setDropId(task.id); } }}
+                <tr key={task.id} data-task-id={task.id}
                   onDoubleClick={() => !settingParentFor && setEditTask(task)}
                   onClick={() => settingParentFor && handleSetParent(task)}
                   onContextMenu={e => { if (!canEdit) return; e.preventDefault(); setCtxMenu({ x: e.clientX, y: e.clientY, task }); }}
@@ -2470,7 +2485,7 @@ function ScheduleTableView({
         <EditTaskModal task={editTask} companyId={companyId} clientId={clientId}
           currentRow={rows.find(r => r.task.id === editTask.id)?.rowNum}
           totalRows={rows.length}
-          onUpdate={async updated => { const cascaded = await cascadeFromTask(updated); onTasksChange(cascaded); setEditTask(null); }}
+          onUpdate={async updated => { const cascaded = await cascadeFromTask(updated); onTasksChange(cascaded); }}
           onDelete={id => { onTasksChange(tasks.filter(t => t.id !== id)); setEditTask(null); }}
           onMove={toRow => { pendingMoveRef.current = { taskId: editTask.id, toRow }; }}
           onClose={() => setEditTask(null)} />
