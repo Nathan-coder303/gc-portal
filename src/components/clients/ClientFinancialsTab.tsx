@@ -327,9 +327,10 @@ export default function ClientFinancialsTab({
   // Computed totals
   const totalContracted = clientSubs.reduce((s, sub) => s + sub.contractAmount, 0);
   const totalLaborPaid = clientSubs.reduce((s, sub) => s + sub.payments.reduce((ps, p) => ps + p.amount, 0), 0);
-  const _totalLaborBalance = totalContracted - totalLaborPaid; void _totalLaborBalance;
+  const totalLaborBalance = totalContracted - totalLaborPaid;
   const totalMaterials = materials.reduce((s, p) => s + p.amount, 0);
-  const totalExpenses = totalLaborPaid + totalMaterials;
+  // Expenses = full sub contract cost (paid + balance owed) + materials
+  const totalExpenses = totalContracted + totalMaterials;
   const netProfit = contractTotal - totalExpenses;
 
   // Group materials by supplier
@@ -359,7 +360,9 @@ export default function ClientFinancialsTab({
 </div>
 <table><thead><tr><th>Description</th><th>Category</th><th style="text-align:right">Amount</th></tr></thead><tbody>
 ${rows}
-<tr class="total"><td colspan="2" style="padding:10px 12px">Total Labor (Paid to Subs)</td><td style="padding:10px 12px;text-align:right">$${fmt(totalLaborPaid)}</td></tr>
+<tr class="total"><td colspan="2" style="padding:10px 12px">Total Labor (Sub Contracts)</td><td style="padding:10px 12px;text-align:right">$${fmt(totalContracted)}</td></tr>
+<tr><td colspan="2" style="padding:4px 12px 4px 24px;font-size:12px;color:#64748b">Paid to Subs</td><td style="padding:4px 12px;text-align:right;font-size:12px;color:#64748b">$${fmt(totalLaborPaid)}</td></tr>
+<tr><td colspan="2" style="padding:4px 12px 10px 24px;font-size:12px;color:#64748b">Balance Owed</td><td style="padding:4px 12px 10px;text-align:right;font-size:12px;color:#64748b">$${fmt(totalLaborBalance)}</td></tr>
 <tr class="total"><td colspan="2" style="padding:10px 12px">Total Materials</td><td style="padding:10px 12px;text-align:right">$${fmt(totalMaterials)}</td></tr>
 <tr class="total"><td colspan="2" style="padding:10px 12px">Total Expenses</td><td style="padding:10px 12px;text-align:right">$${fmt(totalExpenses)}</td></tr>
 <tr class="profit"><td colspan="2" style="padding:12px">NET PROFIT</td><td style="padding:12px;text-align:right">$${fmt(netProfit)}</td></tr>
@@ -388,10 +391,11 @@ ${rows}
       </div>
 
       {/* Sub breakdown under summary */}
-      <div className="grid grid-cols-3 gap-3">
+      <div className="grid grid-cols-4 gap-3">
         {[
           { label: "Sub Contracted", value: totalContracted, color: "#C9A84C" },
           { label: "Labor Paid", value: totalLaborPaid, color: "#22c55e" },
+          { label: "Balance Owed", value: totalLaborBalance, color: "#f85149" },
           { label: "Materials", value: totalMaterials, color: "#3b82f6" },
         ].map(card => (
           <div key={card.label} className="rounded-xl px-4 py-3" style={{ background: "#0d1117", border: "1px solid #21262d" }}>
