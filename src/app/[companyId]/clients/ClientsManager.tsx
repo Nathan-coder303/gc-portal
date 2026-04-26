@@ -147,21 +147,17 @@ function ClientCard({
           <div className="font-bold text-sm leading-tight truncate flex-1" style={{ color: "#e6edf3" }}>{client.name}</div>
         </div>
 
-        {/* Phone row — full width, clickable */}
-        <div className="w-full">
-          {client.phone ? (
-            <a
-              href={`tel:${client.phone}`}
-              onClick={(e) => e.stopPropagation()}
-              className="block w-full text-xs font-medium py-1 px-2 rounded text-center"
-              style={{ color: "#e6edf3", background: "#1e2736", border: "1px solid #30373f" }}
-            >
-              {formatPhone(client.phone)}
-            </a>
-          ) : (
-            <div className="text-xs text-center py-1" style={{ color: "#30373f" }}>no phone</div>
-          )}
-        </div>
+        {/* Phone row — full width, clickable, no frame */}
+        {client.phone ? (
+          <a
+            href={`tel:${client.phone}`}
+            onClick={(e) => e.stopPropagation()}
+            className="block w-full text-xs font-medium text-center"
+            style={{ color: "#8b949e" }}
+          >
+            {formatPhone(client.phone)}
+          </a>
+        ) : null}
 
         {/* GC Fee + Int. Profit row */}
         <div className="flex items-end gap-1.5">
