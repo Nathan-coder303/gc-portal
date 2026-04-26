@@ -2022,7 +2022,7 @@ function ScheduleTableView({
 
   // ── Style helpers ─────────────────────────────────────────────────────────
   type CK = keyof typeof colWidths;
-  const RHANDLE: React.CSSProperties = { position: "absolute", right: -4, top: 0, bottom: 0, width: 10, cursor: "col-resize", zIndex: 10 };
+  const RHANDLE: React.CSSProperties = { position: "absolute", right: 0, top: 0, bottom: 0, width: 10, cursor: "col-resize", zIndex: 10 };
 
   const col = (k: CK, extra?: React.CSSProperties): React.CSSProperties => ({
     minWidth: colWidths[k], maxWidth: colWidths[k], padding: "0 8px", borderRight: "1px solid #21262d",
@@ -2033,7 +2033,8 @@ function ScheduleTableView({
   const th = (k: CK, extra?: React.CSSProperties): React.CSSProperties => ({
     ...col(k), background: "#161b22", color: "#8b949e", fontWeight: 700, fontSize: 11,
     letterSpacing: "0.04em", textTransform: "uppercase" as const,
-    height: 32, position: "sticky" as const, top: 0, zIndex: 2, userSelect: "none" as const, ...extra,
+    height: 32, position: "sticky" as const, top: 0, zIndex: 2, userSelect: "none" as const,
+    overflow: "visible" as const, ...extra,
   });
 
   function statusLabel(s: string) { return ({ NOT_STARTED: "To Do", IN_PROGRESS: "In Progress", DONE: "Done", BLOCKED: "Blocked" } as Record<string,string>)[s] ?? s; }
