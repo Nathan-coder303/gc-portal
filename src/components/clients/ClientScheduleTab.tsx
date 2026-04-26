@@ -866,7 +866,7 @@ function LoadTemplateModal({
 }: {
   companyId: string;
   clientId: string;
-  onLoaded: (tasks: ClientTask[]) => void;
+  onLoaded: (tasks: ClientTask[], templateId?: string, templateName?: string) => void;
   onClose: () => void;
 }) {
   const [selected, setSelected] = useState<ScheduleTemplate | null>(null);
@@ -946,7 +946,7 @@ function LoadTemplateModal({
       });
     }
     setLoading(false);
-    onLoaded(created);
+    onLoaded(created, selectedSaved?.id, selectedSaved?.name);
   }
 
   async function handleDelete(id: string, e: React.MouseEvent) {
@@ -3517,7 +3517,11 @@ export default function ClientScheduleTab({ companyId, clientId, clientName, ini
       {loadingTemplate && (
         <LoadTemplateModal
           companyId={companyId} clientId={clientId}
-          onLoaded={newTasks => { commitTasks([...tasks, ...newTasks]); setLoadingTemplate(false); }}
+          onLoaded={(newTasks, tplId, tplName) => {
+            commitTasks([...tasks, ...newTasks]);
+            if (tplId) { setSavedTemplateId(tplId); setSavedTemplateName(tplName ?? null); }
+            setLoadingTemplate(false);
+          }}
           onClose={() => setLoadingTemplate(false)}
         />
       )}
