@@ -64,8 +64,14 @@ function todayStr() { return new Date().toISOString().slice(0, 10); }
 function toDateStr(d: Date) { return d.toISOString().slice(0, 10); }
 function parseDate(s: string | null): Date | null {
   if (!s) return null;
-  const d = new Date(s + "T00:00:00");
+  // Normalize: strip time portion if full ISO string
+  const datePart = s.length > 10 ? s.slice(0, 10) : s;
+  const d = new Date(datePart + "T00:00:00");
   return isNaN(d.getTime()) ? null : d;
+}
+function normDate(s: string | null | undefined): string | null {
+  if (!s) return null;
+  return s.length > 10 ? s.slice(0, 10) : s;
 }
 
 // ── Schedule Templates ─────────────────────────────────────────────────────────
@@ -1672,9 +1678,9 @@ function EditTaskModal({
     name: task.name,
     phase: task.phase,
     durationDays: String(task.durationDays),
-    startDate: task.startDate ?? "",
-    endDate: task.endDate ?? "",
-    actualFinish: task.actualFinish ?? "",
+    startDate: normDate(task.startDate) ?? "",
+    endDate: normDate(task.endDate) ?? "",
+    actualFinish: normDate(task.actualFinish) ?? "",
     percentComplete: String(task.percentComplete),
     status: task.status,
     priority: task.priority ?? "",
@@ -1686,6 +1692,20 @@ function EditTaskModal({
   });
   const [saving, setSaving] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
+
+  // Auto-recompute end date when start or duration changes
+  function updateStart(val: string) {
+    const dur = Math.max(1, parseInt(form.durationDays) || 1);
+    const s = parseDate(val);
+    const newEnd = s ? toDateStr(addDays(s, dur - 1)) : form.endDate;
+    setForm(f => ({ ...f, startDate: val, endDate: newEnd }));
+  }
+  function updateDuration(val: string) {
+    const dur = Math.max(1, parseInt(val) || 1);
+    const s = parseDate(form.startDate);
+    const newEnd = s ? toDateStr(addDays(s, dur - 1)) : form.endDate;
+    setForm(f => ({ ...f, durationDays: val, endDate: newEnd }));
+  }
 
   async function handleSave() {
     setSaving(true);
@@ -1712,8 +1732,14 @@ function EditTaskModal({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(body),
       });
-      const updated = await res.json();
-      onUpdate({ ...task, ...updated });
+      const raw = await res.json();
+      onUpdate({
+        ...task, ...raw,
+        startDate: normDate(raw.startDate) ?? body.startDate,
+        endDate: normDate(raw.endDate) ?? body.endDate,
+        actualFinish: normDate(raw.actualFinish),
+        durationDays: raw.durationDays ?? dur,
+      });
     } finally {
       setSaving(false);
     }
@@ -1761,14 +1787,14 @@ function EditTaskModal({
             </div>
             <div>
               <label className="block text-[11px] mb-1" style={{ color: "#8b949e" }}>Duration (days)</label>
-              <input type="number" min="1" value={form.durationDays} onChange={e => setForm(f => ({ ...f, durationDays: e.target.value }))} style={INPUT} className="outline-none" />
+              <input type="number" min="1" value={form.durationDays} onChange={e => updateDuration(e.target.value)} style={INPUT} className="outline-none" />
             </div>
             <div>
               <label className="block text-[11px] mb-1" style={{ color: "#8b949e" }}>Planned Start</label>
-              <input type="date" value={form.startDate} onChange={e => setForm(f => ({ ...f, startDate: e.target.value }))} style={INPUT} className="outline-none" />
+              <input type="date" value={form.startDate} onChange={e => updateStart(e.target.value)} style={INPUT} className="outline-none" />
             </div>
             <div>
-              <label className="block text-[11px] mb-1" style={{ color: "#8b949e" }}>Planned End</label>
+              <label className="block text-[11px] mb-1" style={{ color: "#8b949e" }}>Planned End <span style={{ color: "#484f58", fontWeight: 400 }}>(auto)</span></label>
               <input type="date" value={form.endDate} onChange={e => setForm(f => ({ ...f, endDate: e.target.value }))} style={INPUT} className="outline-none" />
             </div>
             <div>
@@ -2020,6 +2046,40 @@ function ScheduleTableView({
     onTasksChange(tasks.map(t => t.id === task.id ? { ...t, parentId: null } : t));
   }
 
+  // ── Predecessor cascade ────────────────────────────────────────────────────
+  async function cascadeFromTask(updatedTask: ClientTask): Promise<ClientTask[]> {
+    let current = tasks.map(t => t.id === updatedTask.id ? updatedTask : t);
+    const queue = [updatedTask.id];
+    const visited = new Set<string>();
+    while (queue.length > 0) {
+      const taskId = queue.shift()!;
+      if (visited.has(taskId)) continue;
+      visited.add(taskId);
+      const source = current.find(t => t.id === taskId);
+      if (!source?.endDate) continue;
+      const dependents = current.filter(t => t.predecessorIds.includes(taskId));
+      for (const dep of dependents) {
+        const predEnds = dep.predecessorIds
+          .map(pid => current.find(t => t.id === pid)?.endDate)
+          .filter(Boolean) as string[];
+        if (!predEnds.length) continue;
+        const latestEnd = predEnds.reduce((m, d) => d > m ? d : m, predEnds[0]);
+        const predEnd = parseDate(latestEnd);
+        if (!predEnd) continue;
+        const newStart = toDateStr(addDays(predEnd, 1));
+        const newEnd = toDateStr(addDays(addDays(predEnd, 1), dep.durationDays - 1));
+        if (newStart === dep.startDate && newEnd === dep.endDate) continue;
+        await fetch(`/api/${companyId}/clients/${clientId}/schedule/${dep.id}`, {
+          method: "PATCH", headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ startDate: newStart, endDate: newEnd }),
+        });
+        current = current.map(t => t.id === dep.id ? { ...t, startDate: newStart, endDate: newEnd } : t);
+        queue.push(dep.id);
+      }
+    }
+    return current;
+  }
+
   // ── Style helpers ─────────────────────────────────────────────────────────
   type CK = keyof typeof colWidths;
   function onThMouseDown(key: keyof typeof colWidths, e: React.MouseEvent<HTMLTableCellElement>) {
@@ -2253,7 +2313,7 @@ function ScheduleTableView({
 
       {editTask && (
         <EditTaskModal task={editTask} companyId={companyId} clientId={clientId}
-          onUpdate={updated => { onTasksChange(tasks.map(t => t.id === updated.id ? updated : t)); setEditTask(null); }}
+          onUpdate={async updated => { const cascaded = await cascadeFromTask(updated); onTasksChange(cascaded); setEditTask(null); }}
           onDelete={id => { onTasksChange(tasks.filter(t => t.id !== id)); setEditTask(null); }}
           onClose={() => setEditTask(null)} />
       )}
