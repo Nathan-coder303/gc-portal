@@ -2098,9 +2098,36 @@ function ScheduleTableView({
               const { task, rowNum: rn, depth, wbs, hasChildren } = r;
               const isDragging = dragId === task.id;
               const isDropOver = dropId === task.id && dragId !== task.id;
-              const isParent = hasChildren;
-              const rowBg = isDropOver ? "#1f3a5f" : isParent ? "#1e2736" : rn % 2 === 0 ? "#0d1117" : "#0a0e14";
+              const isSection = hasChildren;
+              const rowBg = isDropOver ? "#1f3a5f" : isSection ? "#191f2b" : rn % 2 === 0 ? "#0d1117" : "#0a0e14";
               const linkStr = task.predecessorIds.map(pid => idToRow.get(pid)).filter(Boolean).join(", ");
+
+              // For section rows: compute duration/start/end from all descendants
+              let displayDuration = task.durationDays;
+              let displayStart = task.startDate;
+              let displayEnd = task.endDate;
+              let displayPct = task.percentComplete;
+              if (isSection) {
+                const descendants = tasks.filter(t => {
+                  let cur = t;
+                  while (cur.parentId) {
+                    if (cur.parentId === task.id) return true;
+                    cur = tasks.find(x => x.id === cur.parentId) ?? cur;
+                    if (cur === t) break;
+                  }
+                  return false;
+                });
+                const allDates = descendants.flatMap(t => [t.startDate, t.endDate]).filter(Boolean) as string[];
+                if (allDates.length) {
+                  const sorted = [...allDates].sort();
+                  displayStart = sorted[0];
+                  displayEnd = sorted[sorted.length - 1];
+                  const s = parseDate(displayStart), e = parseDate(displayEnd);
+                  if (s && e) displayDuration = differenceInDays(e, s) + 1;
+                }
+                const doneCount = descendants.filter(t => t.status === "DONE").length;
+                displayPct = descendants.length ? Math.round((doneCount / descendants.length) * 100) : 0;
+              }
 
               return (
                 <tr key={task.id}
@@ -2115,7 +2142,7 @@ function ScheduleTableView({
                   style={{
                     background: rowBg, opacity: isDragging ? 0.3 : 1, transition: "opacity 0.1s",
                     cursor: settingParentFor ? "crosshair" : isDragging ? "grabbing" : "default",
-                    boxShadow: isDropOver ? `inset 0 2px 0 ${GOLD}` : undefined,
+                    boxShadow: isDropOver ? `inset 0 2px 0 ${GOLD}` : isSection ? `inset 3px 0 0 ${GOLD}44` : undefined,
                   }}
                   className="hover:brightness-110"
                 >
@@ -2124,16 +2151,16 @@ function ScheduleTableView({
                     <span style={{ userSelect: "none", fontSize: 11 }}>{canEdit ? "⠿ " : ""}{rn}</span>
                   </td>
                   {/* LINKED FROM */}
-                  <td style={{ ...col("link"), color: "#8b949e", textAlign: "center" }}>{linkStr}</td>
+                  <td style={{ ...col("link"), color: "#8b949e", textAlign: "center", fontWeight: isSection ? 700 : 400 }}>{linkStr}</td>
                   {/* WBS */}
-                  <td style={{ ...col("wbs"), color: "#8b949e" }}>{wbs}</td>
+                  <td style={{ ...col("wbs"), color: isSection ? GOLD : "#8b949e", fontWeight: isSection ? 700 : 400 }}>{wbs}</td>
                   {/* TASK NAME */}
-                  <td style={{ ...col("name"), paddingLeft: 8 + depth * 16, fontWeight: isParent ? 700 : 400, color: isParent ? GOLD : task.status === "DONE" ? "#484f58" : "#e6edf3" }}>
+                  <td style={{ ...col("name"), paddingLeft: 8 + depth * 16, fontWeight: isSection ? 700 : 400, color: isSection ? GOLD : task.status === "DONE" ? "#484f58" : "#e6edf3" }}>
                     <span style={{ display: "inline-flex", alignItems: "center", gap: 4, width: "100%", overflow: "hidden" }}>
                       {hasChildren && (
                         <button onClick={e => { e.stopPropagation(); toggleCollapse(task.id); }}
-                          style={{ background: "none", border: "none", cursor: "pointer", color: "#8b949e", padding: 0, fontSize: 12, flexShrink: 0 }}>
-                          {collapsedIds.has(task.id) ? "⊞" : "⊟"}
+                          style={{ background: "none", border: "none", cursor: "pointer", color: GOLD, padding: 0, fontSize: 11, flexShrink: 0, opacity: 0.8 }}>
+                          {collapsedIds.has(task.id) ? "▶" : "▼"}
                         </button>
                       )}
                       <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
@@ -2142,19 +2169,25 @@ function ScheduleTableView({
                     </span>
                   </td>
                   {/* DURATION */}
-                  <td style={{ ...col("dur"), textAlign: "center", color: "#8b949e" }}>{task.durationDays === 1 ? "1 day" : `${task.durationDays} days`}</td>
+                  <td style={{ ...col("dur"), textAlign: "center", color: isSection ? "#e6edf3" : "#8b949e", fontWeight: isSection ? 700 : 400 }}>
+                    {displayDuration === 1 ? "1 day" : `${displayDuration} days`}
+                  </td>
                   {/* % */}
-                  <td style={{ ...col("pct"), textAlign: "center", color: task.percentComplete === 100 ? "#22c55e" : "#e6edf3" }}>{task.percentComplete}%</td>
+                  <td style={{ ...col("pct"), textAlign: "center", color: displayPct === 100 ? "#22c55e" : isSection ? "#e6edf3" : "#e6edf3", fontWeight: isSection ? 700 : 400 }}>
+                    {displayPct}%
+                  </td>
                   {/* PLANNED START */}
-                  <td style={{ ...col("start"), color: "#8b949e" }}>{fmtDate(task.startDate)}</td>
+                  <td style={{ ...col("start"), color: isSection ? "#e6edf3" : "#8b949e", fontWeight: isSection ? 700 : 400 }}>{fmtDate(displayStart)}</td>
                   {/* PLANNED END */}
-                  <td style={{ ...col("end"), color: "#8b949e" }}>{fmtDate(task.endDate)}</td>
+                  <td style={{ ...col("end"), color: isSection ? "#e6edf3" : "#8b949e", fontWeight: isSection ? 700 : 400 }}>{fmtDate(displayEnd)}</td>
                   {/* ACTUAL FINISH */}
                   <td style={{ ...col("actual"), color: task.actualFinish ? "#22c55e" : "#484f58" }}>{fmtDate(task.actualFinish)}</td>
                   {/* PRIORITY */}
                   <td style={{ ...col("priority"), color: priorityColor(task.priority), fontWeight: task.priority ? 600 : 400, textAlign: "center" }}>{task.priority ?? ""}</td>
                   {/* STATUS */}
-                  <td style={{ ...col("status"), color: statusColor(task.status) }}>{statusLabel(task.status)}</td>
+                  <td style={{ ...col("status"), color: isSection ? "#e6edf3" : statusColor(task.status), fontWeight: isSection ? 700 : 400 }}>
+                    {isSection ? `${displayPct}%` : statusLabel(task.status)}
+                  </td>
                   {/* ASSIGNEE + subtask button */}
                   <td style={{ ...col("assignee"), borderRight: "none" }}>
                     <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
