@@ -1405,7 +1405,7 @@ function ClientGanttChart({ tasks, projectStart, companyId, clientId, canEdit, o
   const [editTask, setEditTask] = useState<ClientTask | null>(null);
   const [addChildFor, setAddChildFor] = useState<ClientTask | null>(null);
   const [setParentFor, setSetParentFor] = useState<ClientTask | null>(null);
-  const [contextMenu, setContextMenu] = useState<{ x: number; y: number; task: ClientTask } | null>(null);
+  const [contextMenu, setContextMenu] = useState<{ x: number; y: number; task: ClientTask; confirmDelete?: boolean } | null>(null);
   const svgRef = useRef<SVGSVGElement>(null);
   const [labelW, setLabelW] = useState(LABEL_WIDTH);
 
@@ -1856,7 +1856,7 @@ function ClientGanttChart({ tasks, projectStart, companyId, clientId, canEdit, o
             { label: "📂  Nest under…", action: () => { setSetParentFor(contextMenu.task); setContextMenu(null); } },
             ...(contextMenu.task.parentId ? [{ label: "🔓  Remove parent", action: () => { handleSetParent(contextMenu.task, null); setContextMenu(null); } }] : []),
             { label: "⧉  Duplicate", action: () => { handleDuplicate(contextMenu.task); setContextMenu(null); } },
-            { label: "🗑  Delete", action: () => { handleDeleteTask(contextMenu.task); setContextMenu(null); }, danger: true },
+            { label: "🗑  Delete", action: () => { setContextMenu(m => m ? { ...m, confirmDelete: true } : null); }, danger: true },
           ].map((item, i) => (
             <button
               key={i}
@@ -1867,6 +1867,27 @@ function ClientGanttChart({ tasks, projectStart, companyId, clientId, canEdit, o
               {item.label}
             </button>
           ))}
+          {contextMenu.confirmDelete && (
+            <div style={{ borderTop: "1px solid #30373f", padding: "10px 12px", background: "#1a0f0f" }}>
+              <p className="text-xs mb-2" style={{ color: "#f87171" }}>Delete &ldquo;{contextMenu.task.name}&rdquo;?</p>
+              <div className="flex gap-2">
+                <button
+                  onClick={() => { handleDeleteTask(contextMenu.task); setContextMenu(null); }}
+                  className="flex-1 text-xs font-semibold py-1 rounded"
+                  style={{ background: "#f8514922", color: "#f87171", border: "1px solid #f8514944" }}
+                >
+                  Delete
+                </button>
+                <button
+                  onClick={() => setContextMenu(m => m ? { ...m, confirmDelete: false } : null)}
+                  className="flex-1 text-xs py-1 rounded"
+                  style={{ background: "#21262d", color: "#8b949e", border: "1px solid #30373f" }}
+                >
+                  Cancel
+                </button>
+              </div>
+            </div>
+          )}
         </div>
       )}
 
