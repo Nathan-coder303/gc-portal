@@ -1168,6 +1168,69 @@ function AddTaskModal({ companyId, clientId, phases, onCreate, onClose, defaultP
   );
 }
 
+// ── Assign Tasks to Phase Modal ────────────────────────────────────────────────
+
+function AssignTasksModal({ phaseTask, tasks, companyId, clientId, onAssigned, onClose }: {
+  phaseTask: ClientTask; tasks: ClientTask[];
+  companyId: string; clientId: string;
+  onAssigned: (updated: ClientTask[]) => void;
+  onClose: () => void;
+}) {
+  const candidates = tasks.filter(t => t.id !== phaseTask.id && !t.parentId);
+  const [selected, setSelected] = useState<Set<string>>(
+    new Set(candidates.filter(t => t.phase === phaseTask.name).map(t => t.id))
+  );
+  const [saving, setSaving] = useState(false);
+
+  function toggle(id: string) {
+    setSelected(prev => { const s = new Set(prev); s.has(id) ? s.delete(id) : s.add(id); return s; });
+  }
+
+  async function handleAssign() {
+    setSaving(true);
+    if (selected.size > 0) {
+      await Promise.all(Array.from(selected).map(id =>
+        fetch(`/api/${companyId}/clients/${clientId}/schedule/${id}`, {
+          method: "PATCH", headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ parentId: phaseTask.id }),
+        })
+      ));
+    }
+    onAssigned(tasks.map(t => selected.has(t.id) ? { ...t, parentId: phaseTask.id } : t));
+  }
+
+  return (
+    <div style={{ position: "fixed", inset: 0, zIndex: 80, background: "rgba(0,0,0,0.8)", display: "flex", alignItems: "center", justifyContent: "center", padding: 16 }}
+      onClick={onClose}>
+      <div style={{ background: "#161b22", border: "1px solid #30373f", borderRadius: 14, padding: 24, width: "100%", maxWidth: 460 }}
+        onClick={e => e.stopPropagation()}>
+        <h3 className="text-sm font-bold mb-1" style={{ color: "#e6edf3" }}>Move tasks under <span style={{ color: GOLD }}>{phaseTask.name}</span>?</h3>
+        <p className="text-xs mb-3" style={{ color: "#8b949e" }}>Select tasks to nest under this phase. You can change this later.</p>
+        {candidates.length === 0 ? (
+          <p className="text-xs" style={{ color: "#484f58" }}>No top-level tasks to assign.</p>
+        ) : (
+          <div className="space-y-1" style={{ maxHeight: 280, overflowY: "auto" }}>
+            {candidates.map(t => (
+              <label key={t.id} className="flex items-center gap-2 px-2 py-1.5 rounded cursor-pointer hover:brightness-125"
+                style={{ background: selected.has(t.id) ? "#1e2736" : "transparent", border: `1px solid ${selected.has(t.id) ? "#C9A84C44" : "transparent"}` }}>
+                <input type="checkbox" checked={selected.has(t.id)} onChange={() => toggle(t.id)} style={{ accentColor: GOLD }} />
+                <span className="text-xs" style={{ color: "#e6edf3" }}>{t.name}</span>
+                {t.startDate && <span className="text-[10px] ml-auto" style={{ color: "#484f58" }}>{t.startDate}</span>}
+              </label>
+            ))}
+          </div>
+        )}
+        <div className="flex gap-2 mt-4">
+          <button onClick={handleAssign} disabled={saving} className="flex-1 py-2 text-xs font-semibold rounded-lg disabled:opacity-50" style={{ background: GOLD, color: "#0d1117" }}>
+            {saving ? "Moving…" : selected.size > 0 ? `Move ${selected.size} task${selected.size > 1 ? "s" : ""}` : "Done (no tasks selected)"}
+          </button>
+          <button onClick={onClose} className="px-4 py-2 text-xs rounded-lg" style={{ background: "#30373f", color: "#8b949e" }}>Skip</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ── Gantt Chart ────────────────────────────────────────────────────────────────
 
 function ClientGanttChart({ tasks, projectStart, companyId, clientId, canEdit, onTasksChange, collapsed, setCollapsed }: {
@@ -1977,8 +2040,9 @@ function ScheduleTableView({
   const [collapsedIds, setCollapsedIds] = useState<Set<string>>(new Set());
   const [editTask, setEditTask] = useState<ClientTask | null>(null);
   const [addSubFor, setAddSubFor] = useState<ClientTask | null>(null);
-  const [addPhaseOpen, setAddPhaseOpen] = useState(false);
+  const [addPhaseCtx, setAddPhaseCtx] = useState<{ insertAfterId: string } | null>(null);
   const [addTaskSiblingFor, setAddTaskSiblingFor] = useState<ClientTask | null>(null);
+  const [assignTasksFor, setAssignTasksFor] = useState<ClientTask | null>(null);
   const [dragId, setDragId] = useState<string | null>(null);
   const [dropId, setDropId] = useState<string | null>(null);
   const [settingParentFor, setSettingParentFor] = useState<ClientTask | null>(null);
@@ -2205,7 +2269,7 @@ function ScheduleTableView({
               const { task, rowNum: rn, depth, wbs, hasChildren } = r;
               const isDragging = dragId === task.id;
               const isDropOver = dropId === task.id && dragId !== task.id;
-              const isSection = hasChildren;
+              const isSection = hasChildren || (!task.parentId && task.name === task.phase);
               const rowBg = isDropOver ? "#1f3a5f" : isSection ? "#191f2b" : rn % 2 === 0 ? "#0d1117" : "#0a0e14";
               const linkStr = task.predecessorIds.map(pid => idToRow.get(pid)).filter(Boolean).join(", ");
 
@@ -2324,7 +2388,7 @@ function ScheduleTableView({
           <button style={CTX_BTN} className="hover:bg-[#2d3748]" onClick={() => { setEditTask(ctxMenu.task); setCtxMenu(null); }}>✏️ Edit Task</button>
           <button style={CTX_BTN} className="hover:bg-[#2d3748]" onClick={() => { setAddSubFor(ctxMenu.task); setCtxMenu(null); }}>⊕ Add Subtask</button>
           <button style={CTX_BTN} className="hover:bg-[#2d3748]" onClick={() => { setAddTaskSiblingFor(ctxMenu.task); setCtxMenu(null); }}>📋 Add Task here</button>
-          <button style={CTX_BTN} className="hover:bg-[#2d3748]" onClick={() => { setAddPhaseOpen(true); setCtxMenu(null); }}>📁 Add Phase</button>
+          <button style={CTX_BTN} className="hover:bg-[#2d3748]" onClick={() => { setAddPhaseCtx({ insertAfterId: ctxMenu.task.id }); setCtxMenu(null); }}>📁 Add Phase</button>
           <div style={{ height: 1, background: "#21262d", margin: "2px 0" }} />
           <button style={CTX_BTN} className="hover:bg-[#2d3748]" onClick={() => { indent(ctxMenu.task); setCtxMenu(null); }} title="Make child of the task above it">
             → Indent
@@ -2354,11 +2418,29 @@ function ScheduleTableView({
           onClose={() => setAddSubFor(null)} />
       )}
 
-      {addPhaseOpen && (
+      {addPhaseCtx && (
         <AddTaskModal companyId={companyId} clientId={clientId} phases={phases}
           defaultMode="phase"
-          onCreate={task => { onTasksChange([...tasks, task]); setAddPhaseOpen(false); }}
-          onClose={() => setAddPhaseOpen(false)} />
+          onCreate={async task => {
+            // Insert new phase right after the right-clicked row
+            const allWithNew = [...tasks, task];
+            const sortedIds = [...allWithNew].sort((a, b) => a.sortOrder - b.sortOrder).map(t => t.id);
+            const afterIdx = sortedIds.indexOf(addPhaseCtx.insertAfterId);
+            const without = sortedIds.filter(id => id !== task.id);
+            without.splice(afterIdx + 1, 0, task.id);
+            const newOrders = new Map(without.map((id, i) => [id, i]));
+            const reordered = allWithNew.map(t => ({ ...t, sortOrder: newOrders.get(t.id) ?? t.sortOrder }));
+            onTasksChange(reordered);
+            await Promise.all(reordered.map(t =>
+              fetch(`/api/${companyId}/clients/${clientId}/schedule/${t.id}`, {
+                method: "PATCH", headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ sortOrder: t.sortOrder }),
+              })
+            ));
+            setAddPhaseCtx(null);
+            setAssignTasksFor(task);
+          }}
+          onClose={() => setAddPhaseCtx(null)} />
       )}
 
       {addTaskSiblingFor && (
@@ -2367,6 +2449,12 @@ function ScheduleTableView({
           defaultMode="task"
           onCreate={task => { onTasksChange([...tasks, task]); setAddTaskSiblingFor(null); }}
           onClose={() => setAddTaskSiblingFor(null)} />
+      )}
+
+      {assignTasksFor && (
+        <AssignTasksModal phaseTask={assignTasksFor} tasks={tasks} companyId={companyId} clientId={clientId}
+          onAssigned={updated => { onTasksChange(updated); setAssignTasksFor(null); }}
+          onClose={() => setAssignTasksFor(null)} />
       )}
     </>
   );
@@ -2531,6 +2619,7 @@ export default function ClientScheduleTab({ companyId, clientId, clientName, ini
   const [tasks, setTasks] = useState<ClientTask[]>(initialTasks);
   const [adding, setAdding] = useState(false);
   const [addingPhase, setAddingPhase] = useState(false);
+  const [assigningPhase, setAssigningPhase] = useState<ClientTask | null>(null);
   const [loadingTemplate, setLoadingTemplate] = useState(false);
   const [savingTemplate, setSavingTemplate] = useState<"save" | "saveas" | null>(null);
   const [savedTemplateId, setSavedTemplateId] = useState<string | null>(null);
@@ -2767,9 +2856,15 @@ export default function ClientScheduleTab({ companyId, clientId, clientName, ini
           companyId={companyId} clientId={clientId}
           phases={phases.length ? phases : ["Pre-Construction", "Construction", "Finishing"]}
           defaultMode="phase"
-          onCreate={task => { setTasks(prev => [...prev, task]); setAddingPhase(false); }}
+          onCreate={task => { setTasks(prev => [...prev, task]); setAddingPhase(false); setAssigningPhase(task); }}
           onClose={() => setAddingPhase(false)}
         />
+      )}
+
+      {assigningPhase && (
+        <AssignTasksModal phaseTask={assigningPhase} tasks={tasks} companyId={companyId} clientId={clientId}
+          onAssigned={updated => { setTasks(updated); setAssigningPhase(null); }}
+          onClose={() => setAssigningPhase(null)} />
       )}
 
       {loadingTemplate && (
