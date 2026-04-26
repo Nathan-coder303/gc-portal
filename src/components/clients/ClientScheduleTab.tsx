@@ -1830,12 +1830,6 @@ function EditTaskModal({
         actualFinish: normDate(raw.actualFinish),
         durationDays: raw.durationDays ?? dur,
       });
-      // Move to row if requested
-      const targetRow = parseInt(form.moveToRow);
-      if (onMove && !isNaN(targetRow) && targetRow !== currentRow) {
-        onMove(targetRow);
-        return; // onMove will close the modal
-      }
     } finally {
       setSaving(false);
     }
@@ -1946,15 +1940,21 @@ function EditTaskModal({
         </div>
 
         {onMove && currentRow != null && (
-          <div className="flex items-center gap-3 mt-4 pt-4" style={{ borderTop: "1px solid #21262d" }}>
-            <span className="text-xs" style={{ color: "#8b949e" }}>Move to row #</span>
+          <div className="flex items-center gap-2 mt-4 pt-4" style={{ borderTop: "1px solid #21262d" }}>
+            <span className="text-xs shrink-0" style={{ color: "#8b949e" }}>Move to row</span>
             <input
               type="number" min="1" max={totalRows ?? 999}
               value={form.moveToRow}
               onChange={e => setForm(f => ({ ...f, moveToRow: e.target.value }))}
-              style={{ ...INPUT, width: 72, textAlign: "center" }} className="outline-none"
+              style={{ ...INPUT, width: 64, textAlign: "center" }} className="outline-none"
             />
-            <span className="text-[10px]" style={{ color: "#484f58" }}>currently row {currentRow} of {totalRows}</span>
+            <button
+              onClick={() => { const r = parseInt(form.moveToRow); if (!isNaN(r) && r !== currentRow) onMove(r); }}
+              className="px-3 py-1.5 text-xs font-semibold rounded-lg"
+              style={{ background: "#1e2736", border: "1px solid #30373f", color: "#e6edf3", whiteSpace: "nowrap" }}>
+              Move ↑↓
+            </button>
+            <span className="text-[10px] shrink-0" style={{ color: "#484f58" }}>row {currentRow} of {totalRows}</span>
           </div>
         )}
 
@@ -2101,18 +2101,10 @@ function ScheduleTableView({
   }
 
   // ── Drag-to-reorder ──────────────────────────────────────────────────────
-  async function reorderToPosition(movingId: string, targetIdx: number) {
-    // Build flat visible order; assign positions based on where we want the item
-    const flatIds = rows.map(r => r.task.id);
-    const clamped = Math.max(0, Math.min(flatIds.length - 1, targetIdx));
-    // Remove moving item, then insert at clamped position
-    const reordered = flatIds.filter(id => id !== movingId);
-    reordered.splice(clamped, 0, movingId);
-    // Assign new sortOrders (use *2 gaps so hidden children fall between parents naturally)
-    const newOrders = new Map(reordered.map((id, i) => [id, i * 2]));
+  async function applyNewOrder(reordered: string[]) {
+    const newOrders = new Map(reordered.map((id, i) => [id, i]));
     const updated = tasks.map(t => ({ ...t, sortOrder: newOrders.get(t.id) ?? t.sortOrder }));
     onTasksChange(updated);
-    // PATCH all visible rows (their sort orders all changed)
     await Promise.all(reordered.map(id => {
       const t = updated.find(x => x.id === id);
       if (!t) return Promise.resolve();
@@ -2125,10 +2117,22 @@ function ScheduleTableView({
   async function handleDrop(targetId: string) {
     if (!dragId || dragId === targetId) { setDragId(null); setDropId(null); return; }
     const flatIds = rows.map(r => r.task.id);
-    const targetIdx = flatIds.indexOf(targetId);
-    if (targetIdx === -1 || !flatIds.includes(dragId)) { setDragId(null); setDropId(null); return; }
-    await reorderToPosition(dragId, targetIdx);
+    if (!flatIds.includes(dragId) || !flatIds.includes(targetId)) { setDragId(null); setDropId(null); return; }
+    // Remove dragged item, then insert BEFORE the target (using target's shifted index)
+    const filtered = flatIds.filter(id => id !== dragId);
+    filtered.splice(filtered.indexOf(targetId), 0, dragId);
+    await applyNewOrder(filtered);
     setDragId(null); setDropId(null);
+  }
+
+  async function handleMoveToRow(taskId: string, targetRow: number) {
+    const flatIds = rows.map(r => r.task.id);
+    if (!flatIds.includes(taskId)) return;
+    // Remove task, then insert at targetRow-1 (0-based) in filtered array
+    const filtered = flatIds.filter(id => id !== taskId);
+    const insertAt = Math.max(0, Math.min(filtered.length, targetRow - 1));
+    filtered.splice(insertAt, 0, taskId);
+    await applyNewOrder(filtered);
   }
 
   // ── Indent: make task child of the task immediately above it ─────────────
@@ -2445,7 +2449,7 @@ function ScheduleTableView({
           totalRows={rows.length}
           onUpdate={async updated => { const cascaded = await cascadeFromTask(updated); onTasksChange(cascaded); setEditTask(null); }}
           onDelete={id => { onTasksChange(tasks.filter(t => t.id !== id)); setEditTask(null); }}
-          onMove={async toRow => { await reorderToPosition(editTask.id, toRow - 1); setEditTask(null); }}
+          onMove={async toRow => { await handleMoveToRow(editTask.id, toRow); setEditTask(null); }}
           onClose={() => setEditTask(null)} />
       )}
 
