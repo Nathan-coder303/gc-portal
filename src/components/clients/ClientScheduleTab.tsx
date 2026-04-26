@@ -2892,7 +2892,7 @@ function ScheduleTableView({
             onClick={() => { if (ctxMenu.task.parentId) { outdent(ctxMenu.task); setCtxMenu(null); } }}>
             ← Outdent
           </button>
-          <button style={CTX_BTN} className="hover:bg-[#2d3748]" onClick={() => { setSettingParentFor(ctxMenu.task); setCtxMenu(null); }}>🔗 Set Parent…</button>
+          <button style={CTX_BTN} className="hover:bg-[#2d3748]" onClick={() => { setSettingParentFor(ctxMenu.task); setCtxMenu(null); }}>📂 Nest under…</button>
           {ctxMenu.task.parentId && (
             <button style={{ ...CTX_BTN, color: "#f87171" }} className="hover:bg-[#2d3748]" onClick={() => { removeParent(ctxMenu.task); setCtxMenu(null); }}>✕ Remove Parent</button>
           )}
