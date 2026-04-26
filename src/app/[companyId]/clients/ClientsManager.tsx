@@ -163,30 +163,30 @@ function ClientCard({
           )}
         </div>
 
-        {/* Amounts row */}
+        {/* GC Fee + Int. Profit row */}
         <div className="flex items-end gap-1.5">
-          <div className="flex-1 min-w-0">
-            <div className="text-[8px] font-medium mb-0.5 truncate" style={{ color: "#484f58" }}>ESTIMATE</div>
-            <div className="font-black leading-none truncate" style={{ color: client.estimateTotal > 0 ? "#22c55e" : "#30373f", fontSize: client.estimateTotal >= 1000000 ? 10 : client.estimateTotal >= 100000 ? 11 : 13 }}>
-              {client.estimateTotal > 0 ? `$${client.estimateTotal.toLocaleString("en-US", { maximumFractionDigits: 0 })}` : "—"}
-            </div>
-          </div>
-          <div className="flex-1 min-w-0">
-            <div className="text-[8px] font-medium mb-0.5 truncate" style={{ color: "#484f58" }}>GC FEE</div>
-            <div className="font-black leading-none truncate" style={{ color: client.gcFee > 0 ? "#C9A84C" : "#30373f", fontSize: client.gcFee >= 1000000 ? 10 : client.gcFee >= 100000 ? 11 : 13 }}>
+          <div className="flex-1">
+            <div className="text-[8px] font-medium mb-0.5" style={{ color: "#484f58" }}>GC FEE</div>
+            <div className="font-black leading-none" style={{ color: client.gcFee > 0 ? "#C9A84C" : "#30373f", fontSize: 13 }}>
               {client.gcFee > 0 ? `$${client.gcFee.toLocaleString("en-US", { maximumFractionDigits: 0 })}` : "—"}
             </div>
           </div>
-          <div className="flex-1 min-w-0">
-            <div className="text-[8px] font-medium mb-0.5 truncate" style={{ color: "#484f58" }}>INT. PROFIT</div>
-            <div className="font-black leading-none truncate" style={{ color: client.internalProfit > 0 ? "#3b82f6" : "#30373f", fontSize: client.internalProfit >= 1000000 ? 10 : client.internalProfit >= 100000 ? 11 : 13 }}>
+          <div className="flex-1">
+            <div className="text-[8px] font-medium mb-0.5" style={{ color: "#484f58" }}>INT. PROFIT</div>
+            <div className="font-black leading-none" style={{ color: client.internalProfit > 0 ? "#3b82f6" : "#30373f", fontSize: 13 }}>
               {client.internalProfit > 0 ? `$${client.internalProfit.toLocaleString("en-US", { maximumFractionDigits: 0 })}` : "—"}
             </div>
           </div>
         </div>
 
-        {/* Buttons row */}
-        <div className="flex items-center justify-end gap-2">
+        {/* Buttons row — estimate on left, edit/delete on right */}
+        <div className="flex items-center justify-between gap-2">
+          <div>
+            <div className="text-[8px] font-medium mb-0.5" style={{ color: "#484f58" }}>ESTIMATE</div>
+            <div className="font-black leading-none" style={{ color: client.estimateTotal > 0 ? "#22c55e" : "#30373f", fontSize: 13 }}>
+              {client.estimateTotal > 0 ? `$${client.estimateTotal.toLocaleString("en-US", { maximumFractionDigits: 0 })}` : "—"}
+            </div>
+          </div>
           {isAdmin && (
             <div className="flex gap-1.5 shrink-0" onClick={(e) => e.stopPropagation()}>
               <button
