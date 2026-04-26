@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import DeleteEstimateButton from "@/components/clients/DeleteEstimateButton";
 import EditEstimateModal from "@/components/clients/EditEstimateModal";
 import CoverPagePickerModal, { PdfOptions, Page2Type, CoverType, COVER_OPTIONS } from "@/components/clients/CoverPagePickerModal";
+import { duplicateTemplate } from "@/app/[companyId]/estimates/actions";
 
 const MIKE_SIGNATURE = `Mike Baruh
 Founder/CEO | MIBH Construction
@@ -60,6 +61,7 @@ function EstimateCard({
   const [hovered, setHovered] = useState(false);
   const [step, setStep] = useState<"cover" | "email" | null>(null);
   const [pdfOpts, setPdfOpts] = useState<PdfOptions | null>(null);
+  const [duplicating, setDuplicating] = useState(false);
 
   // Email compose state
   const firstName = clientName.split(" ")[0];
@@ -197,6 +199,24 @@ function EstimateCard({
             >
               ↓ PDF / ✉ Send
             </button>
+            {canEdit && (
+              <button
+                disabled={duplicating}
+                onClick={async () => {
+                  setDuplicating(true);
+                  try {
+                    const result = await duplicateTemplate(est.id);
+                    router.push(`/${companyId}/estimates/${result.id}`);
+                  } finally {
+                    setDuplicating(false);
+                  }
+                }}
+                className="px-3 py-1.5 rounded-lg text-xs font-semibold disabled:opacity-50"
+                style={{ background: "#58a6ff22", color: "#58a6ff", border: "1px solid #58a6ff44" }}
+              >
+                {duplicating ? "Duplicating…" : "⧉ Duplicate"}
+              </button>
+            )}
             {est.counterSignedAt && (
               <a
                 href={`/api/${companyId}/estimates/${est.id}/pdf?countersigned=1`}
