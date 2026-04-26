@@ -1875,10 +1875,10 @@ function EditTaskModal({
         {onMove && currentRow != null && (
           <div className="flex items-center gap-2 mb-4 pb-3" style={{ borderBottom: "1px solid #21262d" }}>
             <span className="text-xs shrink-0" style={{ color: "#8b949e" }}>Task #</span>
-            <input type="number" min="1" max={totalRows ?? 999} value={form.moveToRow}
-              onChange={e => setForm(f => ({ ...f, moveToRow: e.target.value }))}
+            <input type="number" min="1" max={totalRows ?? 999} step="1" value={form.moveToRow}
+              onChange={e => setForm(f => ({ ...f, moveToRow: e.target.value.replace(/[^0-9]/g, "") }))}
               style={{ ...INPUT, width: 60, textAlign: "center" }} className="outline-none" />
-            <span className="text-[10px]" style={{ color: "#484f58" }}>currently #{currentRow} of {totalRows} — change and Save to move</span>
+            <span className="text-[10px]" style={{ color: "#484f58" }}>whole number · currently #{currentRow} of {totalRows}</span>
           </div>
         )}
 
