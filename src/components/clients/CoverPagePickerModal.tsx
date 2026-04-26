@@ -324,7 +324,7 @@ export default function CoverPagePickerModal({
         <div>
           <p className="text-xs font-semibold uppercase tracking-widest mb-2" style={{ color: "#8b949e" }}>Force New Page Before Division</p>
           <div className="flex flex-wrap gap-2">
-            {["03","04","05","06","07","08","09","10","11","14"].map(prefix => {
+            {["02","03","04","05","06","07","08","09","10","11","12","13","14","21","22","23","26","27","28","31","32","33"].map(prefix => {
               const on = forcedBreakCsiPrefixes.includes(prefix);
               return (
                 <button
