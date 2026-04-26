@@ -2022,7 +2022,7 @@ function ScheduleTableView({
 
   // ── Style helpers ─────────────────────────────────────────────────────────
   type CK = keyof typeof colWidths;
-  const RHANDLE: React.CSSProperties = { position: "absolute", right: 0, top: "15%", bottom: "15%", width: 3, cursor: "col-resize", zIndex: 1, background: "#30373f", borderRadius: 2, opacity: 0.7 };
+  const RHANDLE: React.CSSProperties = { position: "absolute", right: -4, top: 0, bottom: 0, width: 10, cursor: "col-resize", zIndex: 10 };
 
   const col = (k: CK, extra?: React.CSSProperties): React.CSSProperties => ({
     minWidth: colWidths[k], maxWidth: colWidths[k], padding: "0 8px", borderRight: "1px solid #21262d",
@@ -2463,6 +2463,13 @@ export default function ClientScheduleTab({ companyId, clientId, clientName, ini
   const inProgress = tasks.filter(t => t.status === "IN_PROGRESS").length;
   const blocked = tasks.filter(t => t.status === "BLOCKED").length;
 
+  async function handleDeleteAll() {
+    await Promise.all(tasks.map(t =>
+      fetch(`/api/${companyId}/clients/${clientId}/schedule/${t.id}`, { method: "DELETE" })
+    ));
+    setTasks([]);
+  }
+
   return (
     <div className="space-y-4">
       {/* Start / End date bar */}
@@ -2572,6 +2579,12 @@ export default function ClientScheduleTab({ companyId, clientId, clientName, ini
                 style={{ background: "#1e2736", border: "1px solid #30373f", color: "#8b949e" }}>
                 📋 Load Template
               </button>
+              {tasks.length > 0 && (
+                <button onClick={handleDeleteAll} className="text-xs font-semibold px-3 py-1.5 rounded-lg"
+                  style={{ background: "#2d1a1a", border: "1px solid #f8514933", color: "#f85149" }}>
+                  🗑 Clear All
+                </button>
+              )}
               {tasks.length > 0 && (
                 <>
                   <button onClick={() => setSavingTemplate("save")} className="text-xs font-semibold px-3 py-1.5 rounded-lg"
