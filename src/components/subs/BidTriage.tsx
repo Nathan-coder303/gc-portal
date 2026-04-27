@@ -322,6 +322,13 @@ export default function BidTriage({
                       style={{ background: "#1e2736", border: "1px solid #30373f", color: "#e6edf3" }}
                     >
                       <option value="">Assign to…</option>
+                      {projects.length > 0 && (
+                        <optgroup label="── Projects ──">
+                          {projects.map(p => (
+                            <option key={p.id} value={`project:${p.id}`}>{p.name}</option>
+                          ))}
+                        </optgroup>
+                      )}
                       {clients.length > 0 && (
                         <optgroup label="── Clients ──">
                           {clients.map(c => (
@@ -333,13 +340,6 @@ export default function BidTriage({
                         <optgroup label="── Leads ──">
                           {leads.map(l => (
                             <option key={l.id} value={`lead:${l.id}`}>{l.name}</option>
-                          ))}
-                        </optgroup>
-                      )}
-                      {projects.length > 0 && (
-                        <optgroup label="── Projects ──">
-                          {projects.map(p => (
-                            <option key={p.id} value={`project:${p.id}`}>{p.name}</option>
                           ))}
                         </optgroup>
                       )}

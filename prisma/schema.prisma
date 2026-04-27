@@ -80,6 +80,7 @@ model Company {
   invoices          Invoice[]
   changeOrders      ChangeOrder[]
   subContractors    SubContractor[]
+  googleRefreshToken String?
 }
 
 model Lead {

@@ -7,7 +7,7 @@ import BidTriage from "@/components/subs/BidTriage";
 
 export const dynamic = "force-dynamic";
 
-export default async function SubsDatabasePage({ params }: { params: { companyId: string } }) {
+export default async function SubsDatabasePage({ params, searchParams }: { params: { companyId: string }; searchParams?: { gmail?: string } }) {
   const session = await auth();
   if (!session) redirect("/login");
   if (session.user.companyId !== params.companyId) redirect(`/${session.user.companyId}/subs`);
@@ -39,13 +39,26 @@ export default async function SubsDatabasePage({ params }: { params: { companyId
 
   return (
     <div className="max-w-5xl mx-auto px-4 md:px-8 py-6 md:py-8">
-      <Link
-        href={`/${params.companyId}/today`}
-        className="inline-flex items-center gap-2 mb-5 px-4 py-2 rounded-xl text-sm font-semibold transition-all hover:scale-105"
-        style={{ background: "#1e2736", border: "1px solid #30373f", color: "#C9A84C" }}
-      >
-        <span style={{ fontSize: 16 }}>←</span> Today
-      </Link>
+      <div className="flex items-center gap-3 mb-5">
+        <Link
+          href={`/${params.companyId}/today`}
+          className="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold transition-all hover:scale-105"
+          style={{ background: "#1e2736", border: "1px solid #30373f", color: "#C9A84C" }}
+        >
+          <span style={{ fontSize: 16 }}>←</span> Today
+        </Link>
+        <Link
+          href={`/api/google-oauth?companyId=${params.companyId}`}
+          className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold transition-all hover:scale-105"
+          style={{ background: "#1e2736", border: "1px solid #30373f", color: "#8b949e" }}
+          title="Re-authorize Gmail access — fixes 'invalid grant' PDF errors"
+        >
+          📧 Reconnect Gmail
+        </Link>
+        {searchParams?.gmail === "connected" && (
+          <span className="text-xs font-semibold" style={{ color: "#3fb950" }}>✓ Gmail reconnected</span>
+        )}
+      </div>
 
       {/* Bid Triage */}
       <div className="mb-8">

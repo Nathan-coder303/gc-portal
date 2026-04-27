@@ -1,19 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import { google } from "googleapis";
 import { auth } from "@/lib/auth";
+import { getGmailOAuth } from "@/lib/gmail";
 
 export const runtime = "nodejs";
 export const maxDuration = 60;
-
-function getOAuthClient() {
-  const oauth2Client = new google.auth.OAuth2(
-    process.env.GOOGLE_CLIENT_ID,
-    process.env.GOOGLE_CLIENT_SECRET,
-    "urn:ietf:wg:oauth:2.0:oob"
-  );
-  oauth2Client.setCredentials({ refresh_token: process.env.GOOGLE_REFRESH_TOKEN });
-  return oauth2Client;
-}
 
 const FILE_MIMES = new Set([
   "application/pdf",
@@ -47,7 +38,7 @@ function mimeForPart(part: { mimeType?: string; filename?: string }): string {
 
 // GET /api/[companyId]/gmail-attachment?msgId=xxx&attachmentId=yyy
 // attachmentId is optional — if omitted, fetches the first PDF part from the message
-export async function GET(req: NextRequest) {
+export async function GET(req: NextRequest, { params }: { params: { companyId: string } }) {
   const session = await auth();
   if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
@@ -59,11 +50,12 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: "Missing msgId" }, { status: 400 });
   }
 
-  if (!process.env.GOOGLE_CLIENT_ID || !process.env.GOOGLE_CLIENT_SECRET || !process.env.GOOGLE_REFRESH_TOKEN) {
+  if (!process.env.GOOGLE_CLIENT_ID || !process.env.GOOGLE_CLIENT_SECRET) {
     return NextResponse.json({ error: "Gmail not configured" }, { status: 500 });
   }
 
-  const gmail = google.gmail({ version: "v1", auth: getOAuthClient() });
+  const oauthClient = await getGmailOAuth(params.companyId);
+  const gmail = google.gmail({ version: "v1", auth: oauthClient });
 
   let buffer: Buffer;
   let filename = "bid-document";
