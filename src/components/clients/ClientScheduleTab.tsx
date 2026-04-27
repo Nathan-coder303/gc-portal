@@ -823,15 +823,20 @@ function SaveScheduleModal({
             {savedTemplates.length === 0 ? (
               <p className="text-xs italic" style={{ color: "#484f58" }}>No saved templates yet — use &ldquo;Save as new&rdquo; first.</p>
             ) : (
-              <div className="flex flex-col gap-1 max-h-48 overflow-y-auto">
+              <select
+                value={overwriteId}
+                onChange={e => {
+                  const t = savedTemplates.find(t => t.id === e.target.value);
+                  if (t) { setOverwriteId(t.id); setOverwriteName(t.name); }
+                }}
+                className="w-full rounded-lg px-3 py-2 text-sm outline-none"
+                style={{ background: "#0d1117", border: "1px solid #30373f", color: "#e6edf3", colorScheme: "dark" }}
+              >
+                <option value="">— Select a template —</option>
                 {savedTemplates.map(t => (
-                  <button key={t.id} onClick={() => { setOverwriteId(t.id); setOverwriteName(t.name); }}
-                    className="text-left px-3 py-2 rounded-lg text-sm transition-colors"
-                    style={{ background: overwriteId === t.id ? "#1e3a2f" : "#0d1117", border: `1px solid ${overwriteId === t.id ? "#22c55e55" : "#30373f"}`, color: overwriteId === t.id ? "#22c55e" : "#e6edf3" }}>
-                    {overwriteId === t.id ? "✓ " : ""}{t.name}
-                  </button>
+                  <option key={t.id} value={t.id}>{t.name}</option>
                 ))}
-              </div>
+              </select>
             )}
           </div>
         ) : (
@@ -879,6 +884,8 @@ function LoadTemplateModal({
   const [startDate, setStartDate] = useState(todayStr());
   const [loading, setLoading] = useState(false);
   const [deleting, setDeleting] = useState<string | null>(null);
+  const [renamingId, setRenamingId] = useState<string | null>(null);
+  const [renameValue, setRenameValue] = useState("");
 
   useEffect(() => {
     fetch(`/api/${companyId}/schedule-templates`)
@@ -963,6 +970,38 @@ function LoadTemplateModal({
     setDeleting(null);
   }
 
+  async function handleRename(id: string, e: React.MouseEvent) {
+    e.stopPropagation();
+    const tpl = savedTemplates.find(t => t.id === id);
+    if (!tpl) return;
+    setRenamingId(id);
+    setRenameValue(tpl.name);
+  }
+
+  async function commitRename(id: string) {
+    if (!renameValue.trim()) return;
+    await fetch(`/api/${companyId}/schedule-templates/${id}`, {
+      method: "PATCH", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ name: renameValue.trim() }),
+    });
+    setSavedTemplates(prev => prev.map(t => t.id === id ? { ...t, name: renameValue.trim() } : t));
+    if (selectedSaved?.id === id) setSelectedSaved(prev => prev ? { ...prev, name: renameValue.trim() } : prev);
+    setRenamingId(null);
+  }
+
+  async function handleDuplicate(id: string, e: React.MouseEvent) {
+    e.stopPropagation();
+    const r = await fetch(`/api/${companyId}/schedule-templates/${id}`);
+    const data = await r.json();
+    const tpl = savedTemplates.find(t => t.id === id);
+    const res = await fetch(`/api/${companyId}/schedule-templates`, {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ name: `${tpl?.name ?? "Template"} (copy)`, tasks: data.tasks }),
+    });
+    const created = await res.json();
+    if (created.id) setSavedTemplates(prev => [...prev, { id: created.id, name: created.name, description: created.description, updatedAt: created.updatedAt }]);
+  }
+
   return (
     <div style={{ position: "fixed", inset: 0, zIndex: 70, background: "rgba(0,0,0,0.85)", display: "flex", alignItems: "center", justifyContent: "center", padding: 16 }}
       onClick={onClose}>
@@ -997,28 +1036,41 @@ function LoadTemplateModal({
             <p className="text-xs font-semibold mb-2" style={{ color: "#8b949e" }}>Saved Templates</p>
             <div className="flex flex-col gap-2 mb-5">
               {savedTemplates.map(tpl => (
-                <button key={tpl.id} onClick={() => { setSelectedSaved(tpl); setSelected(null); }}
-                  className="text-left p-3 rounded-xl transition-all flex items-center justify-between gap-3"
-                  style={{
-                    background: selectedSaved?.id === tpl.id ? "#1e2736" : "#0d1117",
-                    border: `1px solid ${selectedSaved?.id === tpl.id ? GOLD : "#30373f"}`,
-                  }}>
-                  <div>
-                    <div className="text-sm font-semibold" style={{ color: selectedSaved?.id === tpl.id ? GOLD : "#e6edf3" }}>📁 {tpl.name}</div>
-                    {tpl.description && <div className="text-xs mt-0.5" style={{ color: "#8b949e" }}>{tpl.description}</div>}
-                    <div className="text-[10px] mt-0.5" style={{ color: "#484f58" }}>
-                      Saved {new Date(tpl.updatedAt).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
-                    </div>
+                <div key={tpl.id} onClick={() => { setSelectedSaved(tpl); setSelected(null); }}
+                  className="p-3 rounded-xl transition-all flex items-center justify-between gap-3 cursor-pointer"
+                  style={{ background: selectedSaved?.id === tpl.id ? "#1e2736" : "#0d1117", border: `1px solid ${selectedSaved?.id === tpl.id ? GOLD : "#30373f"}` }}>
+                  <div className="flex-1 min-w-0">
+                    {renamingId === tpl.id ? (
+                      <input
+                        autoFocus
+                        value={renameValue}
+                        onChange={e => setRenameValue(e.target.value)}
+                        onKeyDown={e => { e.stopPropagation(); if (e.key === "Enter") commitRename(tpl.id); if (e.key === "Escape") setRenamingId(null); }}
+                        onBlur={() => commitRename(tpl.id)}
+                        onClick={e => e.stopPropagation()}
+                        className="w-full rounded px-2 py-0.5 text-sm outline-none"
+                        style={{ background: "#161b22", border: "1px solid #C9A84C", color: "#e6edf3" }}
+                      />
+                    ) : (
+                      <>
+                        <div className="text-sm font-semibold truncate" style={{ color: selectedSaved?.id === tpl.id ? GOLD : "#e6edf3" }}>📁 {tpl.name}</div>
+                        <div className="text-[10px] mt-0.5" style={{ color: "#484f58" }}>
+                          Saved {new Date(tpl.updatedAt).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
+                        </div>
+                      </>
+                    )}
                   </div>
-                  <button
-                    onClick={e => handleDelete(tpl.id, e)}
-                    disabled={deleting === tpl.id}
-                    className="text-xs px-2 py-1 rounded-lg shrink-0"
-                    style={{ background: "#2d1a1a", color: "#f87171", border: "1px solid #f8717133" }}
-                  >
-                    {deleting === tpl.id ? "…" : "Delete"}
-                  </button>
-                </button>
+                  <div className="flex gap-1 shrink-0" onClick={e => e.stopPropagation()}>
+                    <button onClick={e => handleRename(tpl.id, e)} title="Rename" className="w-7 h-7 flex items-center justify-center rounded"
+                      style={{ background: "#1e2736", color: "#8b949e", fontSize: 13 }}>✏️</button>
+                    <button onClick={e => handleDuplicate(tpl.id, e)} title="Duplicate" className="w-7 h-7 flex items-center justify-center rounded"
+                      style={{ background: "#1e2736", color: "#8b949e", fontSize: 13 }}>⧉</button>
+                    <button onClick={e => handleDelete(tpl.id, e)} disabled={deleting === tpl.id} title="Delete" className="w-7 h-7 flex items-center justify-center rounded"
+                      style={{ background: "#2d1a1a", color: "#f87171", fontSize: 13 }}>
+                      {deleting === tpl.id ? "…" : "🗑"}
+                    </button>
+                  </div>
+                </div>
               ))}
             </div>
           </>
