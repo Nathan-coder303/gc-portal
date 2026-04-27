@@ -749,6 +749,7 @@ function SaveScheduleModal({
   const [savedTemplates, setSavedTemplates] = useState<{ id: string; name: string }[]>([]);
   const [overwriteId, setOverwriteId] = useState<string>(existingId ?? "");
   const [overwriteName, setOverwriteName] = useState<string>(existingName ?? "");
+  const [overwriteIsBuiltin, setOverwriteIsBuiltin] = useState(false);
 
   useEffect(() => {
     fetch(`/api/${companyId}/schedule-templates`)
@@ -768,10 +769,17 @@ function SaveScheduleModal({
     try {
       let res: Response;
       if (mode === "overwrite" && overwriteId) {
-        res = await fetch(`/api/${companyId}/schedule-templates/${overwriteId}`, {
-          method: "PATCH", headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ name: overwriteName, tasks: taskPayload }),
-        });
+        if (overwriteIsBuiltin) {
+          res = await fetch(`/api/${companyId}/schedule-templates`, {
+            method: "POST", headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ name: overwriteName, tasks: taskPayload }),
+          });
+        } else {
+          res = await fetch(`/api/${companyId}/schedule-templates/${overwriteId}`, {
+            method: "PATCH", headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ name: overwriteName, tasks: taskPayload }),
+          });
+        }
         const data = await res.json();
         if (!res.ok) throw new Error(data.error ?? "Failed to save");
         onSaved(data.id, overwriteName);
@@ -826,16 +834,28 @@ function SaveScheduleModal({
               <select
                 value={overwriteId}
                 onChange={e => {
-                  const t = savedTemplates.find(t => t.id === e.target.value);
-                  if (t) { setOverwriteId(t.id); setOverwriteName(t.name); }
+                  const val = e.target.value;
+                  const saved = savedTemplates.find(t => t.id === val);
+                  const builtin = SCHEDULE_TEMPLATES.find(t => t.id === val);
+                  if (saved) { setOverwriteId(saved.id); setOverwriteName(saved.name); setOverwriteIsBuiltin(false); }
+                  else if (builtin) { setOverwriteId(builtin.id); setOverwriteName(builtin.label); setOverwriteIsBuiltin(true); }
                 }}
                 className="w-full rounded-lg px-3 py-2 text-sm outline-none"
                 style={{ background: "#0d1117", border: "1px solid #30373f", color: "#e6edf3", colorScheme: "dark" }}
               >
                 <option value="">— Select a template —</option>
-                {savedTemplates.map(t => (
-                  <option key={t.id} value={t.id}>{t.name}</option>
-                ))}
+                {savedTemplates.length > 0 && (
+                  <optgroup label="Saved Templates">
+                    {savedTemplates.map(t => (
+                      <option key={t.id} value={t.id}>{t.name}</option>
+                    ))}
+                  </optgroup>
+                )}
+                <optgroup label="Built-in Templates">
+                  {SCHEDULE_TEMPLATES.map(t => (
+                    <option key={t.id} value={t.id}>{t.emoji} {t.label}</option>
+                  ))}
+                </optgroup>
               </select>
             )}
           </div>
