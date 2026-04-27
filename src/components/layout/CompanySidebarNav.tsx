@@ -5,7 +5,7 @@ import { usePathname, useSearchParams } from "next/navigation";
 
 const NAV = [
   { label: "Mike's Tasks", icon: "✅", href: (c: string) => `/${c}/today` },
-  { label: "Bids",      icon: "📋", href: (c: string) => `/${c}/projects` },
+  { label: "Projects",  icon: "📋", href: (c: string) => `/${c}/projects` },
   { label: "Subs",      icon: "🔧", href: (c: string) => `/${c}/subs` },
   { label: "Estimates", icon: "📊", href: (c: string) => `/${c}/estimates` },
   { label: "Clients",   icon: "👤", href: (c: string) => `/${c}/clients` },
@@ -21,7 +21,7 @@ const SOON = [
 
 function isActive(label: string, pathname: string, companyId: string, tab: string | null) {
   if (label === "Mike's Tasks") return pathname.startsWith(`/${companyId}/today`);
-  if (label === "Bids") {
+  if (label === "Projects") {
     return pathname.startsWith(`/${companyId}/projects`) ||
       (pathname === `/${companyId}` && (!tab || tab === "projects"));
   }
@@ -41,6 +41,7 @@ export default function CompanySidebarNav({ companyId, role }: { companyId: stri
   const tab = searchParams.get("tab");
   const isPartner = role === "PARTNER";
   const visibleNav = isPartner ? NAV.filter((n) => n.label === "Projects") : NAV;
+
 
   return (
     <nav className="flex-1 px-3 pt-2 space-y-1">

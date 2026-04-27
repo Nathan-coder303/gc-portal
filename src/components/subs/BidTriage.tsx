@@ -38,15 +38,16 @@ type TriageBid = {
 type Client = {
   id: string;
   name: string;
-  address: string | null;
-  city: string | null;
 };
 
 type Lead = {
   id: string;
   name: string;
-  address: string | null;
-  city: string | null;
+};
+
+type Project = {
+  id: string;
+  name: string;
 };
 
 type SubInfo = {
@@ -62,6 +63,7 @@ type AddSubModal = {
   bid: TriageBid;
   clientId: string | null;
   leadId: string | null;
+  projectId: string | null;
   targetName: string;
   subInfo: SubInfo | null;
   loading: boolean;
@@ -71,10 +73,12 @@ export default function BidTriage({
   companyId,
   clients,
   leads = [],
+  projects = [],
 }: {
   companyId: string;
   clients: Client[];
   leads?: Lead[];
+  projects?: Project[];
 }) {
   const [bids, setBids] = useState<TriageBid[]>([]);
   const [loading, setLoading] = useState(true);
@@ -115,7 +119,8 @@ export default function BidTriage({
     if (!target) return;
 
     const isLead = target.startsWith("lead:");
-    const targetId = target.replace(/^(client:|lead:)/, "");
+    const isProject = target.startsWith("project:");
+    const targetId = target.replace(/^(client:|lead:|project:)/, "");
     const divCode = selectedDivision[bid.id] ?? bid.divisionCode;
     const divName = ALL_DIVISIONS.find(d => d.code === divCode)?.name ?? bid.divisionName;
 
@@ -125,9 +130,15 @@ export default function BidTriage({
       if (isLead) {
         body.leadId = targetId;
         body.clientId = null;
+        body.projectId = null;
+      } else if (isProject) {
+        body.projectId = targetId;
+        body.clientId = null;
+        body.leadId = null;
       } else {
         body.clientId = targetId;
         body.leadId = null;
+        body.projectId = null;
       }
 
       const res = await fetch(`/api/${companyId}/bids/triage/${bid.id}`, {
@@ -144,6 +155,8 @@ export default function BidTriage({
       let targetName = targetId;
       if (isLead) {
         targetName = leads.find(l => l.id === targetId)?.name ?? targetId;
+      } else if (isProject) {
+        targetName = projects.find(p => p.id === targetId)?.name ?? targetId;
       } else {
         targetName = clients.find(c => c.id === targetId)?.name ?? targetId;
       }
@@ -151,8 +164,9 @@ export default function BidTriage({
       // Open "add sub?" modal and start extracting
       const modal: AddSubModal = {
         bid: { ...bid, divisionCode: divCode, divisionName: divName },
-        clientId: isLead ? null : targetId,
+        clientId: isLead || isProject ? null : targetId,
         leadId: isLead ? targetId : null,
+        projectId: isProject ? targetId : null,
         targetName,
         subInfo: null,
         loading: true,
@@ -307,22 +321,25 @@ export default function BidTriage({
                       className="text-xs rounded-lg px-2 py-1.5 flex-1"
                       style={{ background: "#1e2736", border: "1px solid #30373f", color: "#e6edf3" }}
                     >
-                      <option value="">Assign to project…</option>
+                      <option value="">Assign to…</option>
                       {clients.length > 0 && (
                         <optgroup label="── Clients ──">
                           {clients.map(c => (
-                            <option key={c.id} value={`client:${c.id}`}>
-                              {c.name}{c.address ? ` – ${c.address}` : ""}{c.city ? `, ${c.city}` : ""}
-                            </option>
+                            <option key={c.id} value={`client:${c.id}`}>{c.name}</option>
                           ))}
                         </optgroup>
                       )}
                       {leads.length > 0 && (
-                        <optgroup label="── Leads / Bids ──">
+                        <optgroup label="── Leads ──">
                           {leads.map(l => (
-                            <option key={l.id} value={`lead:${l.id}`}>
-                              {l.name}{l.address ? ` – ${l.address}` : ""}{l.city ? `, ${l.city}` : ""}
-                            </option>
+                            <option key={l.id} value={`lead:${l.id}`}>{l.name}</option>
+                          ))}
+                        </optgroup>
+                      )}
+                      {projects.length > 0 && (
+                        <optgroup label="── Projects ──">
+                          {projects.map(p => (
+                            <option key={p.id} value={`project:${p.id}`}>{p.name}</option>
                           ))}
                         </optgroup>
                       )}

@@ -48,9 +48,9 @@ export default async function ProjectsPage({
   return (
     <div className="max-w-5xl mx-auto px-4 md:px-8 py-6 md:py-8">
       <div className="mb-8">
-        <h1 className="text-xl font-bold" style={{ color: "#e6edf3" }}>Bids</h1>
+        <h1 className="text-xl font-bold" style={{ color: "#e6edf3" }}>Projects</h1>
         <p className="text-sm mt-0.5" style={{ color: "#8b949e" }}>
-          {projects.length} bid{projects.length !== 1 ? "s" : ""}
+          {projects.length} project{projects.length !== 1 ? "s" : ""}
         </p>
       </div>
 

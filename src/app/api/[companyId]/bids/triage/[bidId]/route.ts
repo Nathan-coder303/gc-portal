@@ -10,16 +10,22 @@ export async function PATCH(
   const session = await auth();
   if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-  const body = await req.json() as { clientId?: string | null; leadId?: string | null; divisionCode?: string; divisionName?: string };
-  if (!body.clientId && !body.leadId) return NextResponse.json({ error: "clientId or leadId required" }, { status: 400 });
+  const body = await req.json() as { clientId?: string | null; leadId?: string | null; projectId?: string | null; divisionCode?: string; divisionName?: string };
+  if (!body.clientId && !body.leadId && !body.projectId) return NextResponse.json({ error: "clientId, leadId, or projectId required" }, { status: 400 });
 
   const data: Record<string, unknown> = { status: "RECEIVED" };
   if (body.clientId) {
     data.clientId = body.clientId;
     data.leadId = null;
+    data.projectId = null;
   } else if (body.leadId) {
     data.leadId = body.leadId;
     data.clientId = null;
+    data.projectId = null;
+  } else if (body.projectId) {
+    data.projectId = body.projectId;
+    data.clientId = null;
+    data.leadId = null;
   }
   if (body.divisionCode) data.divisionCode = body.divisionCode;
   if (body.divisionName) data.divisionName = body.divisionName;

@@ -12,7 +12,7 @@ export default async function SubsDatabasePage({ params }: { params: { companyId
   if (!session) redirect("/login");
   if (session.user.companyId !== params.companyId) redirect(`/${session.user.companyId}/subs`);
 
-  const [subs, clients, leads, triageCount] = await Promise.all([
+  const [subs, clients, leads, projects, triageCount] = await Promise.all([
     prisma.subContractor.findMany({
       where: { companyId: params.companyId },
       orderBy: [{ divisionCode: "asc" }, { name: "asc" }],
@@ -20,12 +20,17 @@ export default async function SubsDatabasePage({ params }: { params: { companyId
     prisma.client.findMany({
       where: { companyId: params.companyId },
       orderBy: { name: "asc" },
-      select: { id: true, name: true, address: true, city: true },
+      select: { id: true, name: true },
     }),
     prisma.lead.findMany({
       where: { companyId: params.companyId },
       orderBy: { receivedAt: "desc" },
-      select: { id: true, name: true, address: true, city: true },
+      select: { id: true, name: true },
+    }),
+    prisma.project.findMany({
+      where: { companyId: params.companyId },
+      orderBy: { name: "asc" },
+      select: { id: true, name: true },
     }),
     prisma.subBid.count({
       where: { companyId: params.companyId, status: "TRIAGE" },
@@ -59,8 +64,9 @@ export default async function SubsDatabasePage({ params }: { params: { companyId
         </div>
         <BidTriage
           companyId={params.companyId}
-          clients={clients.map(c => ({ id: c.id, name: c.name, address: c.address ?? null, city: c.city ?? null }))}
-          leads={leads.map(l => ({ id: l.id, name: l.name ?? "Unnamed Lead", address: l.address ?? null, city: l.city ?? null }))}
+          clients={clients.map(c => ({ id: c.id, name: c.name }))}
+          leads={leads.map(l => ({ id: l.id, name: l.name ?? "Unnamed Lead" }))}
+          projects={projects.map(p => ({ id: p.id, name: p.name }))}
         />
       </div>
 

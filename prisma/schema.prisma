@@ -355,6 +355,8 @@ model SubBid {
   client         Client?  @relation(fields: [clientId], references: [id])
   leadId         String?
   lead           Lead?    @relation(fields: [leadId], references: [id])
+  projectId      String?
+  project        Project? @relation(fields: [projectId], references: [id])
   companyId      String
   divisionCode   String
   divisionName   String
@@ -372,6 +374,7 @@ model SubBid {
 
   @@index([clientId])
   @@index([leadId])
+  @@index([projectId])
   @@index([clientId, divisionCode])
   @@index([companyId])
 }
@@ -405,6 +408,7 @@ model Project {
   llcName             String?
   partnerAccountEntries PartnerAccountEntry[]
   partners              Partner[]
+  subBids               SubBid[]
 }
 
 model User {
