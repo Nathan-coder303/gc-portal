@@ -12,6 +12,7 @@ type Sub = {
   divisionCode: string;
   divisionName: string;
   notes: string | null;
+  isFavorite: boolean;
   createdAt: string;
 };
 
@@ -124,7 +125,7 @@ function SubCard({
   sub, isDragOver, isSelected,
   usedDivisions,
   onDragStart, onDragOver, onDrop, onDragEnd,
-  onEdit, onDelete, onDuplicate, onMoveToDiv, onToggleSelect,
+  onEdit, onDelete, onDuplicate, onMoveToDiv, onToggleSelect, onToggleFavorite,
 }: {
   sub: Sub; isDragOver: boolean; isSelected: boolean;
   usedDivisions: { code: string; name: string }[];
@@ -133,6 +134,7 @@ function SubCard({
   onEdit: () => void; onDelete: () => void; onDuplicate: () => void;
   onMoveToDiv: (code: string, name: string) => void;
   onToggleSelect: () => void;
+  onToggleFavorite: () => void;
 }) {
   const tags = parseTags(sub.notes);
   const [showMoveMenu, setShowMoveMenu] = useState(false);
@@ -152,6 +154,16 @@ function SubCard({
         cursor: "grab",
       }}
     >
+      {/* Star favorite */}
+      <button
+        onClick={e => { e.stopPropagation(); onToggleFavorite(); }}
+        className="absolute top-2 left-2 text-base leading-none transition-all hover:scale-125"
+        title={sub.isFavorite ? "Remove from favorites" : "Add to favorites"}
+        style={{ color: sub.isFavorite ? "#f59e0b" : "#30373f" }}
+      >
+        ★
+      </button>
+
       {/* Select checkbox */}
       <button
         onClick={e => { e.stopPropagation(); onToggleSelect(); }}
@@ -165,7 +177,7 @@ function SubCard({
       </button>
 
       {/* Company name */}
-      <div className="font-semibold text-sm leading-tight pr-6 truncate" style={{ color: "#e6edf3" }}>{sub.name}</div>
+      <div className="font-semibold text-sm leading-tight px-5 truncate" style={{ color: "#e6edf3" }}>{sub.name}</div>
 
       {/* Contact name */}
       {sub.contactName && (
@@ -571,11 +583,12 @@ export default function SubsDatabase({
 }) {
   const normalizedInit = initialSubs.map(s => {
     const { code, name } = normalizeDivision(s.divisionCode, s.divisionName);
-    return { ...s, divisionCode: code, divisionName: name };
+    return { ...s, divisionCode: code, divisionName: name, isFavorite: (s as { isFavorite?: boolean }).isFavorite ?? false };
   });
 
   const [subs, setSubs] = useState<Sub[]>(normalizedInit);
   const [filterDiv, setFilterDiv] = useState("ALL");
+  const [favOnly, setFavOnly] = useState(false);
   const [modal, setModal] = useState<{ mode: "add" | "edit"; sub?: Sub; prefillDiv?: { code: string; name: string } } | null>(null);
   const [emailModal, setEmailModal] = useState<{ emails: string[]; divName: string } | null>(null);
   const [importing, setImporting] = useState(false);
@@ -637,12 +650,16 @@ export default function SubsDatabase({
     const body = { name: form.name, contactName: form.contactName || null, address: form.address || null, email: form.email || null, phone: form.phone || null, divisionCode: form.divisionCode, divisionName: form.divisionName, notes };
     if (editId) {
       const res = await fetch(`/api/${companyId}/subs/${editId}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
+      if (!res.ok) { alert(`Failed to save sub: ${res.status}`); return; }
       const updated = await res.json();
-      setSubs(prev => prev.map(s => s.id === editId ? { ...s, ...updated } : s));
+      const { code, name: divName } = normalizeDivision(updated.divisionCode, updated.divisionName);
+      setSubs(prev => prev.map(s => s.id === editId ? { ...s, ...updated, divisionCode: code, divisionName: divName } : s));
     } else {
       const res = await fetch(`/api/${companyId}/subs`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
+      if (!res.ok) { alert(`Failed to save sub: ${res.status}`); return; }
       const created = await res.json();
-      setSubs(prev => [...prev, { ...created, contactName: created.contactName ?? null, address: created.address ?? null, email: created.email ?? null, phone: created.phone ?? null, notes: created.notes ?? null }]);
+      const { code, name: divName } = normalizeDivision(created.divisionCode, created.divisionName);
+      setSubs(prev => [...prev, { ...created, divisionCode: code, divisionName: divName, contactName: created.contactName ?? null, address: created.address ?? null, email: created.email ?? null, phone: created.phone ?? null, notes: created.notes ?? null, isFavorite: created.isFavorite ?? false }]);
     }
     setModal(null);
   }
@@ -650,6 +667,18 @@ export default function SubsDatabase({
   async function handleDelete(id: string) {
     await fetch(`/api/${companyId}/subs/${id}`, { method: "DELETE" });
     setSubs(prev => prev.filter(s => s.id !== id));
+  }
+
+  async function handleToggleFavorite(id: string) {
+    const cur = subs.find(s => s.id === id);
+    if (!cur) return;
+    const next = !cur.isFavorite;
+    setSubs(prev => prev.map(s => s.id === id ? { ...s, isFavorite: next } : s));
+    await fetch(`/api/${companyId}/subs/${id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ isFavorite: next }),
+    });
   }
 
   async function handleDuplicate(sub: Sub) {
@@ -712,7 +741,7 @@ export default function SubsDatabase({
     const data: Sub[] = await fresh.json();
     setSubs(data.map(s => {
       const { code, name } = normalizeDivision(s.divisionCode, s.divisionName);
-      return { ...s, divisionCode: code, divisionName: name, contactName: s.contactName ?? null, address: s.address ?? null, email: s.email ?? null, phone: s.phone ?? null, notes: s.notes ?? null };
+      return { ...s, divisionCode: code, divisionName: name, contactName: s.contactName ?? null, address: s.address ?? null, email: s.email ?? null, phone: s.phone ?? null, notes: s.notes ?? null, isFavorite: s.isFavorite ?? false };
     }));
   }
 
@@ -729,7 +758,8 @@ export default function SubsDatabase({
   }
 
   // ── Derived data ──────────────────────────────────────────────────────────
-  const filtered = filterDiv === "ALL" ? subs : subs.filter(s => s.divisionCode === filterDiv);
+  const base = favOnly ? subs.filter(s => s.isFavorite) : subs;
+  const filtered = filterDiv === "ALL" ? base : base.filter(s => s.divisionCode === filterDiv);
   const grouped = new Map<string, { code: string; name: string; subs: Sub[] }>();
   for (const sub of filtered) {
     if (!grouped.has(sub.divisionCode)) grouped.set(sub.divisionCode, { code: sub.divisionCode, name: sub.divisionName, subs: [] });
@@ -778,13 +808,17 @@ export default function SubsDatabase({
 
       {/* Filter pills */}
       <div className="flex gap-2 flex-wrap mb-6">
-        <button onClick={() => setFilterDiv("ALL")} className="px-3 py-1 rounded-full text-xs font-medium"
-          style={filterDiv === "ALL" ? { background: "#C9A84C", color: "#0d1117" } : { background: "transparent", color: "#8b949e", border: "1px solid #30373f" }}>
+        <button onClick={() => { setFilterDiv("ALL"); setFavOnly(false); }} className="px-3 py-1 rounded-full text-xs font-medium"
+          style={filterDiv === "ALL" && !favOnly ? { background: "#C9A84C", color: "#0d1117" } : { background: "transparent", color: "#8b949e", border: "1px solid #30373f" }}>
           All ({subs.length})
         </button>
+        <button onClick={() => { setFavOnly(v => !v); setFilterDiv("ALL"); }} className="px-3 py-1 rounded-full text-xs font-medium"
+          style={favOnly ? { background: "#f59e0b", color: "#0d1117" } : { background: "transparent", color: "#f59e0b", border: "1px solid #f59e0b44" }}>
+          ★ Favorites ({subs.filter(s => s.isFavorite).length})
+        </button>
         {ALL_DIVISIONS.filter(d => usedCodes.has(d.code)).map(d => (
-          <button key={d.code} onClick={() => setFilterDiv(d.code)} className="px-3 py-1 rounded-full text-xs font-medium"
-            style={filterDiv === d.code ? { background: "#C9A84C", color: "#0d1117" } : { background: "transparent", color: "#8b949e", border: "1px solid #30373f" }}>
+          <button key={d.code} onClick={() => { setFilterDiv(d.code); setFavOnly(false); }} className="px-3 py-1 rounded-full text-xs font-medium"
+            style={filterDiv === d.code && !favOnly ? { background: "#C9A84C", color: "#0d1117" } : { background: "transparent", color: "#8b949e", border: "1px solid #30373f" }}>
             {d.code.slice(0, 2)} – {d.name} ({subs.filter(s => s.divisionCode === d.code).length})
           </button>
         ))}
@@ -894,6 +928,7 @@ export default function SubsDatabase({
                     });
                   }}
                   onToggleSelect={() => toggleSelect(group.code, sub.id)}
+                  onToggleFavorite={() => handleToggleFavorite(sub.id)}
                 />
               ))}
             </div>

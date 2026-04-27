@@ -22,6 +22,7 @@ export async function POST(req: NextRequest, { params }: { params: { companyId: 
     data: {
       companyId: params.companyId,
       name: body.name,
+      contactName: body.contactName ?? null,
       address: body.address ?? null,
       email: body.email ?? null,
       phone: body.phone ?? null,

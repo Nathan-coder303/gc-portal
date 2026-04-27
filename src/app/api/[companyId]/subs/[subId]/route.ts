@@ -7,18 +7,22 @@ export async function PATCH(req: NextRequest, { params }: { params: { companyId:
   if (!session || session.user.companyId !== params.companyId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const body = await req.json();
+  const data: Record<string, unknown> = {};
+  if ("isFavorite" in body) {
+    data.isFavorite = body.isFavorite;
+  } else {
+    data.name = body.name;
+    data.contactName = body.contactName ?? null;
+    data.address = body.address ?? null;
+    data.email = body.email ?? null;
+    data.phone = body.phone ?? null;
+    data.divisionCode = body.divisionCode;
+    data.divisionName = body.divisionName;
+    data.notes = body.notes ?? null;
+  }
   const sub = await prisma.subContractor.update({
     where: { id: params.subId },
-    data: {
-      name: body.name,
-      contactName: body.contactName ?? null,
-      address: body.address ?? null,
-      email: body.email ?? null,
-      phone: body.phone ?? null,
-      divisionCode: body.divisionCode,
-      divisionName: body.divisionName,
-      notes: body.notes ?? null,
-    },
+    data,
   });
   return NextResponse.json(sub);
 }

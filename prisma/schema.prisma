@@ -1006,6 +1006,7 @@ model SubContractor {
   email         String?
   phone         String?
   licenseNumber String?
+  isFavorite    Boolean  @default(false)
   divisionCode  String
   divisionName  String
   notes         String?

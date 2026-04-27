@@ -16,6 +16,7 @@ export default async function SubsDatabasePage({ params, searchParams }: { param
     prisma.subContractor.findMany({
       where: { companyId: params.companyId },
       orderBy: [{ divisionCode: "asc" }, { name: "asc" }],
+      select: { id: true, name: true, contactName: true, address: true, email: true, phone: true, divisionCode: true, divisionName: true, notes: true, isFavorite: true, createdAt: true },
     }),
     prisma.client.findMany({
       where: { companyId: params.companyId },
@@ -98,6 +99,7 @@ export default async function SubsDatabasePage({ params, searchParams }: { param
           divisionCode: s.divisionCode,
           divisionName: s.divisionName,
           notes: s.notes ?? null,
+          isFavorite: s.isFavorite,
           createdAt: s.createdAt.toISOString(),
         }))}
       />
