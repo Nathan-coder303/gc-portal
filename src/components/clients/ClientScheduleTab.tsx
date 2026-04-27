@@ -2048,11 +2048,11 @@ function ClientGanttChart({ tasks, projectStart, companyId, clientId, canEdit, o
 // ── Edit Task Modal (for table view double-click) ─────────────────────────────
 
 function EditTaskModal({
-  task, companyId, clientId, onUpdate, onDelete, onClose, currentRow, totalRows, onMove,
+  task, companyId, clientId, onUpdate, onDelete, onClose, currentRow, totalRows, onMove, allTasks,
 }: {
   task: ClientTask; companyId: string; clientId: string;
   onUpdate: (updated: ClientTask) => void | Promise<void>; onDelete: (id: string) => void; onClose: () => void;
-  currentRow?: number; totalRows?: number; onMove?: (toRow: number) => void;
+  currentRow?: number; totalRows?: number; onMove?: (toRow: number) => void; allTasks?: ClientTask[];
 }) {
   const [form, setForm] = useState({
     name: task.name,
@@ -2067,10 +2067,11 @@ function EditTaskModal({
     assignee: task.assignee ?? "",
     trade: task.trade ?? "",
     notes: task.notes ?? "",
-    predecessorIds: task.predecessorIds.join(", "),
+    predecessorIds: task.predecessorIds as string[],
     isMilestone: task.isMilestone,
     moveToRow: currentRow != null ? String(currentRow) : "",
   });
+  const [predSearch, setPredSearch] = useState("");
   const [saving, setSaving] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
 
@@ -2104,7 +2105,7 @@ function EditTaskModal({
       assignee: form.assignee.trim() || null,
       trade: form.trade.trim() || null,
       notes: form.notes.trim() || null,
-      predecessorIds: form.predecessorIds.split(",").map(s => s.trim()).filter(Boolean),
+      predecessorIds: form.predecessorIds,
       isMilestone: form.isMilestone,
     };
     try {
@@ -2236,8 +2237,64 @@ function EditTaskModal({
           </div>
 
           <div>
-            <label className="block text-[11px] mb-1" style={{ color: "#8b949e" }}>Linked From — task IDs that must finish before this task can start (comma-separated)</label>
-            <textarea value={form.predecessorIds} onChange={e => setForm(f => ({ ...f, predecessorIds: e.target.value }))} rows={2} style={{ ...INPUT, resize: "none", fontFamily: "monospace", fontSize: 11 }} className="outline-none" placeholder="task-id-1, task-id-2, ..." />
+            <label className="block text-[11px] mb-1" style={{ color: "#8b949e" }}>Linked From — tasks that must finish before this one starts</label>
+            {allTasks && allTasks.length > 0 ? (() => {
+              const sorted = [...allTasks].filter(t => t.id !== task.id).sort((a, b) => a.sortOrder - b.sortOrder);
+              const rowOf = new Map(sorted.map((t, i) => [t.id, i + 1]));
+              const q = predSearch.toLowerCase();
+              const filtered = sorted.filter(t => {
+                const row = String(rowOf.get(t.id) ?? "");
+                return row.startsWith(q) || t.name.toLowerCase().includes(q) || t.phase.toLowerCase().includes(q);
+              });
+              return (
+                <div>
+                  {/* Selected badges */}
+                  {form.predecessorIds.length > 0 && (
+                    <div className="flex flex-wrap gap-1 mb-2">
+                      {form.predecessorIds.map(id => {
+                        const t = allTasks.find(t => t.id === id);
+                        const row = rowOf.get(id);
+                        return (
+                          <span key={id} className="flex items-center gap-1 px-2 py-0.5 rounded-full text-xs"
+                            style={{ background: "#1e2736", border: "1px solid #C9A84C55", color: "#C9A84C" }}>
+                            #{row} {t?.name ?? id}
+                            <button onClick={() => setForm(f => ({ ...f, predecessorIds: f.predecessorIds.filter(p => p !== id) }))}
+                              className="ml-0.5 opacity-60 hover:opacity-100" style={{ lineHeight: 1 }}>✕</button>
+                          </span>
+                        );
+                      })}
+                    </div>
+                  )}
+                  <input
+                    value={predSearch} onChange={e => setPredSearch(e.target.value)}
+                    placeholder="Search by row # or task name…"
+                    className="w-full rounded-lg px-2 py-1.5 text-xs outline-none mb-1"
+                    style={{ background: "#0d1117", border: "1px solid #30373f", color: "#e6edf3" }}
+                  />
+                  <div className="rounded-lg overflow-y-auto" style={{ maxHeight: 140, border: "1px solid #30373f", background: "#0d1117" }}>
+                    {filtered.slice(0, 50).map(t => {
+                      const row = rowOf.get(t.id);
+                      const sel = form.predecessorIds.includes(t.id);
+                      return (
+                        <button key={t.id} onClick={() => setForm(f => ({
+                          ...f,
+                          predecessorIds: sel ? f.predecessorIds.filter(p => p !== t.id) : [...f.predecessorIds, t.id],
+                        }))}
+                          className="w-full text-left px-2 py-1.5 text-xs flex items-center gap-2 hover:bg-[#1e2736] transition-colors"
+                          style={{ color: sel ? "#C9A84C" : "#e6edf3", borderBottom: "1px solid #21262d" }}>
+                          <span className="font-mono shrink-0" style={{ color: "#484f58", minWidth: 24 }}>#{row}</span>
+                          <span className="truncate">{t.name}</span>
+                          {sel && <span className="ml-auto shrink-0" style={{ color: "#C9A84C" }}>✓</span>}
+                        </button>
+                      );
+                    })}
+                    {filtered.length === 0 && <p className="px-3 py-2 text-xs" style={{ color: "#484f58" }}>No tasks found</p>}
+                  </div>
+                </div>
+              );
+            })() : (
+              <textarea value={form.predecessorIds.join(", ")} onChange={e => setForm(f => ({ ...f, predecessorIds: e.target.value.split(",").map(s => s.trim()).filter(Boolean) }))} rows={2} style={{ ...INPUT, resize: "none", fontFamily: "monospace", fontSize: 11 }} className="outline-none" placeholder="task-id-1, task-id-2, ..." />
+            )}
           </div>
 
           <label className="flex items-center gap-2 cursor-pointer select-none text-xs" style={{ color: "#8b949e" }}>
@@ -2978,6 +3035,7 @@ function ScheduleTableView({
 
       {editTask && (
         <EditTaskModal task={editTask} companyId={companyId} clientId={clientId}
+          allTasks={tasks}
           currentRow={(() => { const s = [...tasks].sort((a,b) => a.sortOrder - b.sortOrder); const i = s.findIndex(t => t.id === editTask.id); return i >= 0 ? i + 1 : undefined; })()}
           totalRows={tasks.length}
           onUpdate={async updated => {
