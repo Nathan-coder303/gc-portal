@@ -15,6 +15,7 @@ type Client = {
   id: string; name: string; address: string | null; city: string | null;
   state: string | null; zip: string | null; email: string | null; phone: string | null;
   estimateCount: number; estimateTotal: number; internalProfit: number; gcFee: number; status: string; sortOrder: number;
+  updatedAt: string;
 };
 
 const inputStyle = { background: "#0d1117", border: "1px solid #30373f", color: "#e6edf3", width: "100%" };
@@ -270,6 +271,7 @@ function FromLeadModal({ companyId, defaultStatus, onDone, onClose }: {
         gcFee: 0,
         status: defaultStatus,
         sortOrder: res.sortOrder ?? 0,
+        updatedAt: new Date().toISOString(),
       });
     });
   }
@@ -362,6 +364,7 @@ function AddClientForm({ onDone, defaultStatus }: { onDone: (newClient?: Client)
         gcFee: 0,
         status: defaultStatus,
         sortOrder: created.sortOrder ?? 0,
+        updatedAt: new Date().toISOString(),
       });
     });
   }
@@ -503,13 +506,20 @@ export default function ClientsManager({ companyId, clients: initialClients, isA
   const [clients, setClients] = useState<Client[]>(initialClients);
   const [addingIn, setAddingIn] = useState<string | null>(null);
   const [fromLeadForStatus, setFromLeadForStatus] = useState<string | null>(null);
+  const [sortBy, setSortBy] = useState<"default" | "newest" | "oldest">("default");
   const dragIdRef = useRef<string | null>(null);
   const router = useRouter();
 
-  const prospects = clients.filter(c => c.status === "PROSPECT");
-  const actives = clients.filter(c => c.status === "ACTIVE");
-  const completed = clients.filter(c => c.status === "COMPLETED");
-  const dead = clients.filter(c => c.status === "DEAD");
+  function applySort(list: Client[]): Client[] {
+    if (sortBy === "newest") return [...list].sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime());
+    if (sortBy === "oldest") return [...list].sort((a, b) => new Date(a.updatedAt).getTime() - new Date(b.updatedAt).getTime());
+    return [...list].sort((a, b) => a.sortOrder - b.sortOrder);
+  }
+
+  const prospects = applySort(clients.filter(c => c.status === "PROSPECT"));
+  const actives = applySort(clients.filter(c => c.status === "ACTIVE"));
+  const completed = applySort(clients.filter(c => c.status === "COMPLETED"));
+  const dead = applySort(clients.filter(c => c.status === "DEAD"));
 
   // Build ClientIncomeSummary array for BarometerSection
   const clientIncomeSummaries: ClientIncomeSummary[] = [...actives, ...completed].map(c => ({
@@ -584,10 +594,24 @@ export default function ClientsManager({ companyId, clients: initialClients, isA
       {/* MIBH Income 2026 Barometer — clickable, shows open + closed breakdown */}
       <BarometerSection mibhIncome={mibhIncome} clients={clientIncomeSummaries} />
 
-      <div className="flex items-center justify-between mb-4">
+      <div className="flex items-center justify-between mb-4 flex-wrap gap-3">
         <div>
           <h1 className="text-xl font-bold" style={{ color: "#e6edf3" }}>Clients</h1>
           <p className="text-sm mt-0.5" style={{ color: "#8b949e" }}>{prospects.length} prospect{prospects.length !== 1 ? "s" : ""} · {actives.length} active · {completed.length} closed · {dead.length} dead</p>
+        </div>
+        <div className="flex items-center gap-1 rounded-lg p-1" style={{ background: "#161b22", border: "1px solid #30373f" }}>
+          {(["default", "newest", "oldest"] as const).map(opt => (
+            <button
+              key={opt}
+              onClick={() => setSortBy(opt)}
+              className="px-3 py-1 rounded text-xs font-medium transition-all"
+              style={sortBy === opt
+                ? { background: "#C9A84C", color: "#0d1117" }
+                : { color: "#8b949e" }}
+            >
+              {opt === "default" ? "Custom" : opt === "newest" ? "Last Modified" : "First Modified"}
+            </button>
+          ))}
         </div>
       </div>
 

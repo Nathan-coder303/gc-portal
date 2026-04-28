@@ -99,6 +99,7 @@ export default async function ClientsPage({ params }: { params: { companyId: str
           gcFee: c.templates.reduce((sum, t) => sum + calcGcFeeAmt(t.divisions, t.gcFeePercent), 0),
           status: c.status,
           sortOrder: c.sortOrder,
+          updatedAt: c.updatedAt.toISOString(),
         }))}
         isAdmin={isAdmin}
       />
