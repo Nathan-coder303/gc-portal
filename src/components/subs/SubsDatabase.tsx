@@ -589,6 +589,7 @@ export default function SubsDatabase({
   const [subs, setSubs] = useState<Sub[]>(normalizedInit);
   const [filterDiv, setFilterDiv] = useState("ALL");
   const [favOnly, setFavOnly] = useState(false);
+  const [search, setSearch] = useState("");
   const [modal, setModal] = useState<{ mode: "add" | "edit"; sub?: Sub; prefillDiv?: { code: string; name: string } } | null>(null);
   const [emailModal, setEmailModal] = useState<{ emails: string[]; divName: string } | null>(null);
   const [importing, setImporting] = useState(false);
@@ -758,7 +759,16 @@ export default function SubsDatabase({
   }
 
   // ── Derived data ──────────────────────────────────────────────────────────
-  const base = favOnly ? subs.filter(s => s.isFavorite) : subs;
+  const q = search.trim().toLowerCase();
+  const searched = q
+    ? subs.filter(s =>
+        s.name.toLowerCase().includes(q) ||
+        (s.contactName ?? "").toLowerCase().includes(q) ||
+        (s.email ?? "").toLowerCase().includes(q) ||
+        (s.phone ?? "").toLowerCase().includes(q)
+      )
+    : subs;
+  const base = favOnly ? searched.filter(s => s.isFavorite) : searched;
   const filtered = filterDiv === "ALL" ? base : base.filter(s => s.divisionCode === filterDiv);
   const grouped = new Map<string, { code: string; name: string; subs: Sub[] }>();
   for (const sub of filtered) {
@@ -804,6 +814,28 @@ export default function SubsDatabase({
             + Add Sub
           </button>
         </div>
+      </div>
+
+      {/* Search */}
+      <div className="relative mb-4">
+        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm" style={{ color: "#484f58" }}>🔍</span>
+        <input
+          type="text"
+          value={search}
+          onChange={e => setSearch(e.target.value)}
+          placeholder="Search by name, contact, email, or phone…"
+          className="w-full text-sm rounded-xl pl-9 pr-4 py-2.5 outline-none"
+          style={{ background: "#161b22", border: "1px solid #30373f", color: "#e6edf3" }}
+        />
+        {search && (
+          <button
+            onClick={() => setSearch("")}
+            className="absolute right-3 top-1/2 -translate-y-1/2 text-xs"
+            style={{ color: "#484f58" }}
+          >
+            ✕
+          </button>
+        )}
       </div>
 
       {/* Filter pills */}
