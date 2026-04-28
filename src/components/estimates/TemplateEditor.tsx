@@ -323,8 +323,38 @@ function ItemRow({ item, divisionId, groupId, canEdit }: { item: Item; divisionI
     return (
       <tr ref={setNodeRef} className="group text-sm" style={{ borderTop: "1px solid #30373f", opacity: isDragging ? 0.35 : 1, transform: CSS.Transform.toString(transform), transition }}>
         {canEdit && (
-          <td className="px-1 py-2 text-center select-none" style={{ color: "#8b949e", width: "24px", cursor: "grab", fontSize: "14px" }} {...listeners} {...attributes}>
-            ⠿
+          <td className="px-1 py-2 text-center select-none" style={{ color: "#8b949e", width: "28px" }}>
+            <div className="flex flex-col items-center gap-1">
+              <span style={{ cursor: "grab", fontSize: "14px" }} {...listeners} {...attributes}>⠿</span>
+              {/* Mobile-only action buttons below drag handle */}
+              <div className="flex flex-col gap-0.5 sm:hidden">
+                <button onClick={() => setEditing(true)}
+                  className="w-6 h-6 rounded flex items-center justify-center"
+                  style={{ background: "#C9A84C22", color: "#C9A84C", border: "1px solid #C9A84C44" }}
+                  title="Edit">
+                  <PencilIcon size={12} />
+                </button>
+                <button onClick={doReset} disabled={isPending}
+                  className="w-6 h-6 rounded flex items-center justify-center disabled:opacity-50 text-xs font-bold"
+                  style={{ background: "#1e40af22", color: "#60a5fa", border: "1px solid #60a5fa33" }}
+                  title="Reset">
+                  ↺
+                </button>
+                <button onClick={() => startTransition(async () => {
+                  await archiveTemplateItem(item.id);
+                  pushUndo({
+                    label: `Delete "${item.name}"`,
+                    undo: async () => { await restoreTemplateItem(item.id); },
+                    redo: async () => { await archiveTemplateItem(item.id); },
+                  });
+                })} disabled={isPending}
+                  className="w-6 h-6 rounded flex items-center justify-center disabled:opacity-50"
+                  style={{ background: "#f8514922", color: "#f85149", border: "1px solid #f8514933" }}
+                  title="Remove">
+                  <TrashIcon size={12} />
+                </button>
+              </div>
+            </div>
           </td>
         )}
         <td className="px-3 py-2 text-xs font-mono" style={{ color: "#8b949e", whiteSpace: "nowrap" }}>{item.csiCode ?? ""}</td>
@@ -336,7 +366,7 @@ function ItemRow({ item, divisionId, groupId, canEdit }: { item: Item; divisionI
         <td className="px-3 py-2 text-right" style={{ color: "#8b949e" }}>{item.defaultMarkupPct != null ? `${item.defaultMarkupPct}%` : "—"}</td>
         <td className="px-3 py-2 font-semibold text-right" style={{ color: "#C9A84C" }}>{total > 0 ? `$${fmt(total)}` : "—"}</td>
         <td className="px-3 py-2 text-sm italic truncate max-w-[120px]" style={{ color: "#8b949e" }}>{item.notes ?? ""}</td>
-        <td className="px-3 py-2 text-right">
+        <td className="px-3 py-2 text-right hidden sm:table-cell">
           <div className="flex gap-1 justify-end opacity-0 group-hover:opacity-100 transition-opacity">
             {canEdit && (
               <>
@@ -492,7 +522,7 @@ function TemplateItemTable({ divisionId, groupId, items, canEdit }: { divisionId
             <th className="px-3 py-1.5 text-right font-medium text-xs w-16" style={{ color: "#8b949e" }}>Markup</th>
             <th className="px-3 py-1.5 text-right font-medium text-xs w-28" style={{ color: "#C9A84C" }}>TOTAL</th>
             <th className="px-3 py-1.5 text-left font-medium text-xs" style={{ color: "#8b949e" }}>Notes</th>
-            <th className="w-20" />
+            <th className="w-20 hidden sm:table-cell" />
           </tr>
         </thead>
         <tbody>
