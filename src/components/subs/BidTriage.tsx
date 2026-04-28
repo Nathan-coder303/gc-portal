@@ -52,12 +52,24 @@ type Project = {
 
 type SubInfo = {
   name: string | null;
+  contactName: string | null;
   address: string | null;
   phone: string | null;
   email: string | null;
   licenseNumber: string | null;
   notes: string | null;
 };
+
+function parseContactNotes(notes: string | null): { contactName: string; email: string; phone: string } | null {
+  if (!notes) return null;
+  const parts = notes.split(" | ");
+  if (parts.length < 2) return null;
+  return {
+    contactName: parts[0]?.trim() ?? "",
+    email: parts[1]?.trim() ?? "",
+    phone: parts[2]?.trim() ?? "",
+  };
+}
 
 type AddSubModal = {
   bid: TriageBid;
@@ -92,6 +104,7 @@ export default function BidTriage({
   // Sub form state
   const [subForm, setSubForm] = useState({
     name: "",
+    contactName: "",
     address: "",
     phone: "",
     email: "",
@@ -172,35 +185,56 @@ export default function BidTriage({
         loading: true,
       };
       setAddSubModal(modal);
-      setSubForm({
-        name: bid.contractorName ?? "",
-        address: "",
-        phone: "",
-        email: "",
-        licenseNumber: "",
-        divisionCode: divCode,
-        divisionName: divName,
-        notes: "",
-      });
 
-      // Extract sub info from PDF in background
-      const extractRes = await fetch(`/api/${companyId}/bids/triage/${bid.id}/extract-sub`, {
-        method: "POST",
-      });
-      if (extractRes.ok) {
-        const info: SubInfo = await extractRes.json();
-        setAddSubModal(prev => prev ? { ...prev, subInfo: info, loading: false } : null);
-        setSubForm(prev => ({
-          ...prev,
-          name: info.name ?? prev.name,
-          address: info.address ?? "",
-          phone: info.phone ?? "",
-          email: info.email ?? "",
-          licenseNumber: info.licenseNumber ?? "",
-          notes: info.notes ?? "",
-        }));
-      } else {
+      const parsedContact = parseContactNotes(bid.notes);
+
+      // For Excel-imported bids (no PDF), pre-fill from stored notes immediately
+      if (!bid.fileUrl) {
+        setSubForm({
+          name: bid.contractorName ?? "",
+          contactName: parsedContact?.contactName ?? "",
+          address: "",
+          phone: parsedContact?.phone ?? "",
+          email: parsedContact?.email ?? "",
+          licenseNumber: "",
+          divisionCode: divCode,
+          divisionName: divName,
+          notes: "",
+        });
         setAddSubModal(prev => prev ? { ...prev, loading: false } : null);
+      } else {
+        setSubForm({
+          name: bid.contractorName ?? "",
+          contactName: "",
+          address: "",
+          phone: "",
+          email: "",
+          licenseNumber: "",
+          divisionCode: divCode,
+          divisionName: divName,
+          notes: "",
+        });
+
+        // Extract sub info from PDF in background
+        const extractRes = await fetch(`/api/${companyId}/bids/triage/${bid.id}/extract-sub`, {
+          method: "POST",
+        });
+        if (extractRes.ok) {
+          const info: SubInfo = await extractRes.json();
+          setAddSubModal(prev => prev ? { ...prev, subInfo: info, loading: false } : null);
+          setSubForm(prev => ({
+            ...prev,
+            name: info.name ?? prev.name,
+            contactName: info.contactName ?? prev.contactName,
+            address: info.address ?? "",
+            phone: info.phone ?? "",
+            email: info.email ?? "",
+            licenseNumber: info.licenseNumber ?? "",
+            notes: info.notes ?? "",
+          }));
+        } else {
+          setAddSubModal(prev => prev ? { ...prev, loading: false } : null);
+        }
       }
     } finally {
       setAssigningId(null);
@@ -222,6 +256,7 @@ export default function BidTriage({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           name: subForm.name,
+          contactName: subForm.contactName || null,
           address: subForm.address || null,
           phone: subForm.phone || null,
           email: subForm.email || null,
@@ -275,12 +310,32 @@ export default function BidTriage({
                       </span>
                     )}
                   </div>
-                  {bid.notes && (
-                    <div className="text-xs mt-1" style={{ color: "#8b949e" }}>{bid.notes}</div>
-                  )}
+                  {(() => {
+                    const contact = parseContactNotes(bid.notes);
+                    if (contact) {
+                      return (
+                        <div className="flex flex-wrap gap-3 mt-1">
+                          {contact.contactName && (
+                            <span className="text-xs" style={{ color: "#8b949e" }}>👤 {contact.contactName}</span>
+                          )}
+                          {contact.email && (
+                            <a href={`mailto:${contact.email}`} className="text-xs hover:underline" style={{ color: "#58a6ff" }}>{contact.email}</a>
+                          )}
+                          {contact.phone && (
+                            <span className="text-xs" style={{ color: "#8b949e" }}>{contact.phone}</span>
+                          )}
+                        </div>
+                      );
+                    }
+                    return bid.notes ? <div className="text-xs mt-1" style={{ color: "#8b949e" }}>{bid.notes}</div> : null;
+                  })()}
                   <div className="text-xs mt-1 flex items-center gap-3" style={{ color: "#484f58" }}>
                     <span>
-                      {bid.emailSource && <span>{bid.emailSource} · </span>}
+                      {bid.emailSource && !parseContactNotes(bid.notes) && (
+                        <span title={bid.emailSource}>
+                          {bid.emailSource.length > 60 ? bid.emailSource.slice(0, 60) + "…" : bid.emailSource} ·{" "}
+                        </span>
+                      )}
                       {new Date(bid.createdAt).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
                     </span>
                     {bid.fileUrl && (() => {
@@ -399,6 +454,16 @@ export default function BidTriage({
                   className="w-full text-sm rounded-lg px-3 py-2"
                   style={{ background: "#1e2736", border: "1px solid #30373f", color: "#e6edf3" }}
                   placeholder="Sub company name"
+                />
+              </div>
+              <div>
+                <label className="text-xs font-semibold block mb-1" style={{ color: "#8b949e" }}>Contact Name</label>
+                <input
+                  value={subForm.contactName}
+                  onChange={e => setSubForm(p => ({ ...p, contactName: e.target.value }))}
+                  className="w-full text-sm rounded-lg px-3 py-2"
+                  style={{ background: "#1e2736", border: "1px solid #30373f", color: "#e6edf3" }}
+                  placeholder="Contact person"
                 />
               </div>
               <div>
