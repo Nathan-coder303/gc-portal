@@ -1,11 +1,9 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import { STANDARD_DIVISIONS, COMMERCIAL_ONLY_DIVISIONS } from "@/lib/divisions";
+import { DIVISIONS } from "@/lib/divisions";
 
-const ALL_DIVISIONS = [...STANDARD_DIVISIONS, ...COMMERCIAL_ONLY_DIVISIONS].sort((a, b) =>
-  Number(a.code) - Number(b.code)
-);
+const ALL_DIVISIONS = [...DIVISIONS];
 
 function getPdfHref(fileUrl: string, companyId: string): string {
   if (fileUrl.startsWith("gmail:")) {

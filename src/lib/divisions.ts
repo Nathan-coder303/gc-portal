@@ -1,3 +1,28 @@
+/** Single source of truth — full CSI MasterFormat codes used across the app */
+export const DIVISIONS = [
+  { code: "01 00 00", name: "General Requirements" },
+  { code: "02 00 00", name: "Existing Conditions" },
+  { code: "03 00 00", name: "Concrete" },
+  { code: "04 00 00", name: "Masonry" },
+  { code: "05 00 00", name: "Metals" },
+  { code: "06 00 00", name: "Wood, Plastics, and Composites" },
+  { code: "07 00 00", name: "Thermal and Moisture Protection" },
+  { code: "08 00 00", name: "Openings" },
+  { code: "09 00 00", name: "Finishes" },
+  { code: "10 00 00", name: "Specialties" },
+  { code: "12 00 00", name: "Furnishings" },
+  { code: "13 00 00", name: "Special Construction" },
+  { code: "14 00 00", name: "Conveying Equipment" },
+  { code: "21 00 00", name: "Fire Suppression" },
+  { code: "22 00 00", name: "Plumbing" },
+  { code: "23 00 00", name: "Heating, Ventilating, and Air Conditioning" },
+  { code: "26 00 00", name: "Electrical" },
+  { code: "27 00 00", name: "Communications" },
+  { code: "31 00 00", name: "Pavers" },
+  { code: "32 00 00", name: "Landscaping" },
+  { code: "35 00 00", name: "Waterway and Marine Construction" },
+] as const;
+
 export const COMMERCIAL_ONLY_DIVISIONS = [
   { code: "13", name: "Special Construction" },
   { code: "14", name: "Conveying Equipment" },
