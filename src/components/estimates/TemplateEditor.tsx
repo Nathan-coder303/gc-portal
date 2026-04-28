@@ -4,7 +4,7 @@ import { useState, useTransition, useRef, useCallback, createContext, useContext
 import { useRouter } from "next/navigation";
 import { TrashIcon, PencilIcon } from "@/components/ui/icons";
 import CoverPagePickerModal, { PdfOptions, CoverType } from "@/components/clients/CoverPagePickerModal";
-import { lookupCsiCode, lookupItemCsiCode, formatCsiCode, DIVISIONS } from "@/lib/divisions";
+import { lookupItemCsiCode, formatCsiCode, DIVISIONS } from "@/lib/divisions";
 import { DndContext, DragOverlay, useDroppable, useDraggable, closestCenter } from "@dnd-kit/core";
 import type { DragStartEvent, DragEndEvent } from "@dnd-kit/core";
 import { SortableContext, useSortable, verticalListSortingStrategy, arrayMove } from "@dnd-kit/sortable";
