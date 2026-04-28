@@ -27,7 +27,7 @@ import {
   fmt,
   type ItemLike,
 } from "@/lib/estimates/totals";
-import { lookupItemCsiCode, formatCsiCode } from "@/lib/divisions";
+import { lookupItemCsiCode, formatCsiCode, DIVISIONS } from "@/lib/divisions";
 
 type Item = ItemLike & { id: string; name: string; csiCode: string | null; detail: string | null; unit: string | null; vendor: string | null; notes: string | null; sortOrder: number };
 type Group = { id: string; name: string; items: Item[] };
@@ -841,17 +841,35 @@ export default function ProjectEstimateEditor({
       {canEdit && (
         <div className="bg-white border border-dashed border-slate-300 rounded-xl p-4">
           {addingDiv ? (
-            <div className="flex gap-2 items-end flex-wrap">
-              <div>
-                <label className="block text-xs font-medium text-slate-600 mb-1">CSI Code (optional)</label>
-                <input value={divCsi} onChange={(e) => setDivCsi(formatCsiCode(e.target.value))} placeholder="e.g. 03" className="border border-slate-300 rounded px-2 py-1.5 text-sm w-24" />
+            <div className="flex gap-2 items-center flex-wrap">
+              <div className="flex-1 min-w-[220px]">
+                <label className="block text-xs font-medium text-slate-600 mb-1">Select Division</label>
+                {(() => {
+                  const usedCodes = new Set(divisions.map(d => d.csiCode).filter(Boolean));
+                  const available = DIVISIONS.filter(d => !usedCodes.has(d.code));
+                  return (
+                    <select
+                      autoFocus
+                      value={divCsi}
+                      onChange={e => {
+                        const picked = DIVISIONS.find(d => d.code === e.target.value);
+                        setDivCsi(picked?.code ?? "");
+                        setDivName(picked?.name ?? "");
+                      }}
+                      className="w-full border border-slate-300 rounded px-2 py-1.5 text-sm"
+                    >
+                      <option value="">— choose a division —</option>
+                      {available.map(d => (
+                        <option key={d.code} value={d.code}>{d.code} – {d.name}</option>
+                      ))}
+                    </select>
+                  );
+                })()}
               </div>
-              <div className="flex-1">
-                <label className="block text-xs font-medium text-slate-600 mb-1">Division Name</label>
-                <input autoFocus value={divName} onChange={(e) => setDivName(e.target.value)} placeholder="e.g. Concrete" className="w-full border border-slate-300 rounded px-2 py-1.5 text-sm" />
+              <div className="flex gap-2 items-end pt-5">
+                <button onClick={saveDiv} disabled={isPending || !divCsi} className="bg-blue-600 text-white px-3 py-1.5 rounded text-sm disabled:opacity-40">Add</button>
+                <button onClick={() => { setAddingDiv(false); setDivCsi(""); setDivName(""); }} className="text-slate-500 text-sm px-2">Cancel</button>
               </div>
-              <button onClick={saveDiv} disabled={isPending} className="bg-blue-600 text-white px-3 py-1.5 rounded text-sm">Add</button>
-              <button onClick={() => setAddingDiv(false)} className="text-slate-500 text-sm px-2">Cancel</button>
             </div>
           ) : (
             <button onClick={() => setAddingDiv(true)} className="text-sm text-slate-400 hover:text-blue-600 w-full text-center">

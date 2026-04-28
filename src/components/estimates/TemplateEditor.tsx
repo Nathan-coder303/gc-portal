@@ -4,7 +4,7 @@ import { useState, useTransition, useRef, useCallback, createContext, useContext
 import { useRouter } from "next/navigation";
 import { TrashIcon, PencilIcon } from "@/components/ui/icons";
 import CoverPagePickerModal, { PdfOptions, CoverType } from "@/components/clients/CoverPagePickerModal";
-import { lookupCsiCode, lookupItemCsiCode, formatCsiCode } from "@/lib/divisions";
+import { lookupCsiCode, lookupItemCsiCode, formatCsiCode, DIVISIONS } from "@/lib/divisions";
 import { DndContext, DragOverlay, useDroppable, useDraggable, closestCenter } from "@dnd-kit/core";
 import type { DragStartEvent, DragEndEvent } from "@dnd-kit/core";
 import { SortableContext, useSortable, verticalListSortingStrategy, arrayMove } from "@dnd-kit/sortable";
@@ -1973,30 +1973,36 @@ export default function TemplateEditor({
       {canEdit && (
         <div className="rounded-xl p-4" style={{ border: "1px dashed #30373f" }}>
           {addingDiv ? (
-            <div className="flex gap-2 items-end flex-wrap">
-              <div>
-                <label className="block text-xs font-medium mb-1" style={{ color: "#8b949e" }}>CSI Code (optional)</label>
-                <input value={divCsi} onChange={(e) => setDivCsi(formatCsiCode(e.target.value))} placeholder="e.g. 03" className="rounded px-2 py-1.5 text-sm w-24" style={inputStyle} />
+            <div className="flex gap-2 items-center flex-wrap">
+              <div className="flex-1 min-w-[220px]">
+                <label className="block text-xs font-medium mb-1" style={{ color: "#8b949e" }}>Select Division</label>
+                {(() => {
+                  const usedCodes = new Set(divisions.map((d: Division) => d.csiCode).filter(Boolean));
+                  const available = DIVISIONS.filter(d => !usedCodes.has(d.code));
+                  return (
+                    <select
+                      autoFocus
+                      value={divCsi}
+                      onChange={e => {
+                        const picked = DIVISIONS.find(d => d.code === e.target.value);
+                        setDivCsi(picked?.code ?? "");
+                        setDivName(picked?.name ?? "");
+                      }}
+                      className="w-full rounded px-2 py-1.5 text-sm"
+                      style={inputStyle}
+                    >
+                      <option value="">— choose a division —</option>
+                      {available.map(d => (
+                        <option key={d.code} value={d.code}>{d.code} – {d.name}</option>
+                      ))}
+                    </select>
+                  );
+                })()}
               </div>
-              <div className="flex-1">
-                <label className="block text-xs font-medium mb-1" style={{ color: "#8b949e" }}>Division Name</label>
-                <input
-                  autoFocus
-                  value={divName}
-                  onChange={(e) => {
-                    setDivName(e.target.value);
-                    if (!divCsi) {
-                      const suggested = lookupCsiCode(e.target.value);
-                      if (suggested) setDivCsi(suggested);
-                    }
-                  }}
-                  placeholder="e.g. Concrete"
-                  className="w-full rounded px-2 py-1.5 text-sm"
-                  style={inputStyleSm}
-                />
+              <div className="flex gap-2 items-end pt-5">
+                <button onClick={saveDiv} disabled={isPending || !divCsi} className="px-3 py-1.5 rounded text-sm font-medium disabled:opacity-40" style={{ background: "#C9A84C", color: "#0d1117" }}>Add</button>
+                <button onClick={() => { setAddingDiv(false); setDivCsi(""); setDivName(""); }} className="text-sm px-2" style={{ color: "#8b949e" }}>Cancel</button>
               </div>
-              <button onClick={saveDiv} disabled={isPending} className="px-3 py-1.5 rounded text-sm font-medium" style={{ background: "#C9A84C", color: "#0d1117" }}>Add</button>
-              <button onClick={() => setAddingDiv(false)} className="text-sm px-2" style={{ color: "#8b949e" }}>Cancel</button>
             </div>
           ) : (
             <button onClick={() => setAddingDiv(true)} className="text-sm w-full text-center" style={{ color: "#8b949e" }}>
