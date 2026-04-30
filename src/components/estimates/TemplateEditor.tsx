@@ -583,6 +583,39 @@ function TemplateDivisionSection({ division, otherDivisions, canEdit, globalSave
   const [editAllSignal, setEditAllSignal] = useState(0);
   const [saveSignal, setSaveSignal] = useState(0);
   const [resetAllSignal, setResetAllSignal] = useState(0);
+  const [swipeX, setSwipeX] = useState(0);
+  const swipeStartX = useRef(0);
+  const swipeStartY = useRef(0);
+  const isSwiping = useRef(false);
+  const SWIPE_THRESHOLD = 80;
+
+  function handleTouchStart(e: React.TouchEvent) {
+    swipeStartX.current = e.touches[0].clientX;
+    swipeStartY.current = e.touches[0].clientY;
+    isSwiping.current = false;
+  }
+  function handleTouchMove(e: React.TouchEvent) {
+    const dx = e.touches[0].clientX - swipeStartX.current;
+    const dy = Math.abs(e.touches[0].clientY - swipeStartY.current);
+    if (!isSwiping.current && dy > Math.abs(dx)) return;
+    if (!isSwiping.current && Math.abs(dx) > 8) isSwiping.current = true;
+    if (isSwiping.current && dx < 0) setSwipeX(Math.max(dx, -SWIPE_THRESHOLD - 20));
+  }
+  function handleTouchEnd() {
+    if (swipeX <= -SWIPE_THRESHOLD && canEdit) {
+      startTransition(async () => {
+        await archiveTemplateDivision(division.id);
+        pushUndo({
+          label: `Delete division "${division.name}"`,
+          undo: async () => { await restoreTemplateDivision(division.id); },
+          redo: async () => { await archiveTemplateDivision(division.id); },
+        });
+      });
+    } else {
+      setSwipeX(0);
+    }
+    isSwiping.current = false;
+  }
   // Propagate global save from parent
   useEffect(() => { if (globalSaveSignal && globalSaveSignal > 0) setSaveSignal(s => s + 1); }, [globalSaveSignal]); // eslint-disable-line react-hooks/exhaustive-deps
   const { pushUndo } = useContext(UndoCtx);
@@ -614,18 +647,31 @@ function TemplateDivisionSection({ division, otherDivisions, canEdit, globalSave
 
   return (
     <div ref={(node) => { setDropRef(node); setDragRef(node); }} className="rounded-xl overflow-x-auto" style={{ background: "#1e2736", border: isOver ? "2px solid #C9A84C" : "1px solid #30373f", transition: "border 0.1s", opacity: isDragging ? 0.4 : 1 }}>
-      {/* Mobile header — tap anywhere to expand/collapse */}
-      <div
-        className="w-full flex items-center gap-3 px-4 py-3 md:hidden cursor-pointer select-none"
-        style={{ background: "#1e2736" }}
-        onClick={() => !editingHeader && setOpen(!open)}
-      >
-        <span className="text-base shrink-0" style={{ color: "#C9A84C" }}>{open ? "▼" : "▶"}</span>
-        <div className="flex flex-col flex-1 min-w-0">
-          {division.csiCode && <span className="text-[10px] font-semibold" style={{ color: "#8b949e" }}>{division.csiCode}</span>}
-          <span className="text-sm font-bold truncate" style={{ color: "#e6edf3" }}>{division.name}</span>
+      {/* Mobile header — tap to expand/collapse, swipe left to delete */}
+      <div className="md:hidden relative overflow-hidden" style={{ borderRadius: "inherit" }}>
+        {/* Red delete zone revealed by swipe */}
+        <div
+          className="absolute inset-y-0 right-0 flex items-center justify-center gap-1"
+          style={{ background: "#ef4444", width: 80, opacity: Math.min(1, Math.abs(swipeX) / 50) }}
+        >
+          <TrashIcon size={18} />
         </div>
-        {total > 0 && <span className="text-sm font-bold shrink-0" style={{ color: "#C9A84C" }}>${fmt(total)}</span>}
+        {/* Swipeable header */}
+        <div
+          className="w-full flex items-center gap-3 px-4 py-3 cursor-pointer select-none"
+          style={{ background: "#1e2736", transform: `translateX(${swipeX}px)`, transition: swipeX === 0 ? "transform 0.25s ease" : "none" }}
+          onTouchStart={handleTouchStart}
+          onTouchMove={handleTouchMove}
+          onTouchEnd={handleTouchEnd}
+          onClick={() => { if (!editingHeader && Math.abs(swipeX) < 5) setOpen(!open); }}
+        >
+          <span className="text-base shrink-0" style={{ color: "#C9A84C" }}>{open ? "▼" : "▶"}</span>
+          <div className="flex flex-col flex-1 min-w-0">
+            {division.csiCode && <span className="text-[10px] font-semibold" style={{ color: "#8b949e" }}>{division.csiCode}</span>}
+            <span className="text-sm font-bold truncate" style={{ color: "#e6edf3" }}>{division.name}</span>
+          </div>
+          {total > 0 && <span className="text-sm font-bold shrink-0" style={{ color: "#C9A84C" }}>${fmt(total)}</span>}
+        </div>
       </div>
 
       {/* Desktop header */}
