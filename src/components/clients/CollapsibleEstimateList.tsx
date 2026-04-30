@@ -66,16 +66,11 @@ function EstimateCard({
   // Email compose state
   const firstName = clientName.split(" ")[0];
   const scope = est.description || est.name;
-  const subjectParts = ["Estimate"];
-  if (est.estimateNumber) subjectParts.push(`#${est.estimateNumber}`);
-  subjectParts.push(`for ${clientName}`);
-  if (scope) subjectParts.push(`– ${scope}`);
-  if (clientAddress) subjectParts.push(`at ${clientAddress}`);
 
   const [to, setTo] = useState(clientEmail ?? "");
   const [cc, setCc] = useState("mikebaruh@gmail.com");
   const [bcc, setBcc] = useState("");
-  const [subject, setSubject] = useState(subjectParts.join(" "));
+  const [subject, setSubject] = useState(scope || "Estimate");
   const [body, setBody] = useState(`Dear ${firstName},\n\nPlease find attached your estimate for the project.\n\nDo not hesitate to contact us with any questions.\n\n${MIKE_SIGNATURE}`);
   const [sending, setSending] = useState(false);
   const [result, setResult] = useState<{ ok: boolean; msg: string } | null>(null);

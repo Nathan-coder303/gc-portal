@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { TrashIcon, PencilIcon } from "@/components/ui/icons";
 import CoverPagePickerModal, { PdfOptions, CoverType } from "@/components/clients/CoverPagePickerModal";
 import { lookupItemCsiCode, formatCsiCode, DIVISIONS } from "@/lib/divisions";
-import { DndContext, DragOverlay, useDroppable, useDraggable, closestCenter } from "@dnd-kit/core";
+import { DndContext, DragOverlay, useDroppable, useDraggable, closestCenter, PointerSensor, TouchSensor, useSensor, useSensors } from "@dnd-kit/core";
 import type { DragStartEvent, DragEndEvent } from "@dnd-kit/core";
 import { SortableContext, useSortable, verticalListSortingStrategy, arrayMove } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
@@ -926,6 +926,7 @@ function PaymentScheduleCard({
   const [isPending, startTransition] = useTransition();
   const [dirty, setDirty] = useState(false);
   const rowIds = rows.map((_, i) => `row-${i}`);
+  const sensors = useSensors(useSensor(PointerSensor), useSensor(TouchSensor));
 
   function updateRow(idx: number, field: keyof PaymentRow, value: string | number) {
     const updated = rows.map((r, i) => i === idx ? { ...r, [field]: field === "pct" ? Number(value) : value } : r);
@@ -975,7 +976,7 @@ function PaymentScheduleCard({
           )}
         </div>
       </div>
-      <DndContext collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+      <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
         <SortableContext items={rowIds} strategy={verticalListSortingStrategy}>
           <table className="w-full text-xs">
             <thead>
@@ -1426,10 +1427,12 @@ export default function TemplateEditor({
     });
   }
 
+  const sensors = useSensors(useSensor(PointerSensor), useSensor(TouchSensor));
+
   return (
     <UndoCtx.Provider value={{ pushUndo }}>
     <TDimensionsCtx.Provider value={{ sqFt: typeof sqFt === "number" ? sqFt : null, durationMonths: typeof durationMonths === "number" ? durationMonths : null, isRoof: isRoofTemplate }}>
-    <DndContext collisionDetection={closestCenter} onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
+    <DndContext sensors={sensors} collisionDetection={closestCenter} onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
     <div className="space-y-4">
 
       {/* Sticky total bar */}

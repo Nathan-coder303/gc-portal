@@ -30,6 +30,7 @@ const DEFAULT_PAYMENT_SCHEDULE = [
 ];
 
 export const runtime = "nodejs";
+export const maxDuration = 30;
 
 export async function GET(
   req: NextRequest,

@@ -36,17 +36,26 @@ async function patchClientStatus(companyId: string, clientId: string, body: { st
   });
 }
 
+const STATUS_OPTIONS = [
+  { value: "PROSPECT", label: "Prospect" },
+  { value: "ACTIVE", label: "Active" },
+  { value: "COMPLETED", label: "Completed" },
+  { value: "DEAD", label: "Dead" },
+];
+
 function ClientCard({
   client, companyId, isAdmin,
-  onDragStart, onDragOver, onDrop, onDragEnd, isDragOver,
+  onDragStart, onDragOver, onDrop, onDragEnd, isDragOver, onMove,
 }: {
   client: Client; companyId: string; isAdmin: boolean;
   onDragStart: () => void; onDragOver: (e: React.DragEvent) => void;
   onDrop: () => void; onDragEnd: () => void; isDragOver: boolean;
+  onMove: (targetStatus: string) => void;
 }) {
   const [editing, setEditing] = useState(false);
   const [isPending, startTransition] = useTransition();
   const [showDelete, setShowDelete] = useState(false);
+  const [showMoveMenu, setShowMoveMenu] = useState(false);
   const [hovered, setHovered] = useState(false);
   const router = useRouter();
   const [form, setForm] = useState({
@@ -186,6 +195,34 @@ function ClientCard({
           </div>
           {isAdmin && (
             <div className="flex gap-1.5 shrink-0" onClick={(e) => e.stopPropagation()}>
+              {/* Mobile-only Move button */}
+              <div className="relative sm:hidden">
+                <button
+                  onClick={(e) => { e.stopPropagation(); setShowMoveMenu(v => !v); }}
+                  className="w-6 h-6 rounded flex items-center justify-center text-[11px]"
+                  style={{ background: "#3b82f622", color: "#3b82f6", border: "1px solid #3b82f644" }}
+                  title="Move to"
+                >
+                  ↕
+                </button>
+                {showMoveMenu && (
+                  <>
+                    <div className="fixed inset-0 z-10" onClick={(e) => { e.stopPropagation(); setShowMoveMenu(false); }} />
+                    <div className="absolute right-0 bottom-full mb-1 z-20 rounded-xl overflow-hidden shadow-xl" style={{ background: "#1e2736", border: "1px solid #30373f", minWidth: 130 }}>
+                      {STATUS_OPTIONS.filter(o => o.value !== client.status).map(o => (
+                        <button
+                          key={o.value}
+                          onClick={(e) => { e.stopPropagation(); setShowMoveMenu(false); onMove(o.value); }}
+                          className="w-full text-left px-3 py-2 text-xs font-medium"
+                          style={{ color: "#e6edf3" }}
+                        >
+                          → {o.label}
+                        </button>
+                      ))}
+                    </div>
+                  </>
+                )}
+              </div>
               <button
                 onClick={(e) => { e.stopPropagation(); setEditing(true); }}
                 className="w-6 h-6 rounded flex items-center justify-center"
@@ -415,13 +452,14 @@ function AddClientForm({ onDone, defaultStatus }: { onDone: (newClient?: Client)
 
 function ClientColumn({
   title, status, clients, companyId, isAdmin, adding,
-  onAdd, onCancelAdd, onAddFromLead, accentColor, bgColor, onDragStart, onDrop,
+  onAdd, onCancelAdd, onAddFromLead, accentColor, bgColor, onDragStart, onDrop, onMove,
 }: {
   title: string; status: string; clients: Client[]; companyId: string; isAdmin: boolean;
   adding: boolean; onAdd: () => void; onCancelAdd: (newClient?: Client) => void; onAddFromLead: () => void;
   accentColor: string; bgColor: string;
   onDragStart: (clientId: string) => void;
   onDrop: (targetClientId: string | null, targetStatus: string) => void;
+  onMove: (clientId: string, targetStatus: string) => void;
 }) {
   const [dragOverId, setDragOverId] = useState<string | null>(null);
   const [dragOverZone, setDragOverZone] = useState(false);
@@ -495,6 +533,7 @@ function ClientColumn({
             onDragOver={(e) => { e.preventDefault(); e.stopPropagation(); setDragOverId(c.id); }}
             onDrop={() => { setDragOverId(null); onDrop(c.id, status); }}
             onDragEnd={() => setDragOverId(null)}
+            onMove={(targetStatus) => onMove(c.id, targetStatus)}
           />
         ))}
       </div>
@@ -537,6 +576,11 @@ export default function ClientsManager({ companyId, clients: initialClients, isA
 
   function handleDragStart(clientId: string) {
     dragIdRef.current = clientId;
+  }
+
+  async function handleMove(clientId: string, targetStatus: string) {
+    dragIdRef.current = clientId;
+    await handleDrop(null, targetStatus);
   }
 
   async function handleDrop(targetClientId: string | null, targetStatus: string) {
@@ -630,6 +674,7 @@ export default function ClientsManager({ companyId, clients: initialClients, isA
           bgColor="#0d1117"
           onDragStart={handleDragStart}
           onDrop={handleDrop}
+          onMove={handleMove}
         />
         <ClientColumn
           title="Active Clients"
@@ -645,6 +690,7 @@ export default function ClientsManager({ companyId, clients: initialClients, isA
           bgColor="#0a1a0f"
           onDragStart={handleDragStart}
           onDrop={handleDrop}
+          onMove={handleMove}
         />
         <ClientColumn
           title="Closed Jobs"
@@ -660,6 +706,7 @@ export default function ClientsManager({ companyId, clients: initialClients, isA
           bgColor="#0d1117"
           onDragStart={handleDragStart}
           onDrop={handleDrop}
+          onMove={handleMove}
         />
         <ClientColumn
           title="Dead Clients"
@@ -675,6 +722,7 @@ export default function ClientsManager({ companyId, clients: initialClients, isA
           bgColor="#1a0a0a"
           onDragStart={handleDragStart}
           onDrop={handleDrop}
+          onMove={handleMove}
         />
       </div>
     </div>

@@ -2,7 +2,7 @@
 
 import { useState, useTransition, createContext, useContext } from "react";
 import { TrashIcon } from "@/components/ui/icons";
-import { DndContext, DragOverlay, useDroppable, useDraggable, closestCenter } from "@dnd-kit/core";
+import { DndContext, DragOverlay, useDroppable, useDraggable, closestCenter, PointerSensor, TouchSensor, useSensor, useSensors } from "@dnd-kit/core";
 import type { DragStartEvent, DragEndEvent } from "@dnd-kit/core";
 import {
   upsertEstimateItem,
@@ -569,9 +569,11 @@ export default function ProjectEstimateEditor({
     });
   }
 
+  const sensors = useSensors(useSensor(PointerSensor), useSensor(TouchSensor));
+
   return (
     <DimensionsCtx.Provider value={{ sqFt: typeof sqFt === "number" ? sqFt : null, durationMonths: typeof durationMonths === "number" ? durationMonths : null }}>
-    <DndContext collisionDetection={closestCenter} onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
+    <DndContext sensors={sensors} collisionDetection={closestCenter} onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
     <div className="space-y-4">
 
       {/* Sticky total bar */}

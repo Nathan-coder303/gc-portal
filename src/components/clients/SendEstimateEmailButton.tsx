@@ -35,12 +35,7 @@ export default function SendEstimateEmailButton({ templateId, companyId, templat
   const defaultBody = `Dear ${firstName},\n\nPlease find attached your estimate for the project.\n\nDo not hesitate to contact us with any questions.\n\n${MIKE_SIGNATURE}`;
 
   const scope = description || templateName;
-  const subjectParts = ["Estimate"];
-  if (estimateNumber) subjectParts.push(`#${estimateNumber}`);
-  subjectParts.push("from MIBH CONSTRUCTION");
-  if (scope) subjectParts.push(`for ${scope}`);
-  if (clientAddress) subjectParts.push(`at ${clientAddress}`);
-  const defaultSubject = subjectParts.join(" ");
+  const defaultSubject = scope || "Estimate";
 
   const defaultCover: CoverType = (clientCoverPhotoType as CoverType) ?? (isCommercial ? "ADDITIONS" : "FLAT_ROOFS");
 
