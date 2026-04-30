@@ -186,7 +186,7 @@ export async function POST(
         }
       : null,
     divisions,
-    showTerms: true,
+    showTerms: template.showTerms,
     termsContent: template.termsContent,
     paymentSchedule:
       (template.paymentSchedule as { payment: string; trigger: string; pct: number }[] | null) ??

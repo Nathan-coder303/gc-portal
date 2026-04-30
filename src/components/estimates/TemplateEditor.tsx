@@ -13,6 +13,7 @@ import {
   upsertTemplateItem,
   archiveTemplateItem,
   upsertTemplateDivision,
+  seedTemplateDivisionFromHistory,
   archiveTemplateDivision,
   mergeTemplateDivisionInto,
   upsertTemplateGroup,
@@ -327,7 +328,7 @@ function ItemRow({ item, divisionId, groupId, canEdit }: { item: Item; divisionI
             <div className="flex flex-col items-center gap-1">
               <span style={{ cursor: "grab", fontSize: "14px" }} {...listeners} {...attributes}>⠿</span>
               {/* Mobile-only action buttons below drag handle */}
-              <div className="flex flex-col gap-0.5 sm:hidden">
+              <div className="flex flex-row gap-0.5 sm:hidden">
                 <button onClick={() => setEditing(true)}
                   className="w-6 h-6 rounded flex items-center justify-center"
                   style={{ background: "#C9A84C22", color: "#C9A84C", border: "1px solid #C9A84C44" }}
@@ -1339,7 +1340,10 @@ export default function TemplateEditor({
   function saveDiv() {
     if (!divName.trim()) return;
     startTransition(async () => {
-      await upsertTemplateDivision(template.id, { csiCode: divCsi || undefined, name: divName });
+      const result = await upsertTemplateDivision(template.id, { csiCode: divCsi || undefined, name: divName });
+      if (divCsi && result.id) {
+        await seedTemplateDivisionFromHistory(result.id, divCsi);
+      }
       setDivName(""); setDivCsi(""); setAddingDiv(false);
     });
   }

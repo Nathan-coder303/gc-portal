@@ -291,6 +291,72 @@ export async function upsertTemplateDivision(
   return { success: true, id: division.id };
 }
 
+export async function seedTemplateDivisionFromHistory(divisionId: string, csiCode: string) {
+  const session = await auth();
+  if (!session) throw new Error("Unauthorized");
+  requirePermission(session, "estimateTemplate:edit");
+
+  const companyId = session.user.companyId;
+  const prefix = csiCode.slice(0, 2); // e.g. "09" from "09 00 00"
+
+  const [templateItems, projectItems] = await Promise.all([
+    prisma.estimateTemplateItem.findMany({
+      where: {
+        archivedAt: null,
+        groupId: null,
+        divisionId: { not: divisionId },
+        division: { archivedAt: null, csiCode: { startsWith: prefix }, template: { companyId } },
+      },
+      orderBy: { sortOrder: "asc" },
+      select: { name: true, csiCode: true, detail: true, unit: true, defaultQty: true, defaultUnitCost: true, defaultMarkupPct: true, notes: true },
+    }),
+    prisma.projectEstimateItem.findMany({
+      where: {
+        archivedAt: null,
+        groupId: null,
+        division: { archivedAt: null, csiCode: { startsWith: prefix }, estimate: { project: { companyId } } },
+      },
+      orderBy: { sortOrder: "asc" },
+      select: { name: true, csiCode: true, detail: true, unit: true, qty: true, unitCost: true, markupPct: true, notes: true },
+    }),
+  ]);
+
+  const seen = new Set<string>();
+  const unique: Array<{ name: string; csiCode: string | null; detail: string | null; unit: string | null; defaultQty: unknown; defaultUnitCost: unknown; defaultMarkupPct: unknown; notes: string | null }> = [];
+
+  for (const item of templateItems) {
+    const key = item.name.toLowerCase().trim();
+    if (!seen.has(key)) { seen.add(key); unique.push(item); }
+  }
+  for (const item of projectItems) {
+    const key = item.name.toLowerCase().trim();
+    if (!seen.has(key)) {
+      seen.add(key);
+      unique.push({ name: item.name, csiCode: item.csiCode, detail: item.detail, unit: item.unit, defaultQty: item.qty, defaultUnitCost: item.unitCost, defaultMarkupPct: item.markupPct, notes: item.notes });
+    }
+  }
+
+  if (unique.length === 0) return { count: 0 };
+
+  await prisma.estimateTemplateItem.createMany({
+    data: unique.map((item, idx) => ({
+      divisionId,
+      name: item.name,
+      csiCode: item.csiCode ?? null,
+      detail: item.detail ?? null,
+      unit: item.unit ?? null,
+      defaultQty: item.defaultQty as never,
+      defaultUnitCost: item.defaultUnitCost as never,
+      defaultMarkupPct: item.defaultMarkupPct as never,
+      notes: item.notes ?? null,
+      sortOrder: idx,
+    })),
+  });
+
+  revalidatePath(`/${companyId}/estimates`);
+  return { count: unique.length };
+}
+
 export async function archiveTemplateDivision(divisionId: string) {
   const session = await auth();
   if (!session) throw new Error("Unauthorized");

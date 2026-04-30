@@ -8,6 +8,7 @@ import {
   upsertEstimateItem,
   archiveEstimateItem,
   upsertEstimateDivision,
+  seedEstimateDivisionFromHistory,
   archiveEstimateDivision,
   upsertEstimateGroup,
   archiveEstimateGroup,
@@ -558,7 +559,10 @@ export default function ProjectEstimateEditor({
   function saveDiv() {
     if (!divName.trim()) return;
     startTransition(async () => {
-      await upsertEstimateDivision(estimate.id, { csiCode: divCsi || undefined, name: divName });
+      const result = await upsertEstimateDivision(estimate.id, { csiCode: divCsi || undefined, name: divName });
+      if (divCsi && result.id) {
+        await seedEstimateDivisionFromHistory(result.id, divCsi);
+      }
       setDivName("");
       setDivCsi("");
       setAddingDiv(false);
