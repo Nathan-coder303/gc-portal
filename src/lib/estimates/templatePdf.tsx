@@ -56,7 +56,7 @@ function fmtDate(dateStr: string | null): string {
 }
 
 const styles = StyleSheet.create({
-  page: { fontFamily: "Helvetica", fontSize: 9, paddingTop: 22, paddingBottom: 96, paddingHorizontal: 40 },
+  page: { fontFamily: "Helvetica", fontSize: 9, paddingTop: 22, paddingBottom: 54, paddingHorizontal: 40 },
   header: { flexDirection: "row", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 12, paddingBottom: 8, borderBottomWidth: 2, borderBottomColor: GOLD },
 
   // Left column
@@ -118,7 +118,7 @@ const styles = StyleSheet.create({
   pageNumber: { position: "absolute", bottom: 24, right: 40, fontSize: 8, color: "#94a3b8" },
 
   // Signature block
-  sigSection: { marginTop: 14 },
+  sigSection: { marginTop: 6 },
   sigRow: { flexDirection: "row", gap: 40, marginTop: 10 },
   sigBlock: { flex: 1 },
   sigPartyLabel: { fontSize: 9, fontFamily: "Helvetica-Bold", color: DARK, textTransform: "uppercase", letterSpacing: 1, marginBottom: 10 },
@@ -1170,8 +1170,8 @@ function TemplatePdfDocument({ companyName, template, client, divisions, showTer
       )}
       {/* Signature Block */}
       <View style={styles.sigSection} wrap={false}>
-        <View style={[styles.sectionDivider, { marginTop: 6 }]} />
-        <Text style={[styles.sectionTitle, { marginBottom: 3, paddingTop: 5 }]}>Agreement &amp; Authorization</Text>
+        <View style={[styles.sectionDivider, { marginTop: 2 }]} />
+        <Text style={[styles.sectionTitle, { marginBottom: 3, paddingTop: 4 }]}>Agreement &amp; Authorization</Text>
         <Text style={{ fontSize: 8, color: "#475569", marginBottom: 3 }}>
           By signing below, both parties agree to the scope of work, pricing, and terms described in this document.
         </Text>
