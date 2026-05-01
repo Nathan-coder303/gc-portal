@@ -1,0 +1,1 @@
+ALTER TABLE "ClientSub" ADD COLUMN IF NOT EXISTS "scope" TEXT;

@@ -8,7 +8,7 @@ import {
 
 type SubContractor = { id: string; name: string; email: string | null; phone: string | null; divisionCode: string; divisionName: string };
 type SubPayment = { id: string; amount: number; method: string; paidAt: string; checkNumber: string | null; notes: string | null };
-type ClientSub = { id: string; subContractorId: string | null; subName: string; contractAmount: number; notes: string | null; payments: SubPayment[] };
+type ClientSub = { id: string; subContractorId: string | null; subName: string; scope: string | null; contractAmount: number; notes: string | null; payments: SubPayment[] };
 type Supplier = { id: string; name: string };
 type MaterialPurchase = { id: string; supplierId: string; supplierName: string; amount: number; description: string | null; purchasedAt: string; notes: string | null };
 
@@ -179,7 +179,9 @@ function SubCard({
       <div className="flex items-start justify-between gap-3">
         <div>
           <div className="text-sm font-bold" style={{ color: "#e6edf3" }}>{sub.subName}</div>
-          <div className="text-xs mt-0.5" style={{ color: "#8b949e" }}>Subcontractor</div>
+          <div className="text-xs mt-0.5" style={{ color: "#8b949e" }}>
+            {sub.scope ? sub.scope : "Subcontractor"}
+          </div>
         </div>
         <div className="flex items-center gap-2">
           {editContract ? (
@@ -358,6 +360,7 @@ export default function ClientFinancialsTab({
   // Add sub form
   const [selectedSubId, setSelectedSubId] = useState("__new__");
   const [newSubName, setNewSubName] = useState("");
+  const [subScope, setSubScope] = useState("");
   const [contractAmount, setContractAmount] = useState("");
   const [addingSubForm, setAddingSubForm] = useState(false);
   const [savingSub, setSavingSub] = useState(false);
@@ -409,13 +412,13 @@ export default function ClientFinancialsTab({
       const res = await fetch(`/api/${companyId}/clients/${clientId}/financials/subs`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ subContractorId, subName, contractAmount: Number(contractAmount) }),
+        body: JSON.stringify({ subContractorId, subName, scope: subScope.trim() || null, contractAmount: Number(contractAmount) }),
       });
       if (res.ok) {
         const newSub = await res.json();
         newSub.subName = newSub.subName ?? subName;
         setClientSubs(prev => [...prev, newSub]);
-        setContractAmount(""); setNewSubName(""); setSelectedSubId("__new__"); setAddingSubForm(false);
+        setContractAmount(""); setNewSubName(""); setSubScope(""); setSelectedSubId("__new__"); setAddingSubForm(false);
       }
     } finally { setSavingSub(false); }
   }
@@ -586,9 +589,19 @@ ${rows}
             {selectedSubId === "__new__" && (
               <input value={newSubName} onChange={e => setNewSubName(e.target.value)} placeholder="Sub name" className="w-full rounded-lg px-3 py-2 text-sm" style={{ background: "#0d1117", border: "1px solid #30373f", color: "#e6edf3" }} />
             )}
+            <div>
+              <label className="text-xs font-semibold mb-1 block" style={{ color: "#8b949e" }}>Scope / Role</label>
+              <input
+                value={subScope}
+                onChange={e => setSubScope(e.target.value)}
+                placeholder="e.g. Roofer, Permit Expediter, Electrician…"
+                className="w-full rounded-lg px-3 py-2 text-sm"
+                style={{ background: "#0d1117", border: "1px solid #30373f", color: "#e6edf3" }}
+              />
+            </div>
             <div className="flex gap-2">
               <button onClick={addSub} disabled={savingSub || !contractAmount} className="flex-1 py-2 rounded-xl text-sm font-bold disabled:opacity-50" style={{ background: "#C9A84C", color: "#0d1117" }}>{savingSub ? "Saving…" : "Add Sub"}</button>
-              <button onClick={() => setAddingSubForm(false)} className="px-4 py-2 rounded-xl text-sm" style={{ background: "#30373f", color: "#8b949e" }}>Cancel</button>
+              <button onClick={() => { setAddingSubForm(false); setSubScope(""); }} className="px-4 py-2 rounded-xl text-sm" style={{ background: "#30373f", color: "#8b949e" }}>Cancel</button>
             </div>
           </div>
         )}

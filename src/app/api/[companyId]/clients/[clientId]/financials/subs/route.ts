@@ -21,6 +21,7 @@ export async function GET(_req: NextRequest, { params }: { params: { companyId: 
     id: s.id,
     subContractorId: s.subContractorId,
     subName: s.subName ?? s.subContractor?.name ?? "",
+    scope: s.scope ?? null,
     contractAmount: Number(s.contractAmount),
     notes: s.notes,
     createdAt: s.createdAt.toISOString(),
@@ -40,7 +41,7 @@ export async function POST(req: NextRequest, { params }: { params: { companyId: 
   if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const body = await req.json();
-  const { subContractorId, subName, contractAmount, notes } = body;
+  const { subContractorId, subName, scope, contractAmount, notes } = body;
 
   const sub = await prisma.clientSub.create({
     data: {
@@ -48,6 +49,7 @@ export async function POST(req: NextRequest, { params }: { params: { companyId: 
       clientId: params.clientId,
       subContractorId: subContractorId || null,
       subName: subName || null,
+      scope: scope || null,
       contractAmount: contractAmount ?? 0,
       notes: notes || null,
     },
@@ -58,6 +60,7 @@ export async function POST(req: NextRequest, { params }: { params: { companyId: 
     id: sub.id,
     subContractorId: sub.subContractorId,
     subName: sub.subName,
+    scope: sub.scope ?? null,
     contractAmount: Number(sub.contractAmount),
     notes: sub.notes,
     createdAt: sub.createdAt.toISOString(),
