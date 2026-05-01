@@ -39,7 +39,7 @@ export default async function ClientDetailPage({
     include: {
       templates: {
         where: { type: "CLIENT_ESTIMATE", archivedAt: null },
-        orderBy: { createdAt: "desc" },
+        orderBy: { updatedAt: "desc" },
         include: {
           divisions: {
             where: { archivedAt: null },
