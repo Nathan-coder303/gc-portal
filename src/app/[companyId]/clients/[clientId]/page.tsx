@@ -93,6 +93,7 @@ export default async function ClientDetailPage({
 
   function calcEstimateTotal(divisions: typeof safeClient.templates[0]["divisions"], gcFeePercent: typeof safeClient.templates[0]["gcFeePercent"]): number {
     const raw = divisions.reduce((sum, div) => {
+      if (div.manualTotal != null) return sum + Number(div.manualTotal);
       const allItems = [...div.items, ...div.groups.flatMap((g) => g.items)];
       return (
         sum +
