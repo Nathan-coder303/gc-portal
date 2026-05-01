@@ -41,7 +41,7 @@ function fmt(n: number) {
 }
 
 function EstimateCard({
-  est, companyId, clientId, clientName, clientEmail, clientAddress, canEdit, canDelete,
+  est, companyId, clientId, clientName, clientEmail, canEdit, canDelete,
   isCommercial, clientCoverPhotoType, clientCoverPhotoUrl, hasInsertFile,
 }: {
   est: EstimateRow;
@@ -49,7 +49,6 @@ function EstimateCard({
   clientId: string;
   clientName: string;
   clientEmail: string | null;
-  clientAddress: string | null;
   canEdit: boolean;
   canDelete: boolean;
   isCommercial?: boolean;
@@ -375,7 +374,7 @@ function EstimateCard({
 }
 
 export default function CollapsibleEstimateList({
-  estimates, companyId, clientId, clientName, clientEmail, clientAddress, canEdit, canDelete,
+  estimates, companyId, clientId, clientName, clientEmail, canEdit, canDelete,
   isCommercial, clientCoverPhotoType, clientCoverPhotoUrl, hasInsertFile,
 }: {
   estimates: EstimateRow[];
@@ -434,7 +433,6 @@ export default function CollapsibleEstimateList({
             clientId={clientId}
             clientName={clientName}
             clientEmail={clientEmail}
-            clientAddress={clientAddress}
             canEdit={canEdit}
             canDelete={canDelete}
             isCommercial={isCommercial}

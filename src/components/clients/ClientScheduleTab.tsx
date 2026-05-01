@@ -934,7 +934,7 @@ function LoadTemplateModal({
         phase: String(t.phase ?? "General"),
         name: String(t.name ?? "Task"),
         durationDays: Number(t.durationDays ?? 1),
-        offsetDays: 0,
+        offsetDays: Number(t.offsetDays ?? 0),
         trade: t.trade ? String(t.trade) : undefined,
         assignee: t.assignee ? String(t.assignee) : undefined,
         isMilestone: Boolean(t.isMilestone),
@@ -1586,6 +1586,14 @@ function ClientGanttChart({ tasks, projectStart, companyId, clientId, canEdit, o
       const deltaDays = Math.round(deltaX / CELL_WIDTH);
       setDrag(prev => prev ? { ...prev, currentDeltaDays: deltaDays } : null);
     }
+    function onTouchMove(e: TouchEvent) {
+      const d = dragRef.current;
+      if (!d || !e.touches[0]) return;
+      e.preventDefault();
+      const deltaX = getSvgX(e.touches[0].clientX) - d.mouseStartX;
+      const deltaDays = Math.round(deltaX / CELL_WIDTH);
+      setDrag(prev => prev ? { ...prev, currentDeltaDays: deltaDays } : null);
+    }
     async function onUp() {
       const d = dragRef.current;
       if (!d) { setDrag(null); return; }
@@ -1608,7 +1616,14 @@ function ClientGanttChart({ tasks, projectStart, companyId, clientId, canEdit, o
     }
     document.addEventListener("mousemove", onMove);
     document.addEventListener("mouseup", onUp);
-    return () => { document.removeEventListener("mousemove", onMove); document.removeEventListener("mouseup", onUp); };
+    document.addEventListener("touchmove", onTouchMove, { passive: false });
+    document.addEventListener("touchend", onUp);
+    return () => {
+      document.removeEventListener("mousemove", onMove);
+      document.removeEventListener("mouseup", onUp);
+      document.removeEventListener("touchmove", onTouchMove);
+      document.removeEventListener("touchend", onUp);
+    };
   }, [drag, getSvgX, companyId, clientId, tasks, onTasksChange]);
 
   // ── Phase drag ──────────────────────────────────────────────────────────────
@@ -1616,6 +1631,11 @@ function ClientGanttChart({ tasks, projectStart, companyId, clientId, canEdit, o
     if (!phaseDrag) return;
     function onMove(e: MouseEvent) {
       setPhaseDrag(prev => prev ? { ...prev, currentClientY: e.clientY } : null);
+    }
+    function onTouchMove(e: TouchEvent) {
+      if (!e.touches[0]) return;
+      e.preventDefault();
+      setPhaseDrag(prev => prev ? { ...prev, currentClientY: e.touches[0].clientY } : null);
     }
     function onUp() {
       const d = phaseDragRef2.current;
@@ -1639,7 +1659,14 @@ function ClientGanttChart({ tasks, projectStart, companyId, clientId, canEdit, o
     }
     document.addEventListener("mousemove", onMove);
     document.addEventListener("mouseup", onUp);
-    return () => { document.removeEventListener("mousemove", onMove); document.removeEventListener("mouseup", onUp); };
+    document.addEventListener("touchmove", onTouchMove, { passive: false });
+    document.addEventListener("touchend", onUp);
+    return () => {
+      document.removeEventListener("mousemove", onMove);
+      document.removeEventListener("mouseup", onUp);
+      document.removeEventListener("touchmove", onTouchMove);
+      document.removeEventListener("touchend", onUp);
+    };
   }, [phaseDrag]);
 
   const handleBarMouseDown = useCallback((e: React.MouseEvent, task: ClientTask, type: "move" | "resize") => {
@@ -1649,6 +1676,15 @@ function ClientGanttChart({ tasks, projectStart, companyId, clientId, canEdit, o
     const start = parseDate(task.startDate) ?? today;
     const end = parseDate(task.endDate) ?? addDays(start, task.durationDays - 1);
     setDrag({ taskId: task.id, type, originalStart: start, originalEnd: end, mouseStartX: getSvgX(e.clientX), currentDeltaDays: 0 });
+  }, [canEdit, getSvgX, today]);
+
+  const handleBarTouchStart = useCallback((e: React.TouchEvent, task: ClientTask, type: "move" | "resize") => {
+    if (!canEdit || task.isMilestone || !e.touches[0]) return;
+    e.preventDefault();
+    e.stopPropagation();
+    const start = parseDate(task.startDate) ?? today;
+    const end = parseDate(task.endDate) ?? addDays(start, task.durationDays - 1);
+    setDrag({ taskId: task.id, type, originalStart: start, originalEnd: end, mouseStartX: getSvgX(e.touches[0].clientX), currentDeltaDays: 0 });
   }, [canEdit, getSvgX, today]);
 
   // ── Double-click via manual timing ─────────────────────────────────────────
@@ -1751,7 +1787,7 @@ function ClientGanttChart({ tasks, projectStart, companyId, clientId, canEdit, o
                 <g key={row.phase} opacity={phaseOpacity}>
                   <rect x={0} y={y} width={svgWidth} height={PHASE_ROW_HEIGHT} fill="#161b22" />
                   <line x1={0} y1={y} x2={svgWidth} y2={y} stroke="#30373f" strokeWidth={0.5} />
-                  {canEdit && <text x={4} y={y + 17} fontSize={10} fill="#484f58" style={{ cursor: "grab" }} onMouseDown={e => { e.preventDefault(); e.stopPropagation(); setPhaseDrag({ phase: row.phase, startClientY: e.clientY, currentClientY: e.clientY }); }}>⠿</text>}
+                  {canEdit && <text x={4} y={y + 17} fontSize={10} fill="#484f58" style={{ cursor: "grab", touchAction: "none" }} onMouseDown={e => { e.preventDefault(); e.stopPropagation(); setPhaseDrag({ phase: row.phase, startClientY: e.clientY, currentClientY: e.clientY }); }} onTouchStart={e => { e.preventDefault(); e.stopPropagation(); if (e.touches[0]) setPhaseDrag({ phase: row.phase, startClientY: e.touches[0].clientY, currentClientY: e.touches[0].clientY }); }}>⠿</text>}
                   <g onClick={() => toggle(row.phase)} style={{ cursor: "pointer" }}>
                     <rect x={canEdit ? 16 : 0} y={y} width={svgWidth} height={PHASE_ROW_HEIGHT} fill="transparent" />
                     <text x={canEdit ? 18 : 10} y={y + 17} fontSize={10} fill="#8b949e" fontWeight={700}>{isCollapsed ? "▶" : "▼"}</text>
@@ -1770,7 +1806,7 @@ function ClientGanttChart({ tasks, projectStart, companyId, clientId, canEdit, o
                 <g key={row.phase} opacity={phaseOpacity}>
                   <rect x={0} y={y} width={svgWidth} height={PHASE_ROW_HEIGHT} fill="#161b22" />
                   <line x1={0} y1={y} x2={svgWidth} y2={y} stroke="#30373f" strokeWidth={0.5} />
-                  {canEdit && <text x={4} y={y + 17} fontSize={10} fill="#484f58" style={{ cursor: "grab" }} onMouseDown={e => { e.preventDefault(); e.stopPropagation(); setPhaseDrag({ phase: row.phase, startClientY: e.clientY, currentClientY: e.clientY }); }}>⠿</text>}
+                  {canEdit && <text x={4} y={y + 17} fontSize={10} fill="#484f58" style={{ cursor: "grab", touchAction: "none" }} onMouseDown={e => { e.preventDefault(); e.stopPropagation(); setPhaseDrag({ phase: row.phase, startClientY: e.clientY, currentClientY: e.clientY }); }} onTouchStart={e => { e.preventDefault(); e.stopPropagation(); if (e.touches[0]) setPhaseDrag({ phase: row.phase, startClientY: e.touches[0].clientY, currentClientY: e.touches[0].clientY }); }}>⠿</text>}
                   <g onClick={() => toggle(row.phase)} style={{ cursor: "pointer" }}>
                     <rect x={canEdit ? 16 : 0} y={y} width={labelW - (canEdit ? 16 : 0)} height={PHASE_ROW_HEIGHT} fill="transparent" />
                     <text x={canEdit ? 18 : 10} y={y + 17} fontSize={10} fill="#8b949e" fontWeight={700}>{isCollapsed ? "▶" : "▼"}</text>
@@ -1830,8 +1866,9 @@ function ClientGanttChart({ tasks, projectStart, companyId, clientId, canEdit, o
                     <rect
                       x={barX} y={y + 9} width={barW} height={ROW_HEIGHT - 18} rx={4}
                       fill={barColor} opacity={isSaving ? 0.3 : 0.75}
-                      style={{ cursor: canEdit ? "grab" : "pointer" }}
+                      style={{ cursor: canEdit ? "grab" : "pointer", touchAction: "none" }}
                       onMouseDown={e => handleBarMouseDown(e, task, "move")}
+                      onTouchStart={e => handleBarTouchStart(e, task, "move")}
                       onClick={() => handleBarClick(task)}
                       onContextMenu={e => handleBarContextMenu(e, task)}
                     />
@@ -1847,8 +1884,9 @@ function ClientGanttChart({ tasks, projectStart, companyId, clientId, canEdit, o
                       <rect
                         x={barX + barW - RESIZE_HANDLE_W} y={y + 9} width={RESIZE_HANDLE_W} height={ROW_HEIGHT - 18} rx={4}
                         fill="#fff" opacity={0.15}
-                        style={{ cursor: "ew-resize" }}
+                        style={{ cursor: "ew-resize", touchAction: "none" }}
                         onMouseDown={e => { e.stopPropagation(); handleBarMouseDown(e, task, "resize"); }}
+                        onTouchStart={e => { e.stopPropagation(); handleBarTouchStart(e, task, "resize"); }}
                       />
                     )}
                   </g>
@@ -2608,7 +2646,8 @@ function ScheduleTableView({
   useEffect(() => { rowsRef.current = rows; }, [rows]);
   useEffect(() => { tasksRef.current = tasks; }, [tasks]);
   // Keep selectedTask in sync with latest task data
-  useEffect(() => { if (selectedTask) setSelectedTask(tasks.find(t => t.id === selectedTask.id) ?? null); }, [tasks]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  useEffect(() => { if (selectedTask) setSelectedTask(tasks.find(t => t.id === selectedTask.id) ?? null); }, [tasks, selectedTask?.id]);
 
   // Close context menu on outside click; ESC cancels parent-set mode
   useEffect(() => {
@@ -2636,16 +2675,24 @@ function ScheduleTableView({
     window.addEventListener("mousemove", onMove); window.addEventListener("mouseup", onUp);
   }
 
-  // ── Mouse-based drag to reorder (works in all browsers) ──────────────────
-  function startDrag(taskId: string, e: React.MouseEvent) {
+  // ── Mouse/touch drag to reorder ──────────────────────────────────────────
+  function startDrag(taskId: string, e: React.MouseEvent | React.TouchEvent) {
     e.preventDefault();
     e.stopPropagation();
     dragIdRef.current = taskId;
     setDragId(taskId);
     dropIdRef.current = null;
 
-    function handleMove(ev: MouseEvent) {
-      const el = document.elementFromPoint(ev.clientX, ev.clientY);
+    function getPoint(ev: MouseEvent | TouchEvent): { clientX: number; clientY: number } | null {
+      if ("touches" in ev) return ev.touches[0] ?? null;
+      return ev;
+    }
+
+    function handleMove(ev: MouseEvent | TouchEvent) {
+      const pt = getPoint(ev);
+      if (!pt) return;
+      if ("touches" in ev) (ev as TouchEvent).preventDefault?.();
+      const el = document.elementFromPoint(pt.clientX, pt.clientY);
       const tr = el?.closest("tr[data-task-id]");
       const rowId = tr?.getAttribute("data-task-id");
       if (rowId && rowId !== taskId && rowId !== dropIdRef.current) {
@@ -2662,6 +2709,8 @@ function ScheduleTableView({
       dropIdRef.current = null;
       window.removeEventListener("mousemove", handleMove);
       window.removeEventListener("mouseup", handleUp);
+      window.removeEventListener("touchmove", handleMove);
+      window.removeEventListener("touchend", handleUp);
 
       if (!target || target === taskId) return;
       const flatIds = rowsRef.current.map(r => r.task.id);
@@ -2682,6 +2731,8 @@ function ScheduleTableView({
 
     window.addEventListener("mousemove", handleMove);
     window.addEventListener("mouseup", handleUp);
+    window.addEventListener("touchmove", handleMove, { passive: false });
+    window.addEventListener("touchend", handleUp);
   }
 
   // ── Indent: make task child of the task immediately above it ─────────────
@@ -2940,8 +2991,9 @@ function ScheduleTableView({
                   className="hover:brightness-110"
                 >
                   {/* # drag handle */}
-                  <td style={{ ...col("num"), position: "sticky", left: 0, background: rowBg, zIndex: 1, color: "#484f58", textAlign: "center", cursor: canEdit ? (dragId ? "grabbing" : "grab") : "default" }}
-                    onMouseDown={e => canEdit && startDrag(task.id, e)}>
+                  <td style={{ ...col("num"), position: "sticky", left: 0, background: rowBg, zIndex: 1, color: "#484f58", textAlign: "center", cursor: canEdit ? (dragId ? "grabbing" : "grab") : "default", touchAction: "none" }}
+                    onMouseDown={e => canEdit && startDrag(task.id, e)}
+                    onTouchStart={e => canEdit && startDrag(task.id, e)}>
                     <span style={{ userSelect: "none", fontSize: 11 }}>{canEdit ? "⠿ " : ""}{rn}</span>
                   </td>
                   {/* LINKED FROM */}
@@ -3192,100 +3244,215 @@ function printGanttDiagram(tasks: ClientTask[], projectStart: Date, clientName: 
   };
 
   const allDates = tasks.flatMap(t => [parseD(t.startDate), parseD(t.endDate)]).filter(Boolean) as Date[];
-  const projectEnd = allDates.length ? allDates.reduce((m, d) => d > m ? d : m, allDates[0]) : addDays(projectStart, 30);
-  const totalDays = Math.ceil((projectEnd.getTime() - projectStart.getTime()) / 86400000) + 4;
+  const projectEnd = allDates.length ? allDates.reduce((m, d) => d > m ? d : m, allDates[0]) : addDays(projectStart, 60);
 
-  const CELL_W = 12;
-  const ROW_H = 18;
-  const LABEL_W = 210;
-  const HEADER_H = 20;
-  const svgW = LABEL_W + totalDays * CELL_W;
+  // ── Layout constants ────────────────────────────────────────────────────────
+  const WEEK_W = 16;          // px per week column
+  const ROW_H = 16;           // task row height
+  const PHASE_H = 18;         // phase header height
+  const COL_NUM = 28;         // "#" column
+  const COL_TASK = 220;       // Task/Activity
+  const COL_DUR = 26;         // Dur
+  const COL_START = 52;       // Start
+  const COL_FINISH = 52;      // Finish
+  const LEFT_W = COL_NUM + COL_TASK + COL_DUR + COL_START + COL_FINISH;
+  const MONTH_H = 14;         // month header row
+  const WEEK_H = 13;          // week-number row
 
-  const monthHeaders: string[] = [];
-  let cur = new Date(projectStart.getFullYear(), projectStart.getMonth(), 1);
-  while (cur <= projectEnd) {
-    const startDay = Math.max(0, Math.ceil((cur.getTime() - projectStart.getTime()) / 86400000));
-    const monthEnd = new Date(cur.getFullYear(), cur.getMonth() + 1, 0);
-    const end = monthEnd < projectEnd ? monthEnd : projectEnd;
-    const days = Math.ceil((end.getTime() - cur.getTime()) / 86400000) + 1;
-    monthHeaders.push(
-      `<rect x="${LABEL_W + startDay * CELL_W}" y="0" width="${days * CELL_W}" height="${HEADER_H}" fill="#f1f5f9" stroke="#cbd5e1" stroke-width="0.5"/>`,
-      `<text x="${LABEL_W + startDay * CELL_W + 3}" y="13" font-size="8" fill="#475569" font-weight="600">${format(cur, "MMM yyyy")}</text>`
-    );
-    cur = new Date(cur.getFullYear(), cur.getMonth() + 1, 1);
+  // Calculate total weeks
+  const totalDays = Math.ceil((projectEnd.getTime() - projectStart.getTime()) / 86400000) + 14;
+  const totalWeeks = Math.ceil(totalDays / 7) + 1;
+  const RIGHT_W = totalWeeks * WEEK_W;
+  const SVG_W = LEFT_W + RIGHT_W;
+  const HEADER_H = MONTH_H + WEEK_H;
+
+  // ── Color helpers ───────────────────────────────────────────────────────────
+  const NAVY = "#1e3a5f";
+  const PHASE_BG = "#1a2744";
+  const BAR_CRITICAL = "#c0392b";   // red — critical / in-progress
+  const BAR_STANDARD = "#1a3a6b";   // dark navy — standard work
+  const BAR_DONE = "#27ae60";
+  const BAR_BLOCKED = "#e67e22";
+  const MILESTONE_COLOR = "#C9A84C";
+
+  function barColor(task: ClientTask) {
+    if (task.status === "DONE") return BAR_DONE;
+    if (task.status === "BLOCKED") return BAR_BLOCKED;
+    if (task.status === "IN_PROGRESS") return BAR_CRITICAL;
+    return BAR_STANDARD;
   }
 
-  const todayDay = Math.ceil((today.getTime() - projectStart.getTime()) / 86400000);
-  const todayLine = today >= projectStart && today <= projectEnd
-    ? `<line x1="${LABEL_W + todayDay * CELL_W}" y1="0" x2="${LABEL_W + todayDay * CELL_W}" y2="9999" stroke="#ef4444" stroke-width="1" stroke-dasharray="3,2"/>`
-    : "";
+  function taskWeekOffset(sd: Date | null): number {
+    if (!sd) return 0;
+    return Math.max(0, (sd.getTime() - projectStart.getTime()) / (7 * 86400000));
+  }
 
-  const svgRows: string[] = [];
-  let yOff = HEADER_H;
-  let rowIdx = 0;
-  for (const [phase, phaseTasks] of Array.from(phases.entries())) {
-    const done = phaseTasks.filter(t => t.status === "DONE").length;
-    const pct = Math.round((done / phaseTasks.length) * 100);
-    svgRows.push(
-      `<rect x="0" y="${yOff}" width="${svgW}" height="16" fill="#e2e8f0"/>`,
-      `<text x="6" y="${yOff + 11}" font-size="9" fill="#334155" font-weight="700">${phase} (${phaseTasks.length} · ${pct}%)</text>`
+  // ── SVG rows ────────────────────────────────────────────────────────────────
+  const svgEls: string[] = [];
+  let y = HEADER_H;
+  let taskIdx = 0;
+
+  // Column header row
+  svgEls.push(
+    `<rect x="0" y="0" width="${SVG_W}" height="${HEADER_H}" fill="#0d1b2e"/>`,
+    // column labels
+    `<text x="3" y="${MONTH_H - 3}" font-size="7" fill="#8baad4" font-weight="600">#</text>`,
+    `<text x="${COL_NUM + 3}" y="${MONTH_H - 3}" font-size="7" fill="#8baad4" font-weight="600">Task / Activity</text>`,
+    `<text x="${COL_NUM + COL_TASK + 1}" y="${MONTH_H - 3}" font-size="7" fill="#8baad4" font-weight="600">Dur</text>`,
+    `<text x="${COL_NUM + COL_TASK + COL_DUR + 1}" y="${MONTH_H - 3}" font-size="7" fill="#8baad4" font-weight="600">Start</text>`,
+    `<text x="${COL_NUM + COL_TASK + COL_DUR + COL_START + 1}" y="${MONTH_H - 3}" font-size="7" fill="#8baad4" font-weight="600">Finish</text>`,
+  );
+
+  // Month headers above week columns
+  let mCur = new Date(projectStart.getFullYear(), projectStart.getMonth(), 1);
+  const MONTHS_SHORT = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+  while (mCur <= projectEnd) {
+    const mStart = Math.max(0, (mCur.getTime() - projectStart.getTime()) / (7 * 86400000));
+    const mEnd = new Date(mCur.getFullYear(), mCur.getMonth() + 1, 1);
+    const mEnd2 = mEnd < projectEnd ? mEnd : projectEnd;
+    const mSpan = (mEnd2.getTime() - Math.max(mCur.getTime(), projectStart.getTime())) / (7 * 86400000);
+    const mX = LEFT_W + mStart * WEEK_W;
+    const mW = mSpan * WEEK_W;
+    svgEls.push(
+      `<rect x="${mX}" y="0" width="${mW}" height="${MONTH_H}" fill="${mCur.getMonth() % 2 === 0 ? "#142038" : "#0d1b2e"}" stroke="#2d4a6e" stroke-width="0.5"/>`,
+      `<text x="${mX + 3}" y="${MONTH_H - 3}" font-size="7.5" fill="#a0c0e8" font-weight="700">${MONTHS_SHORT[mCur.getMonth()]} ${String(mCur.getFullYear()).slice(2)}</text>`,
     );
-    yOff += 16;
+    mCur = new Date(mCur.getFullYear(), mCur.getMonth() + 1, 1);
+  }
+
+  // Week-number row
+  for (let w = 0; w < totalWeeks; w++) {
+    const wx = LEFT_W + w * WEEK_W;
+    svgEls.push(
+      `<rect x="${wx}" y="${MONTH_H}" width="${WEEK_W}" height="${WEEK_H}" fill="${w % 2 === 0 ? "#162030" : "#0d1b2e"}" stroke="#2d4a6e" stroke-width="0.5"/>`,
+      `<text x="${wx + WEEK_W / 2}" y="${MONTH_H + WEEK_H - 3}" font-size="7" fill="#6a8db8" text-anchor="middle">${w + 1}</text>`,
+    );
+  }
+
+  // Today line
+  const todayWeek = (today.getTime() - projectStart.getTime()) / (7 * 86400000);
+  if (todayWeek >= 0 && todayWeek <= totalWeeks) {
+    svgEls.push(`<line x1="${LEFT_W + todayWeek * WEEK_W}" y1="0" x2="${LEFT_W + todayWeek * WEEK_W}" y2="9999" stroke="#ef4444" stroke-width="1" stroke-dasharray="3,2"/>`);
+  }
+
+  // Vertical column separators in left panel
+  let cx = COL_NUM;
+  for (const w of [COL_TASK, COL_DUR, COL_START, COL_FINISH]) {
+    svgEls.push(`<line x1="${cx}" y1="${HEADER_H}" x2="${cx}" y2="9999" stroke="#2d4a6e" stroke-width="0.4"/>`);
+    cx += w;
+  }
+  svgEls.push(`<line x1="${LEFT_W}" y1="0" x2="${LEFT_W}" y2="9999" stroke="#2d4a6e" stroke-width="1"/>`);
+
+  let globalTaskNum = 1;
+  for (const [phase, phaseTasks] of Array.from(phases.entries())) {
+    // Phase header row
+    svgEls.push(
+      `<rect x="0" y="${y}" width="${SVG_W}" height="${PHASE_H}" fill="${PHASE_BG}"/>`,
+      `<text x="5" y="${y + 12}" font-size="8.5" fill="#ffffff" font-weight="700">${phase}</text>`,
+    );
+    y += PHASE_H;
+
     for (const task of phaseTasks) {
+      const bg = taskIdx % 2 === 0 ? "#f7f9fc" : "#eef2f8";
       const sd = parseD(task.startDate);
       const ed = parseD(task.endDate);
-      const startDay = sd ? Math.max(0, Math.ceil((sd.getTime() - projectStart.getTime()) / 86400000)) : 0;
-      const dur = task.durationDays || (sd && ed ? Math.ceil((ed.getTime() - sd.getTime()) / 86400000) + 1 : 1);
-      const barW = Math.max(dur * CELL_W, CELL_W);
-      const barX = LABEL_W + startDay * CELL_W;
-      const color = task.status === "DONE" ? "#22c55e" : task.status === "IN_PROGRESS" ? "#3b82f6" : task.status === "BLOCKED" ? "#f97316" : "#C9A84C";
-      const label = task.name.length > 30 ? task.name.slice(0, 30) + "…" : task.name;
-      const bg = rowIdx % 2 === 0 ? "#ffffff" : "#f8fafc";
-      svgRows.push(
-        `<rect x="0" y="${yOff}" width="${svgW}" height="${ROW_H}" fill="${bg}"/>`,
-        `<line x1="0" y1="${yOff + ROW_H}" x2="${svgW}" y2="${yOff + ROW_H}" stroke="#e2e8f0" stroke-width="0.5"/>`,
-        `<text x="${task.parentId ? 14 : 6}" y="${yOff + 12}" font-size="9" fill="#1e293b">${task.parentId ? "↳ " : ""}${label}</text>`,
-        task.isMilestone
-          ? `<polygon points="${barX},${yOff + 3} ${barX + 7},${yOff + ROW_H / 2} ${barX},${yOff + ROW_H - 3} ${barX - 7},${yOff + ROW_H / 2}" fill="#7c3aed"/>`
-          : `<rect x="${barX}" y="${yOff + 4}" width="${barW}" height="${ROW_H - 8}" rx="2" fill="${color}" opacity="0.85"/>` +
-            (task.percentComplete > 0 ? `<rect x="${barX}" y="${yOff + 4}" width="${(barW * task.percentComplete) / 100}" height="${ROW_H - 8}" rx="2" fill="${color}"/>` : "")
+      const startWk = taskWeekOffset(sd);
+      const dur = task.durationDays || (sd && ed ? Math.ceil((ed.getTime() - sd.getTime()) / 86400000) + 1 : 5);
+      const durWk = Math.max(dur / 7, 0.5);
+      const barX = LEFT_W + startWk * WEEK_W;
+      const barW = Math.max(durWk * WEEK_W, 5);
+      const color = barColor(task);
+      const label = task.name.length > 34 ? task.name.slice(0, 34) + "…" : task.name;
+      const durLabel = task.isMilestone ? "0d" : `${dur}d`;
+      const startLabel = sd ? format(sd, "MM/dd/yy") : "";
+      const endLabel = ed ? format(ed, "MM/dd/yy") : "";
+
+      svgEls.push(
+        `<rect x="0" y="${y}" width="${SVG_W}" height="${ROW_H}" fill="${bg}"/>`,
+        `<line x1="0" y1="${y + ROW_H}" x2="${SVG_W}" y2="${y + ROW_H}" stroke="#d0d8e8" stroke-width="0.4"/>`,
+        // Task number
+        `<text x="3" y="${y + 11}" font-size="7.5" fill="#64748b">${globalTaskNum}</text>`,
+        // Task name
+        `<text x="${COL_NUM + 3}" y="${y + 11}" font-size="7.5" fill="#1e293b">${label}</text>`,
+        // Duration
+        `<text x="${COL_NUM + COL_TASK + 2}" y="${y + 11}" font-size="7" fill="#475569">${durLabel}</text>`,
+        // Start
+        `<text x="${COL_NUM + COL_TASK + COL_DUR + 2}" y="${y + 11}" font-size="7" fill="#475569">${startLabel}</text>`,
+        // Finish
+        `<text x="${COL_NUM + COL_TASK + COL_DUR + COL_START + 2}" y="${y + 11}" font-size="7" fill="#475569">${endLabel}</text>`,
       );
-      yOff += ROW_H;
-      rowIdx++;
+
+      if (task.isMilestone) {
+        const mx = barX;
+        const my = y + ROW_H / 2;
+        const r = 6;
+        svgEls.push(`<polygon points="${mx},${my - r} ${mx + r},${my} ${mx},${my + r} ${mx - r},${my}" fill="${MILESTONE_COLOR}" stroke="#8b6914" stroke-width="0.5"/>`);
+      } else if (sd) {
+        svgEls.push(
+          `<rect x="${barX}" y="${y + 3}" width="${barW}" height="${ROW_H - 7}" rx="2" fill="${color}" opacity="0.9"/>`,
+        );
+        if (task.percentComplete > 0) {
+          svgEls.push(`<rect x="${barX}" y="${y + 3}" width="${barW * task.percentComplete / 100}" height="${ROW_H - 7}" rx="2" fill="${color}"/>`);
+        }
+      }
+
+      y += ROW_H;
+      taskIdx++;
+      globalTaskNum++;
     }
   }
-  const svgH = yOff + 24;
+
+  const SVG_H = y + 30;
+
+  // Legend
+  const legendY = y + 6;
   const legendItems = [
-    { color: "#3b82f6", label: "In Progress" }, { color: "#22c55e", label: "Done" },
-    { color: "#f97316", label: "Blocked" }, { color: "#C9A84C", label: "Not Started" },
-    { color: "#7c3aed", label: "Milestone" }, { color: "#ef4444", label: "Today" },
+    { color: BAR_STANDARD, label: "Standard Work" },
+    { color: BAR_CRITICAL, label: "In Progress / Critical" },
+    { color: BAR_DONE, label: "Done" },
+    { color: BAR_BLOCKED, label: "Blocked" },
+    { color: MILESTONE_COLOR, label: "Milestone" },
+    { color: "#ef4444", label: "Today" },
   ];
-  const legendSvg = legendItems.map((item, i) =>
-    `<rect x="${i * 100}" y="0" width="10" height="10" fill="${item.color}" rx="2"/><text x="${i * 100 + 13}" y="9" font-size="9" fill="#64748b">${item.label}</text>`
-  ).join("");
+  legendItems.forEach((item, i) => {
+    svgEls.push(
+      `<rect x="${i * 110 + 5}" y="${legendY}" width="10" height="10" fill="${item.color}" rx="2"/>`,
+      `<text x="${i * 110 + 18}" y="${legendY + 9}" font-size="8" fill="#475569">${item.label}</text>`,
+    );
+  });
 
   const doneTasks = tasks.filter(t => t.status === "DONE").length;
-  const lateTasks = tasks.filter(t => t.status !== "DONE" && parseD(t.endDate) && parseD(t.endDate)! < today).length;
-  const html = `<!DOCTYPE html><html><head><meta charset="UTF-8"><title>${clientName} — Schedule</title><style>
-    body{font-family:system-ui,sans-serif;padding:20px 24px;color:#1e293b}
-    h1{font-size:18px;margin:0 0 2px;color:#0f172a}.sub{font-size:11px;color:#64748b;margin-bottom:12px}
-    .stats{display:flex;gap:24px;margin-bottom:16px;padding:10px 14px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:6px}
-    .stat{text-align:center}.sv{font-size:20px;font-weight:700;line-height:1;color:#0f172a}.late{color:#dc2626}
-    .sl{font-size:10px;color:#64748b;margin-top:2px}.scroll{overflow-x:auto}svg{display:block}
-    @media print{.no-print{display:none}@page{size:landscape;margin:0.5in}}
-  </style></head><body>
-  <h1>${clientName} — Schedule</h1>
-  <p class="sub">Printed ${format(today, "MMMM d, yyyy")} · ${tasks.length} tasks · Start: ${format(projectStart, "MMM d, yyyy")}</p>
-  <div class="stats">
-    <div class="stat"><div class="sv">${tasks.length}</div><div class="sl">Total</div></div>
-    <div class="stat"><div class="sv">${doneTasks}</div><div class="sl">Done</div></div>
-    <div class="stat"><div class="sv ${lateTasks > 0 ? "late" : ""}">${lateTasks}</div><div class="sl">Late</div></div>
-    <div class="stat"><div class="sv">${tasks.length ? Math.round((doneTasks / tasks.length) * 100) : 0}%</div><div class="sl">Complete</div></div>
+  const html = `<!DOCTYPE html><html><head><meta charset="UTF-8">
+<title>${clientName} — Construction Schedule</title>
+<style>
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:Arial,Helvetica,sans-serif;background:#fff;color:#1e293b}
+  .cover{padding:12px 20px 8px;background:#0d1b2e;color:#fff;border-bottom:3px solid #C9A84C;margin-bottom:0}
+  .cover h1{font-size:18px;font-weight:900;letter-spacing:0.5px;color:#fff;margin-bottom:2px}
+  .cover .sub{font-size:9px;color:#8baad4;display:flex;gap:24px;flex-wrap:wrap}
+  .scroll{overflow-x:auto}svg{display:block}
+  .no-print{display:flex;gap:10px;align-items:center;padding:8px 16px;background:#f1f5f9;border-bottom:1px solid #e2e8f0}
+  @media print{.no-print{display:none}@page{size:landscape;margin:0.4in}body{zoom:0.85}}
+</style></head><body>
+<div class="cover">
+  <h1>${clientName.toUpperCase()} — CONSTRUCTION SCHEDULE</h1>
+  <div class="sub">
+    <span>Project Start: ${format(projectStart, "MMMM d, yyyy")}</span>
+    <span>Printed: ${format(today, "MMMM d, yyyy")}</span>
+    <span>${tasks.length} Tasks · ${phases.size} Phases</span>
+    <span>${doneTasks} Done · ${Math.round(tasks.length ? doneTasks / tasks.length * 100 : 0)}% Complete</span>
   </div>
-  <button class="no-print" onclick="window.print()" style="margin-bottom:14px;padding:6px 16px;background:#1e293b;color:white;border:none;border-radius:5px;font-size:12px;cursor:pointer">Print / Save as PDF</button>
-  <div class="scroll">
-  <svg width="${svgW}" height="${svgH}">${monthHeaders.join("")}${todayLine}${svgRows.join("")}<g transform="translate(${LABEL_W + 4},${svgH - 12})">${legendSvg}</g></svg>
-  </div></body></html>`;
+</div>
+<div class="no-print">
+  <button onclick="window.print()" style="padding:6px 18px;background:#0d1b2e;color:white;border:none;border-radius:5px;font-size:12px;cursor:pointer;font-weight:600">🖨 Print / Save as PDF</button>
+  <span style="font-size:11px;color:#64748b">Tip: In print dialog, set Landscape orientation and scale to Fit.</span>
+</div>
+<div class="scroll">
+<svg width="${SVG_W}" height="${SVG_H}" xmlns="http://www.w3.org/2000/svg">
+${svgEls.join("\n")}
+</svg>
+</div>
+</body></html>`;
 
   const win = window.open("", "_blank");
   if (win) { win.document.write(html); win.document.close(); }
