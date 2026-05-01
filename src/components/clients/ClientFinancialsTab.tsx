@@ -466,6 +466,19 @@ export default function ClientFinancialsTab({
   const totalExpenses = totalContracted + totalMaterials;
   const netProfit = contractTotal - totalExpenses;
 
+  // Auto-sync netProfit → internalProfitOverride on the client's estimate
+  useEffect(() => {
+    if (loading) return;
+    const timer = setTimeout(() => {
+      fetch(`/api/${companyId}/clients/${clientId}/financials/sync-profit`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ netProfit }),
+      });
+    }, 800);
+    return () => clearTimeout(timer);
+  }, [netProfit, companyId, clientId, loading]);
+
   // Group materials by supplier
   const matsBySupplier: Record<string, MaterialPurchase[]> = {};
   for (const m of materials) {

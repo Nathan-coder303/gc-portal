@@ -8,6 +8,15 @@ import { requirePermission } from "@/lib/auth/permissions";
 import { writeAuditLog } from "@/lib/audit/log";
 import { STANDARD_TEMPLATE_DIVISIONS } from "@/lib/standardTemplateData";
 
+// ─── Helpers ──────────────────────────────────────────────────────────────────
+
+async function touchTemplate(templateId: string, userId: string) {
+  await prisma.estimateTemplate.update({
+    where: { id: templateId },
+    data: { updatedBy: userId },
+  });
+}
+
 // ─── Estimate Number Auto-Increment ───────────────────────────────────────────
 
 async function getNextEstimateNumber(companyId: string): Promise<string> {
@@ -273,6 +282,7 @@ export async function upsertTemplateDivision(
         ...(data.manualTotal !== undefined && { manualTotal: data.manualTotal }),
       },
     });
+    await touchTemplate(templateId, session.user.id);
     revalidatePath(`/${session.user.companyId}/estimates`);
     return { success: true, id: data.id };
   }
@@ -291,6 +301,7 @@ export async function upsertTemplateDivision(
     },
   });
 
+  await touchTemplate(templateId, session.user.id);
   revalidatePath(`/${session.user.companyId}/estimates`);
   return { success: true, id: division.id };
 }
@@ -509,7 +520,7 @@ export async function upsertTemplateItem(
   // Auto-apply sqFt / durationMonths if the item matches criteria
   const division = await prisma.estimateTemplateDivision.findUnique({
     where: { id: divisionId },
-    select: { template: { select: { sqFt: true, durationMonths: true, name: true } } },
+    select: { templateId: true, template: { select: { sqFt: true, durationMonths: true, name: true } } },
   });
   const nameLower = data.name.toLowerCase();
   let autoDefaultQty = data.defaultQty ?? null;
@@ -539,6 +550,7 @@ export async function upsertTemplateItem(
 
   if (data.id) {
     await prisma.estimateTemplateItem.update({ where: { id: data.id }, data: payload });
+    if (division?.templateId) await touchTemplate(division.templateId, session.user.id);
     revalidatePath(`/${session.user.companyId}/estimates`);
     return { success: true, id: data.id };
   }
@@ -576,6 +588,7 @@ export async function upsertTemplateItem(
     siblings.map((s, idx) => prisma.estimateTemplateItem.update({ where: { id: s.id }, data: { sortOrder: idx } }))
   );
 
+  if (division?.templateId) await touchTemplate(division.templateId, session.user.id);
   revalidatePath(`/${session.user.companyId}/estimates`);
   return { success: true, id: item.id };
 }
