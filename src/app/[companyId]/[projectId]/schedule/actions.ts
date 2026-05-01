@@ -282,6 +282,106 @@ export async function loadBathroomTemplate(projectId: string) {
   return loadScheduleTemplate(projectId, "bathroom");
 }
 
+export async function createTasksForPhase(
+  projectId: string,
+  phaseName: string,
+  rows: Array<{ name: string; durationDays: number; startDate?: string | null; trade?: string | null }>
+) {
+  const session = await auth();
+  if (!session) throw new Error("Unauthorized");
+  requirePermission(session, "task:edit");
+
+  const project = await prisma.project.findUnique({ where: { id: projectId } });
+  if (!project) throw new Error("Project not found");
+
+  const created = [];
+  let cursor = new Date(project.startDate);
+  cursor.setHours(0, 0, 0, 0);
+
+  for (const row of rows) {
+    if (!row.name.trim()) continue;
+    const dur = Math.max(1, row.durationDays || 1);
+    const start = row.startDate ? new Date(row.startDate + "T00:00:00") : cursor;
+    const end = new Date(start);
+    end.setDate(end.getDate() + dur - 1);
+
+    const task = await prisma.task.create({
+      data: {
+        projectId,
+        phase: phaseName.trim(),
+        name: row.name.trim(),
+        durationDays: dur,
+        startDate: start,
+        endDate: end,
+        predecessorIds: [],
+        trade: row.trade?.trim() || null,
+        assignee: null,
+        isMilestone: false,
+        status: TaskStatus.NOT_STARTED,
+        percentComplete: 0,
+        createdBy: session.user.id,
+      },
+    });
+    created.push(task);
+    cursor = new Date(end);
+    cursor.setDate(cursor.getDate() + 1);
+  }
+
+  revalidatePath(`/${session.user.companyId}/${projectId}/schedule`);
+  return {
+    success: true,
+    tasks: created.map(t => ({
+      id: t.id,
+      phase: t.phase,
+      name: t.name,
+      durationDays: t.durationDays,
+      startDate: t.startDate ?? new Date(),
+      endDate: t.endDate ?? new Date(),
+      isMilestone: false as const,
+      isOnCriticalPath: false as const,
+      predecessorIds: [] as string[],
+      status: t.status as string,
+      percentComplete: t.percentComplete,
+      trade: t.trade,
+      assignee: t.assignee,
+    })),
+  };
+}
+
+export async function archiveTask(taskId: string) {
+  const session = await auth();
+  if (!session) throw new Error("Unauthorized");
+  requirePermission(session, "task:edit");
+
+  const existing = await prisma.task.findUnique({ where: { id: taskId } });
+  if (!existing) throw new Error("Task not found");
+
+  await prisma.task.update({
+    where: { id: taskId },
+    data: { archivedAt: new Date(), archivedBy: session.user.id },
+  });
+
+  revalidatePath(`/${session.user.companyId}/${existing.projectId}/schedule`);
+  return { success: true };
+}
+
+export async function restoreTask(taskId: string) {
+  const session = await auth();
+  if (!session) throw new Error("Unauthorized");
+  requirePermission(session, "task:edit");
+
+  const existing = await prisma.task.findUnique({ where: { id: taskId } });
+  if (!existing) throw new Error("Task not found");
+
+  await prisma.task.update({
+    where: { id: taskId },
+    data: { archivedAt: null, archivedBy: null },
+  });
+
+  revalidatePath(`/${session.user.companyId}/${existing.projectId}/schedule`);
+  return { success: true };
+}
+
 export async function exportScheduleCsv(projectId: string) {
   const tasks = await prisma.task.findMany({
     where: { projectId },
