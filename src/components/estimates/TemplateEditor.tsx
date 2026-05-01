@@ -511,7 +511,7 @@ function TemplateItemTable({ divisionId, groupId, items, canEdit }: { divisionId
   return (
     <SortableContext items={itemIds} strategy={verticalListSortingStrategy}>
     <div className="overflow-x-auto">
-      <table className="text-sm" style={{ minWidth: "960px" }}>
+      <table className="w-full text-sm" style={{ minWidth: "960px" }}>
         <thead>
           <tr style={{ background: "#161b22" }}>
             {canEdit && <th style={{ width: "24px" }} />}
