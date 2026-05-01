@@ -69,7 +69,8 @@ function EstimateCard({
   const [to, setTo] = useState(clientEmail ?? "");
   const [cc, setCc] = useState("mikebaruh@gmail.com");
   const [bcc, setBcc] = useState("");
-  const [subject, setSubject] = useState(scope || "Estimate");
+  const numPart = est.estimateNumber ? `Estimate #${est.estimateNumber}` : "Estimate";
+  const [subject, setSubject] = useState(`${numPart} for ${clientName} for ${scope}`);
   const [body, setBody] = useState(`Dear ${firstName},\n\nPlease find attached your estimate for the project.\n\nDo not hesitate to contact us with any questions.\n\n${MIKE_SIGNATURE}`);
   const [sending, setSending] = useState(false);
   const [result, setResult] = useState<{ ok: boolean; msg: string } | null>(null);

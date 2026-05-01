@@ -1293,7 +1293,12 @@ export default function TemplateEditor({
   const [emailTo, setEmailTo] = useState(currentClient?.email ?? "");
   const [emailCc, setEmailCc] = useState("mikebaruh@gmail.com");
   const [emailBcc, setEmailBcc] = useState("");
-  const [emailSubject, setEmailSubject] = useState(() => template.description || template.name || "Estimate");
+  const [emailSubject, setEmailSubject] = useState(() => {
+    const scope = template.description || template.name || "Estimate";
+    const numPart = template.estimateNumber ? `Estimate #${template.estimateNumber}` : "Estimate";
+    const clientPart = currentClient?.name ? ` for ${currentClient.name}` : "";
+    return `${numPart}${clientPart} for ${scope}`;
+  });
   const [emailBody, setEmailBody] = useState(() => {
     const firstName = currentClient?.name?.split(" ")[0] ?? "there";
     return `Dear ${firstName},\n\nPlease find attached your estimate for the project.\n\nDo not hesitate to contact us with any questions.\n\nMike Baruh\nFounder/CEO | MIBH Construction\nCertified & Licensed General Contractor CGC 1527069\nCertified & Licensed Roofer CCC 1336817\n\n📱 Cell: 305.746.7307\n📧 Email: mike@mibhconstruction.com\n📍 Address: 2950 N 28 Terr, Hollywood, FL 33020\n🌐 Website: www.mibhconstruction.com\n📸 Instagram: @mibh_construction`;
