@@ -184,8 +184,8 @@ export default async function ClientDetailPage({
         estimateTotal={safeClient.templates.reduce((sum, est) => sum + calcEstimateTotal(est.divisions, est.gcFeePercent), 0)}
         canEdit={canEdit}
         paymentSummary={(() => {
-          const totalInvoiced = clientInvoices.reduce((s, inv) => s + inv.amount, 0);
-          const totalPaid = clientInvoices.reduce((s, inv) => s + inv.payments.reduce((ps, p) => ps + p.amount, 0), 0);
+          const totalInvoiced = clientInvoices.reduce((s, inv) => s + Number(inv.amount), 0);
+          const totalPaid = clientInvoices.reduce((s, inv) => s + inv.payments.reduce((ps, p) => ps + Number(p.amount), 0), 0);
           return totalInvoiced > 0 ? { totalInvoiced, totalPaid, balance: totalInvoiced - totalPaid } : null;
         })()}
       />
@@ -365,8 +365,8 @@ export default async function ClientDetailPage({
             estimateId: inv.estimateId,
             phase: inv.phase,
             trigger: inv.trigger,
-            pct: inv.pct,
-            amount: inv.amount,
+            pct: Number(inv.pct),
+            amount: Number(inv.amount),
             status: inv.status,
             dueDate: inv.dueDate?.toISOString() ?? null,
             notes: inv.notes,
@@ -375,7 +375,7 @@ export default async function ClientDetailPage({
             createdAt: inv.createdAt.toISOString(),
             payments: inv.payments.map(p => ({
               id: p.id,
-              amount: p.amount,
+              amount: Number(p.amount),
               method: p.method,
               paidDate: p.paidDate.toISOString(),
               notes: p.notes,
