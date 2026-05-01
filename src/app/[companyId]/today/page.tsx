@@ -64,7 +64,7 @@ export default async function TodayPage({
   if (verifyHour !== 0) todayStart = new Date(Date.UTC(etY, etM - 1, etD, 5, 0, 0, 0));
   const todayEnd = new Date(todayStart.getTime() + 24 * 60 * 60 * 1000 - 1);
 
-  const [todayLeads, allLeadsCount, estimatesToSend, followUps, clients, leads, urgentLeads, untriaged, pendingCountersigns, todayAppointments, upcomingAppointments, pastAppointments, activeClients, upcomingTasks] = await Promise.all([
+  const [todayLeads, allLeadsCount, estimatesToSend, followUps, clients, leads, urgentLeads, untriaged, pendingCountersigns, todayAppointments, upcomingAppointments, pastAppointments, activeClients, upcomingTasks, activeClientCount, prospectCount] = await Promise.all([
     // Leads received today from email
     prisma.lead.findMany({
       where: {
@@ -215,6 +215,8 @@ export default async function TodayPage({
       orderBy: { dueDate: "asc" },
       include: { client: { select: { id: true, name: true } }, lead: { select: { id: true, name: true } } },
     }),
+    prisma.client.count({ where: { companyId: params.companyId, status: "ACTIVE" } }),
+    prisma.client.count({ where: { companyId: params.companyId, status: "PROSPECT" } }),
   ]);
 
   const today = new Date().toLocaleDateString("en-US", {
@@ -299,7 +301,39 @@ export default async function TodayPage({
       />
 
       <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-        {/* LEADS card — full width, left=triaging right=new leads */}
+
+        {/* CLIENTS card — full width, before Leads */}
+        <div
+          className="col-span-2 lg:col-span-3 rounded-2xl p-4 sm:p-5"
+          style={{ background: "#161b22", border: "1px solid #30373f" }}
+        >
+          <div className="flex items-center gap-3">
+            <Link href={`/${params.companyId}/clients`} className="flex-1 text-center text-[52px] sm:text-6xl font-black leading-none tracking-tight hover:opacity-80 transition-opacity" style={{ color: "#C9A84C" }}>Clients</Link>
+            <Link href={`/${params.companyId}/clients`} className="text-xs px-2 py-0.5 rounded font-medium shrink-0" style={{ border: "1px solid #C9A84C66", color: "#C9A84C" }}>+</Link>
+          </div>
+          <div className="grid grid-cols-2 gap-4 mt-3">
+            <Link
+              href={`/${params.companyId}/clients`}
+              className="flex flex-col gap-1 p-3 rounded-xl transition-opacity hover:opacity-80"
+              style={{ background: "#0d1117", border: "1px solid #30373f" }}
+            >
+              <span className="text-xs font-semibold uppercase tracking-wider" style={{ color: "#8b949e" }}>Active Clients</span>
+              <div className="text-[26px] sm:text-3xl font-black leading-none mt-1" style={{ color: activeClientCount > 0 ? "#C9A84C" : "#484f58" }}>{activeClientCount || "—"}</div>
+              <div className="text-[11px] mt-1" style={{ color: "#484f58" }}>in production</div>
+            </Link>
+            <Link
+              href={`/${params.companyId}/clients`}
+              className="flex flex-col gap-1 p-3 rounded-xl transition-opacity hover:opacity-80"
+              style={{ background: "#0d1117", border: "1px solid #30373f" }}
+            >
+              <span className="text-xs font-semibold uppercase tracking-wider" style={{ color: "#8b949e" }}>Prospects</span>
+              <div className="text-[26px] sm:text-3xl font-black leading-none mt-1" style={{ color: prospectCount > 0 ? "#58a6ff" : "#484f58" }}>{prospectCount || "—"}</div>
+              <div className="text-[11px] mt-1" style={{ color: "#484f58" }}>in pipeline</div>
+            </Link>
+          </div>
+        </div>
+
+        {/* LEADS card — full width */}
         <div
           className="col-span-2 lg:col-span-3 rounded-2xl p-4 sm:p-5"
           style={{ background: "#161b22", border: "1px solid #30373f" }}
@@ -309,7 +343,6 @@ export default async function TodayPage({
             <AddLeadButton companyId={params.companyId} />
           </div>
           <div className="grid grid-cols-3 gap-4 mt-3">
-            {/* Triaging */}
             <Link
               href={`/${params.companyId}/leads`}
               className="flex flex-col gap-1 p-3 rounded-xl transition-opacity hover:opacity-80"
@@ -319,15 +352,12 @@ export default async function TodayPage({
               <div className="text-[26px] sm:text-3xl font-black leading-none mt-1" style={{ color: untriaged > 0 ? "#ef4444" : "#e6edf3" }}>{untriaged}</div>
               <div className="text-[11px] mt-1" style={{ color: "#484f58" }}>need pipeline stage</div>
             </Link>
-            {/* New Leads */}
             <Link
               href={`/${params.companyId}/leads`}
               className="flex flex-col gap-1 p-3 rounded-xl transition-opacity hover:opacity-80"
               style={{ background: "#0d1117", border: "1px solid #30373f" }}
             >
-              <div className="flex items-center gap-2">
-                <span className="text-xs font-semibold uppercase tracking-wider" style={{ color: "#8b949e" }}>New leads</span>
-              </div>
+              <span className="text-xs font-semibold uppercase tracking-wider" style={{ color: "#8b949e" }}>New leads</span>
               <div className="text-[26px] sm:text-3xl font-black leading-none mt-1" style={{ color: todayLeads.length === 0 ? "#484f58" : "#e6edf3" }}>{todayLeads.length === 0 ? "—" : todayLeads.length}</div>
               <div className="text-[11px] mt-1" style={{ color: "#484f58" }}>{allLeadsCount} total all time</div>
               {todayLeads.length > 0 && (
@@ -338,7 +368,6 @@ export default async function TodayPage({
                 </ul>
               )}
             </Link>
-            {/* To Call ASAP */}
             <Link
               href={`/${params.companyId}/leads`}
               className="flex flex-col gap-1 p-3 rounded-xl transition-opacity hover:opacity-80"
@@ -351,41 +380,24 @@ export default async function TodayPage({
           </div>
         </div>
 
-        {/* Estimates */}
-        <div
-          className="rounded-2xl p-4 flex flex-col gap-2"
+        {/* SUBS card — full width, after Leads */}
+        <Link
+          href={`/${params.companyId}/subs`}
+          className="col-span-2 lg:col-span-3 rounded-2xl p-4 sm:p-5 transition-all active:scale-[0.99]"
           style={{ background: "#161b22", border: "1px solid #30373f" }}
         >
-          <div className="flex items-start justify-between gap-1">
-            <Link href={`/${params.companyId}/estimates`} className="text-[26px] sm:text-3xl font-black leading-none hover:opacity-80 transition-opacity" style={{ color: "#C9A84C" }}>Estimates</Link>
-            <div className="flex items-center gap-2 shrink-0">
-              {estimatesToSend.length > 0 && (
-                <span className="text-xs font-bold px-1.5 py-0.5 rounded-full" style={{ background: "#C9A84C", color: "#0d1117" }}>
-                  {estimatesToSend.length}
-                </span>
-              )}
-              <Link
-                href={`/${params.companyId}/estimates`}
-                className="text-xs px-2 py-0.5 rounded font-medium transition-colors"
-                style={{ border: "1px solid #C9A84C66", color: "#C9A84C" }}
-              >
-                +
-              </Link>
-            </div>
+          <div className="flex items-center gap-3 mb-3">
+            <span className="flex-1 text-center text-[52px] sm:text-6xl font-black leading-none tracking-tight" style={{ color: "#C9A84C" }}>Subcontractors</span>
+            <span className="text-xs px-2 py-0.5 rounded font-medium shrink-0" style={{ border: "1px solid #C9A84C66", color: "#C9A84C" }}>+</span>
           </div>
-          <div className="text-[11px] mt-1" style={{ color: "#484f58" }}>to send today</div>
-          {estimatesToSend.length > 0 && (
-            <ul className="space-y-1.5 mt-1">
-              {estimatesToSend.map((est) => (
-                <li key={est.id}>
-                  <span className="text-xs font-medium" style={{ color: "#58a6ff" }}>{est.name}</span>
-                </li>
-              ))}
-            </ul>
-          )}
-        </div>
+          <div className="flex items-center gap-2 justify-center">
+            <span className="text-[11px]" style={{ color: "#484f58" }}>By division · copy emails</span>
+            <span className="text-[10px] px-2 py-0.5 rounded-full" style={{ background: "#1e2736", color: "#58a6ff", border: "1px solid #58a6ff33" }}>Divisions</span>
+            <span className="text-[10px] px-2 py-0.5 rounded-full" style={{ background: "#1e2736", color: "#22c55e", border: "1px solid #22c55e33" }}>Emails</span>
+          </div>
+        </Link>
 
-        {/* Card 3 — Today's Tasks */}
+        {/* Today's Tasks */}
         <TodayTaskCard
           companyId={params.companyId}
           category="TASK"
@@ -396,17 +408,7 @@ export default async function TodayPage({
           leads={leads}
         />
 
-        {/* Card 4 — Follow-ups */}
-        <TodayTaskCard
-          companyId={params.companyId}
-          category="FOLLOW_UP"
-          label="Follow-ups"
-          initialItems={toItems("FOLLOW_UP")}
-          clients={clients}
-          leads={leads}
-        />
-
-        {/* Card 5 — Pending Countersignatures (interactive) */}
+        {/* Pending Countersignatures */}
         <PendingCountersignsCard
           companyId={params.companyId}
           initialEstimates={pendingCountersigns.map(est => ({
@@ -419,33 +421,6 @@ export default async function TodayPage({
             clientId: est.client?.id ?? null,
           }))}
         />
-
-        {/* Card 6 — Estimate Notes */}
-        <TodayTaskCard
-          companyId={params.companyId}
-          category="ESTIMATE"
-          label="Estimate notes"
-          initialItems={toItems("ESTIMATE")}
-          clients={clients}
-          leads={leads}
-        />
-
-        {/* Card 7 — Sub Database */}
-        <Link
-          href={`/${params.companyId}/subs`}
-          className="rounded-2xl p-4 flex flex-col gap-2 transition-all active:scale-[0.98]"
-          style={{ background: "#161b22", border: "1px solid #30373f" }}
-        >
-          <div className="flex items-start justify-between">
-            <span className="text-[26px] sm:text-3xl font-black leading-none" style={{ color: "#C9A84C" }}>Sub database</span>
-            <span className="text-xs px-2 py-0.5 rounded font-medium shrink-0" style={{ border: "1px solid #C9A84C66", color: "#C9A84C" }}>+</span>
-          </div>
-          <div className="text-[11px]" style={{ color: "#484f58" }}>By division · copy emails</div>
-          <div className="mt-auto pt-2 flex items-center gap-1.5">
-            <span className="text-[10px] px-2 py-0.5 rounded-full" style={{ background: "#1e2736", color: "#58a6ff", border: "1px solid #58a6ff33" }}>Divisions</span>
-            <span className="text-[10px] px-2 py-0.5 rounded-full" style={{ background: "#1e2736", color: "#22c55e", border: "1px solid #22c55e33" }}>Emails</span>
-          </div>
-        </Link>
 
       </div>
     </div>
