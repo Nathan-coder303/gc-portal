@@ -1294,7 +1294,7 @@ export default function TemplateEditor({
   const [emailCc, setEmailCc] = useState("mikebaruh@gmail.com");
   const [emailBcc, setEmailBcc] = useState("");
   const [emailSubject, setEmailSubject] = useState(() => {
-    const scope = template.description || template.name || "Estimate";
+    const scope = template.name || template.description || "Estimate";
     const numPart = template.estimateNumber ? `Estimate #${template.estimateNumber}` : "Estimate";
     const clientPart = currentClient?.name ? ` for ${currentClient.name}` : "";
     return `${numPart}${clientPart} for ${scope}`;

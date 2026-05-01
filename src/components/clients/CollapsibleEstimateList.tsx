@@ -64,7 +64,7 @@ function EstimateCard({
 
   // Email compose state
   const firstName = clientName.split(" ")[0];
-  const scope = est.description || est.name;
+  const scope = est.name || est.description;
 
   const [to, setTo] = useState(clientEmail ?? "");
   const [cc, setCc] = useState("mikebaruh@gmail.com");

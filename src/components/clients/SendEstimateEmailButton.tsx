@@ -34,7 +34,7 @@ export default function SendEstimateEmailButton({ templateId, companyId, templat
   const firstName = clientName.split(" ")[0];
   const defaultBody = `Dear ${firstName},\n\nPlease find attached your estimate for the project.\n\nDo not hesitate to contact us with any questions.\n\n${MIKE_SIGNATURE}`;
 
-  const scope = description || templateName;
+  const scope = templateName || description;
   const numPart = estimateNumber ? `Estimate #${estimateNumber}` : "Estimate";
   const defaultSubject = `${numPart} for ${clientName} for ${scope}`;
 
