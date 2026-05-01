@@ -45,12 +45,13 @@ const STATUS_OPTIONS = [
 
 function ClientCard({
   client, companyId, isAdmin,
-  onDragStart, onDragOver, onDrop, onDragEnd, isDragOver, onMove,
+  onDragStart, onDragOver, onDrop, onDragEnd, isDragOver, onMove, onTouchDragStart,
 }: {
   client: Client; companyId: string; isAdmin: boolean;
   onDragStart: () => void; onDragOver: (e: React.DragEvent) => void;
   onDrop: () => void; onDragEnd: () => void; isDragOver: boolean;
   onMove: (targetStatus: string) => void;
+  onTouchDragStart: (e: React.TouchEvent) => void;
 }) {
   const [editing, setEditing] = useState(false);
   const [isPending, startTransition] = useTransition();
@@ -128,6 +129,8 @@ function ClientCard({
       onDragOver={onDragOver}
       onDrop={onDrop}
       onDragEnd={onDragEnd}
+      data-client-id={client.id}
+      data-client-status={client.status}
       className="rounded-xl cursor-pointer select-none"
       style={{
         background: isDragOver ? "#1a2a3a" : "#1e2736",
@@ -153,7 +156,12 @@ function ClientCard({
 
         {/* Name row */}
         <div className="flex items-center gap-2" style={{ paddingRight: 36 }}>
-          <div className="cursor-grab text-base leading-none shrink-0" style={{ color: "#30373f" }} title="Drag to reorder">⠿</div>
+          <div
+            className="cursor-grab text-base leading-none shrink-0"
+            style={{ color: "#30373f", touchAction: "none" }}
+            title="Drag to reorder"
+            onTouchStart={onTouchDragStart}
+          >⠿</div>
           <div className="font-bold text-sm leading-tight truncate flex-1" style={{ color: "#e6edf3" }}>{client.name}</div>
         </div>
 
@@ -452,7 +460,7 @@ function AddClientForm({ onDone, defaultStatus }: { onDone: (newClient?: Client)
 
 function ClientColumn({
   title, status, clients, companyId, isAdmin, adding,
-  onAdd, onCancelAdd, onAddFromLead, accentColor, bgColor, onDragStart, onDrop, onMove,
+  onAdd, onCancelAdd, onAddFromLead, accentColor, bgColor, onDragStart, onDrop, onMove, onTouchDragStart,
 }: {
   title: string; status: string; clients: Client[]; companyId: string; isAdmin: boolean;
   adding: boolean; onAdd: () => void; onCancelAdd: (newClient?: Client) => void; onAddFromLead: () => void;
@@ -460,6 +468,7 @@ function ClientColumn({
   onDragStart: (clientId: string) => void;
   onDrop: (targetClientId: string | null, targetStatus: string) => void;
   onMove: (clientId: string, targetStatus: string) => void;
+  onTouchDragStart: (clientId: string, e: React.TouchEvent) => void;
 }) {
   const [dragOverId, setDragOverId] = useState<string | null>(null);
   const [dragOverZone, setDragOverZone] = useState(false);
@@ -467,6 +476,7 @@ function ClientColumn({
 
   return (
     <div
+      data-column-status={status}
       className="flex-1 rounded-2xl flex flex-col"
       style={{ background: bgColor, border: `1px solid ${dragOverZone ? accentColor : "#30373f"}`, minHeight: 300, minWidth: 200, transition: "border-color 0.15s" }}
       onDragOver={(e) => { e.preventDefault(); setDragOverZone(true); }}
@@ -534,6 +544,7 @@ function ClientColumn({
             onDrop={() => { setDragOverId(null); onDrop(c.id, status); }}
             onDragEnd={() => setDragOverId(null)}
             onMove={(targetStatus) => onMove(c.id, targetStatus)}
+            onTouchDragStart={(e) => onTouchDragStart(c.id, e)}
           />
         ))}
       </div>
@@ -545,8 +556,75 @@ export default function ClientsManager({ companyId, clients: initialClients, isA
   const [clients, setClients] = useState<Client[]>(initialClients);
   const [addingIn, setAddingIn] = useState<string | null>(null);
   const [fromLeadForStatus, setFromLeadForStatus] = useState<string | null>(null);
-  const [sortBy, setSortBy] = useState<"default" | "newest" | "oldest">("default");
+  const [sortBy, setSortBy] = useState<"default" | "newest" | "oldest">("newest");
   const dragIdRef = useRef<string | null>(null);
+
+  // ── Touch drag state ──────────────────────────────────────────────────────
+  const [touchDragId, setTouchDragId] = useState<string | null>(null);
+  const [touchDragPos, setTouchDragPos] = useState<{ x: number; y: number } | null>(null);
+  const [touchDropTarget, setTouchDropTarget] = useState<{ clientId: string | null; status: string } | null>(null);
+  const touchDragIdRef = useRef<string | null>(null);
+  const touchDropTargetRef = useRef<{ clientId: string | null; status: string } | null>(null);
+
+  function handleTouchDragStart(clientId: string, e: React.TouchEvent) {
+    e.preventDefault();
+    const touch = e.touches[0];
+    touchDragIdRef.current = clientId;
+    touchDropTargetRef.current = null;
+    setTouchDragId(clientId);
+    setTouchDragPos({ x: touch.clientX, y: touch.clientY });
+    setTouchDropTarget(null);
+    dragIdRef.current = clientId;
+  }
+
+  useEffect(() => {
+    if (!touchDragId) return;
+
+    function onMove(e: TouchEvent) {
+      const touch = e.touches[0];
+      if (!touch) return;
+      e.preventDefault();
+      setTouchDragPos({ x: touch.clientX, y: touch.clientY });
+
+      // Find what's under the finger (temporarily hide ghost to hit-test)
+      const ghost = document.getElementById("touch-drag-ghost");
+      if (ghost) ghost.style.display = "none";
+      const el = document.elementFromPoint(touch.clientX, touch.clientY);
+      if (ghost) ghost.style.display = "";
+
+      const cardEl = el?.closest("[data-client-id]");
+      const colEl = el?.closest("[data-column-status]");
+      const targetClientId = cardEl?.getAttribute("data-client-id") ?? null;
+      const targetStatus = colEl?.getAttribute("data-column-status") ?? null;
+      if (targetStatus) {
+        const newTarget = { clientId: targetClientId !== touchDragIdRef.current ? targetClientId : null, status: targetStatus };
+        touchDropTargetRef.current = newTarget;
+        setTouchDropTarget(newTarget);
+      }
+    }
+
+    async function onEnd() {
+      const target = touchDropTargetRef.current;
+      touchDragIdRef.current = null;
+      touchDropTargetRef.current = null;
+      setTouchDragId(null);
+      setTouchDragPos(null);
+      setTouchDropTarget(null);
+      if (target) {
+        await handleDrop(target.clientId, target.status);
+      }
+    }
+
+    document.addEventListener("touchmove", onMove, { passive: false });
+    document.addEventListener("touchend", onEnd);
+    document.addEventListener("touchcancel", onEnd);
+    return () => {
+      document.removeEventListener("touchmove", onMove);
+      document.removeEventListener("touchend", onEnd);
+      document.removeEventListener("touchcancel", onEnd);
+    };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [touchDragId]);
   const router = useRouter();
 
   function applySort(list: Client[]): Client[] {
@@ -624,6 +702,9 @@ export default function ClientsManager({ companyId, clients: initialClients, isA
     router.refresh();
   }
 
+  // Find the client being dragged for the ghost label
+  const touchDragClient = touchDragId ? clients.find(c => c.id === touchDragId) : null;
+
   return (
     <div>
       {fromLeadForStatus && (
@@ -635,6 +716,40 @@ export default function ClientsManager({ companyId, clients: initialClients, isA
         />
       )}
 
+      {/* Touch drag ghost */}
+      {touchDragId && touchDragPos && touchDragClient && (
+        <div
+          id="touch-drag-ghost"
+          style={{
+            position: "fixed",
+            left: touchDragPos.x - 80,
+            top: touchDragPos.y - 24,
+            zIndex: 9999,
+            pointerEvents: "none",
+            background: "#1e2736",
+            border: "2px solid #C9A84C",
+            borderRadius: 12,
+            padding: "8px 14px",
+            color: "#e6edf3",
+            fontSize: 13,
+            fontWeight: 700,
+            boxShadow: "0 8px 32px rgba(0,0,0,0.6)",
+            opacity: 0.9,
+            whiteSpace: "nowrap",
+            maxWidth: 200,
+            overflow: "hidden",
+            textOverflow: "ellipsis",
+          }}
+        >
+          {touchDragClient.name}
+          {touchDropTarget && (
+            <span style={{ fontSize: 10, fontWeight: 400, color: "#C9A84C", display: "block", marginTop: 2 }}>
+              → {touchDropTarget.status === "PROSPECT" ? "Prospects" : touchDropTarget.status === "ACTIVE" ? "Active" : touchDropTarget.status === "COMPLETED" ? "Closed" : "Dead"}
+            </span>
+          )}
+        </div>
+      )}
+
       {/* MIBH Income 2026 Barometer — clickable, shows open + closed breakdown */}
       <BarometerSection mibhIncome={mibhIncome} clients={clientIncomeSummaries} />
 
@@ -644,7 +759,7 @@ export default function ClientsManager({ companyId, clients: initialClients, isA
           <p className="text-sm mt-0.5" style={{ color: "#8b949e" }}>{prospects.length} prospect{prospects.length !== 1 ? "s" : ""} · {actives.length} active · {completed.length} closed · {dead.length} dead</p>
         </div>
         <div className="flex items-center gap-1 rounded-lg p-1" style={{ background: "#161b22", border: "1px solid #30373f" }}>
-          {(["default", "newest", "oldest"] as const).map(opt => (
+          {(["newest", "default", "oldest"] as const).map(opt => (
             <button
               key={opt}
               onClick={() => setSortBy(opt)}
@@ -660,70 +775,31 @@ export default function ClientsManager({ companyId, clients: initialClients, isA
       </div>
 
       <div className="flex gap-4 overflow-x-auto pb-2">
-        <ClientColumn
-          title="Prospects"
-          status="PROSPECT"
-          clients={prospects}
-          companyId={companyId}
-          isAdmin={isAdmin}
-          adding={addingIn === "PROSPECT"}
-          onAdd={() => setAddingIn("PROSPECT")}
-          onCancelAdd={(newClient) => { setAddingIn(null); if (newClient) setClients(prev => [...prev, newClient]); }}
-          onAddFromLead={() => setFromLeadForStatus("PROSPECT")}
-          accentColor="#C9A84C"
-          bgColor="#0d1117"
-          onDragStart={handleDragStart}
-          onDrop={handleDrop}
-          onMove={handleMove}
-        />
-        <ClientColumn
-          title="Active Clients"
-          status="ACTIVE"
-          clients={actives}
-          companyId={companyId}
-          isAdmin={isAdmin}
-          adding={addingIn === "ACTIVE"}
-          onAdd={() => setAddingIn("ACTIVE")}
-          onCancelAdd={(newClient) => { setAddingIn(null); if (newClient) setClients(prev => [...prev, newClient]); }}
-          onAddFromLead={() => setFromLeadForStatus("ACTIVE")}
-          accentColor="#22c55e"
-          bgColor="#0a1a0f"
-          onDragStart={handleDragStart}
-          onDrop={handleDrop}
-          onMove={handleMove}
-        />
-        <ClientColumn
-          title="Closed Jobs"
-          status="COMPLETED"
-          clients={completed}
-          companyId={companyId}
-          isAdmin={isAdmin}
-          adding={addingIn === "COMPLETED"}
-          onAdd={() => setAddingIn("COMPLETED")}
-          onCancelAdd={(newClient) => { setAddingIn(null); if (newClient) setClients(prev => [...prev, newClient]); }}
-          onAddFromLead={() => setFromLeadForStatus("COMPLETED")}
-          accentColor="#8b949e"
-          bgColor="#0d1117"
-          onDragStart={handleDragStart}
-          onDrop={handleDrop}
-          onMove={handleMove}
-        />
-        <ClientColumn
-          title="Dead Clients"
-          status="DEAD"
-          clients={dead}
-          companyId={companyId}
-          isAdmin={isAdmin}
-          adding={false}
-          onAdd={() => {}}
-          onCancelAdd={() => {}}
-          onAddFromLead={() => setFromLeadForStatus("DEAD")}
-          accentColor="#ef4444"
-          bgColor="#1a0a0a"
-          onDragStart={handleDragStart}
-          onDrop={handleDrop}
-          onMove={handleMove}
-        />
+        {[
+          { title: "Prospects", status: "PROSPECT", clients: prospects, accentColor: "#C9A84C", bgColor: "#0d1117" },
+          { title: "Active Clients", status: "ACTIVE", clients: actives, accentColor: "#22c55e", bgColor: "#0a1a0f" },
+          { title: "Closed Jobs", status: "COMPLETED", clients: completed, accentColor: "#8b949e", bgColor: "#0d1117" },
+          { title: "Dead Clients", status: "DEAD", clients: dead, accentColor: "#ef4444", bgColor: "#1a0a0a" },
+        ].map(({ title, status, clients: colClients, accentColor, bgColor }) => (
+          <ClientColumn
+            key={status}
+            title={title}
+            status={status}
+            clients={colClients}
+            companyId={companyId}
+            isAdmin={isAdmin}
+            adding={addingIn === status}
+            onAdd={() => setAddingIn(status)}
+            onCancelAdd={(newClient) => { setAddingIn(null); if (newClient) setClients(prev => [...prev, newClient]); }}
+            onAddFromLead={() => setFromLeadForStatus(status)}
+            accentColor={touchDropTarget?.status === status ? "#C9A84C" : accentColor}
+            bgColor={touchDropTarget?.status === status ? `${accentColor}18` : bgColor}
+            onDragStart={handleDragStart}
+            onDrop={handleDrop}
+            onMove={handleMove}
+            onTouchDragStart={handleTouchDragStart}
+          />
+        ))}
       </div>
     </div>
   );
