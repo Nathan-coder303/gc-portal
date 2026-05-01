@@ -258,7 +258,7 @@ export async function archiveTemplate(templateId: string) {
 
 export async function upsertTemplateDivision(
   templateId: string,
-  data: { id?: string; csiCode?: string; name: string; sortOrder?: number }
+  data: { id?: string; csiCode?: string; name: string; sortOrder?: number; manualTotal?: number | null }
 ) {
   const session = await auth();
   if (!session) throw new Error("Unauthorized");
@@ -267,7 +267,11 @@ export async function upsertTemplateDivision(
   if (data.id) {
     await prisma.estimateTemplateDivision.update({
       where: { id: data.id },
-      data: { csiCode: data.csiCode ?? null, name: data.name },
+      data: {
+        csiCode: data.csiCode ?? null,
+        name: data.name,
+        ...(data.manualTotal !== undefined && { manualTotal: data.manualTotal }),
+      },
     });
     revalidatePath(`/${session.user.companyId}/estimates`);
     return { success: true, id: data.id };

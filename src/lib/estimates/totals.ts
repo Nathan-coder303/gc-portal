@@ -19,18 +19,20 @@ export function computeGroupTotal(items: ItemLike[]): number {
 
 export function computeDivisionTotal(
   groups: { items: ItemLike[] }[],
-  ungroupedItems: ItemLike[]
+  ungroupedItems: ItemLike[],
+  manualTotal?: number | null
 ): number {
+  if (manualTotal !== null && manualTotal !== undefined) return manualTotal;
   const groupSum = groups.reduce((s, g) => s + computeGroupTotal(g.items), 0);
   const itemSum = ungroupedItems.reduce((s, i) => s + computeItemTotal(i), 0);
   return groupSum + itemSum;
 }
 
 export function computeEstimateTotal(
-  divisions: { groups: { items: ItemLike[] }[]; items: ItemLike[] }[]
+  divisions: { groups: { items: ItemLike[] }[]; items: ItemLike[]; manualTotal?: number | null }[]
 ): number {
   return divisions.reduce(
-    (s, d) => s + computeDivisionTotal(d.groups, d.items),
+    (s, d) => s + computeDivisionTotal(d.groups, d.items, d.manualTotal),
     0
   );
 }

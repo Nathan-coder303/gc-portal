@@ -132,7 +132,7 @@ const GRAND_TOTAL_VALUE_STYLE = { fontSize: 13 as const, fontFamily: "Helvetica-
 
 type Item = { id: string; name: string; detail: string | null; unit: string | null; defaultQty: number | null; defaultUnitCost: number | null; defaultMarkupPct: number | null; visibleInPdf: boolean; notes: string | null; csiCode?: string | null };
 type Group = { id: string; name: string; items: Item[] };
-type Division = { id: string; csiCode: string | null; name: string; groups: Group[]; items: Item[] };
+type Division = { id: string; csiCode: string | null; name: string; manualTotal?: number | null; groups: Group[]; items: Item[] };
 
 type PaymentRow = { payment: string; trigger: string; pct: number };
 
@@ -982,6 +982,10 @@ function DivisionSummaryPage({ template, client, divisions, gcFeePercent }: Pick
   // Compute division totals (only divisions with items having a total)
   const divTotals: { name: string; total: number }[] = [];
   for (const div of divisions) {
+    if (div.manualTotal != null) {
+      if (div.manualTotal > 0) divTotals.push({ name: div.name, total: div.manualTotal });
+      continue;
+    }
     const allItems = [
       ...div.items.filter(isItemFilled),
       ...div.groups.flatMap(g => g.items.filter(isItemFilled)),
@@ -1075,6 +1079,7 @@ function TemplatePdfDocument({ companyName, template, client, divisions, showTer
   // Compute raw totals per group label (or null for ungrouped)
   function rawGroupTotal(divs: Division[]): number {
     return divs.reduce((sum, div) => {
+      if (div.manualTotal != null) return sum + div.manualTotal;
       return sum + [
         ...div.items.filter(isItemFilled),
         ...div.groups.flatMap(g => g.items.filter(isItemFilled)),
@@ -1385,8 +1390,8 @@ function TemplatePdfDocument({ companyName, template, client, divisions, showTer
 
           if (filteredDivs.length === 0) return null;
 
-          const rawTotal = filteredDivs.reduce((s, { filledItems, filledGroups }) =>
-            s + [...filledItems, ...filledGroups.flatMap(g => g.items)].reduce((ss, i) => ss + calcTotal(i.defaultQty, i.defaultUnitCost, i.defaultMarkupPct), 0), 0);
+          const rawTotal = filteredDivs.reduce((s, { div, filledItems, filledGroups }) =>
+            s + (div.manualTotal != null ? div.manualTotal : [...filledItems, ...filledGroups.flatMap(g => g.items)].reduce((ss, i) => ss + calcTotal(i.defaultQty, i.defaultUnitCost, i.defaultMarkupPct), 0)), 0);
           const overrideTotal = groupLabel && summaryGroups?.[groupLabel] ? computeOverrideTotal(summaryGroups[groupLabel]) : null;
           const groupTotal = overrideTotal !== null ? overrideTotal : rawTotal;
 
@@ -1401,8 +1406,10 @@ function TemplatePdfDocument({ companyName, template, client, divisions, showTer
               )}
 
               {filteredDivs.map(({ div, filledItems, filledGroups }) => {
-                const divTotal = [...filledItems, ...filledGroups.flatMap(g => g.items)]
-                  .reduce((s, i) => s + calcTotal(i.defaultQty, i.defaultUnitCost, i.defaultMarkupPct), 0);
+                const divTotal = div.manualTotal != null
+                  ? div.manualTotal
+                  : [...filledItems, ...filledGroups.flatMap(g => g.items)]
+                    .reduce((s, i) => s + calcTotal(i.defaultQty, i.defaultUnitCost, i.defaultMarkupPct), 0);
 
                 return (
                   <View key={div.id} minPresenceAhead={160} break={forcedBreakDivIds.has(div.id)}>

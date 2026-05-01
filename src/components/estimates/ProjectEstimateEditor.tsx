@@ -32,7 +32,7 @@ import { lookupItemCsiCode, formatCsiCode, DIVISIONS } from "@/lib/divisions";
 
 type Item = ItemLike & { id: string; name: string; csiCode: string | null; detail: string | null; unit: string | null; vendor: string | null; notes: string | null; sortOrder: number };
 type Group = { id: string; name: string; items: Item[] };
-type Division = { id: string; csiCode: string | null; name: string; groups: Group[]; items: Item[] };
+type Division = { id: string; csiCode: string | null; name: string; manualTotal: number | null; groups: Group[]; items: Item[] };
 type Estimate = { id: string; name: string; description: string | null; status: string; projectId: string; gcFeePercent: number | null; sqFt: number | null; durationMonths: number | null };
 
 const STATUS_OPTIONS = ["DRAFT", "PENDING", "APPROVED", "REJECTED"];
@@ -387,8 +387,10 @@ function DivisionSection({
   const [isPending, startTransition] = useTransition();
   const [addingGroup, setAddingGroup] = useState(false);
   const [groupName, setGroupName] = useState("");
+  const [lumpSumInput, setLumpSumInput] = useState(division.manualTotal != null ? String(division.manualTotal) : "");
+  const [lumpSumOpen, setLumpSumOpen] = useState(division.manualTotal != null);
 
-  const total = computeDivisionTotal(division.groups, division.items);
+  const total = computeDivisionTotal(division.groups, division.items, division.manualTotal);
   const { setNodeRef: setDropRef, isOver } = useDroppable({ id: division.id });
   const { attributes: dragAttrs, listeners: dragListeners, setNodeRef: setDragRef, isDragging } = useDraggable({
     id: "div-" + division.id,
@@ -405,6 +407,14 @@ function DivisionSection({
     });
   }
 
+  function saveLumpSum(value: string) {
+    const parsed = value.trim() === "" ? null : parseFloat(value.replace(/,/g, ""));
+    if (value.trim() !== "" && isNaN(parsed!)) return;
+    startTransition(async () => {
+      await upsertEstimateDivision(division.id, { id: division.id, name: division.name, manualTotal: parsed });
+    });
+  }
+
   return (
     <div ref={(node) => { setDropRef(node); setDragRef(node); }} className="bg-white rounded-xl overflow-hidden" style={{ border: isOver ? "2px solid #3b82f6" : "1px solid #e2e8f0", opacity: isDragging ? 0.4 : 1, transition: "border 0.1s" }}>
       {/* Mobile header */}
@@ -417,8 +427,22 @@ function DivisionSection({
           {division.csiCode && <span className="text-[10px] font-semibold text-slate-400">{division.csiCode}</span>}
           <span className="text-sm font-bold text-slate-900 truncate">{division.name}</span>
         </div>
-        <span className="text-sm font-bold text-slate-900 shrink-0">${fmt(total)}</span>
+        {canEdit && (
+          <button onClick={e => { e.stopPropagation(); setLumpSumOpen(v => !v); }} className="text-xs px-1.5 py-0.5 rounded shrink-0" style={{ border: `1px solid ${lumpSumOpen ? "#2563eb88" : "#cbd5e1"}`, color: lumpSumOpen ? "#2563eb" : "#94a3b8", background: lumpSumOpen ? "#eff6ff" : "transparent" }} title="Lump-sum override">∑</button>
+        )}
+        <span className="text-sm font-bold text-slate-900 shrink-0">
+          {division.manualTotal != null && <span className="text-[10px] font-normal text-slate-400 mr-1">override</span>}
+          ${fmt(total)}
+        </span>
       </div>
+      {/* Mobile lump-sum input */}
+      {lumpSumOpen && canEdit && (
+        <div className="md:hidden flex items-center gap-2 px-4 py-2 border-t border-slate-100" onClick={e => e.stopPropagation()}>
+          <span className="text-xs text-slate-500 shrink-0">Lump sum:</span>
+          <input type="number" className="border border-blue-300 rounded px-2 py-1 text-sm flex-1" style={{ minWidth: 0 }} placeholder="e.g. 45000" value={lumpSumInput} onChange={e => setLumpSumInput(e.target.value)} onBlur={e => saveLumpSum(e.target.value)} onKeyDown={e => { if (e.key === "Enter") { saveLumpSum(lumpSumInput); (e.target as HTMLInputElement).blur(); } }} />
+          {lumpSumInput && <button onClick={() => { setLumpSumInput(""); saveLumpSum(""); setLumpSumOpen(false); }} className="text-xs text-red-500 shrink-0">✕</button>}
+        </div>
+      )}
       {/* Desktop header */}
       <div className="w-full hidden md:flex items-center justify-between px-4 py-3 hover:bg-slate-50 transition-colors">
         <div className="flex items-center gap-2">
@@ -433,8 +457,25 @@ function DivisionSection({
             <span className="font-semibold text-slate-900">{division.name}</span>
           </button>
         </div>
-        <span className="text-sm font-bold text-slate-900">${fmt(total)}</span>
+        <div className="flex items-center gap-3">
+          {canEdit && (
+            <button onClick={e => { e.stopPropagation(); setLumpSumOpen(v => !v); }} className="text-xs px-2 py-0.5 rounded" style={{ border: `1px solid ${lumpSumOpen ? "#2563eb88" : "#cbd5e1"}`, color: lumpSumOpen ? "#2563eb" : "#94a3b8", background: lumpSumOpen ? "#eff6ff" : "transparent" }} title="Lump-sum override">∑ Lump Sum</button>
+          )}
+          <span className="text-sm font-bold text-slate-900">
+            {division.manualTotal != null && <span className="text-[10px] font-normal text-slate-400 mr-1">override</span>}
+            ${fmt(total)}
+          </span>
+        </div>
       </div>
+      {/* Desktop lump-sum input row */}
+      {lumpSumOpen && canEdit && (
+        <div className="hidden md:flex items-center gap-3 px-4 py-2 border-t border-blue-100 bg-blue-50">
+          <span className="text-xs text-slate-500 shrink-0">Lump-sum override (replaces all line items):</span>
+          <input type="number" className="border border-blue-300 rounded px-2 py-1 text-sm" style={{ width: 140 }} placeholder="e.g. 45000" value={lumpSumInput} onChange={e => setLumpSumInput(e.target.value)} onBlur={e => saveLumpSum(e.target.value)} onKeyDown={e => { if (e.key === "Enter") { saveLumpSum(lumpSumInput); (e.target as HTMLInputElement).blur(); } }} />
+          {lumpSumInput && <button onClick={() => { setLumpSumInput(""); saveLumpSum(""); setLumpSumOpen(false); }} className="text-xs text-red-500 px-2 py-0.5 rounded border border-red-200">✕ Clear</button>}
+          <span className="text-xs text-slate-400">Leave blank to use line item sum</span>
+        </div>
+      )}
 
       {open && (
         <div className="border-t border-slate-100 pb-2">

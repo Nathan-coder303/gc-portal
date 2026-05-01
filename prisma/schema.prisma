@@ -711,16 +711,17 @@ model EstimateTemplate {
 }
 
 model EstimateTemplateDivision {
-  id         String                  @id @default(cuid())
-  templateId String
-  template   EstimateTemplate        @relation(fields: [templateId], references: [id])
-  csiCode    String?
-  name       String
-  sortOrder  Int                     @default(0)
-  archivedAt DateTime?
-  archivedBy String?
-  groups     EstimateTemplateGroup[]
-  items      EstimateTemplateItem[]
+  id          String                  @id @default(cuid())
+  templateId  String
+  template    EstimateTemplate        @relation(fields: [templateId], references: [id])
+  csiCode     String?
+  name        String
+  manualTotal Decimal?                @db.Decimal(14, 2)
+  sortOrder   Int                     @default(0)
+  archivedAt  DateTime?
+  archivedBy  String?
+  groups      EstimateTemplateGroup[]
+  items       EstimateTemplateItem[]
 
   @@index([templateId])
 }
@@ -794,6 +795,7 @@ model ProjectEstimateDivision {
   estimate    ProjectEstimate         @relation(fields: [estimateId], references: [id])
   csiCode     String?
   name        String
+  manualTotal Decimal?                @db.Decimal(14, 2)
   sortOrder   Int                     @default(0)
   archivedAt  DateTime?
   archivedBy  String?

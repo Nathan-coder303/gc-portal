@@ -20,7 +20,7 @@ function getGroupLabel(csiCode: string | null): string | null {
   return SUMMARY_GROUPS.find(g => g.prefixes.includes(prefix))?.label ?? null;
 }
 
-type Division = { id: string; csiCode: string | null; name: string; groups: Group[]; items: Item[] };
+type Division = { id: string; csiCode: string | null; name: string; manualTotal?: number | null; groups: Group[]; items: Item[] };
 type GroupedDivisions = { groupLabel: string | null; divs: Division[] };
 
 function groupDivisions(divisions: Division[]): GroupedDivisions[] {
@@ -297,7 +297,7 @@ export function EstimatePdfDocument({ companyName, projectName, estimate, divisi
       const override = computeOverrideTotal(summaryGroups[groupLabel]);
       if (override !== null) return sum + override;
     }
-    return sum + divs.reduce((s, d) => s + computeDivisionTotal(d.groups, d.items), 0);
+    return sum + divs.reduce((s, d) => s + computeDivisionTotal(d.groups, d.items, d.manualTotal), 0);
   }, 0);
   const divisionCount = divisions.length;
   const itemCount = divisions.reduce(
@@ -361,12 +361,12 @@ export function EstimatePdfDocument({ companyName, projectName, estimate, divisi
           <Text style={[styles.headerText, { width: 60, textAlign: "right" }]}>% of Total</Text>
         </View>
         {grouped.map(({ groupLabel, divs }, gi) => {
-          const rawGroupTotal = divs.reduce((s, d) => s + computeDivisionTotal(d.groups, d.items), 0);
+          const rawGroupTotal = divs.reduce((s, d) => s + computeDivisionTotal(d.groups, d.items, d.manualTotal), 0);
           const overrideTotal = groupLabel && summaryGroups?.[groupLabel] ? computeOverrideTotal(summaryGroups[groupLabel]) : null;
           const groupTotal = overrideTotal !== null ? overrideTotal : rawGroupTotal;
           const hasContent = divs.some(d => {
             const hasExcluded = [...d.items, ...d.groups.flatMap(g => g.items)].some(i => i.detail === "Excluded");
-            return computeDivisionTotal(d.groups, d.items) > 0 || hasExcluded;
+            return computeDivisionTotal(d.groups, d.items, d.manualTotal) > 0 || hasExcluded;
           });
           if (!hasContent) return null;
           const groupPct = grandTotal > 0 ? (groupTotal / grandTotal) * 100 : 0;
@@ -381,7 +381,7 @@ export function EstimatePdfDocument({ companyName, projectName, estimate, divisi
               )}
               {divs.map((div) => {
                 const hasExcluded = [...div.items, ...div.groups.flatMap(g => g.items)].some(i => i.detail === "Excluded");
-                const divTotal = computeDivisionTotal(div.groups, div.items);
+                const divTotal = computeDivisionTotal(div.groups, div.items, div.manualTotal);
                 if (divTotal === 0 && !hasExcluded) return null;
                 const pct = grandTotal > 0 ? (divTotal / grandTotal) * 100 : 0;
                 return (

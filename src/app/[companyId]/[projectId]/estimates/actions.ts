@@ -273,7 +273,7 @@ export async function archiveEstimate(estimateId: string, projectId: string) {
 
 export async function upsertEstimateDivision(
   estimateId: string,
-  data: { id?: string; csiCode?: string; name: string }
+  data: { id?: string; csiCode?: string; name: string; manualTotal?: number | null }
 ) {
   const session = await auth();
   if (!session) throw new Error("Unauthorized");
@@ -282,7 +282,11 @@ export async function upsertEstimateDivision(
   if (data.id) {
     await prisma.projectEstimateDivision.update({
       where: { id: data.id },
-      data: { csiCode: data.csiCode ?? null, name: data.name },
+      data: {
+        csiCode: data.csiCode ?? null,
+        name: data.name,
+        ...(data.manualTotal !== undefined && { manualTotal: data.manualTotal }),
+      },
     });
     revalidatePath(`/${session.user.companyId}`);
     return { success: true, id: data.id };
