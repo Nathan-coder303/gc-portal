@@ -31,7 +31,7 @@ export async function POST(
   const body = await req.json();
   const { estimateId, phase, trigger, pct, amount, dueDate, notes } = body;
 
-  if (!estimateId || !phase || pct == null || amount == null) {
+  if (!estimateId || phase == null || pct == null || amount == null) {
     return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
   }
 
