@@ -207,7 +207,7 @@ export default function ClientInvoicesTab({
         }),
       });
       const inv = await res.json();
-      setInvoices((prev) => [...prev, { ...inv, payments: [] }]);
+      setInvoices((prev) => [...prev, { ...inv, amount: Number(inv.amount), pct: Number(inv.pct), payments: [] }]);
       setCreating(false);
       setSelectedPhase(null);
       setCustomAmount("");
@@ -228,7 +228,8 @@ export default function ClientInvoicesTab({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ amount: payAmount, method: payMethod, paidDate: payDate, notes: payNotes || null }),
       });
-      const payment = await res.json();
+      const rawPayment = await res.json();
+      const payment = { ...rawPayment, amount: Number(rawPayment.amount) };
 
       // Update invoice payments + possibly status
       setInvoices(prev => prev.map(inv => {
