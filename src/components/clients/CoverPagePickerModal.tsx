@@ -8,7 +8,7 @@ export const COVER_OPTIONS = [
   { type: "SHINGLE_ROOFS", label: "Shingle Roofs", img: "/shingle-roofs-cover.png",   desc: "Shingle roofing" },
 ] as const;
 
-export type CoverType = (typeof COVER_OPTIONS)[number]["type"] | "CUSTOM";
+export type CoverType = (typeof COVER_OPTIONS)[number]["type"] | "CUSTOM" | "NONE";
 export type Page2Type = "ROOF" | "ADDITION" | "RETAIL" | "NONE";
 
 const PAGE2_OPTIONS: { type: Page2Type; label: string; desc: string; icon: string }[] = [
@@ -202,6 +202,26 @@ export default function CoverPagePickerModal({
                 </button>
               );
             })}
+
+            {/* No Cover tile */}
+            {(() => {
+              const active = cover === "NONE";
+              return (
+                <button
+                  onClick={() => setCover("NONE")}
+                  className="rounded-xl overflow-hidden text-left transition-all"
+                  style={{ border: `2px solid ${active ? "#f85149" : "#30373f"}`, outline: "none" }}
+                >
+                  <div style={{ width: "100%", height: 72, background: active ? "#2d1111" : "#0d1117", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                    <span style={{ fontSize: 28, opacity: 0.7 }}>⊘</span>
+                  </div>
+                  <div className="px-2 py-1.5" style={{ background: active ? "#2d1111" : "#1e2736" }}>
+                    <div className="text-xs font-semibold" style={{ color: active ? "#f87171" : "#e6edf3" }}>No Cover</div>
+                    <div className="text-[10px]" style={{ color: "#8b949e" }}>Skip cover page</div>
+                  </div>
+                </button>
+              );
+            })()}
 
             {/* Upload tile */}
             {companyId && clientId && (

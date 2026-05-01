@@ -95,7 +95,7 @@ export default function SendEstimateEmailButton({ templateId, companyId, templat
     }
   }
 
-  const selectedOption = COVER_OPTIONS.find(o => o.type === coverType);
+  const selectedOption = coverType === "NONE" ? { label: "No Cover" } : COVER_OPTIONS.find(o => o.type === coverType);
 
   return (
     <>

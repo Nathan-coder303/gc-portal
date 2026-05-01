@@ -97,7 +97,7 @@ function EstimateCard({
   const initialPage2: Page2Type = n.includes("retail") ? "RETAIL" : n.includes("roof") ? "ROOF" : n.includes("addition") ? "ADDITION" : "NONE";
 
   function buildPdfUrl(opts: PdfOptions, preview = false) {
-    const base = `/api/${companyId}/estimates/${est.id}/pdf?cover=1&coverType=${opts.coverType}&page2=${opts.page2}&includeInsert=${opts.includeInsert ? 1 : 0}&divSummary=${opts.includeDivisionSummary ? 1 : 0}&forcedBreakCsi=${opts.forcedBreakCsiPrefixes.join(",")}${preview ? "&preview=1" : ""}`;
+    const base = `/api/${companyId}/estimates/${est.id}/pdf?cover=${opts.coverType !== "NONE" ? 1 : 0}&coverType=${opts.coverType}&page2=${opts.page2}&includeInsert=${opts.includeInsert ? 1 : 0}&divSummary=${opts.includeDivisionSummary ? 1 : 0}&forcedBreakCsi=${opts.forcedBreakCsiPrefixes.join(",")}${opts.noPresentation ? "&noPresent=1" : ""}${preview ? "&preview=1" : ""}`;
     if (opts.coverType === "CUSTOM" && opts.coverBlobUrl) {
       return `${base}&coverBlobUrl=${encodeURIComponent(opts.coverBlobUrl)}`;
     }
@@ -156,7 +156,7 @@ function EstimateCard({
     }
   }
 
-  const selectedOption = COVER_OPTIONS.find(o => o.type === pdfOpts?.coverType);
+  const selectedOption = pdfOpts?.coverType === "NONE" ? { label: "No Cover" } : COVER_OPTIONS.find(o => o.type === pdfOpts?.coverType);
 
   return (
     <>

@@ -200,7 +200,7 @@ export async function POST(
     includeRoofUpgradesPage: page2 ? page2 === "ROOF" : (template.name.toLowerCase().includes("roof") && !template.name.toLowerCase().includes("retail")),
     includeAdditionPages: page2 ? page2 === "ADDITION" : template.name.toLowerCase().includes("addition"),
     includeRetailPages: page2 ? page2 === "RETAIL" : template.name.toLowerCase().includes("retail"),
-    includeCoverPage: true,
+    includeCoverPage: coverType !== "NONE",
     insulationType: template.insulationType ?? "ISO",
     clientCoverPhotoType: coverType ?? template.client?.coverPhotoType ?? null,
     clientCoverPhotoUrl: await resolvePrivateCoverUrl(template.client?.coverPhotoUrl ?? null),

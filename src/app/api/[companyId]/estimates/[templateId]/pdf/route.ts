@@ -42,8 +42,8 @@ export async function GET(
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
   const countersigned = req.nextUrl.searchParams.get("countersigned") === "1";
-  const cover = req.nextUrl.searchParams.get("cover") === "1";
   const coverTypeParam = req.nextUrl.searchParams.get("coverType");
+  const cover = req.nextUrl.searchParams.get("cover") === "1" && coverTypeParam !== "NONE";
   const coverBlobUrlParam = req.nextUrl.searchParams.get("coverBlobUrl"); // specific custom cover blob URL
   const page2Param = req.nextUrl.searchParams.get("page2"); // "ROOF" | "ADDITION" | "NONE" | null (auto)
   const isPreview = req.nextUrl.searchParams.get("preview") === "1";
