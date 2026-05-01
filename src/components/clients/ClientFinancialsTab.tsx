@@ -1,6 +1,10 @@
 "use client";
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef, useMemo } from "react";
 import { TrashIcon } from "@/components/ui/icons";
+import {
+  format, startOfMonth, endOfMonth, startOfWeek, endOfWeek,
+  addMonths, subMonths, isSameMonth, isToday, eachDayOfInterval,
+} from "date-fns";
 
 type SubContractor = { id: string; name: string; email: string | null; phone: string | null; divisionCode: string; divisionName: string };
 type SubPayment = { id: string; amount: number; method: string; paidAt: string; checkNumber: string | null; notes: string | null };
@@ -12,6 +16,96 @@ function fmt(n: number) { return n.toLocaleString("en-US", { minimumFractionDigi
 function today() { return new Date().toISOString().slice(0, 10); }
 
 const METHOD_LABELS: Record<string, string> = { CHECK: "Check", ZELLE: "Zelle", ACH: "ACH", CASH: "Cash" };
+
+// ─── Calendar date picker ──────────────────────────────────────────────────────
+function DatePickerInput({ value, onChange }: { value: string; onChange: (v: string) => void }) {
+  const [open, setOpen] = useState(false);
+  const [viewMonth, setViewMonth] = useState(() => value ? new Date(value + "T12:00:00") : new Date());
+  const ref = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    function handle(e: MouseEvent) {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+    }
+    if (open) document.addEventListener("mousedown", handle);
+    return () => document.removeEventListener("mousedown", handle);
+  }, [open]);
+
+  const days = useMemo(() => {
+    const start = startOfWeek(startOfMonth(viewMonth));
+    const end = endOfWeek(endOfMonth(viewMonth));
+    return eachDayOfInterval({ start, end });
+  }, [viewMonth]);
+
+  function selectDate(d: Date) {
+    onChange(format(d, "yyyy-MM-dd"));
+    setOpen(false);
+  }
+
+  const displayVal = value ? format(new Date(value + "T12:00:00"), "MM/dd/yyyy") : "Select date";
+
+  return (
+    <div className="relative" ref={ref}>
+      <button
+        type="button"
+        onClick={() => { setOpen(o => !o); if (value) setViewMonth(new Date(value + "T12:00:00")); }}
+        className="w-full rounded-lg px-3 py-2 text-sm text-left flex items-center gap-2"
+        style={{ background: "#0d1117", border: "1px solid #30373f", color: value ? "#e6edf3" : "#8b949e" }}
+      >
+        <span style={{ fontSize: "13px" }}>📅</span>
+        <span>{displayVal}</span>
+      </button>
+      {open && (
+        <div className="absolute z-50 mt-1 rounded-xl p-3 shadow-xl" style={{ background: "#161b22", border: "1px solid #30373f", width: "240px" }}>
+          {/* Month nav */}
+          <div className="flex items-center justify-between mb-2">
+            <button type="button" onClick={() => setViewMonth(m => subMonths(m, 1))} className="w-7 h-7 flex items-center justify-center rounded-lg text-lg font-bold" style={{ color: "#8b949e" }}>‹</button>
+            <span className="text-sm font-semibold" style={{ color: "#e6edf3" }}>{format(viewMonth, "MMMM yyyy")}</span>
+            <button type="button" onClick={() => setViewMonth(m => addMonths(m, 1))} className="w-7 h-7 flex items-center justify-center rounded-lg text-lg font-bold" style={{ color: "#8b949e" }}>›</button>
+          </div>
+          {/* Day headers */}
+          <div className="grid grid-cols-7 mb-1">
+            {["Su","Mo","Tu","We","Th","Fr","Sa"].map(d => (
+              <div key={d} className="text-center text-xs py-0.5" style={{ color: "#4d5566" }}>{d}</div>
+            ))}
+          </div>
+          {/* Days */}
+          <div className="grid grid-cols-7">
+            {days.map(d => {
+              const dateStr = format(d, "yyyy-MM-dd");
+              const isSelected = dateStr === value;
+              const inMonth = isSameMonth(d, viewMonth);
+              const todayBool = isToday(d);
+              return (
+                <button
+                  key={dateStr}
+                  type="button"
+                  onClick={() => selectDate(d)}
+                  className="text-center text-xs py-1.5 rounded-lg"
+                  style={{
+                    color: isSelected ? "#fff" : inMonth ? (todayBool ? "#3b82f6" : "#e6edf3") : "#4d5566",
+                    background: isSelected ? "#3b82f6" : "transparent",
+                    fontWeight: isSelected || todayBool ? "700" : "400",
+                  }}
+                >
+                  {format(d, "d")}
+                </button>
+              );
+            })}
+          </div>
+          <button
+            type="button"
+            onClick={() => { onChange(today()); setOpen(false); }}
+            className="mt-2 w-full text-xs py-1 rounded-lg"
+            style={{ color: "#3b82f6", background: "#3b82f611", border: "1px solid #3b82f633" }}
+          >
+            Today
+          </button>
+        </div>
+      )}
+    </div>
+  );
+}
 
 // ─── Sub Card ─────────────────────────────────────────────────────────────────
 function SubCard({
@@ -32,6 +126,7 @@ function SubCard({
   const [payDate, setPayDate] = useState(today());
   const [payCheck, setPayCheck] = useState("");
   const [payNotes, setPayNotes] = useState("");
+  const [isCredit, setIsCredit] = useState(false);
   const [saving, setSaving] = useState(false);
   const [editContract, setEditContract] = useState(false);
   const [contractVal, setContractVal] = useState(String(sub.contractAmount));
@@ -40,15 +135,17 @@ function SubCard({
     if (!payAmount || isNaN(Number(payAmount))) return;
     setSaving(true);
     try {
+      const rawAmount = Number(payAmount);
+      const finalAmount = isCredit ? -Math.abs(rawAmount) : Math.abs(rawAmount);
       const res = await fetch(`/api/${companyId}/clients/${clientId}/financials/subs/${sub.id}/payments`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ amount: Number(payAmount), method: payMethod, paidAt: payDate, checkNumber: payCheck || null, notes: payNotes || null }),
+        body: JSON.stringify({ amount: finalAmount, method: payMethod, paidAt: payDate, checkNumber: payCheck || null, notes: payNotes || null }),
       });
       if (res.ok) {
         const payment = await res.json();
         onUpdate({ ...sub, payments: [...sub.payments, payment] });
-        setPayAmount(""); setPayCheck(""); setPayNotes(""); setShowPayForm(false);
+        setPayAmount(""); setPayCheck(""); setPayNotes(""); setIsCredit(false); setShowPayForm(false);
       }
     } finally { setSaving(false); }
   }
@@ -85,7 +182,6 @@ function SubCard({
           <div className="text-xs mt-0.5" style={{ color: "#8b949e" }}>Subcontractor</div>
         </div>
         <div className="flex items-center gap-2">
-          {/* Contract amount */}
           {editContract ? (
             <div className="flex items-center gap-1">
               <input
@@ -125,26 +221,43 @@ function SubCard({
       {sub.payments.length > 0 && (
         <div className="space-y-1">
           <div className="text-xs font-semibold uppercase tracking-widest mb-2" style={{ color: "#8b949e" }}>Payments</div>
-          {sub.payments.map(p => (
-            <div key={p.id} className="flex items-center justify-between gap-2 rounded-xl px-3 py-2" style={{ background: "#0d1117", border: "1px solid #21262d" }}>
-              <div className="flex items-center gap-3 flex-1 min-w-0">
-                <span className="text-xs font-bold px-2 py-0.5 rounded" style={{ background: "#22c55e22", color: "#22c55e", border: "1px solid #22c55e33" }}>{METHOD_LABELS[p.method] ?? p.method}</span>
-                <span className="text-xs font-bold" style={{ color: "#22c55e" }}>${fmt(p.amount)}</span>
-                <span className="text-xs" style={{ color: "#8b949e" }}>{new Date(p.paidAt + "T00:00:00").toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}</span>
-                {p.checkNumber && <span className="text-xs" style={{ color: "#8b949e" }}>#{p.checkNumber}</span>}
-                {p.notes && <span className="text-xs truncate" style={{ color: "#8b949e" }}>{p.notes}</span>}
+          {sub.payments.map(p => {
+            const isCredit = p.amount < 0;
+            return (
+              <div key={p.id} className="flex items-center justify-between gap-2 rounded-xl px-3 py-2" style={{ background: "#0d1117", border: "1px solid #21262d" }}>
+                <div className="flex items-center gap-3 flex-1 min-w-0">
+                  {isCredit && <span className="text-xs font-bold px-2 py-0.5 rounded" style={{ background: "#f8514922", color: "#f85149", border: "1px solid #f8514933" }}>CR</span>}
+                  <span className="text-xs font-bold px-2 py-0.5 rounded" style={{ background: isCredit ? "#f8514922" : "#22c55e22", color: isCredit ? "#f85149" : "#22c55e", border: `1px solid ${isCredit ? "#f8514933" : "#22c55e33"}` }}>{METHOD_LABELS[p.method] ?? p.method}</span>
+                  <span className="text-xs font-bold" style={{ color: isCredit ? "#f85149" : "#22c55e" }}>{isCredit ? "-" : ""}${fmt(Math.abs(p.amount))}</span>
+                  <span className="text-xs" style={{ color: "#8b949e" }}>{new Date(p.paidAt + "T00:00:00").toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}</span>
+                  {p.checkNumber && <span className="text-xs" style={{ color: "#8b949e" }}>#{p.checkNumber}</span>}
+                  {p.notes && <span className="text-xs truncate" style={{ color: "#8b949e" }}>{p.notes}</span>}
+                </div>
+                <button onClick={() => deletePayment(p.id)} className="w-6 h-6 rounded flex items-center justify-center shrink-0" style={{ color: "#f85149" }}>
+                  <TrashIcon size={11} />
+                </button>
               </div>
-              <button onClick={() => deletePayment(p.id)} className="w-6 h-6 rounded flex items-center justify-center shrink-0" style={{ color: "#f85149" }}>
-                <TrashIcon size={11} />
-              </button>
-            </div>
-          ))}
+            );
+          })}
         </div>
       )}
 
       {/* Add payment */}
       {showPayForm ? (
         <div className="rounded-xl p-4 space-y-3" style={{ background: "#0d1421", border: "1px solid #C9A84C33" }}>
+          {/* Credit toggle */}
+          <label className="flex items-center gap-2 cursor-pointer w-fit">
+            <div
+              onClick={() => setIsCredit(c => !c)}
+              className="w-9 h-5 rounded-full transition-colors relative"
+              style={{ background: isCredit ? "#f85149" : "#30373f" }}
+            >
+              <div className="absolute top-0.5 w-4 h-4 rounded-full bg-white transition-all" style={{ left: isCredit ? "18px" : "2px" }} />
+            </div>
+            <span className="text-xs font-semibold" style={{ color: isCredit ? "#f85149" : "#8b949e" }}>
+              {isCredit ? "Credit from sub" : "Payment to sub"}
+            </span>
+          </label>
           <div className="grid grid-cols-2 gap-2">
             <div>
               <label className="text-xs font-semibold mb-1 block" style={{ color: "#8b949e" }}>Amount</label>
@@ -161,7 +274,7 @@ function SubCard({
             </div>
             <div>
               <label className="text-xs font-semibold mb-1 block" style={{ color: "#8b949e" }}>Date</label>
-              <input type="date" value={payDate} onChange={e => setPayDate(e.target.value)} className="w-full rounded-lg px-3 py-2 text-sm" style={{ background: "#0d1117", border: "1px solid #30373f", color: "#e6edf3" }} />
+              <DatePickerInput value={payDate} onChange={setPayDate} />
             </div>
             <div>
               <label className="text-xs font-semibold mb-1 block" style={{ color: "#8b949e" }}>Check # (optional)</label>
@@ -170,8 +283,15 @@ function SubCard({
           </div>
           <input value={payNotes} onChange={e => setPayNotes(e.target.value)} placeholder="Notes (optional)" className="w-full rounded-lg px-3 py-2 text-sm" style={{ background: "#0d1117", border: "1px solid #30373f", color: "#e6edf3" }} />
           <div className="flex gap-2">
-            <button onClick={addPayment} disabled={saving || !payAmount} className="flex-1 py-2 rounded-xl text-sm font-bold disabled:opacity-50" style={{ background: "#22c55e", color: "#fff" }}>{saving ? "Saving…" : "Add Payment"}</button>
-            <button onClick={() => setShowPayForm(false)} className="px-4 py-2 rounded-xl text-sm" style={{ background: "#30373f", color: "#8b949e" }}>Cancel</button>
+            <button
+              onClick={addPayment}
+              disabled={saving || !payAmount}
+              className="flex-1 py-2 rounded-xl text-sm font-bold disabled:opacity-50"
+              style={{ background: isCredit ? "#f85149" : "#22c55e", color: "#fff" }}
+            >
+              {saving ? "Saving…" : isCredit ? "Log Credit" : "Add Payment"}
+            </button>
+            <button onClick={() => { setShowPayForm(false); setIsCredit(false); }} className="px-4 py-2 rounded-xl text-sm" style={{ background: "#30373f", color: "#8b949e" }}>Cancel</button>
           </div>
         </div>
       ) : (
@@ -196,21 +316,27 @@ function SupplierCard({
     <div className="rounded-2xl p-5 space-y-3" style={{ background: "#161b22", border: "1px solid #30373f" }}>
       <div className="flex items-center justify-between">
         <div className="text-sm font-bold" style={{ color: "#e6edf3" }}>{supplierName}</div>
-        <div className="text-sm font-bold px-3 py-1 rounded-lg" style={{ background: "#3b82f622", color: "#3b82f6", border: "1px solid #3b82f633" }}>${fmt(total)}</div>
+        <div className="text-sm font-bold px-3 py-1 rounded-lg" style={{ background: total < 0 ? "#f8514922" : "#3b82f622", color: total < 0 ? "#f85149" : "#3b82f6", border: `1px solid ${total < 0 ? "#f8514933" : "#3b82f633"}` }}>
+          {total < 0 ? "-" : ""}${fmt(Math.abs(total))}
+        </div>
       </div>
       <div className="space-y-1">
-        {purchases.map(p => (
-          <div key={p.id} className="flex items-center justify-between gap-2 rounded-xl px-3 py-2" style={{ background: "#0d1117", border: "1px solid #21262d" }}>
-            <div className="flex items-center gap-3 flex-1 min-w-0">
-              <span className="text-xs font-bold" style={{ color: "#3b82f6" }}>${fmt(p.amount)}</span>
-              <span className="text-xs" style={{ color: "#8b949e" }}>{new Date(p.purchasedAt + "T00:00:00").toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}</span>
-              {p.description && <span className="text-xs truncate" style={{ color: "#e6edf3" }}>{p.description}</span>}
+        {purchases.map(p => {
+          const isCredit = p.amount < 0;
+          return (
+            <div key={p.id} className="flex items-center justify-between gap-2 rounded-xl px-3 py-2" style={{ background: "#0d1117", border: "1px solid #21262d" }}>
+              <div className="flex items-center gap-3 flex-1 min-w-0">
+                {isCredit && <span className="text-xs font-bold px-2 py-0.5 rounded" style={{ background: "#f8514922", color: "#f85149", border: "1px solid #f8514933" }}>CR</span>}
+                <span className="text-xs font-bold" style={{ color: isCredit ? "#f85149" : "#3b82f6" }}>{isCredit ? "-" : ""}${fmt(Math.abs(p.amount))}</span>
+                <span className="text-xs" style={{ color: "#8b949e" }}>{new Date(p.purchasedAt + "T00:00:00").toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}</span>
+                {p.description && <span className="text-xs truncate" style={{ color: "#e6edf3" }}>{p.description}</span>}
+              </div>
+              <button onClick={() => onDelete(p.id)} className="w-6 h-6 rounded flex items-center justify-center shrink-0" style={{ color: "#f85149" }}>
+                <TrashIcon size={11} />
+              </button>
             </div>
-            <button onClick={() => onDelete(p.id)} className="w-6 h-6 rounded flex items-center justify-center shrink-0" style={{ color: "#f85149" }}>
-              <TrashIcon size={11} />
-            </button>
-          </div>
-        ))}
+          );
+        })}
       </div>
     </div>
   );
@@ -226,6 +352,7 @@ export default function ClientFinancialsTab({
   const [allSubs, setAllSubs] = useState<SubContractor[]>([]);
   const [suppliers, setSuppliers] = useState<Supplier[]>([]);
   const [materials, setMaterials] = useState<MaterialPurchase[]>([]);
+  const [estimateItems, setEstimateItems] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
 
   // Add sub form
@@ -239,26 +366,30 @@ export default function ClientFinancialsTab({
   const [selectedSupplierId, setSelectedSupplierId] = useState("__new__");
   const [newSupplierName, setNewSupplierName] = useState("");
   const [matAmount, setMatAmount] = useState("");
-  const [matDesc, setMatDesc] = useState("");
+  const [matDescChoice, setMatDescChoice] = useState("__custom__");
+  const [matDescCustom, setMatDescCustom] = useState("");
   const [matDate, setMatDate] = useState(today());
   const [matNotes, setMatNotes] = useState("");
+  const [matIsCredit, setMatIsCredit] = useState(false);
   const [addingMatForm, setAddingMatForm] = useState(false);
   const [savingMat, setSavingMat] = useState(false);
 
   const load = useCallback(async () => {
-    const [subsRes, allSubsRes, suppliersRes, matsRes] = await Promise.all([
+    const [subsRes, allSubsRes, suppliersRes, matsRes, itemsRes] = await Promise.all([
       fetch(`/api/${companyId}/clients/${clientId}/financials/subs`),
       fetch(`/api/${companyId}/subs`),
       fetch(`/api/${companyId}/suppliers`),
       fetch(`/api/${companyId}/clients/${clientId}/financials/materials`),
+      fetch(`/api/${companyId}/clients/${clientId}/estimate-items`),
     ]);
-    const [subs, allSubsList, suppliersList, matsList] = await Promise.all([
-      subsRes.json(), allSubsRes.json(), suppliersRes.json(), matsRes.json(),
+    const [subs, allSubsList, suppliersList, matsList, itemsList] = await Promise.all([
+      subsRes.json(), allSubsRes.json(), suppliersRes.json(), matsRes.json(), itemsRes.json(),
     ]);
     setClientSubs(subs);
     setAllSubs(Array.isArray(allSubsList) ? allSubsList.sort((a: SubContractor, b: SubContractor) => a.name.localeCompare(b.name)) : []);
     setSuppliers(Array.isArray(suppliersList) ? suppliersList : []);
     setMaterials(Array.isArray(matsList) ? matsList : []);
+    setEstimateItems(Array.isArray(itemsList) ? itemsList : []);
     setLoading(false);
   }, [companyId, clientId]);
 
@@ -306,15 +437,18 @@ export default function ClientFinancialsTab({
         setSuppliers(prev => [...prev, newSupplier].sort((a, b) => a.name.localeCompare(b.name)));
         setSelectedSupplierId(newSupplier.id);
       }
+      const description = matDescChoice === "__custom__" ? (matDescCustom.trim() || null) : matDescChoice;
+      const rawAmount = Number(matAmount);
+      const finalAmount = matIsCredit ? -Math.abs(rawAmount) : Math.abs(rawAmount);
       const res = await fetch(`/api/${companyId}/clients/${clientId}/financials/materials`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ supplierId, amount: Number(matAmount), description: matDesc || null, purchasedAt: matDate, notes: matNotes || null }),
+        body: JSON.stringify({ supplierId, amount: finalAmount, description, purchasedAt: matDate, notes: matNotes || null }),
       });
       if (res.ok) {
         const purchase = await res.json();
         setMaterials(prev => [purchase, ...prev]);
-        setMatAmount(""); setMatDesc(""); setMatNotes(""); setNewSupplierName(""); setAddingMatForm(false);
+        setMatAmount(""); setMatDescChoice("__custom__"); setMatDescCustom(""); setMatNotes(""); setMatIsCredit(false); setNewSupplierName(""); setAddingMatForm(false);
       }
     } finally { setSavingMat(false); }
   }
@@ -329,7 +463,6 @@ export default function ClientFinancialsTab({
   const totalLaborPaid = clientSubs.reduce((s, sub) => s + sub.payments.reduce((ps, p) => ps + p.amount, 0), 0);
   const totalLaborBalance = totalContracted - totalLaborPaid;
   const totalMaterials = materials.reduce((s, p) => s + p.amount, 0);
-  // Expenses = full sub contract cost (paid + balance owed) + materials
   const totalExpenses = totalContracted + totalMaterials;
   const netProfit = contractTotal - totalExpenses;
 
@@ -346,9 +479,9 @@ export default function ClientFinancialsTab({
     const rows = [
       ...clientSubs.flatMap(sub => [
         `<tr><td style="padding:8px 12px;color:#1e293b;font-weight:600">${sub.subName}</td><td style="padding:8px 12px;color:#475569">Sub Contract</td><td style="padding:8px 12px;text-align:right;color:#1e293b;font-weight:600">$${fmt(sub.contractAmount)}</td></tr>`,
-        ...sub.payments.map(p => `<tr><td style="padding:6px 12px 6px 28px;color:#475569;font-size:13px">${new Date(p.paidAt + "T00:00:00").toLocaleDateString("en-US",{month:"short",day:"numeric",year:"numeric"})} — ${METHOD_LABELS[p.method] ?? p.method}${p.checkNumber ? ` #${p.checkNumber}` : ""}</td><td style="padding:6px 12px;color:#22c55e;font-size:13px">Payment</td><td style="padding:6px 12px;text-align:right;color:#22c55e;font-size:13px">($${fmt(p.amount)})</td></tr>`),
+        ...sub.payments.map(p => `<tr><td style="padding:6px 12px 6px 28px;color:#475569;font-size:13px">${new Date(p.paidAt + "T00:00:00").toLocaleDateString("en-US",{month:"short",day:"numeric",year:"numeric"})} — ${METHOD_LABELS[p.method] ?? p.method}${p.checkNumber ? ` #${p.checkNumber}` : ""}${p.amount < 0 ? " (Credit)" : ""}</td><td style="padding:6px 12px;color:${p.amount < 0 ? "#ef4444" : "#22c55e"};font-size:13px">${p.amount < 0 ? "Credit" : "Payment"}</td><td style="padding:6px 12px;text-align:right;color:${p.amount < 0 ? "#ef4444" : "#22c55e"};font-size:13px">${p.amount < 0 ? "-" : ""}($${fmt(Math.abs(p.amount))})</td></tr>`),
       ]),
-      ...materials.map(p => `<tr><td style="padding:8px 12px;color:#475569">${new Date(p.purchasedAt + "T00:00:00").toLocaleDateString("en-US",{month:"short",day:"numeric",year:"numeric"})} — ${p.supplierName}${p.description ? `: ${p.description}` : ""}</td><td style="padding:8px 12px;color:#3b82f6">Materials</td><td style="padding:8px 12px;text-align:right;color:#3b82f6">$${fmt(p.amount)}</td></tr>`),
+      ...materials.map(p => `<tr><td style="padding:8px 12px;color:#475569">${new Date(p.purchasedAt + "T00:00:00").toLocaleDateString("en-US",{month:"short",day:"numeric",year:"numeric"})} — ${p.supplierName}${p.description ? `: ${p.description}` : ""}${p.amount < 0 ? " (Credit)" : ""}</td><td style="padding:8px 12px;color:${p.amount < 0 ? "#ef4444" : "#3b82f6"}">${p.amount < 0 ? "Credit" : "Materials"}</td><td style="padding:8px 12px;text-align:right;color:${p.amount < 0 ? "#ef4444" : "#3b82f6"}">${p.amount < 0 ? "-" : ""}$${fmt(Math.abs(p.amount))}</td></tr>`),
     ].join("");
     win.document.write(`<!DOCTYPE html><html><head><title>Financial Statement — ${clientName}</title><style>body{font-family:Helvetica,sans-serif;max-width:800px;margin:40px auto;color:#1e293b}h1{font-size:22px;margin-bottom:4px}table{width:100%;border-collapse:collapse;margin-top:16px}th{background:#1e293b;color:#fff;padding:10px 12px;text-align:left;font-size:13px}td{border-bottom:1px solid #e2e8f0;font-size:14px}.total{background:#f8fafc;font-weight:700}.profit{background:#0d2318;color:#22c55e;font-weight:700;font-size:16px}@media print{body{margin:20px}}</style></head><body>
 <h1>Financial Statement</h1>
@@ -476,7 +609,24 @@ ${rows}
 
         {addingMatForm && (
           <div className="rounded-2xl p-5 space-y-3" style={{ background: "#0d1421", border: "1px solid #3b82f644" }}>
-            <div className="text-xs font-bold uppercase tracking-widest" style={{ color: "#3b82f6" }}>Add Material Purchase</div>
+            <div className="flex items-center justify-between">
+              <div className="text-xs font-bold uppercase tracking-widest" style={{ color: "#3b82f6" }}>
+                {matIsCredit ? "Log Supplier Credit" : "Add Material Purchase"}
+              </div>
+              {/* Credit toggle */}
+              <label className="flex items-center gap-2 cursor-pointer">
+                <div
+                  onClick={() => setMatIsCredit(c => !c)}
+                  className="w-9 h-5 rounded-full transition-colors relative"
+                  style={{ background: matIsCredit ? "#f85149" : "#30373f" }}
+                >
+                  <div className="absolute top-0.5 w-4 h-4 rounded-full bg-white transition-all" style={{ left: matIsCredit ? "18px" : "2px" }} />
+                </div>
+                <span className="text-xs font-semibold" style={{ color: matIsCredit ? "#f85149" : "#8b949e" }}>
+                  {matIsCredit ? "Credit from supplier" : "Purchase"}
+                </span>
+              </label>
+            </div>
             <div className="grid grid-cols-2 gap-3">
               <div>
                 <label className="text-xs font-semibold mb-1 block" style={{ color: "#8b949e" }}>Supplier</label>
@@ -491,19 +641,39 @@ ${rows}
               </div>
               <div>
                 <label className="text-xs font-semibold mb-1 block" style={{ color: "#8b949e" }}>Date</label>
-                <input type="date" value={matDate} onChange={e => setMatDate(e.target.value)} className="w-full rounded-lg px-3 py-2 text-sm" style={{ background: "#0d1117", border: "1px solid #30373f", color: "#e6edf3" }} />
+                <DatePickerInput value={matDate} onChange={setMatDate} />
               </div>
               <div>
                 <label className="text-xs font-semibold mb-1 block" style={{ color: "#8b949e" }}>Description</label>
-                <input value={matDesc} onChange={e => setMatDesc(e.target.value)} placeholder="What was purchased" className="w-full rounded-lg px-3 py-2 text-sm" style={{ background: "#0d1117", border: "1px solid #30373f", color: "#e6edf3" }} />
+                <select
+                  value={matDescChoice}
+                  onChange={e => setMatDescChoice(e.target.value)}
+                  className="w-full rounded-lg px-3 py-2 text-sm"
+                  style={{ background: "#0d1117", border: "1px solid #30373f", color: "#e6edf3" }}
+                >
+                  <option value="__custom__">Custom…</option>
+                  {estimateItems.map(item => (
+                    <option key={item} value={item}>{item}</option>
+                  ))}
+                </select>
               </div>
             </div>
             {selectedSupplierId === "__new__" && (
               <input value={newSupplierName} onChange={e => setNewSupplierName(e.target.value)} placeholder="Supplier name" className="w-full rounded-lg px-3 py-2 text-sm" style={{ background: "#0d1117", border: "1px solid #30373f", color: "#e6edf3" }} />
             )}
+            {matDescChoice === "__custom__" && (
+              <input value={matDescCustom} onChange={e => setMatDescCustom(e.target.value)} placeholder="Describe what was purchased" className="w-full rounded-lg px-3 py-2 text-sm" style={{ background: "#0d1117", border: "1px solid #30373f", color: "#e6edf3" }} />
+            )}
             <div className="flex gap-2">
-              <button onClick={addMaterial} disabled={savingMat || !matAmount} className="flex-1 py-2 rounded-xl text-sm font-bold disabled:opacity-50" style={{ background: "#3b82f6", color: "#fff" }}>{savingMat ? "Saving…" : "Add Purchase"}</button>
-              <button onClick={() => setAddingMatForm(false)} className="px-4 py-2 rounded-xl text-sm" style={{ background: "#30373f", color: "#8b949e" }}>Cancel</button>
+              <button
+                onClick={addMaterial}
+                disabled={savingMat || !matAmount}
+                className="flex-1 py-2 rounded-xl text-sm font-bold disabled:opacity-50"
+                style={{ background: matIsCredit ? "#f85149" : "#3b82f6", color: "#fff" }}
+              >
+                {savingMat ? "Saving…" : matIsCredit ? "Log Credit" : "Add Purchase"}
+              </button>
+              <button onClick={() => { setAddingMatForm(false); setMatIsCredit(false); }} className="px-4 py-2 rounded-xl text-sm" style={{ background: "#30373f", color: "#8b949e" }}>Cancel</button>
             </div>
           </div>
         )}
