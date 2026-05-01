@@ -3267,7 +3267,6 @@ function printGanttDiagram(tasks: ClientTask[], projectStart: Date, clientName: 
   const HEADER_H = MONTH_H + WEEK_H;
 
   // ── Color helpers ───────────────────────────────────────────────────────────
-  const NAVY = "#1e3a5f";
   const PHASE_BG = "#1a2744";
   const BAR_CRITICAL = "#c0392b";   // red — critical / in-progress
   const BAR_STANDARD = "#1a3a6b";   // dark navy — standard work

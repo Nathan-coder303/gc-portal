@@ -2,6 +2,7 @@
 
 import { useState, useTransition } from "react";
 import { STANDARD_TEMPLATE_DIVISIONS } from "@/lib/standardTemplateData";
+import SendChangeOrderEmailButton from "@/components/clients/SendChangeOrderEmailButton";
 
 const GOLD = "#C9A84C";
 const inputStyle = { background: "#0d1117", border: "1px solid #30373f", color: "#e6edf3" };
@@ -427,11 +428,19 @@ function ChangeOrderEditor({
 export default function ChangeOrdersTab({
   companyId,
   clientId,
+  clientName,
+  clientEmail,
+  isCommercial,
+  clientCoverPhotoType,
   initialOrders,
   canEdit,
 }: {
   companyId: string;
   clientId: string;
+  clientName: string;
+  clientEmail: string | null;
+  isCommercial?: boolean;
+  clientCoverPhotoType?: string | null;
   initialOrders: ChangeOrder[];
   canEdit: boolean;
 }) {
@@ -541,36 +550,61 @@ export default function ChangeOrdersTab({
                     )}
                   </div>
 
-                  {canEdit && (
-                    <div className="flex items-center gap-2 shrink-0 flex-wrap">
-                      <select
-                        value={order.status}
-                        onChange={e => handleStatusChange(order.id, e.target.value)}
-                        disabled={isPending}
-                        className="rounded px-2 py-1 text-xs"
-                        style={inputStyle}
-                      >
-                        <option value="DRAFT">Draft</option>
-                        <option value="SENT">Sent</option>
-                        <option value="APPROVED">Approved</option>
-                        <option value="REJECTED">Rejected</option>
-                      </select>
-                      <button
-                        onClick={() => setEditing(order)}
-                        className="px-3 py-1 rounded text-xs font-medium"
-                        style={{ background: "#1e2736", border: "1px solid #C9A84C44", color: GOLD }}
-                      >
-                        Edit
-                      </button>
-                      <button
-                        onClick={() => handleDelete(order.id)}
-                        className="w-7 h-7 rounded flex items-center justify-center"
-                        style={{ background: "#f8514922", color: "#f85149", border: "1px solid #f8514933" }}
-                      >
-                        ×
-                      </button>
-                    </div>
-                  )}
+                  <div className="flex items-center gap-2 shrink-0 flex-wrap">
+                    {/* PDF download */}
+                    <a
+                      href={`/api/${companyId}/clients/${clientId}/change-orders/${order.id}/pdf`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-xs px-2 py-1 rounded-lg font-medium"
+                      style={{ background: "#1a2436", border: "1px solid #30373f", color: "#8b949e" }}
+                      title="Download PDF"
+                    >
+                      ↓ PDF
+                    </a>
+                    {/* Email send */}
+                    <SendChangeOrderEmailButton
+                      changeOrderId={order.id}
+                      clientId={clientId}
+                      companyId={companyId}
+                      orderTitle={order.title}
+                      orderNumber={order.orderNumber}
+                      clientName={clientName}
+                      clientEmail={clientEmail}
+                      isCommercial={isCommercial}
+                      clientCoverPhotoType={clientCoverPhotoType}
+                    />
+                    {canEdit && (
+                      <>
+                        <select
+                          value={order.status}
+                          onChange={e => handleStatusChange(order.id, e.target.value)}
+                          disabled={isPending}
+                          className="rounded px-2 py-1 text-xs"
+                          style={inputStyle}
+                        >
+                          <option value="DRAFT">Draft</option>
+                          <option value="SENT">Sent</option>
+                          <option value="APPROVED">Approved</option>
+                          <option value="REJECTED">Rejected</option>
+                        </select>
+                        <button
+                          onClick={() => setEditing(order)}
+                          className="px-3 py-1 rounded text-xs font-medium"
+                          style={{ background: "#1e2736", border: "1px solid #C9A84C44", color: GOLD }}
+                        >
+                          Edit
+                        </button>
+                        <button
+                          onClick={() => handleDelete(order.id)}
+                          className="w-7 h-7 rounded flex items-center justify-center"
+                          style={{ background: "#f8514922", color: "#f85149", border: "1px solid #f8514933" }}
+                        >
+                          ×
+                        </button>
+                      </>
+                    )}
+                  </div>
                 </div>
 
                 {/* Item preview */}

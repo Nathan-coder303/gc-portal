@@ -318,6 +318,10 @@ export default async function ClientDetailPage({
         <ChangeOrdersTab
           companyId={params.companyId}
           clientId={params.clientId}
+          clientName={safeClient.name}
+          clientEmail={safeClient.email ?? null}
+          isCommercial={isCommercial}
+          clientCoverPhotoType={safeClient.coverPhotoType ?? null}
           canEdit={canEdit}
           initialOrders={changeOrders.map(co => ({
             id: co.id,
