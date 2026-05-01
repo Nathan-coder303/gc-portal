@@ -1288,7 +1288,18 @@ export default function TemplateEditor({
   const [saveAsNew, setSaveAsNew] = useState(false);
   const [newName, setNewName] = useState(`${template.name} (copy)`);
   const [saveError, setSaveError] = useState("");
-  const [showPdfModal, setShowPdfModal] = useState(false);
+  const [pdfStep, setPdfStep] = useState<"cover" | "email" | null>(null);
+  const [pdfOpts, setPdfOpts] = useState<PdfOptions | null>(null);
+  const [emailTo, setEmailTo] = useState(currentClient?.email ?? "");
+  const [emailCc, setEmailCc] = useState("mikebaruh@gmail.com");
+  const [emailBcc, setEmailBcc] = useState("");
+  const [emailSubject, setEmailSubject] = useState(() => template.description || template.name || "Estimate");
+  const [emailBody, setEmailBody] = useState(() => {
+    const firstName = currentClient?.name?.split(" ")[0] ?? "there";
+    return `Dear ${firstName},\n\nPlease find attached your estimate for the project.\n\nDo not hesitate to contact us with any questions.\n\nMike Baruh\nFounder/CEO | MIBH Construction\nCertified & Licensed General Contractor CGC 1527069\nCertified & Licensed Roofer CCC 1336817\n\n📱 Cell: 305.746.7307\n📧 Email: mike@mibhconstruction.com\n📍 Address: 2950 N 28 Terr, Hollywood, FL 33020\n🌐 Website: www.mibhconstruction.com\n📸 Instagram: @mibh_construction`;
+  });
+  const [emailSending, setEmailSending] = useState(false);
+  const [emailResult, setEmailResult] = useState<{ ok: boolean; msg: string } | null>(null);
   const [saveClientError, setSaveClientError] = useState("");
   const [savedToClient, setSavedToClient] = useState(false);
   const [globalSaveSignal, setGlobalSaveSignal] = useState(0);
@@ -1464,6 +1475,49 @@ export default function TemplateEditor({
       }
       setDivName(""); setDivCsi(""); setAddingDiv(false);
     });
+  }
+
+  function buildPdfUrl(opts: PdfOptions, preview = false) {
+    const base = `/api/${template.companyId}/estimates/${template.id}/pdf?cover=${opts.coverType !== "NONE" ? 1 : 0}&coverType=${opts.coverType}&page2=${opts.page2}&includeInsert=${opts.includeInsert ? 1 : 0}&divSummary=${opts.includeDivisionSummary ? 1 : 0}&forcedBreakCsi=${opts.forcedBreakCsiPrefixes.join(",")}${opts.noPresentation ? "&noPresent=1" : ""}${preview ? "&preview=1" : ""}`;
+    if (opts.coverType === "CUSTOM" && opts.coverBlobUrl) return `${base}&coverBlobUrl=${encodeURIComponent(opts.coverBlobUrl)}`;
+    return base;
+  }
+
+  async function sendEmail() {
+    if (!emailTo || !pdfOpts) return;
+    setEmailSending(true);
+    setEmailResult(null);
+    try {
+      const res = await fetch(`/api/${template.companyId}/send-estimate-email`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          templateId: template.id,
+          to: emailTo,
+          cc: emailCc.trim() || undefined,
+          bcc: emailBcc.trim() || undefined,
+          subject: emailSubject,
+          body: emailBody,
+          coverType: pdfOpts.coverType,
+          page2: pdfOpts.page2,
+          includeInsert: pdfOpts.includeInsert,
+        }),
+      });
+      const text = await res.text();
+      let data: { error?: string; detail?: string } = {};
+      try { data = JSON.parse(text); } catch { /* non-JSON */ }
+      if (res.ok) {
+        setEmailResult({ ok: true, msg: "Email sent successfully!" });
+        setTimeout(() => { setPdfStep(null); setEmailResult(null); }, 2000);
+      } else {
+        const msg = data.detail ? `${data.error}: ${data.detail}` : (data.error ?? `Server error ${res.status}`);
+        setEmailResult({ ok: false, msg });
+      }
+    } catch (err) {
+      setEmailResult({ ok: false, msg: `Request failed: ${String(err)}` });
+    } finally {
+      setEmailSending(false);
+    }
   }
 
   function handleSaveToClient() {
@@ -1871,8 +1925,8 @@ export default function TemplateEditor({
               </div>
             </div>
             {/* Action Cards — full width row */}
-            <div className={`grid gap-2 mt-4 ${canEdit ? "grid-cols-4" : "grid-cols-3"}`}>
-              {/* Card 0 — Save Template */}
+            <div className={`grid gap-2 mt-4 ${canEdit ? "grid-cols-4" : "grid-cols-2"}`}>
+              {/* Save Template */}
               {canEdit && (
                 <button
                   onClick={() => {
@@ -1881,71 +1935,60 @@ export default function TemplateEditor({
                     setTimeout(() => setTemplateSaved(false), 2500);
                   }}
                   className="text-left rounded-2xl p-3 sm:p-5 transition-all"
-                  style={{ background: templateSaved ? "#0a1f12" : "#0d1117", border: `2px solid ${templateSaved ? "#22c55e" : "#C9A84C"}` }}
+                  style={{ background: "#1a1508", border: `2px solid ${templateSaved ? "#22c55e" : "#C9A84C"}` }}
                 >
                   <div className="text-2xl mb-1 sm:mb-2">{templateSaved ? "✅" : "💾"}</div>
                   <div className="text-xs sm:text-sm font-bold sm:mb-1" style={{ color: templateSaved ? "#22c55e" : "#C9A84C" }}>
-                    {templateSaved ? "Template Saved!" : "Save Template"}
+                    {templateSaved ? "Saved!" : "Save Template"}
                   </div>
                   <div className="hidden sm:block text-xs leading-relaxed" style={{ color: "#8b949e" }}>
-                    {templateSaved ? "All changes saved to this template" : "Save all open edits to this template"}
+                    {templateSaved ? "All changes saved" : "Save all open edits"}
                   </div>
                 </button>
               )}
-              {/* Card 1 — Create Client Estimate */}
+
+              {/* Save as New Template */}
+              {canEdit && (
+                <button
+                  onClick={() => setSaveAsNew(v => !v)}
+                  className="text-left rounded-2xl p-3 sm:p-5 transition-all"
+                  style={{ background: "#1a1508", border: `2px solid ${saveAsNew ? "#60a5fa" : "#C9A84C"}` }}
+                >
+                  <div className="text-2xl mb-1 sm:mb-2">📄</div>
+                  <div className="text-xs sm:text-sm font-bold sm:mb-1" style={{ color: saveAsNew ? "#60a5fa" : "#C9A84C" }}>Save as New</div>
+                  <div className="hidden sm:block text-xs leading-relaxed" style={{ color: "#8b949e" }}>Fork with a different name</div>
+                </button>
+              )}
+
+              {/* Create Client Estimate */}
               <button
                 disabled={!canEdit || !currentClient || isPending || savedToClient || template.type !== "TEMPLATE"}
                 onClick={canEdit && currentClient && !savedToClient ? handleSaveToClient : undefined}
-                className="text-left rounded-2xl p-3 sm:p-5 transition-all disabled:opacity-40 group"
-                style={{ background: savedToClient ? "#0a2e1a" : "#0d2318", border: `2px solid ${savedToClient ? "#16a34a" : currentClient ? "#22c55e" : "#1a3320"}` }}
+                className="text-left rounded-2xl p-3 sm:p-5 transition-all disabled:opacity-40"
+                style={{ background: "#1a1508", border: `2px solid ${savedToClient ? "#22c55e" : "#C9A84C"}` }}
               >
-                <div className="text-2xl mb-1 sm:mb-2">📋</div>
-                <div className="text-xs sm:text-sm font-bold sm:mb-1" style={{ color: savedToClient ? "#16a34a" : "#22c55e" }}>
-                  {savedToClient ? "✓ Estimate Created" : isPending ? "Creating…" : "Create Client Estimate"}
+                <div className="text-2xl mb-1 sm:mb-2">{savedToClient ? "✅" : "📋"}</div>
+                <div className="text-xs sm:text-sm font-bold sm:mb-1" style={{ color: savedToClient ? "#22c55e" : "#C9A84C" }}>
+                  {savedToClient ? "✓ Created" : isPending ? "Creating…" : "Create Estimate"}
                 </div>
                 <div className="hidden sm:block text-xs leading-relaxed" style={{ color: "#8b949e" }}>
-                  {savedToClient ? `Saved for ${currentClient?.name}` : currentClient ? `Save a copy tied to ${currentClient.name}` : "Assign a client below first"}
+                  {savedToClient ? `Saved for ${currentClient?.name}` : currentClient ? `Copy for ${currentClient.name}` : "Assign a client first"}
                 </div>
               </button>
 
-              {/* Card 2 — Save as New Template */}
+              {/* PDF / Send */}
               <button
-                disabled={!canEdit}
-                onClick={canEdit ? () => setSaveAsNew(v => !v) : undefined}
-                className="text-left rounded-2xl p-3 sm:p-5 transition-all disabled:opacity-40"
-                style={{ background: saveAsNew ? "#0d1a2e" : "#0d1117", border: `2px solid ${saveAsNew ? "#60a5fa" : "#30373f"}` }}
-              >
-                <div className="text-2xl mb-1 sm:mb-2">📄</div>
-                <div className="text-xs sm:text-sm font-bold sm:mb-1" style={{ color: "#60a5fa" }}>Save as New Template</div>
-                <div className="hidden sm:block text-xs leading-relaxed" style={{ color: "#8b949e" }}>Fork this template with a different name to create a new variant</div>
-              </button>
-
-              {/* Card 3 — Export PDF */}
-              <a
-                href={`/api/${template.companyId}/estimates/${template.id}/pdf`}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="block rounded-2xl p-3 sm:p-5 transition-all"
+                onClick={() => { setEmailResult(null); setPdfStep("cover"); }}
+                className="text-left rounded-2xl p-3 sm:p-5 transition-all"
                 style={{ background: "#1a1508", border: "2px solid #C9A84C" }}
               >
                 <div className="text-2xl mb-1 sm:mb-2">📊</div>
-                <div className="text-xs sm:text-sm font-bold sm:mb-1" style={{ color: "#C9A84C" }}>Export PDF</div>
-                <div className="hidden sm:block text-xs leading-relaxed" style={{ color: "#8b949e" }}>Download a ready-to-send PDF of the current estimate</div>
-              </a>
-
-              {/* Card 4 — Export PDF with Cover (opens options modal) */}
-              <button
-                onClick={() => setShowPdfModal(true)}
-                className="block w-full text-left rounded-2xl p-3 sm:p-5 transition-all cursor-pointer"
-                style={{ background: "#0d1a1a", border: "2px solid #C9A84C66" }}
-              >
-                <div className="text-2xl mb-1 sm:mb-2">📋</div>
-                <div className="text-xs sm:text-sm font-bold sm:mb-1" style={{ color: "#C9A84C" }}>Export PDF + Cover</div>
-                <div className="hidden sm:block text-xs leading-relaxed" style={{ color: "#8b949e" }}>Choose cover, page 2 &amp; insert options</div>
+                <div className="text-xs sm:text-sm font-bold sm:mb-1" style={{ color: "#C9A84C" }}>↓ PDF / ✉ Send</div>
+                <div className="hidden sm:block text-xs leading-relaxed" style={{ color: "#8b949e" }}>Download or email with cover &amp; options</div>
               </button>
             </div>
 
-            {showPdfModal && (
+            {pdfStep === "cover" && (
               <CoverPagePickerModal
                 isCommercial={isCommercial}
                 initialCoverType={(clientCoverPhotoType as CoverType) ?? undefined}
@@ -1956,18 +1999,95 @@ export default function TemplateEditor({
                 companyId={template.companyId}
                 clientId={currentClient?.id}
                 onConfirm={(opts: PdfOptions) => {
-                  let url = `/api/${template.companyId}/estimates/${template.id}/pdf?cover=1&coverType=${opts.coverType}&page2=${opts.page2}&includeInsert=${opts.includeInsert ? 1 : 0}&divSummary=${opts.includeDivisionSummary ? 1 : 0}&forcedBreakCsi=${opts.forcedBreakCsiPrefixes.join(",")}&noPresent=${opts.noPresentation ? 1 : 0}`;
-                  if (opts.coverType === "CUSTOM" && opts.coverBlobUrl) url += `&coverBlobUrl=${encodeURIComponent(opts.coverBlobUrl)}`;
-                  window.open(url, "_blank");
-                  setShowPdfModal(false);
+                  window.open(buildPdfUrl(opts), "_blank");
+                  setPdfStep(null);
                 }}
                 onPreview={(opts: PdfOptions) => {
-                  let url = `/api/${template.companyId}/estimates/${template.id}/pdf?cover=1&coverType=${opts.coverType}&page2=${opts.page2}&includeInsert=${opts.includeInsert ? 1 : 0}&divSummary=${opts.includeDivisionSummary ? 1 : 0}&forcedBreakCsi=${opts.forcedBreakCsiPrefixes.join(",")}&noPresent=${opts.noPresentation ? 1 : 0}&preview=1`;
-                  if (opts.coverType === "CUSTOM" && opts.coverBlobUrl) url += `&coverBlobUrl=${encodeURIComponent(opts.coverBlobUrl)}`;
-                  window.open(url, "_blank");
+                  window.open(buildPdfUrl(opts, true), "_blank");
                 }}
-                onClose={() => setShowPdfModal(false)}
+                onSendEmail={(opts: PdfOptions) => {
+                  setPdfOpts(opts);
+                  setEmailResult(null);
+                  setPdfStep("email");
+                }}
+                onClose={() => setPdfStep(null)}
               />
+            )}
+
+            {pdfStep === "email" && (
+              <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ background: "rgba(0,0,0,0.7)" }}>
+                <div className="w-full max-w-lg rounded-2xl p-6 space-y-4" style={{ background: "#161b22", border: "1px solid #30373f" }}>
+                  <div className="flex items-center justify-between">
+                    <h2 className="text-base font-bold" style={{ color: "#e6edf3" }}>Send Estimate via Gmail</h2>
+                    <button onClick={() => setPdfStep(null)} style={{ color: "#8b949e" }} className="text-xl leading-none">×</button>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <p className="text-xs flex-1" style={{ color: "#8b949e" }}>
+                      Sending: <span style={{ color: "#C9A84C" }}>{template.name}</span>
+                    </p>
+                    <button
+                      onClick={() => setPdfStep("cover")}
+                      className="text-xs px-2 py-1 rounded-lg"
+                      style={{ background: "#1e2736", border: "1px solid #30373f", color: "#8b949e" }}
+                    >
+                      Cover: {pdfOpts?.coverType === "NONE" ? "No Cover" : pdfOpts?.coverType ?? "—"}
+                    </button>
+                  </div>
+                  <div className="space-y-3">
+                    <div>
+                      <label className="block text-xs font-medium mb-1" style={{ color: "#8b949e" }}>To</label>
+                      <input type="email" value={emailTo} onChange={e => setEmailTo(e.target.value)}
+                        className="w-full rounded-lg px-3 py-2 text-sm"
+                        style={{ background: "#0d1117", border: "1px solid #30373f", color: "#e6edf3" }}
+                        placeholder="client@email.com" />
+                    </div>
+                    <div className="flex gap-2">
+                      <div className="flex-1">
+                        <label className="block text-xs font-medium mb-1" style={{ color: "#8b949e" }}>CC</label>
+                        <input type="text" value={emailCc} onChange={e => setEmailCc(e.target.value)}
+                          className="w-full rounded-lg px-3 py-2 text-sm"
+                          style={{ background: "#0d1117", border: "1px solid #30373f", color: "#e6edf3" }}
+                          placeholder="cc@email.com" />
+                      </div>
+                      <div className="flex-1">
+                        <label className="block text-xs font-medium mb-1" style={{ color: "#8b949e" }}>BCC</label>
+                        <input type="text" value={emailBcc} onChange={e => setEmailBcc(e.target.value)}
+                          className="w-full rounded-lg px-3 py-2 text-sm"
+                          style={{ background: "#0d1117", border: "1px solid #30373f", color: "#e6edf3" }}
+                          placeholder="bcc@email.com" />
+                      </div>
+                    </div>
+                    <div>
+                      <label className="block text-xs font-medium mb-1" style={{ color: "#8b949e" }}>Subject</label>
+                      <input type="text" value={emailSubject} onChange={e => setEmailSubject(e.target.value)}
+                        className="w-full rounded-lg px-3 py-2 text-sm"
+                        style={{ background: "#0d1117", border: "1px solid #30373f", color: "#e6edf3" }} />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-medium mb-1" style={{ color: "#8b949e" }}>Message</label>
+                      <textarea rows={10} value={emailBody} onChange={e => setEmailBody(e.target.value)}
+                        className="w-full rounded-lg px-3 py-2 text-sm font-mono"
+                        style={{ background: "#0d1117", border: "1px solid #30373f", color: "#e6edf3", resize: "vertical" }} />
+                    </div>
+                  </div>
+                  {emailResult && (
+                    <p className="text-sm font-medium" style={{ color: emailResult.ok ? "#22c55e" : "#ef4444" }}>{emailResult.msg}</p>
+                  )}
+                  <div className="flex gap-3 pt-1">
+                    <button
+                      onClick={sendEmail}
+                      disabled={emailSending || !emailTo}
+                      className="flex-1 rounded-xl py-2.5 text-sm font-bold disabled:opacity-50 transition-opacity"
+                      style={{ background: "#C9A84C", color: "#0d1117" }}
+                    >
+                      {emailSending ? "Sending…" : "Send Email + PDF"}
+                    </button>
+                    <button onClick={() => setPdfStep(null)} className="px-5 rounded-xl py-2.5 text-sm font-medium" style={{ background: "#30373f", color: "#e6edf3" }}>
+                      Cancel
+                    </button>
+                  </div>
+                </div>
+              </div>
             )}
 
             <ClientSelector
