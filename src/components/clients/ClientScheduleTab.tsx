@@ -2676,7 +2676,7 @@ function ScheduleTableView({
   const [dragId, setDragId] = useState<string | null>(null);
   const [dropId, setDropId] = useState<string | null>(null);
   const [settingParentFor, setSettingParentFor] = useState<ClientTask | null>(null);
-  const [ctxMenu, setCtxMenu] = useState<{ x: number; y: number; task: ClientTask } | null>(null);
+  const [ctxMenu, setCtxMenu] = useState<{ x: number; y: number; task: ClientTask; confirmDelete?: boolean } | null>(null);
   const [selectedTask, setSelectedTask] = useState<ClientTask | null>(null);
   const [infoTab, setInfoTab] = useState<"links">("links");
   const [colWidths, setColWidths] = useState({ num: 44, link: 72, wbs: 76, name: 260, dur: 82, pct: 52, start: 106, end: 106, actual: 106, priority: 82, status: 108, assignee: 120 });
@@ -2822,6 +2822,11 @@ function ScheduleTableView({
       method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ parentId: null }),
     });
     onTasksChange(tasks.map(t => t.id === task.id ? { ...t, parentId: null } : t));
+  }
+
+  async function deleteTask(task: ClientTask) {
+    await fetch(`/api/${companyId}/clients/${clientId}/schedule/${task.id}`, { method: "DELETE" });
+    onTasksChange(tasks.filter(t => t.id !== task.id));
   }
 
   // ── Predecessor cascade (respects link type: FS, SS, FF, SF) ─────────────
@@ -3107,7 +3112,7 @@ function ScheduleTableView({
       {/* Context menu */}
       {ctxMenu && (() => {
         const menuW = 210;
-        const menuH = ctxMenu.task.parentId ? 310 : 280;
+        const menuH = ctxMenu.confirmDelete ? 380 : (ctxMenu.task.parentId ? 360 : 330);
         const top = ctxMenu.y + menuH > window.innerHeight - 8 ? Math.max(8, ctxMenu.y - menuH) : ctxMenu.y;
         const left = ctxMenu.x + menuW > window.innerWidth - 8 ? ctxMenu.x - menuW : ctxMenu.x;
         return (
@@ -3128,6 +3133,27 @@ function ScheduleTableView({
           <button style={CTX_BTN} className="hover:bg-[#2d3748]" onClick={() => { setSettingParentFor(ctxMenu.task); setCtxMenu(null); }}>📂 Nest under…</button>
           {ctxMenu.task.parentId && (
             <button style={{ ...CTX_BTN, color: "#f87171" }} className="hover:bg-[#2d3748]" onClick={() => { removeParent(ctxMenu.task); setCtxMenu(null); }}>✕ Remove Parent</button>
+          )}
+          <div style={{ height: 1, background: "#21262d", margin: "2px 0" }} />
+          {ctxMenu.confirmDelete ? (
+            <div style={{ padding: "8px 12px" }}>
+              <p style={{ color: "#f87171", fontSize: 12, marginBottom: 8 }}>Delete &ldquo;{ctxMenu.task.name}&rdquo;?</p>
+              <div style={{ display: "flex", gap: 6 }}>
+                <button style={{ flex: 1, background: "#f8514922", color: "#f85149", border: "1px solid #f8514944", borderRadius: 6, fontSize: 12, fontWeight: 700, padding: "4px 0", cursor: "pointer" }}
+                  onClick={() => { deleteTask(ctxMenu.task); setCtxMenu(null); }}>
+                  Delete
+                </button>
+                <button style={{ flex: 1, background: "#30373f", color: "#8b949e", border: "none", borderRadius: 6, fontSize: 12, padding: "4px 0", cursor: "pointer" }}
+                  onClick={() => setCtxMenu(m => m ? { ...m, confirmDelete: false } : null)}>
+                  Cancel
+                </button>
+              </div>
+            </div>
+          ) : (
+            <button style={{ ...CTX_BTN, color: "#f85149" }} className="hover:bg-[#2d1b1b]"
+              onClick={() => setCtxMenu(m => m ? { ...m, confirmDelete: true } : null)}>
+              🗑 Delete Task
+            </button>
           )}
         </div>
         );
@@ -3841,7 +3867,12 @@ export default function ClientScheduleTab({ companyId, clientId, clientName, ini
         <AddTaskModal
           companyId={companyId} clientId={clientId}
           phases={phases.length ? phases : ["Pre-Construction", "Construction", "Finishing"]}
-          onCreate={task => { commitTasks([...tasks, task]); setAdding(false); }}
+          onCreate={task => {
+            commitTasks([...tasks, task]);
+            setAdding(false);
+            // If user switched to Phase tab, trigger the assign-tasks follow-up
+            if (task.phase === task.name && !task.parentId) setAssigningPhase(task);
+          }}
           onClose={() => setAdding(false)}
         />
       )}
