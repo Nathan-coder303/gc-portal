@@ -1228,7 +1228,7 @@ function TemplatePdfDocument({ companyName, template, client, divisions, showTer
 
   return (
     <Document title={`${template.name} — Estimate`} author={companyName}>
-      {(includeCoverPage || clientCoverPhotoType) && !includeAdditionPages && !includeRoofUpgradesPage && !includeRetailPages && <CoverPages template={template} client={client} clientCoverPhotoType={clientCoverPhotoType} clientCoverPhotoUrl={clientCoverPhotoUrl} clientCoverTitle={clientCoverTitle} />}
+      {includeCoverPage && !includeAdditionPages && !includeRoofUpgradesPage && !includeRetailPages && <CoverPages template={template} client={client} clientCoverPhotoType={clientCoverPhotoType} clientCoverPhotoUrl={clientCoverPhotoUrl} clientCoverTitle={clientCoverTitle} />}
       {includeRoofUpgradesPage && <CoverPages template={template} client={client} clientCoverPhotoType={clientCoverPhotoType} clientCoverPhotoUrl={clientCoverPhotoUrl} clientCoverTitle={clientCoverTitle} />}
       {includeRoofUpgradesPage && <RoofIntroPage template={template} client={client} />}
       {includeAdditionPages && <AdditionPage1 template={template} client={client} clientCoverPhotoType={clientCoverPhotoType} clientCoverPhotoUrl={clientCoverPhotoUrl} />}
@@ -1308,8 +1308,7 @@ function TemplatePdfDocument({ companyName, template, client, divisions, showTer
 
           // Count pre-content pages (pages before the main estimate <Page>)
           let prePages = 0;
-          const hasCover = (includeCoverPage || !!clientCoverPhotoType);
-          if (hasCover && !includeAdditionPages && !includeRoofUpgradesPage && !includeRetailPages) prePages++;
+          if (includeCoverPage && !includeAdditionPages && !includeRoofUpgradesPage && !includeRetailPages) prePages++;
           if (includeRoofUpgradesPage) prePages += 2; // CoverPages + RoofIntroPage
           if (includeAdditionPages) prePages += 2;
           if (includeRetailPages) prePages += 2;
