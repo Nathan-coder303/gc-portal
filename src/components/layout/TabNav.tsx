@@ -41,7 +41,7 @@ export default function TabNav({
     : ALL_TABS.filter((t) => !t.adminOnly || isAdmin);
 
   return (
-    <nav className="max-w-7xl mx-auto px-2 flex gap-1 overflow-x-auto scrollbar-hide">
+    <nav className="w-full px-2 flex gap-1 overflow-x-auto scrollbar-hide">
       {tabs.map((tab) => {
         const href = `${base}/${tab.segment}`;
         const active = pathname.startsWith(href);

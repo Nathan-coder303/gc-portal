@@ -40,7 +40,7 @@ export default async function EstimatesPage({ params }: { params: { companyId: s
   }));
 
   return (
-    <div className="max-w-7xl mx-auto px-4 md:px-8 py-6 md:py-8">
+    <div className="w-full px-4 md:px-8 py-6 md:py-8">
       <TemplateList
           companyId={params.companyId}
           templates={formatted}

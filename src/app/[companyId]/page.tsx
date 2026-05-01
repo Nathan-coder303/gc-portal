@@ -47,7 +47,7 @@ export default async function HubPage({
     }));
 
     return (
-      <div className="max-w-7xl mx-auto px-4 md:px-8 py-6 md:py-8 space-y-4">
+      <div className="w-full px-4 md:px-8 py-6 md:py-8 space-y-4">
         <h1 className="text-3xl font-bold tracking-tight" style={{ color: "#e6edf3" }}>Calendar</h1>
         <DarkCalendar events={events} />
       </div>
@@ -61,7 +61,7 @@ export default async function HubPage({
     });
 
     return (
-      <div className="max-w-5xl mx-auto px-4 md:px-8 py-6 md:py-8 space-y-6">
+      <div className="w-full px-4 md:px-8 py-6 md:py-8 space-y-6">
         <h1 className="text-3xl font-bold tracking-tight" style={{ color: "#e6edf3" }}>Memory</h1>
 
         {/* Full Request Tracker */}

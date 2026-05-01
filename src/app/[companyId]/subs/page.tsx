@@ -39,7 +39,7 @@ export default async function SubsDatabasePage({ params, searchParams }: { param
   ]);
 
   return (
-    <div className="max-w-5xl mx-auto px-4 md:px-8 py-6 md:py-8">
+    <div className="w-full px-4 md:px-8 py-6 md:py-8">
       <div className="flex items-center gap-3 mb-5">
         <Link
           href={`/${params.companyId}/today`}

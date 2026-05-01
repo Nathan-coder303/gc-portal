@@ -64,7 +64,7 @@ export default async function TodayPage({
   if (verifyHour !== 0) todayStart = new Date(Date.UTC(etY, etM - 1, etD, 5, 0, 0, 0));
   const todayEnd = new Date(todayStart.getTime() + 24 * 60 * 60 * 1000 - 1);
 
-  const [todayLeads, allLeadsCount, estimatesToSend, followUps, clients, leads, urgentLeads, untriaged, pendingCountersigns, todayAppointments, upcomingAppointments, pastAppointments, activeClients, upcomingTasks, activeClientCount, prospectCount] = await Promise.all([
+  const [todayLeads, allLeadsCount, followUps, clients, leads, urgentLeads, untriaged, pendingCountersigns, todayAppointments, upcomingAppointments, pastAppointments, activeClients, upcomingTasks, activeClientCount, prospectCount] = await Promise.all([
     // Leads received today from email
     prisma.lead.findMany({
       where: {
@@ -79,17 +79,6 @@ export default async function TodayPage({
     }),
     // All-time lead count
     prisma.lead.count({ where: { companyId: params.companyId } }),
-    // DRAFT estimates created today
-    prisma.projectEstimate.findMany({
-      where: {
-        project: { companyId: params.companyId },
-        status: "DRAFT",
-        archivedAt: null,
-        createdAt: { gte: todayStart, lte: todayEnd },
-      },
-      orderBy: { createdAt: "desc" },
-      select: { id: true, name: true, project: { select: { id: true, name: true } } },
-    }),
     // All follow-ups: no due date, due today/earlier (overdue+today), OR completed (any date); never appointments
     prisma.followUp.findMany({
       where: {
@@ -273,7 +262,7 @@ export default async function TodayPage({
   }));
 
   return (
-    <div className="max-w-6xl mx-auto px-3 sm:px-4 py-4 sm:py-8">
+    <div className="w-full px-3 sm:px-4 py-4 sm:py-8">
       {/* Header */}
       <div className="flex flex-wrap items-start justify-between mb-1 gap-2">
         <div className="min-w-0">

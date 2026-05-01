@@ -118,7 +118,7 @@ export default async function TemplateEditorPage({
   const backLabel = template.client ? template.client.name : "Estimates";
 
   return (
-    <div className="max-w-7xl mx-auto px-4 py-6">
+    <div className="w-full px-4 py-6">
       <a
         href={backHref}
         className="inline-flex items-center gap-2 mb-5 px-4 py-2 rounded-xl text-sm font-semibold transition-all hover:scale-105"

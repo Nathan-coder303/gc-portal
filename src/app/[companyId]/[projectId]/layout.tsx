@@ -32,7 +32,7 @@ export default async function ProjectLayout({
   return (
     <div>
       <div style={{ background: "#161b22", borderBottom: "1px solid #30373f" }}>
-        <div className="max-w-7xl mx-auto px-4 flex items-center h-10">
+        <div className="w-full px-4 flex items-center h-10">
           <Link
             href={`/${params.companyId}/projects`}
             className="text-sm font-medium transition-colors"
@@ -45,7 +45,7 @@ export default async function ProjectLayout({
         </div>
         <TabNav companyId={params.companyId} projectId={params.projectId} role={role} />
       </div>
-      <main className="max-w-7xl mx-auto px-3 md:px-4 py-4 md:py-6">{children}</main>
+      <main className="w-full px-3 md:px-4 py-4 md:py-6">{children}</main>
     </div>
   );
 }

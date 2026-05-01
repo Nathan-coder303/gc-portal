@@ -162,7 +162,7 @@ export default async function ClientDetailPage({
   ];
 
   return (
-    <div className="max-w-5xl mx-auto px-4 md:px-8 py-6 md:py-8">
+    <div className="w-full px-4 md:px-8 py-6 md:py-8">
       <a
         href={`/${params.companyId}/clients`}
         className="inline-flex items-center gap-2 mb-5 px-4 py-2 rounded-xl text-sm font-semibold transition-all hover:scale-105"

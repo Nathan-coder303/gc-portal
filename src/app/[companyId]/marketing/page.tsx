@@ -6,7 +6,7 @@ export default async function MarketingPage() {
   if (!session) redirect("/login");
 
   return (
-    <div className="max-w-5xl mx-auto px-4 md:px-8 py-6 md:py-8 space-y-6">
+    <div className="w-full px-4 md:px-8 py-6 md:py-8 space-y-6">
       <h1 className="text-3xl font-bold tracking-tight" style={{ color: "#e6edf3" }}>
         Marketing
       </h1>
