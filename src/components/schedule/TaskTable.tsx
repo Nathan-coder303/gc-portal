@@ -440,7 +440,7 @@ export default function TaskTable({
                 className="w-full text-left px-4 py-2 text-sm hover:bg-red-950"
                 style={{ color: "#f85149" }}
               >
-                🗑 Delete "{ctxMenu.taskName}"
+                🗑 Delete &quot;{ctxMenu.taskName}&quot;
               </button>
             </>
           )}
