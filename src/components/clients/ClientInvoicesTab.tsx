@@ -59,7 +59,9 @@ const DEFAULT_SCHEDULE: PaymentRow[] = [
 ];
 
 function fmt(n: number) {
-  return n.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  const safe = Number(n);
+  if (!Number.isFinite(safe)) return "0.00";
+  return safe.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 }
 
 function fmtDate(iso: string) {
@@ -162,8 +164,8 @@ export default function ClientInvoicesTab({
     : DEFAULT_SCHEDULE;
 
   // Summary across all invoices
-  const totalInvoiced = invoices.reduce((s, i) => s + i.amount, 0);
-  const totalPaid = invoices.reduce((s, i) => s + i.payments.reduce((ps, p) => ps + p.amount, 0), 0);
+  const totalInvoiced = invoices.reduce((s, i) => s + Number(i.amount), 0);
+  const totalPaid = invoices.reduce((s, i) => s + i.payments.reduce((ps, p) => ps + Number(p.amount), 0), 0);
   const totalBalance = totalInvoiced - totalPaid;
 
   function openSend(inv: Invoice) {
