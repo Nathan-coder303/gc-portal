@@ -573,6 +573,7 @@ function TemplateGroupSection({ group, divisionId, canEdit }: { group: Group; di
 }
 
 function TemplateDivisionSection({ division, otherDivisions, canEdit, globalSaveSignal }: { division: Division; otherDivisions: Division[]; canEdit: boolean; globalSaveSignal?: number }) {
+  const router = useRouter();
   const [open, setOpen] = useState(() => typeof window !== "undefined" ? window.innerWidth >= 768 : true);
   const [isPending, startTransition] = useTransition();
   const [addingGroup, setAddingGroup] = useState(false);
@@ -653,6 +654,7 @@ function TemplateDivisionSection({ division, otherDivisions, canEdit, globalSave
     if (value.trim() !== "" && isNaN(parsed!)) return;
     startTransition(async () => {
       await upsertTemplateDivision(division.id, { id: division.id, name: division.name, manualTotal: parsed });
+      router.refresh();
     });
   }
 

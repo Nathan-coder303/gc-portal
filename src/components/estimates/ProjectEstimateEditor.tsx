@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useTransition, createContext, useContext } from "react";
+import { useRouter } from "next/navigation";
 import { TrashIcon } from "@/components/ui/icons";
 import { DndContext, DragOverlay, useDroppable, useDraggable, closestCenter, PointerSensor, TouchSensor, useSensor, useSensors } from "@dnd-kit/core";
 import type { DragStartEvent, DragEndEvent } from "@dnd-kit/core";
@@ -383,6 +384,7 @@ function DivisionSection({
   canEdit: boolean;
   canArchive: boolean;
 }) {
+  const router = useRouter();
   const [open, setOpen] = useState(() => typeof window !== "undefined" ? window.innerWidth >= 768 : true);
   const [isPending, startTransition] = useTransition();
   const [addingGroup, setAddingGroup] = useState(false);
@@ -412,6 +414,7 @@ function DivisionSection({
     if (value.trim() !== "" && isNaN(parsed!)) return;
     startTransition(async () => {
       await upsertEstimateDivision(division.id, { id: division.id, name: division.name, manualTotal: parsed });
+      router.refresh();
     });
   }
 
