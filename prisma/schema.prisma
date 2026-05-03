@@ -80,6 +80,7 @@ model Company {
   invoices          Invoice[]
   changeOrders      ChangeOrder[]
   subContractors    SubContractor[]
+  payApps           PayApp[]
   googleRefreshToken String?
 }
 
@@ -170,6 +171,7 @@ model Client {
   portalUser        User?              @relation("PortalUser")
   portalPhotos      ClientPortalPhoto[]
   portalDocs        ClientPortalDocument[]
+  payApps           PayApp[]
 }
 
 model ClientSub {
@@ -1023,6 +1025,69 @@ model SubContractor {
   @@index([companyId])
   @@index([companyId, divisionCode])
   @@index([companyId, source])
+}
+
+// ─── Payment Applications (AIA G702 / G703) ───────────────────────────────────
+
+model PayApp {
+  id                   String       @id @default(cuid())
+  companyId            String
+  clientId             String
+  payAppNumber         Int
+  invoiceNumber        String?
+  projectName          String?
+  projectNumber        String?
+  invoiceDate          String?
+  paymentDue           String?
+  periodStart          String?
+  periodEnd            String?
+  fromName             String?
+  fromContact          String?
+  fromAddress          String?
+  toName               String?
+  toContact            String?
+  toAddress            String?
+  originalContractSum  Decimal      @default(0) @db.Decimal(15, 2)
+  lessPreviousInvoices Decimal      @default(0) @db.Decimal(15, 2)
+  depositPriorBalance  Decimal      @default(0) @db.Decimal(15, 2)
+  depositReductionThis Decimal      @default(0) @db.Decimal(15, 2)
+  coAdditionsPrev      Decimal      @default(0) @db.Decimal(15, 2)
+  coDeductionsPrev     Decimal      @default(0) @db.Decimal(15, 2)
+  coAdditionsThis      Decimal      @default(0) @db.Decimal(15, 2)
+  coDeductionsThis     Decimal      @default(0) @db.Decimal(15, 2)
+  distributeOwner      Boolean      @default(true)
+  distributeArchitect  Boolean      @default(false)
+  distributeContractor Boolean      @default(false)
+  certifiedBy          String?
+  certState            String?
+  certCounty           String?
+  notaryName           String?
+  archivedAt           DateTime?
+  createdAt            DateTime     @default(now())
+  updatedAt            DateTime     @updatedAt
+  lines                PayAppLine[]
+  client               Client       @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  company              Company      @relation(fields: [companyId], references: [id])
+
+  @@index([companyId])
+  @@index([clientId])
+}
+
+model PayAppLine {
+  id             String   @id @default(cuid())
+  payAppId       String
+  sortOrder      Int      @default(0)
+  itemNumber     String   @default("")
+  description    String   @default("")
+  scheduledValue Decimal  @default(0) @db.Decimal(15, 2)
+  fromPrevious   Decimal  @default(0) @db.Decimal(15, 2)
+  thisInvoice    Decimal  @default(0) @db.Decimal(15, 2)
+  retainageThis  Decimal  @default(0) @db.Decimal(15, 2)
+  retainageTotal Decimal  @default(0) @db.Decimal(15, 2)
+  createdAt      DateTime @default(now())
+  payApp         PayApp   @relation(fields: [payAppId], references: [id], onDelete: Cascade)
+
+  @@index([payAppId])
 }
 
 model SubAssignment {

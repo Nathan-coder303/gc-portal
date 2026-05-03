@@ -1,6 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import PayAppEditor from "./PayAppEditor";
 
 const GOLD = "#C9A84C";
 const INPUT_STYLE = {
@@ -128,6 +129,37 @@ export default function ClientInvoicesTab({
   initialInvoices: Invoice[];
 }) {
   const [invoices, setInvoices] = useState<Invoice[]>(initialInvoices);
+
+  // Pay Apps state
+  type PayAppSummary = { id: string; payAppNumber: number; invoiceNumber: string | null; projectName: string | null; invoiceDate: string | null; createdAt: string };
+  const [payApps, setPayApps] = useState<PayAppSummary[]>([]);
+  const [openPayAppId, setOpenPayAppId] = useState<string | null>(null);
+  const [creatingPayApp, setCreatingPayApp] = useState(false);
+
+  useEffect(() => {
+    fetch(`/api/${companyId}/clients/${clientId}/payapps`)
+      .then(r => r.json())
+      .then(data => Array.isArray(data) && setPayApps(data))
+      .catch(() => {});
+  }, [companyId, clientId]);
+
+  async function createPayApp() {
+    setCreatingPayApp(true);
+    try {
+      const res = await fetch(`/api/${companyId}/clients/${clientId}/payapps`, {
+        method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({}),
+      });
+      const { id, payAppNumber } = await res.json();
+      setPayApps(prev => [...prev, { id, payAppNumber, invoiceNumber: null, projectName: null, invoiceDate: null, createdAt: new Date().toISOString() }]);
+      setOpenPayAppId(id);
+    } finally { setCreatingPayApp(false); }
+  }
+
+  async function deletePayApp(id: string) {
+    if (!confirm("Delete this Pay App?")) return;
+    await fetch(`/api/${companyId}/clients/${clientId}/payapps/${id}`, { method: "DELETE" });
+    setPayApps(prev => prev.filter(p => p.id !== id));
+  }
 
   // Create invoice state
   const [creating, setCreating] = useState(false);
@@ -304,6 +336,68 @@ export default function ClientInvoicesTab({
 
   return (
     <div className="space-y-6">
+
+      {/* ── Payment Applications ─────────────────────────────────────────────── */}
+      <div>
+        <div className="flex items-center justify-between mb-3">
+          <h2 className="text-base font-semibold" style={{ color: "#e6edf3" }}>Payment Applications</h2>
+          <button onClick={createPayApp} disabled={creatingPayApp}
+            className="text-xs font-semibold px-3 py-1.5 rounded-lg disabled:opacity-50"
+            style={{ background: `${GOLD}22`, color: GOLD, border: `1px solid ${GOLD}44` }}>
+            {creatingPayApp ? "Creating…" : "+ New Pay App"}
+          </button>
+        </div>
+        {payApps.length === 0 ? (
+          <p className="text-sm" style={{ color: "#484f58" }}>No payment applications yet.</p>
+        ) : (
+          <div className="flex flex-col gap-2">
+            {payApps.map(p => (
+              <div key={p.id} className="flex items-center justify-between rounded-xl px-4 py-3"
+                style={{ background: "#161b22", border: "1px solid #30373f" }}>
+                <div className="flex items-center gap-4">
+                  <span className="text-xs font-bold" style={{ color: GOLD }}>Pay App #{p.payAppNumber}</span>
+                  {p.invoiceNumber && <span className="text-xs" style={{ color: "#8b949e" }}>Invoice #{p.invoiceNumber}</span>}
+                  {p.projectName && <span className="text-xs" style={{ color: "#8b949e" }}>{p.projectName}</span>}
+                  {p.invoiceDate && <span className="text-xs" style={{ color: "#8b949e" }}>{p.invoiceDate}</span>}
+                </div>
+                <div className="flex items-center gap-2">
+                  <button onClick={() => setOpenPayAppId(p.id)}
+                    className="text-xs px-3 py-1.5 rounded-lg font-semibold"
+                    style={{ background: "#1e2736", color: "#e6edf3", border: "1px solid #30373f" }}>
+                    Open
+                  </button>
+                  <button onClick={() => deletePayApp(p.id)}
+                    className="text-xs px-2 py-1.5 rounded-lg"
+                    style={{ color: "#f85149" }}>
+                    ✕
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* ── PayApp Editor Modal ──────────────────────────────────────────────── */}
+      {openPayAppId && (
+        <PayAppEditor
+          payAppId={openPayAppId}
+          companyId={companyId}
+          clientId={clientId}
+          onClose={refresh => {
+            setOpenPayAppId(null);
+            if (refresh) {
+              fetch(`/api/${companyId}/clients/${clientId}/payapps`)
+                .then(r => r.json())
+                .then(data => Array.isArray(data) && setPayApps(data))
+                .catch(() => {});
+            }
+          }}
+        />
+      )}
+
+      <hr style={{ borderColor: "#21262d" }} />
+
       {/* Header + summary */}
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
