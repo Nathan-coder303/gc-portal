@@ -181,7 +181,7 @@ export default function PayAppEditor({
     setSyncing(true);
     try {
       const res = await fetch(`/api/${companyId}/estimates/${syncEstimateId}/division-totals`);
-      const divTotals: { name: string; total: number }[] = await res.json();
+      const divTotals: { name: string; csiCode: string | null; total: number }[] = await res.json();
       if (!Array.isArray(divTotals) || divTotals.length === 0) return;
 
       // Replace all lines with estimate divisions; preserve existing invoice amounts when names match
@@ -189,9 +189,10 @@ export default function PayAppEditor({
         const byDesc = new Map(prev.map(l => [l.description.toLowerCase(), l]));
         return divTotals.map((d, i) => {
           const existing = byDesc.get(d.name.toLowerCase());
+          const itemNumber = d.csiCode ? `Div ${d.csiCode}` : `Div ${i + 1}`;
           return {
             sortOrder: i,
-            itemNumber: `Div ${i + 1}`,
+            itemNumber,
             description: d.name,
             scheduledValue: d.total,
             fromPrevious: existing?.fromPrevious ?? 0,

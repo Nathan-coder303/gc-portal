@@ -31,6 +31,7 @@ export async function GET(
       select: {
         id: true,
         name: true,
+        csiCode: true,
         manualTotal: true,
         items: {
           where: { archivedAt: null, groupId: null },
@@ -51,6 +52,7 @@ export async function GET(
 
   const lines = divisions.map(d => ({
     name: d.name,
+    csiCode: d.csiCode ?? null,
     total: d.manualTotal !== null && d.manualTotal !== undefined
       ? Number(d.manualTotal)
       : [...d.items, ...d.groups.flatMap(g => g.items)].reduce((s, i) => s + itemTotal(i), 0),
@@ -61,7 +63,7 @@ export async function GET(
     const rawTotal = lines.reduce((s, l) => s + l.total, 0);
     const gcFee = rawTotal * Number(template.gcFeePercent) / 100;
     if (gcFee > 0) {
-      lines.push({ name: "GC Fee", total: gcFee });
+      lines.push({ name: "GC Fee", csiCode: null, total: gcFee });
     }
   }
 
