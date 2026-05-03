@@ -48,6 +48,7 @@ export default function ClientPortalTab({
   const photoInputRef = useRef<HTMLInputElement>(null);
   const [photoCaption, setPhotoCaption] = useState("");
   const [photoUploading, setPhotoUploading] = useState(false);
+  const [photoDragOver, setPhotoDragOver] = useState(false);
 
   // Doc upload
   const docInputRef = useRef<HTMLInputElement>(null);
@@ -99,17 +100,21 @@ export default function ClientPortalTab({
     setCredMsg({ ok: true, text: "Access revoked." });
   }
 
-  async function uploadPhoto(file: File) {
+  async function uploadPhotos(files: FileList | File[]) {
+    const arr = Array.from(files);
+    if (arr.length === 0) return;
     setPhotoUploading(true);
-    const fd = new FormData();
-    fd.append("file", file);
-    if (photoCaption.trim()) fd.append("caption", photoCaption.trim());
-    const res = await fetch(`/api/${companyId}/clients/${clientId}/portal/photos`, { method: "POST", body: fd });
-    if (res.ok) {
-      const photo = await res.json();
-      setPhotos(prev => [photo, ...prev]);
-      setPhotoCaption("");
+    for (const file of arr) {
+      const fd = new FormData();
+      fd.append("file", file);
+      if (photoCaption.trim()) fd.append("caption", photoCaption.trim());
+      const res = await fetch(`/api/${companyId}/clients/${clientId}/portal/photos`, { method: "POST", body: fd });
+      if (res.ok) {
+        const photo = await res.json();
+        setPhotos(prev => [photo, ...prev]);
+      }
     }
+    setPhotoCaption("");
     setPhotoUploading(false);
   }
 
@@ -263,28 +268,53 @@ Founder/CEO | MIBH Construction
       <div className="space-y-3">
         <h2 className="text-sm font-bold uppercase tracking-widest" style={{ color: "#C9A84C" }}>Project Photos</h2>
 
-        {/* Upload row */}
-        <div className="flex gap-3 flex-wrap items-end">
-          <div className="flex-1 min-w-[200px]">
-            <label className="block text-xs font-semibold mb-1" style={{ color: "#8b949e" }}>Caption (optional)</label>
+        {/* Drop zone */}
+        <div
+          onDragOver={e => { e.preventDefault(); setPhotoDragOver(true); }}
+          onDragLeave={() => setPhotoDragOver(false)}
+          onDrop={e => { e.preventDefault(); setPhotoDragOver(false); if (e.dataTransfer.files.length) uploadPhotos(e.dataTransfer.files); }}
+          onClick={() => photoInputRef.current?.click()}
+          className="rounded-xl flex flex-col items-center justify-center gap-2 cursor-pointer transition-colors"
+          style={{
+            border: `2px dashed ${photoDragOver ? "#C9A84C" : "#30373f"}`,
+            background: photoDragOver ? "#C9A84C11" : "#0d1117",
+            padding: "20px 16px",
+          }}
+        >
+          <span className="text-2xl">📷</span>
+          <span className="text-sm font-semibold" style={{ color: "#C9A84C" }}>
+            {photoUploading ? "Uploading…" : "Click or drag photos here"}
+          </span>
+          <span className="text-xs" style={{ color: "#484f58" }}>Supports multiple files</span>
+          <input
+            ref={photoInputRef}
+            type="file"
+            accept="image/*"
+            multiple
+            className="hidden"
+            onChange={e => { if (e.target.files?.length) { uploadPhotos(e.target.files); e.target.value = ""; } }}
+          />
+        </div>
+
+        {/* Caption row */}
+        <div className="flex gap-3 items-center">
+          <div className="flex-1">
             <input
               value={photoCaption}
               onChange={e => setPhotoCaption(e.target.value)}
               className="w-full rounded-lg px-3 py-2 text-sm"
               style={inputStyle}
-              placeholder="e.g. Tear-off complete – April 24"
+              placeholder="Caption for next upload (optional)"
             />
           </div>
-          <label className="cursor-pointer px-4 py-2 rounded-xl text-sm font-bold" style={{ background: "#C9A84C22", color: "#C9A84C", border: "1px solid #C9A84C44" }}>
+          <button
+            onClick={() => photoInputRef.current?.click()}
+            disabled={photoUploading}
+            className="px-4 py-2 rounded-xl text-sm font-bold disabled:opacity-50 shrink-0"
+            style={{ background: "#C9A84C22", color: "#C9A84C", border: "1px solid #C9A84C44" }}
+          >
             {photoUploading ? "Uploading…" : "+ Upload Photo"}
-            <input
-              ref={photoInputRef}
-              type="file"
-              accept="image/*"
-              className="hidden"
-              onChange={e => { if (e.target.files?.[0]) { uploadPhoto(e.target.files[0]); e.target.value = ""; } }}
-            />
-          </label>
+          </button>
         </div>
 
         {photos.length === 0 ? (
