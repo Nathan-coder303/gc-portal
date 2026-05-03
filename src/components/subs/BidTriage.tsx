@@ -322,17 +322,16 @@ export default function BidTriage({
 
   return (
     <>
-      <div className="space-y-3">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
         {bids.map(bid => {
           const divCode = selectedDivision[bid.id] ?? bid.divisionCode;
           return (
             <div
               key={bid.id}
-              className="rounded-xl px-4 py-4"
+              className="rounded-xl px-4 py-4 flex flex-col gap-3"
               style={{ background: "#161b22", border: "1px solid #30373f" }}
             >
-              <div className="flex flex-col sm:flex-row sm:items-start gap-3">
-                <div className="flex-1 min-w-0">
+              <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2 flex-wrap">
                     <span className="text-sm font-semibold" style={{ color: "#e6edf3" }}>
                       {bid.contractorName ?? "Unknown contractor"}
@@ -398,7 +397,7 @@ export default function BidTriage({
                   </div>
                 </div>
 
-                <div className="flex flex-col gap-2 shrink-0 min-w-[200px]">
+                <div className="flex flex-col gap-2">
                   {/* Division picker */}
                   <select
                     value={divCode}
@@ -460,7 +459,6 @@ export default function BidTriage({
                     </button>
                   </div>
                 </div>
-              </div>
             </div>
           );
         })}
