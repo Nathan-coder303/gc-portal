@@ -60,6 +60,20 @@ type SubInfo = {
   notes: string | null;
 };
 
+function getSubSourceLabel(bid: TriageBid): string {
+  if (bid.sourceLabel) return `Excel ${bid.sourceLabel}`;
+  const src = bid.emailSource ?? "";
+  const url = bid.fileUrl ?? "";
+  const planHubMatch = src.match(/^NEW Bid Proposal\s*[-–]\s*([^:]+):/i);
+  if (planHubMatch) return `Email ${planHubMatch[1].trim()}`;
+  const followUpMatch = src.match(/our bid on [""]([^""]+)[""]/i);
+  if (followUpMatch) return `Email ${followUpMatch[1].trim()}`;
+  const numMatch = src.match(/\b(\d{4})\b/);
+  if (numMatch) return `Email ${numMatch[1]}`;
+  if (url.startsWith("gmail:") || /gmail|google/i.test(src) || src) return "Email";
+  return "Manual";
+}
+
 function getDerivedSource(bid: TriageBid): { label: string; color: string; title: string } {
   const src = bid.emailSource ?? "";
   const url = bid.fileUrl ?? "";
@@ -280,6 +294,8 @@ export default function BidTriage({
     setSavingSub(true);
     try {
       const div = ALL_DIVISIONS.find(d => d.code === subForm.divisionCode);
+      const srcLabel = getSubSourceLabel(addSubModal.bid);
+      const notesJson = JSON.stringify({ src: srcLabel });
       const res = await fetch(`/api/${companyId}/subs`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -292,7 +308,7 @@ export default function BidTriage({
           licenseNumber: subForm.licenseNumber || null,
           divisionCode: subForm.divisionCode,
           divisionName: div?.name ?? subForm.divisionName,
-          notes: subForm.notes || null,
+          notes: notesJson,
           source: "bid",
         }),
       });

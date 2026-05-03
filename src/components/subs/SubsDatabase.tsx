@@ -54,7 +54,7 @@ function tagColor(tag: string) {
   for (let i = 0; i < tag.length; i++) h = (h * 31 + tag.charCodeAt(i)) % TAG_COLORS.length;
   return TAG_COLORS[h];
 }
-type NotesData = { t?: string[]; d?: { c: string; n: string }[] };
+type NotesData = { t?: string[]; d?: { c: string; n: string }[]; src?: string };
 function parseNotesData(notes: string | null): NotesData {
   if (!notes) return {};
   try {
@@ -70,9 +70,23 @@ function parseTags(notes: string | null): string[] {
 function parseExtraDivs(notes: string | null): { c: string; n: string }[] {
   return parseNotesData(notes).d ?? [];
 }
-function serializeNotes(tags: string[], divs: { c: string; n: string }[]): string | null {
-  if (!tags.length && !divs.length) return null;
-  return JSON.stringify({ t: tags, d: divs });
+function parseSrc(notes: string | null): string | null {
+  return parseNotesData(notes).src ?? null;
+}
+function serializeNotes(tags: string[], divs: { c: string; n: string }[], src?: string | null): string | null {
+  if (!tags.length && !divs.length && !src) return null;
+  const obj: NotesData = {};
+  if (tags.length) obj.t = tags;
+  if (divs.length) obj.d = divs;
+  if (src) obj.src = src;
+  return JSON.stringify(obj);
+}
+function getSubSourceDisplay(src: string | null | undefined): { label: string; color: string } | null {
+  if (!src) return null;
+  if (src.startsWith("Excel")) return { label: `📊 ${src}`, color: src.includes("1240") ? "#f97316" : "#a855f7" };
+  if (src.startsWith("Email")) return { label: `📧 ${src}`, color: "#3b82f6" };
+  if (src === "Manual") return { label: "✏ Manual", color: "#6b7280" };
+  return { label: src, color: "#8b949e" };
 }
 function formatPhone(p: string | null): string {
   if (!p) return "";
@@ -224,6 +238,13 @@ function SubCard({
         </a>
       )}
 
+      {/* Source badge */}
+      {(() => {
+        const s = getSubSourceDisplay(parseSrc(sub.notes));
+        if (!s) return null;
+        return <span className="text-[10px] px-1.5 py-0.5 rounded font-semibold w-fit" style={{ background: s.color + "22", color: s.color, border: `1px solid ${s.color}44` }}>{s.label}</span>;
+      })()}
+
       {/* Tags */}
       {tags.length > 0 && (
         <div className="flex flex-wrap gap-1">
@@ -304,7 +325,7 @@ function SubModal({
   title, initial, suggestions = [], onSave, onClose,
 }: {
   title: string;
-  initial: { name: string; contactName: string; address: string; email: string; phone: string; divisionCode: string; divisionName: string; tags: string[]; extraDivs: { c: string; n: string }[] };
+  initial: { name: string; contactName: string; address: string; email: string; phone: string; divisionCode: string; divisionName: string; tags: string[]; extraDivs: { c: string; n: string }[]; src?: string | null };
   suggestions?: string[];
   onSave: (data: typeof initial) => Promise<void>;
   onClose: () => void;
@@ -642,6 +663,7 @@ export default function SubsDatabase({
   const [importing, setImporting] = useState(false);
   const [importingSheet, setImportingSheet] = useState(false);
   const [clearing, setClearing] = useState(false);
+  const [backfilling, setBackfilling] = useState(false);
   const dragIdRef = useRef<string | null>(null);
   const [dragOverDiv, setDragOverDiv] = useState<string | null>(null);
   const [dragOverSubId, setDragOverSubId] = useState<string | null>(null);
@@ -717,10 +739,10 @@ export default function SubsDatabase({
 
   // ── CRUD ──────────────────────────────────────────────────────────────────
   async function handleSave(
-    form: { name: string; contactName: string; address: string; email: string; phone: string; divisionCode: string; divisionName: string; tags: string[]; extraDivs: { c: string; n: string }[] },
+    form: { name: string; contactName: string; address: string; email: string; phone: string; divisionCode: string; divisionName: string; tags: string[]; extraDivs: { c: string; n: string }[]; src?: string | null },
     editId?: string
   ) {
-    const notes = serializeNotes(form.tags, form.extraDivs);
+    const notes = serializeNotes(form.tags, form.extraDivs, form.src);
     const body = { name: form.name, contactName: form.contactName || null, address: form.address || null, email: form.email || null, phone: form.phone || null, divisionCode: form.divisionCode, divisionName: form.divisionName, notes };
     if (editId) {
       const res = await fetch(`/api/${companyId}/subs/${editId}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
@@ -801,6 +823,16 @@ export default function SubsDatabase({
     } finally { setImportingSheet(false); }
   }
 
+  async function handleBackfillSources() {
+    setBackfilling(true);
+    try {
+      const res = await fetch(`/api/${companyId}/subs/backfill-sources`, { method: "POST" });
+      const { updated } = await res.json();
+      await reloadSubs();
+      alert(`Source labels applied to ${updated} sub${updated !== 1 ? "s" : ""}.`);
+    } finally { setBackfilling(false); }
+  }
+
   async function handleClearAll() {
     if (!confirm(`Delete ALL ${subs.length} subs? This cannot be undone.\n\nAfter clearing, re-import from Sheet and Bids.`)) return;
     setClearing(true);
@@ -861,8 +893,8 @@ export default function SubsDatabase({
 
   const defaultDivision = ALL_DIVISIONS[0];
   const modalInitial = modal?.mode === "edit" && modal.sub
-    ? { name: modal.sub.name, contactName: modal.sub.contactName ?? "", address: modal.sub.address ?? "", email: modal.sub.email ?? "", phone: modal.sub.phone ?? "", divisionCode: modal.sub.divisionCode, divisionName: modal.sub.divisionName, tags: parseTags(modal.sub.notes), extraDivs: parseExtraDivs(modal.sub.notes) }
-    : { name: "", contactName: "", address: "", email: "", phone: "", divisionCode: modal?.prefillDiv?.code ?? defaultDivision.code, divisionName: modal?.prefillDiv?.name ?? defaultDivision.name, tags: [], extraDivs: [] };
+    ? { name: modal.sub.name, contactName: modal.sub.contactName ?? "", address: modal.sub.address ?? "", email: modal.sub.email ?? "", phone: modal.sub.phone ?? "", divisionCode: modal.sub.divisionCode, divisionName: modal.sub.divisionName, tags: parseTags(modal.sub.notes), extraDivs: parseExtraDivs(modal.sub.notes), src: parseSrc(modal.sub.notes) }
+    : { name: "", contactName: "", address: "", email: "", phone: "", divisionCode: modal?.prefillDiv?.code ?? defaultDivision.code, divisionName: modal?.prefillDiv?.name ?? defaultDivision.name, tags: [], extraDivs: [], src: null };
 
   return (
     <div>
@@ -884,6 +916,10 @@ export default function SubsDatabase({
           <button onClick={handleImportFromSheet} disabled={importingSheet} className="px-3 py-2 rounded-xl text-sm font-semibold transition-all hover:scale-105 disabled:opacity-50"
             style={{ background: "#1e2736", border: "1px solid #a78bfa44", color: "#a78bfa" }}>
             {importingSheet ? "Importing…" : "📋 From Sheet"}
+          </button>
+          <button onClick={handleBackfillSources} disabled={backfilling} className="px-3 py-2 rounded-xl text-sm font-semibold transition-all hover:scale-105 disabled:opacity-50"
+            style={{ background: "#1e2736", border: "1px solid #C9A84C44", color: "#C9A84C" }}>
+            {backfilling ? "Tagging…" : "🏷 Tag Sources"}
           </button>
           <button onClick={handleClearAll} disabled={clearing || subs.length === 0} className="px-3 py-2 rounded-xl text-sm font-semibold transition-all hover:scale-105 disabled:opacity-40"
             style={{ background: "#1a0a0a", border: "1px solid #ef444444", color: "#ef4444" }}>

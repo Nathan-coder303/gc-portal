@@ -106,12 +106,13 @@ function EstimateCard({
   }
 
   function handlePdfConfirm(opts: PdfOptions) {
+    window.location.href = buildPdfUrl(opts);
     setStep(null);
-    window.open(buildPdfUrl(opts), "_blank");
   }
 
   function handlePdfPreview(opts: PdfOptions) {
     window.open(buildPdfUrl(opts, true), "_blank");
+    setStep(null);
   }
 
   function handleSendEmail(opts: PdfOptions) {
