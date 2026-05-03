@@ -134,6 +134,7 @@ export default function ClientInvoicesTab({
   type PayAppSummary = { id: string; payAppNumber: number; invoiceNumber: string | null; projectName: string | null; invoiceDate: string | null; createdAt: string };
   const [payApps, setPayApps] = useState<PayAppSummary[]>([]);
   const [openPayAppId, setOpenPayAppId] = useState<string | null>(null);
+  const [openPayAppTab, setOpenPayAppTab] = useState<"summary" | "lines" | "send">("summary");
   const [creatingPayApp, setCreatingPayApp] = useState(false);
 
   useEffect(() => {
@@ -377,7 +378,12 @@ export default function ClientInvoicesTab({
                   {p.invoiceDate && <span className="text-xs" style={{ color: "#8b949e" }}>{p.invoiceDate}</span>}
                 </div>
                 <div className="flex items-center gap-2">
-                  <button onClick={() => setOpenPayAppId(p.id)}
+                  <button onClick={() => { setOpenPayAppTab("send"); setOpenPayAppId(p.id); }}
+                    className="text-xs px-3 py-1.5 rounded-lg font-semibold"
+                    style={{ background: `${GOLD}22`, color: GOLD, border: `1px solid ${GOLD}44` }}>
+                    ✉ Send
+                  </button>
+                  <button onClick={() => { setOpenPayAppTab("summary"); setOpenPayAppId(p.id); }}
                     className="text-xs px-3 py-1.5 rounded-lg font-semibold"
                     style={{ background: "#1e2736", color: "#e6edf3", border: "1px solid #30373f" }}>
                     Open
@@ -402,8 +408,10 @@ export default function ClientInvoicesTab({
           clientId={clientId}
           clientEmail={clientEmail ?? ""}
           estimates={estimates.map(e => ({ id: e.id, name: e.name ?? "", estimateNumber: e.estimateNumber ?? "" }))}
+          initialTab={openPayAppTab}
           onClose={refresh => {
             setOpenPayAppId(null);
+            setOpenPayAppTab("summary");
             if (refresh) {
               fetch(`/api/${companyId}/clients/${clientId}/payapps`)
                 .then(r => r.json())

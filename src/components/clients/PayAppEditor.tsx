@@ -155,13 +155,14 @@ function rowComputed(l: Line) {
 
 // ─── Main Editor ──────────────────────────────────────────────────────────────
 export default function PayAppEditor({
-  payAppId, companyId, clientId, clientEmail, estimates, onClose,
+  payAppId, companyId, clientId, clientEmail, estimates, initialTab, onClose,
 }: {
   payAppId: string; companyId: string; clientId: string; clientEmail?: string;
   estimates?: { id: string; name: string; estimateNumber: string }[];
+  initialTab?: "summary" | "lines" | "send";
   onClose: (refresh?: boolean) => void;
 }) {
-  const [tab, setTab] = useState<"summary" | "lines" | "send">("summary");
+  const [tab, setTab] = useState<"summary" | "lines" | "send">(initialTab ?? "summary");
   const [header, setHeader] = useState<Header>(EMPTY_HEADER);
   const [lines, setLines] = useState<Line[]>([]);
   const [loading, setLoading] = useState(true);
@@ -189,7 +190,8 @@ export default function PayAppEditor({
         const byDesc = new Map(prev.map(l => [l.description.toLowerCase(), l]));
         return divTotals.map((d, i) => {
           const existing = byDesc.get(d.name.toLowerCase());
-          const itemNumber = d.csiCode ? `Div ${d.csiCode}` : `Div ${i + 1}`;
+          const rawCode = d.csiCode ? d.csiCode.slice(0, 2).trim() : null;
+          const itemNumber = rawCode ? `Div ${rawCode}` : `Div ${i + 1}`;
           return {
             sortOrder: i,
             itemNumber,
