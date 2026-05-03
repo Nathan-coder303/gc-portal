@@ -67,13 +67,11 @@ export async function POST(req: NextRequest, { params }: { params: { companyId: 
 
   const body = await req.json().catch(() => ({}));
 
-  // Find next pay app number
-  const last = await prisma.payApp.findFirst({
-    where: { companyId: params.companyId, clientId: params.clientId },
-    orderBy: { payAppNumber: "desc" },
-    select: { payAppNumber: true },
+  // Number = count of active (non-archived) pay apps + 1 so deleting a draft resets the counter
+  const activeCount = await prisma.payApp.count({
+    where: { companyId: params.companyId, clientId: params.clientId, archivedAt: null },
   });
-  const nextNumber = (last?.payAppNumber ?? 0) + 1;
+  const nextNumber = activeCount + 1;
 
   const client = await prisma.client.findUnique({
     where: { id: params.clientId },
