@@ -58,6 +58,19 @@ type SubInfo = {
   notes: string | null;
 };
 
+function getSourceLabel(bid: TriageBid): { label: string; color: string; title: string } {
+  const src = bid.emailSource ?? "";
+  const url = bid.fileUrl ?? "";
+  const hasContact = !!parseContactNotes(bid.notes);
+
+  if (/planhub/i.test(src)) return { label: "🏗 PlanHub", color: "#8b5cf6", title: src };
+  if (url.startsWith("gmail:") || /gmail|google/i.test(src))
+    return { label: "📧 Gmail", color: "#3b82f6", title: src || "Gmail sync" };
+  if (src) return { label: "📧 Email", color: "#3b82f6", title: src };
+  if (hasContact) return { label: "📊 Excel", color: "#22c55e", title: "Imported from spreadsheet" };
+  return { label: "Manual", color: "#8b949e", title: "Added manually" };
+}
+
 function parseContactNotes(notes: string | null): { contactName: string; email: string; phone: string } | null {
   if (!notes) return null;
   const parts = notes.split(" | ");
@@ -327,29 +340,32 @@ export default function BidTriage({
                     }
                     return bid.notes ? <div className="text-xs mt-1" style={{ color: "#8b949e" }}>{bid.notes}</div> : null;
                   })()}
-                  <div className="text-xs mt-1 flex items-center gap-3" style={{ color: "#484f58" }}>
-                    <span>
-                      {bid.emailSource && !parseContactNotes(bid.notes) && (
-                        <span title={bid.emailSource}>
-                          {bid.emailSource.length > 60 ? bid.emailSource.slice(0, 60) + "…" : bid.emailSource} ·{" "}
+                  <div className="text-xs mt-1.5 flex items-center gap-2 flex-wrap" style={{ color: "#484f58" }}>
+                    {/* Source badge */}
+                    {(() => {
+                      const s = getSourceLabel(bid);
+                      return (
+                        <span title={s.title} className="px-1.5 py-0.5 rounded font-semibold"
+                          style={{ background: s.color + "22", color: s.color, border: `1px solid ${s.color}44`, cursor: "default" }}>
+                          {s.label}
                         </span>
-                      )}
-                      {new Date(bid.createdAt).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
-                    </span>
+                      );
+                    })()}
+                    <span>{new Date(bid.createdAt).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}</span>
                     {bid.fileUrl && (() => {
                       const href = getPdfHref(bid.fileUrl, companyId);
                       return href ? (
-                        <a
-                          href={href}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="font-semibold"
-                          style={{ color: "#C9A84C" }}
-                        >
+                        <a href={href} target="_blank" rel="noopener noreferrer"
+                          className="font-semibold" style={{ color: "#C9A84C" }}>
                           📄 {bid.fileName ?? "View PDF"}
                         </a>
                       ) : null;
                     })()}
+                    {bid.emailSource && (
+                      <span title={bid.emailSource} style={{ color: "#484f58" }}>
+                        {bid.emailSource.length > 50 ? bid.emailSource.slice(0, 50) + "…" : bid.emailSource}
+                      </span>
+                    )}
                   </div>
                 </div>
 
