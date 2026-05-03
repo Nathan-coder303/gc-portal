@@ -125,11 +125,12 @@ function SubCard({
       onDragOver={onDragOver}
       onDrop={onDrop}
       onDragEnd={onDragEnd}
+      onClick={onEdit}
       className="rounded-xl flex flex-col gap-2 p-3 select-none transition-all relative"
       style={{
         background: isSelected ? "#1a2a3a" : isDragOver ? "#1a2a3a" : "#1e2736",
         border: `1px solid ${isSelected ? "#58a6ff" : isDragOver ? "#C9A84C" : "#30373f"}`,
-        cursor: "grab",
+        cursor: "pointer",
       }}
     >
       {/* Star favorite */}

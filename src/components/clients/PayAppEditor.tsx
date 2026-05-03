@@ -730,8 +730,18 @@ export default function PayAppEditor({
 
             {/* Summary preview */}
             <div style={{ background: CARD, border: `1px solid ${BORDER}`, borderRadius: 8, padding: 20 }}>
-              <div style={{ fontWeight: 700, fontSize: 13, color: TEXT, marginBottom: 12 }}>
-                Pay App #{header.payAppNumber}{header.invoiceNumber ? ` — Invoice #${header.invoiceNumber}` : ""} Preview
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
+                <div style={{ fontWeight: 700, fontSize: 13, color: TEXT }}>
+                  Pay App #{header.payAppNumber}{header.invoiceNumber ? ` — Invoice #${header.invoiceNumber}` : ""} Preview
+                </div>
+                <a
+                  href={`/api/${companyId}/clients/${clientId}/payapps/${payAppId}/preview`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  style={{ background: "#C9A84C22", color: GOLD, border: `1px solid #C9A84C44`, borderRadius: 6, padding: "6px 14px", fontSize: 12, fontWeight: 600, textDecoration: "none", cursor: "pointer" }}
+                >
+                  📄 Preview PDF
+                </a>
               </div>
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, fontSize: 12, color: MUTED }}>
                 <div><span>From:</span> <span style={{ color: TEXT }}>{header.fromName} / {header.fromContact}</span></div>
