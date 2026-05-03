@@ -148,7 +148,7 @@ function computeOverrideTotal(sg: SummaryGroupOverride): number | null {
 
 type TemplatePdfProps = {
   companyName: string;
-  template: { name: string; description: string | null; estimateNumber: string | null; estimateDate: string | null };
+  template: { name: string; description: string | null; estimateNumber: string | null; estimateDate: string | null; sqFt?: number | null; durationMonths?: number | null };
   client: { name: string; address: string | null; city: string | null; state: string | null; zip: string | null; phone?: string | null; email?: string | null } | null;
   divisions: Division[];
   showTerms?: boolean;
@@ -1051,7 +1051,26 @@ function DivisionSummaryPage({ template, client, divisions, gcFeePercent }: Pick
             <Text style={{ fontSize: 14, fontFamily: "Helvetica-Bold", color: GOLD }}>ESTIMATE TOTAL</Text>
             <Text style={{ fontSize: 16, fontFamily: "Helvetica-Bold", color: GOLD }}>${fmt(grandTotalWithGc)}</Text>
           </View>
-          <Text style={{ fontSize: 8, color: "#94a3b8", textAlign: "center", marginTop: 20 }}>
+          {(template.sqFt || template.durationMonths) && (
+            <View style={{ flexDirection: "row", justifyContent: "center", gap: 32, marginTop: 18, marginBottom: 4 }}>
+              {template.sqFt ? (
+                <View style={{ alignItems: "center" }}>
+                  <Text style={{ fontSize: 22, fontFamily: "Helvetica-Bold", color: DARK }}>{Number(template.sqFt).toLocaleString("en-US", { maximumFractionDigits: 0 })} SF</Text>
+                  <Text style={{ fontSize: 8, color: "#94a3b8", marginTop: 2 }}>SQUARE FEET</Text>
+                </View>
+              ) : null}
+              {template.sqFt && template.durationMonths ? (
+                <View style={{ width: 1, backgroundColor: "#e2e8f0", marginVertical: 4 }} />
+              ) : null}
+              {template.durationMonths ? (
+                <View style={{ alignItems: "center" }}>
+                  <Text style={{ fontSize: 22, fontFamily: "Helvetica-Bold", color: DARK }}>{Number(template.durationMonths).toLocaleString("en-US", { maximumFractionDigits: 1 })} MO</Text>
+                  <Text style={{ fontSize: 8, color: "#94a3b8", marginTop: 2 }}>EST. DURATION</Text>
+                </View>
+              ) : null}
+            </View>
+          )}
+          <Text style={{ fontSize: 8, color: "#94a3b8", textAlign: "center", marginTop: (template.sqFt || template.durationMonths) ? 8 : 20 }}>
             Detailed scope of work and line items follow on the next pages.
           </Text>
         </View>
