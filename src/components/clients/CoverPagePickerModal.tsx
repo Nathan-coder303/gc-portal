@@ -395,7 +395,6 @@ export default function CoverPagePickerModal({
               href={previewUrlBuilder(opts)}
               target="_blank"
               rel="noopener noreferrer"
-              onClick={onClose}
               className="px-4 rounded-xl py-2.5 text-sm font-semibold inline-flex items-center"
               style={{ background: "#1e2736", border: "1px solid #C9A84C55", color: "#C9A84C", textDecoration: "none" }}
             >
