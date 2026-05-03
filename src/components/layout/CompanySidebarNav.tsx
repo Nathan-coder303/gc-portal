@@ -4,7 +4,7 @@ import Link from "next/link";
 import { usePathname, useSearchParams } from "next/navigation";
 
 const NAV = [
-  { label: "Mike's Tasks", icon: "✅", href: (c: string) => `/${c}/today` },
+  { label: "Dashboard", icon: "✅", href: (c: string) => `/${c}/today` },
   { label: "Projects",  icon: "📋", href: (c: string) => `/${c}/projects` },
   { label: "Subs",      icon: "🔧", href: (c: string) => `/${c}/subs` },
   { label: "Estimates", icon: "📊", href: (c: string) => `/${c}/estimates` },
@@ -20,7 +20,7 @@ const SOON = [
 ];
 
 function isActive(label: string, pathname: string, companyId: string, tab: string | null) {
-  if (label === "Mike's Tasks") return pathname.startsWith(`/${companyId}/today`);
+  if (label === "Dashboard") return pathname.startsWith(`/${companyId}/today`);
   if (label === "Projects") {
     return pathname.startsWith(`/${companyId}/projects`) ||
       (pathname === `/${companyId}` && (!tab || tab === "projects"));
