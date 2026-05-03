@@ -111,7 +111,12 @@ function EstimateCard({
   }
 
   function handlePdfPreview(opts: PdfOptions) {
-    window.open(buildPdfUrl(opts, true), "_blank");
+    const url = buildPdfUrl(opts, true);
+    const newWin = window.open(url, "_blank");
+    if (!newWin || newWin.closed) {
+      // Popup blocked — open inline in current tab (browser PDF viewer, back to return)
+      window.location.href = url;
+    }
     setStep(null);
   }
 
