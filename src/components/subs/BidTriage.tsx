@@ -20,6 +20,8 @@ function getPdfHref(fileUrl: string, companyId: string): string {
   return fileUrl;
 }
 
+const SOURCE_OPTIONS = ["1240", "Ingraham", "Gmail", "PlanHub", "Manual"];
+
 type TriageBid = {
   id: string;
   contractorName: string | null;
@@ -28,6 +30,7 @@ type TriageBid = {
   amount: number | null;
   notes: string | null;
   emailSource: string | null;
+  sourceLabel: string | null;
   fileName: string | null;
   fileUrl: string | null;
   createdAt: string;
@@ -58,11 +61,18 @@ type SubInfo = {
   notes: string | null;
 };
 
-function getSourceLabel(bid: TriageBid): { label: string; color: string; title: string } {
+function getDerivedSource(bid: TriageBid): { label: string; color: string; title: string } {
+  if (bid.sourceLabel) {
+    const color = bid.sourceLabel === "1240" ? "#f97316"
+      : bid.sourceLabel === "Ingraham" ? "#a855f7"
+      : bid.sourceLabel === "PlanHub" ? "#8b5cf6"
+      : bid.sourceLabel === "Gmail" ? "#3b82f6"
+      : "#8b949e";
+    return { label: bid.sourceLabel, color, title: bid.sourceLabel };
+  }
   const src = bid.emailSource ?? "";
   const url = bid.fileUrl ?? "";
   const hasContact = !!parseContactNotes(bid.notes);
-
   if (/planhub/i.test(src)) return { label: "🏗 PlanHub", color: "#8b5cf6", title: src };
   if (url.startsWith("gmail:") || /gmail|google/i.test(src))
     return { label: "📧 Gmail", color: "#3b82f6", title: src || "Gmail sync" };
@@ -111,6 +121,7 @@ export default function BidTriage({
   // Per-bid division override (divisionCode)
   const [selectedDivision, setSelectedDivision] = useState<Record<string, string>>({});
   const [addSubModal, setAddSubModal] = useState<AddSubModal | null>(null);
+  const [savingSource, setSavingSource] = useState<string | null>(null);
 
   // Sub form state
   const [subForm, setSubForm] = useState({
@@ -257,6 +268,17 @@ export default function BidTriage({
     setBids(prev => prev.filter(b => b.id !== bidId));
   }
 
+  async function saveSourceLabel(bidId: string, sourceLabel: string) {
+    setSavingSource(bidId);
+    setBids(prev => prev.map(b => b.id === bidId ? { ...b, sourceLabel: sourceLabel || null } : b));
+    await fetch(`/api/${companyId}/bids/triage/${bidId}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ sourceLabel: sourceLabel || null }),
+    });
+    setSavingSource(null);
+  }
+
   async function saveSub() {
     if (!addSubModal || !subForm.name || !subForm.divisionCode) return;
     setSavingSub(true);
@@ -341,14 +363,21 @@ export default function BidTriage({
                     return bid.notes ? <div className="text-xs mt-1" style={{ color: "#8b949e" }}>{bid.notes}</div> : null;
                   })()}
                   <div className="text-xs mt-1.5 flex items-center gap-2 flex-wrap" style={{ color: "#484f58" }}>
-                    {/* Source badge */}
+                    {/* Source selector */}
                     {(() => {
-                      const s = getSourceLabel(bid);
+                      const s = getDerivedSource(bid);
                       return (
-                        <span title={s.title} className="px-1.5 py-0.5 rounded font-semibold"
-                          style={{ background: s.color + "22", color: s.color, border: `1px solid ${s.color}44`, cursor: "default" }}>
-                          {s.label}
-                        </span>
+                        <select
+                          value={bid.sourceLabel ?? ""}
+                          onChange={e => saveSourceLabel(bid.id, e.target.value)}
+                          disabled={savingSource === bid.id}
+                          title="Source"
+                          className="rounded px-1.5 py-0.5 text-[10px] font-bold"
+                          style={{ background: s.color + "22", color: s.color, border: `1px solid ${s.color}44`, cursor: "pointer", outline: "none" }}
+                        >
+                          <option value="">{bid.sourceLabel ? "— clear —" : "Source…"}</option>
+                          {SOURCE_OPTIONS.map(o => <option key={o} value={o}>{o}</option>)}
+                        </select>
                       );
                     })()}
                     <span>{new Date(bid.createdAt).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}</span>

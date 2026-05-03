@@ -25,6 +25,7 @@ export async function GET(
     amount: b.amount ? Number(b.amount) : null,
     notes: b.notes,
     emailSource: b.emailSource,
+    sourceLabel: b.sourceLabel,
     fileName: b.fileName,
     fileUrl: b.fileUrl,
     createdAt: b.createdAt.toISOString(),

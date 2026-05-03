@@ -10,10 +10,15 @@ export async function PATCH(
   const session = await auth();
   if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-  const body = await req.json() as { clientId?: string | null; leadId?: string | null; projectId?: string | null; divisionCode?: string; divisionName?: string };
-  if (!body.clientId && !body.leadId && !body.projectId) return NextResponse.json({ error: "clientId, leadId, or projectId required" }, { status: 400 });
+  const body = await req.json() as { clientId?: string | null; leadId?: string | null; projectId?: string | null; divisionCode?: string; divisionName?: string; sourceLabel?: string | null };
 
-  const data: Record<string, unknown> = { status: "RECEIVED" };
+  // Allow sourceLabel-only update without requiring assignment
+  const isLabelOnly = body.sourceLabel !== undefined && !body.clientId && !body.leadId && !body.projectId;
+  if (!isLabelOnly && !body.clientId && !body.leadId && !body.projectId)
+    return NextResponse.json({ error: "clientId, leadId, or projectId required" }, { status: 400 });
+
+  const data: Record<string, unknown> = isLabelOnly ? {} : { status: "RECEIVED" };
+  if (body.sourceLabel !== undefined) data.sourceLabel = body.sourceLabel;
   if (body.clientId) {
     data.clientId = body.clientId;
     data.leadId = null;
