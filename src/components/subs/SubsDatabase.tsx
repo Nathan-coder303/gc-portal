@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import { DIVISIONS } from "@/lib/divisions";
 
 type Sub = {
@@ -54,9 +54,25 @@ function tagColor(tag: string) {
   for (let i = 0; i < tag.length; i++) h = (h * 31 + tag.charCodeAt(i)) % TAG_COLORS.length;
   return TAG_COLORS[h];
 }
+type NotesData = { t?: string[]; d?: { c: string; n: string }[] };
+function parseNotesData(notes: string | null): NotesData {
+  if (!notes) return {};
+  try {
+    const parsed = JSON.parse(notes);
+    if (Array.isArray(parsed)) return { t: parsed };
+    if (parsed && typeof parsed === "object") return parsed as NotesData;
+  } catch {}
+  return {};
+}
 function parseTags(notes: string | null): string[] {
-  if (!notes) return [];
-  try { return JSON.parse(notes); } catch { return notes ? [notes] : []; }
+  return parseNotesData(notes).t ?? [];
+}
+function parseExtraDivs(notes: string | null): { c: string; n: string }[] {
+  return parseNotesData(notes).d ?? [];
+}
+function serializeNotes(tags: string[], divs: { c: string; n: string }[]): string | null {
+  if (!tags.length && !divs.length) return null;
+  return JSON.stringify({ t: tags, d: divs });
 }
 function formatPhone(p: string | null): string {
   if (!p) return "";
@@ -66,34 +82,58 @@ function formatPhone(p: string | null): string {
 }
 
 // ─── TagInput ─────────────────────────────────────────────────────────────────
-function TagInput({ tags, onChange }: { tags: string[]; onChange: (t: string[]) => void }) {
+function TagInput({ tags, onChange, suggestions = [] }: { tags: string[]; onChange: (t: string[]) => void; suggestions?: string[] }) {
   const [input, setInput] = useState("");
+  const [open, setOpen] = useState(false);
+  const filtered = suggestions.filter(
+    s => !tags.includes(s) && (input.trim() === "" || s.toLowerCase().includes(input.trim().toLowerCase()))
+  );
   function addTag(raw: string) {
     const t = raw.trim().toLowerCase();
     if (t && !tags.includes(t)) onChange([...tags, t]);
     setInput("");
+    setOpen(false);
   }
   return (
-    <div className="flex flex-wrap gap-1 p-1.5 rounded min-h-[36px]" style={{ background: "#0d1117", border: "1px solid #30373f" }}>
-      {tags.map(tag => {
-        const c = tagColor(tag);
-        return (
-          <span key={tag} className="flex items-center gap-1 text-[11px] px-1.5 py-0.5 rounded-full" style={{ background: c.bg, border: `1px solid ${c.border}`, color: c.color }}>
-            {tag}
-            <button type="button" onClick={() => onChange(tags.filter(t => t !== tag))} className="leading-none hover:opacity-70">×</button>
-          </span>
-        );
-      })}
-      <input value={input} onChange={e => setInput(e.target.value)}
-        onKeyDown={e => {
-          if (e.key === "Enter" || e.key === ",") { e.preventDefault(); addTag(input); }
-          if (e.key === "Backspace" && !input && tags.length > 0) onChange(tags.slice(0, -1));
-        }}
-        onBlur={() => { if (input.trim()) addTag(input); }}
-        placeholder={tags.length === 0 ? "Add tags…" : ""}
-        className="text-xs outline-none flex-1 min-w-[100px] bg-transparent"
-        style={{ color: "#e6edf3" }}
-      />
+    <div className="relative">
+      <div className="flex flex-wrap gap-1 p-1.5 rounded min-h-[36px]" style={{ background: "#0d1117", border: "1px solid #30373f" }}>
+        {tags.map(tag => {
+          const c = tagColor(tag);
+          return (
+            <span key={tag} className="flex items-center gap-1 text-[11px] px-1.5 py-0.5 rounded-full" style={{ background: c.bg, border: `1px solid ${c.border}`, color: c.color }}>
+              {tag}
+              <button type="button" onClick={() => onChange(tags.filter(t => t !== tag))} className="leading-none hover:opacity-70">×</button>
+            </span>
+          );
+        })}
+        <input
+          value={input}
+          onChange={e => { setInput(e.target.value); setOpen(true); }}
+          onFocus={() => setOpen(true)}
+          onKeyDown={e => {
+            if ((e.key === "Enter" || e.key === ",") && input.trim()) { e.preventDefault(); addTag(input); }
+            if (e.key === "Backspace" && !input && tags.length > 0) onChange(tags.slice(0, -1));
+            if (e.key === "Escape") setOpen(false);
+          }}
+          onBlur={() => setTimeout(() => setOpen(false), 150)}
+          placeholder={tags.length === 0 ? "Add tags…" : ""}
+          className="text-xs outline-none flex-1 min-w-[100px] bg-transparent"
+          style={{ color: "#e6edf3" }}
+        />
+      </div>
+      {open && filtered.length > 0 && (
+        <div className="absolute z-50 left-0 right-0 mt-1 rounded-lg overflow-hidden shadow-lg" style={{ background: "#161b22", border: "1px solid #30373f", maxHeight: 150, overflowY: "auto" }}>
+          {filtered.map(s => {
+            const c = tagColor(s);
+            return (
+              <button key={s} type="button" onMouseDown={e => { e.preventDefault(); addTag(s); }}
+                className="w-full flex items-center gap-2 px-3 py-1.5 hover:bg-[#1e2736] text-left">
+                <span className="text-[10px] px-1.5 py-0.5 rounded-full" style={{ background: c.bg, border: `1px solid ${c.border}`, color: c.color }}>{s}</span>
+              </button>
+            );
+          })}
+        </div>
+      )}
     </div>
   );
 }
@@ -261,10 +301,11 @@ function SubCard({
 
 // ─── Add / Edit Modal ─────────────────────────────────────────────────────────
 function SubModal({
-  title, initial, onSave, onClose,
+  title, initial, suggestions = [], onSave, onClose,
 }: {
   title: string;
-  initial: { name: string; contactName: string; address: string; email: string; phone: string; divisionCode: string; divisionName: string; tags: string[] };
+  initial: { name: string; contactName: string; address: string; email: string; phone: string; divisionCode: string; divisionName: string; tags: string[]; extraDivs: { c: string; n: string }[] };
+  suggestions?: string[];
   onSave: (data: typeof initial) => Promise<void>;
   onClose: () => void;
 }) {
@@ -316,7 +357,34 @@ function SubModal({
           </div>
           <div>
             <label className="block text-xs mb-1" style={{ color: "#8b949e" }}>Tags <span style={{ color: "#484f58" }}>(Enter or comma)</span></label>
-            <TagInput tags={form.tags} onChange={tags => setForm(f => ({ ...f, tags }))} />
+            <TagInput tags={form.tags} onChange={tags => setForm(f => ({ ...f, tags }))} suggestions={suggestions} />
+          </div>
+          <div>
+            <label className="block text-xs mb-1" style={{ color: "#8b949e" }}>Also covers <span style={{ color: "#484f58" }}>(multiple divisions)</span></label>
+            <div className="flex flex-wrap gap-1 mb-1.5">
+              {form.extraDivs.map(d => (
+                <span key={d.c} className="flex items-center gap-1 text-[11px] px-1.5 py-0.5 rounded-full" style={{ background: "#1e2736", border: "1px solid #58a6ff44", color: "#58a6ff" }}>
+                  {d.c.slice(0, 2)} – {d.n}
+                  <button type="button" onClick={() => setForm(f => ({ ...f, extraDivs: f.extraDivs.filter(x => x.c !== d.c) }))} className="leading-none hover:opacity-70">×</button>
+                </span>
+              ))}
+            </div>
+            <select
+              value=""
+              onChange={e => {
+                const div = ALL_DIVISIONS.find(d => d.code === e.target.value);
+                if (div && !form.extraDivs.find(d => d.c === div.code) && div.code !== form.divisionCode) {
+                  setForm(f => ({ ...f, extraDivs: [...f.extraDivs, { c: div.code, n: div.name }] }));
+                }
+              }}
+              style={{ ...INPUT, fontSize: 12 }}
+              className="outline-none"
+            >
+              <option value="">+ Add division…</option>
+              {ALL_DIVISIONS.filter(d => d.code !== form.divisionCode && !form.extraDivs.find(x => x.c === d.code)).map(d => (
+                <option key={d.code} value={d.code}>{d.code.slice(0, 2)} – {d.name}</option>
+              ))}
+            </select>
           </div>
         </div>
         <div className="flex gap-3 mt-5">
@@ -580,6 +648,32 @@ export default function SubsDatabase({
   // Multi-select: keyed by divisionCode → Set of sub IDs
   const [selected, setSelected] = useState<Map<string, Set<string>>>(new Map());
 
+  // ── Listen for sub-added events from BidTriage ────────────────────────────
+  useEffect(() => {
+    function onSubAdded(e: Event) {
+      const raw = (e as CustomEvent<Record<string, unknown>>).detail;
+      setSubs(prev => {
+        if (prev.find(s => s.id === raw.id)) return prev;
+        const { code, name: divName } = normalizeDivision(raw.divisionCode as string, raw.divisionName as string);
+        return [...prev, {
+          id: raw.id as string,
+          name: raw.name as string,
+          contactName: (raw.contactName as string | null) ?? null,
+          address: (raw.address as string | null) ?? null,
+          email: (raw.email as string | null) ?? null,
+          phone: (raw.phone as string | null) ?? null,
+          divisionCode: code,
+          divisionName: divName,
+          notes: (raw.notes as string | null) ?? null,
+          isFavorite: (raw.isFavorite as boolean) ?? false,
+          createdAt: (raw.createdAt as string) ?? new Date().toISOString(),
+        }];
+      });
+    }
+    window.addEventListener("sub-added", onSubAdded);
+    return () => window.removeEventListener("sub-added", onSubAdded);
+  }, []);
+
   // ── Selection helpers ──────────────────────────────────────────────────────
   function toggleSelect(divCode: string, subId: string) {
     setSelected(prev => {
@@ -623,10 +717,10 @@ export default function SubsDatabase({
 
   // ── CRUD ──────────────────────────────────────────────────────────────────
   async function handleSave(
-    form: { name: string; contactName: string; address: string; email: string; phone: string; divisionCode: string; divisionName: string; tags: string[] },
+    form: { name: string; contactName: string; address: string; email: string; phone: string; divisionCode: string; divisionName: string; tags: string[]; extraDivs: { c: string; n: string }[] },
     editId?: string
   ) {
-    const notes = form.tags.length > 0 ? JSON.stringify(form.tags) : null;
+    const notes = serializeNotes(form.tags, form.extraDivs);
     const body = { name: form.name, contactName: form.contactName || null, address: form.address || null, email: form.email || null, phone: form.phone || null, divisionCode: form.divisionCode, divisionName: form.divisionName, notes };
     if (editId) {
       const res = await fetch(`/api/${companyId}/subs/${editId}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
@@ -749,10 +843,17 @@ export default function SubsDatabase({
     : subs;
   const base = favOnly ? searched.filter(s => s.isFavorite) : searched;
   const filtered = filterDiv === "ALL" ? base : base.filter(s => s.divisionCode === filterDiv);
+  const allTags = Array.from(new Set(subs.flatMap(s => parseTags(s.notes)))).sort();
+
   const grouped = new Map<string, { code: string; name: string; subs: Sub[] }>();
   for (const sub of filtered) {
     if (!grouped.has(sub.divisionCode)) grouped.set(sub.divisionCode, { code: sub.divisionCode, name: sub.divisionName, subs: [] });
     grouped.get(sub.divisionCode)!.subs.push(sub);
+    // Also show sub under each extra division it covers
+    for (const div of parseExtraDivs(sub.notes)) {
+      if (!grouped.has(div.c)) grouped.set(div.c, { code: div.c, name: div.n, subs: [] });
+      if (!grouped.get(div.c)!.subs.find(s => s.id === sub.id)) grouped.get(div.c)!.subs.push(sub);
+    }
   }
   const groups = Array.from(grouped.values()).sort((a, b) => a.code.localeCompare(b.code));
   const usedCodes = new Set(subs.map(s => s.divisionCode));
@@ -760,8 +861,8 @@ export default function SubsDatabase({
 
   const defaultDivision = ALL_DIVISIONS[0];
   const modalInitial = modal?.mode === "edit" && modal.sub
-    ? { name: modal.sub.name, contactName: modal.sub.contactName ?? "", address: modal.sub.address ?? "", email: modal.sub.email ?? "", phone: modal.sub.phone ?? "", divisionCode: modal.sub.divisionCode, divisionName: modal.sub.divisionName, tags: parseTags(modal.sub.notes) }
-    : { name: "", contactName: "", address: "", email: "", phone: "", divisionCode: modal?.prefillDiv?.code ?? defaultDivision.code, divisionName: modal?.prefillDiv?.name ?? defaultDivision.name, tags: [] };
+    ? { name: modal.sub.name, contactName: modal.sub.contactName ?? "", address: modal.sub.address ?? "", email: modal.sub.email ?? "", phone: modal.sub.phone ?? "", divisionCode: modal.sub.divisionCode, divisionName: modal.sub.divisionName, tags: parseTags(modal.sub.notes), extraDivs: parseExtraDivs(modal.sub.notes) }
+    : { name: "", contactName: "", address: "", email: "", phone: "", divisionCode: modal?.prefillDiv?.code ?? defaultDivision.code, divisionName: modal?.prefillDiv?.name ?? defaultDivision.name, tags: [], extraDivs: [] };
 
   return (
     <div>
@@ -952,6 +1053,7 @@ export default function SubsDatabase({
         <SubModal
           title={modal.mode === "edit" ? "Edit Sub" : "Add Sub"}
           initial={modalInitial}
+          suggestions={allTags}
           onSave={form => handleSave(form, modal.sub?.id)}
           onClose={() => setModal(null)}
         />

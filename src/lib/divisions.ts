@@ -18,7 +18,8 @@ export const DIVISIONS = [
   { code: "23 00 00", name: "Heating, Ventilating, and Air Conditioning" },
   { code: "26 00 00", name: "Electrical" },
   { code: "27 00 00", name: "Communications" },
-  { code: "31 00 00", name: "Pavers" },
+  { code: "28 00 00", name: "Electronic Safety and Security" },
+  { code: "31 00 00", name: "Earthwork" },
   { code: "32 00 00", name: "Landscaping" },
   { code: "35 00 00", name: "Waterway and Marine Construction" },
 ] as const;

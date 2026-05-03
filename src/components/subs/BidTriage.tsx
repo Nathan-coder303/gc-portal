@@ -280,7 +280,7 @@ export default function BidTriage({
     setSavingSub(true);
     try {
       const div = ALL_DIVISIONS.find(d => d.code === subForm.divisionCode);
-      await fetch(`/api/${companyId}/subs`, {
+      const res = await fetch(`/api/${companyId}/subs`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -296,6 +296,10 @@ export default function BidTriage({
           source: "bid",
         }),
       });
+      if (res.ok) {
+        const created = await res.json();
+        window.dispatchEvent(new CustomEvent("sub-added", { detail: created }));
+      }
       setAddSubModal(null);
     } finally {
       setSavingSub(false);
@@ -318,6 +322,12 @@ export default function BidTriage({
 
   return (
     <>
+      <div className="flex items-center gap-2 mb-3">
+        <span className="text-xs font-bold px-2 py-0.5 rounded-full" style={{ background: "#C9A84C22", color: "#C9A84C", border: "1px solid #C9A84C44" }}>
+          {bids.length}
+        </span>
+        <span className="text-xs" style={{ color: "#484f58" }}>bids remaining</span>
+      </div>
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
         {bids.map(bid => {
           const divCode = selectedDivision[bid.id] ?? bid.divisionCode;

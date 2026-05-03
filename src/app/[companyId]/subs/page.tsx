@@ -12,7 +12,7 @@ export default async function SubsDatabasePage({ params, searchParams }: { param
   if (!session) redirect("/login");
   if (session.user.companyId !== params.companyId) redirect(`/${session.user.companyId}/subs`);
 
-  const [subs, clients, leads, projects, triageCount] = await Promise.all([
+  const [subs, clients, leads, projects] = await Promise.all([
     prisma.subContractor.findMany({
       where: { companyId: params.companyId },
       orderBy: [{ divisionCode: "asc" }, { name: "asc" }],
@@ -32,9 +32,6 @@ export default async function SubsDatabasePage({ params, searchParams }: { param
       where: { companyId: params.companyId },
       orderBy: { name: "asc" },
       select: { id: true, name: true },
-    }),
-    prisma.subBid.count({
-      where: { companyId: params.companyId, status: "TRIAGE" },
     }),
   ]);
 
@@ -67,14 +64,6 @@ export default async function SubsDatabasePage({ params, searchParams }: { param
           <h2 className="text-sm font-bold uppercase tracking-widest" style={{ color: "#C9A84C" }}>
             Bid Inbox
           </h2>
-          {triageCount > 0 && (
-            <span
-              className="text-xs font-bold px-2 py-0.5 rounded-full"
-              style={{ background: "#C9A84C22", color: "#C9A84C", border: "1px solid #C9A84C44" }}
-            >
-              {triageCount}
-            </span>
-          )}
         </div>
         <BidTriage
           companyId={params.companyId}
