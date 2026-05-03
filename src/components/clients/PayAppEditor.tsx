@@ -68,27 +68,6 @@ const EMPTY_HEADER: Header = {
   certifiedBy: "", certState: "Florida", certCounty: "", notaryName: "",
 };
 
-// ─── Inline text input ────────────────────────────────────────────────────────
-function Field({ value, onChange, placeholder, multiline, className, style }: {
-  value: string; onChange: (v: string) => void; placeholder?: string;
-  multiline?: boolean; className?: string; style?: React.CSSProperties;
-}) {
-  const base: React.CSSProperties = {
-    background: "transparent", border: "none", borderBottom: `1px solid ${BORDER}`,
-    color: TEXT, fontSize: 12, padding: "2px 0", width: "100%", outline: "none",
-    fontFamily: "inherit", ...style,
-  };
-  if (multiline) return (
-    <textarea value={value} onChange={e => onChange(e.target.value)} placeholder={placeholder}
-      rows={2} className={className}
-      style={{ ...base, resize: "none", lineHeight: 1.4 }} />
-  );
-  return (
-    <input value={value} onChange={e => onChange(e.target.value)} placeholder={placeholder}
-      className={className} style={base} />
-  );
-}
-
 // ─── Currency input ───────────────────────────────────────────────────────────
 function CurrencyField({ value, onChange, bold, readOnly, style }: {
   value: number; onChange?: (v: number) => void; bold?: boolean;
