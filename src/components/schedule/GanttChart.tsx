@@ -6,7 +6,6 @@ import { computeCriticalPath, parsePredLink, type GanttTask, type LinkType } fro
 import {
   rescheduleTask,
   updateTaskPredecessorLink,
-  removeTaskPredecessorLink,
 } from "@/app/[companyId]/[projectId]/schedule/actions";
 
 const CELL_WIDTH = 28;
