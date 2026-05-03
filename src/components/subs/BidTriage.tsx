@@ -20,7 +20,7 @@ function getPdfHref(fileUrl: string, companyId: string): string {
   return fileUrl;
 }
 
-const SOURCE_OPTIONS = ["1240", "Ingraham", "Gmail", "PlanHub", "Manual"];
+const SOURCE_OPTIONS = ["Excel 1240", "Excel Ingraham"];
 
 type TriageBid = {
   id: string;
@@ -62,22 +62,18 @@ type SubInfo = {
 };
 
 function getDerivedSource(bid: TriageBid): { label: string; color: string; title: string } {
-  if (bid.sourceLabel) {
-    const color = bid.sourceLabel === "1240" ? "#f97316"
-      : bid.sourceLabel === "Ingraham" ? "#a855f7"
-      : bid.sourceLabel === "PlanHub" ? "#8b5cf6"
-      : bid.sourceLabel === "Gmail" ? "#3b82f6"
-      : "#8b949e";
-    return { label: bid.sourceLabel, color, title: bid.sourceLabel };
-  }
   const src = bid.emailSource ?? "";
   const url = bid.fileUrl ?? "";
   const hasContact = !!parseContactNotes(bid.notes);
+
   if (/planhub/i.test(src)) return { label: "🏗 PlanHub", color: "#8b5cf6", title: src };
   if (url.startsWith("gmail:") || /gmail|google/i.test(src))
     return { label: "📧 Gmail", color: "#3b82f6", title: src || "Gmail sync" };
   if (src) return { label: "📧 Email", color: "#3b82f6", title: src };
-  if (hasContact) return { label: "📊 Excel", color: "#22c55e", title: "Imported from spreadsheet" };
+  if (hasContact) {
+    if (bid.sourceLabel) return { label: `📊 ${bid.sourceLabel}`, color: "#22c55e", title: bid.sourceLabel };
+    return { label: "📊 Excel", color: "#22c55e", title: "Imported from spreadsheet" };
+  }
   return { label: "Manual", color: "#8b949e", title: "Added manually" };
 }
 
@@ -362,21 +358,30 @@ export default function BidTriage({
                     return bid.notes ? <div className="text-xs mt-1" style={{ color: "#8b949e" }}>{bid.notes}</div> : null;
                   })()}
                   <div className="text-xs mt-1.5 flex items-center gap-2 flex-wrap" style={{ color: "#484f58" }}>
-                    {/* Source selector */}
+                    {/* Source badge / selector */}
                     {(() => {
                       const s = getDerivedSource(bid);
+                      const isExcel = !!parseContactNotes(bid.notes) && !bid.emailSource && !(bid.fileUrl ?? "").startsWith("gmail:");
+                      if (isExcel) {
+                        return (
+                          <select
+                            value={bid.sourceLabel ?? ""}
+                            onChange={e => saveSourceLabel(bid.id, e.target.value)}
+                            disabled={savingSource === bid.id}
+                            title="Pick Excel source"
+                            className="rounded px-1.5 py-0.5 text-[10px] font-bold"
+                            style={{ background: s.color + "22", color: s.color, border: `1px solid ${s.color}44`, cursor: "pointer", outline: "none" }}
+                          >
+                            <option value="">{bid.sourceLabel ? "📊 " + bid.sourceLabel : "📊 Excel…"}</option>
+                            {SOURCE_OPTIONS.map(o => <option key={o} value={o}>{o}</option>)}
+                          </select>
+                        );
+                      }
                       return (
-                        <select
-                          value={bid.sourceLabel ?? ""}
-                          onChange={e => saveSourceLabel(bid.id, e.target.value)}
-                          disabled={savingSource === bid.id}
-                          title="Source"
-                          className="rounded px-1.5 py-0.5 text-[10px] font-bold"
-                          style={{ background: s.color + "22", color: s.color, border: `1px solid ${s.color}44`, cursor: "pointer", outline: "none" }}
-                        >
-                          <option value="">{bid.sourceLabel ? "— clear —" : "Source…"}</option>
-                          {SOURCE_OPTIONS.map(o => <option key={o} value={o}>{o}</option>)}
-                        </select>
+                        <span title={s.title} className="px-1.5 py-0.5 rounded font-bold text-[10px]"
+                          style={{ background: s.color + "22", color: s.color, border: `1px solid ${s.color}44` }}>
+                          {s.label}
+                        </span>
                       );
                     })()}
                     <span>{new Date(bid.createdAt).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}</span>
