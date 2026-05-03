@@ -382,6 +382,62 @@ export async function restoreTask(taskId: string) {
   return { success: true };
 }
 
+export async function updateTaskPredecessorLink(
+  successorTaskId: string,
+  predecessorId: string,
+  type: "FS" | "SS" | "FF" | "SF"
+) {
+  const session = await auth();
+  if (!session) throw new Error("Unauthorized");
+  requirePermission(session, "task:edit");
+
+  const task = await prisma.task.findUnique({
+    where: { id: successorTaskId },
+    select: { predecessorIds: true, projectId: true },
+  });
+  if (!task) throw new Error("Task not found");
+
+  // Remove any existing link to this predecessor, then add new one
+  const filtered = task.predecessorIds.filter((enc) => {
+    const id = enc.includes("|") ? enc.slice(0, enc.lastIndexOf("|")) : enc;
+    return id !== predecessorId;
+  });
+  const newPredecessorIds = [...filtered, `${predecessorId}|${type}`];
+
+  await prisma.task.update({
+    where: { id: successorTaskId },
+    data: { predecessorIds: newPredecessorIds, updatedBy: session.user.id },
+  });
+
+  revalidatePath(`/${session.user.companyId}/${task.projectId}/schedule`);
+  return { success: true };
+}
+
+export async function removeTaskPredecessorLink(successorTaskId: string, predecessorId: string) {
+  const session = await auth();
+  if (!session) throw new Error("Unauthorized");
+  requirePermission(session, "task:edit");
+
+  const task = await prisma.task.findUnique({
+    where: { id: successorTaskId },
+    select: { predecessorIds: true, projectId: true },
+  });
+  if (!task) throw new Error("Task not found");
+
+  const newPredecessorIds = task.predecessorIds.filter((enc) => {
+    const id = enc.includes("|") ? enc.slice(0, enc.lastIndexOf("|")) : enc;
+    return id !== predecessorId;
+  });
+
+  await prisma.task.update({
+    where: { id: successorTaskId },
+    data: { predecessorIds: newPredecessorIds, updatedBy: session.user.id },
+  });
+
+  revalidatePath(`/${session.user.companyId}/${task.projectId}/schedule`);
+  return { success: true };
+}
+
 export async function exportScheduleCsv(projectId: string) {
   const tasks = await prisma.task.findMany({
     where: { projectId },

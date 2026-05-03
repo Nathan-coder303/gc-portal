@@ -14,22 +14,34 @@ export type GanttTask = {
   assignee: string | null;
 };
 
+export type LinkType = "FS" | "SS" | "FF" | "SF";
+
+// Encoded as "predId|TYPE" (e.g. "cm123|FS"). Legacy bare IDs default to FS.
+export function parsePredLink(encoded: string): { id: string; type: LinkType } {
+  if (encoded.includes("|")) {
+    const sep = encoded.lastIndexOf("|");
+    const id = encoded.slice(0, sep);
+    const raw = encoded.slice(sep + 1);
+    if (raw === "SS" || raw === "FF" || raw === "SF") return { id, type: raw };
+    return { id, type: "FS" };
+  }
+  return { id: encoded, type: "FS" };
+}
+
 export function computeCriticalPath(tasks: GanttTask[]): Set<string> {
-  // Find the task(s) with the latest end date - simple critical path by latest end
   if (tasks.length === 0) return new Set();
 
   const idToTask = new Map(tasks.map((t) => [t.id, t]));
   const maxEnd = tasks.reduce((max, t) => (t.endDate > max ? t.endDate : max), tasks[0].endDate);
   const critical = new Set<string>();
 
-  // Backtrack from latest end task
   function markCritical(taskId: string) {
     if (critical.has(taskId)) return;
     critical.add(taskId);
     const task = idToTask.get(taskId);
     if (!task) return;
-    for (const predId of task.predecessorIds) {
-      markCritical(predId);
+    for (const encoded of task.predecessorIds) {
+      markCritical(parsePredLink(encoded).id);
     }
   }
 
