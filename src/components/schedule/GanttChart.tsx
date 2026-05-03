@@ -85,7 +85,13 @@ export default function GanttChart({
       arr.push(t);
       map.set(t.phase, arr);
     }
-    return map;
+    return new Map<string, GanttTask[]>(
+      Array.from(map.entries()).sort(([, aT], [, bT]) => {
+        const aMin = Math.min(...aT.map((t: GanttTask) => t.startDate.getTime()));
+        const bMin = Math.min(...bT.map((t: GanttTask) => t.startDate.getTime()));
+        return aMin - bMin;
+      })
+    );
   }, [tasks]);
 
   const projectEnd = useMemo(() => {

@@ -332,6 +332,14 @@ export default function TaskTable({
     arr.push(t);
     grouped.set(t.phase, arr);
   }
+  // Rebuild in phase start-date order
+  const _sortedPhaseEntries = Array.from(grouped.entries()).sort(([, aT], [, bT]) => {
+    const aMin = Math.min(...aT.map((t) => t.startDate.getTime()));
+    const bMin = Math.min(...bT.map((t) => t.startDate.getTime()));
+    return aMin - bMin;
+  });
+  grouped.clear();
+  for (const [k, v] of _sortedPhaseEntries) grouped.set(k, v);
 
   return (
     <div>
