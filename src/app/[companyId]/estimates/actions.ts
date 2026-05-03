@@ -277,11 +277,27 @@ export async function upsertTemplateDivision(
     await prisma.estimateTemplateDivision.update({
       where: { id: data.id },
       data: {
-        csiCode: data.csiCode ?? null,
+        csiCode: data.csiCode,
         name: data.name,
         ...(data.manualTotal !== undefined && { manualTotal: data.manualTotal }),
       },
     });
+    // Zero out all line items when a lump-sum override is applied
+    if (data.manualTotal != null) {
+      await prisma.estimateTemplateItem.updateMany({
+        where: { divisionId: data.id, archivedAt: null },
+        data: { defaultUnitCost: 0 },
+      });
+      await prisma.estimateTemplateGroup.findMany({
+        where: { divisionId: data.id, archivedAt: null },
+        select: { id: true },
+      }).then(groups =>
+        prisma.estimateTemplateItem.updateMany({
+          where: { groupId: { in: groups.map(g => g.id) }, archivedAt: null },
+          data: { defaultUnitCost: 0 },
+        })
+      );
+    }
     await touchTemplate(templateId, session.user.id);
     revalidatePath(`/${session.user.companyId}/estimates`);
     return { success: true, id: data.id };

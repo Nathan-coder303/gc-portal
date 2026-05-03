@@ -283,11 +283,27 @@ export async function upsertEstimateDivision(
     await prisma.projectEstimateDivision.update({
       where: { id: data.id },
       data: {
-        csiCode: data.csiCode ?? null,
+        csiCode: data.csiCode,
         name: data.name,
         ...(data.manualTotal !== undefined && { manualTotal: data.manualTotal }),
       },
     });
+    // Zero out all line items when a lump-sum override is applied
+    if (data.manualTotal != null) {
+      await prisma.projectEstimateItem.updateMany({
+        where: { divisionId: data.id, archivedAt: null },
+        data: { unitCost: 0 },
+      });
+      await prisma.projectEstimateGroup.findMany({
+        where: { divisionId: data.id, archivedAt: null },
+        select: { id: true },
+      }).then(groups =>
+        prisma.projectEstimateItem.updateMany({
+          where: { groupId: { in: groups.map(g => g.id) }, archivedAt: null },
+          data: { unitCost: 0 },
+        })
+      );
+    }
     revalidatePath(`/${session.user.companyId}`);
     return { success: true, id: data.id };
   }
