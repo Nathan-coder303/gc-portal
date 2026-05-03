@@ -1064,7 +1064,7 @@ function DivisionSummaryPage({ template, client, divisions, gcFeePercent }: Pick
               ) : null}
               {template.durationMonths ? (
                 <View style={{ alignItems: "center" }}>
-                  <Text style={{ fontSize: 22, fontFamily: "Helvetica-Bold", color: DARK }}>{Number(template.durationMonths).toLocaleString("en-US", { maximumFractionDigits: 1 })} MO</Text>
+                  <Text style={{ fontSize: 22, fontFamily: "Helvetica-Bold", color: DARK }}>{Number(template.durationMonths).toLocaleString("en-US", { maximumFractionDigits: 1 })} MONTHS</Text>
                   <Text style={{ fontSize: 8, color: "#94a3b8", marginTop: 2 }}>EST. DURATION</Text>
                 </View>
               ) : null}
