@@ -66,7 +66,19 @@ function getDerivedSource(bid: TriageBid): { label: string; color: string; title
   const url = bid.fileUrl ?? "";
   const hasContact = !!parseContactNotes(bid.notes);
 
-  if (/planhub/i.test(src)) return { label: "🏗 PlanHub", color: "#8b5cf6", title: src };
+  // PlanHub: "NEW Bid Proposal - Ingraham: Coral Gables, Florida" → extract project name
+  const planHubMatch = src.match(/^NEW Bid Proposal\s*[-–]\s*([^:]+):/i);
+  if (planHubMatch) {
+    const project = planHubMatch[1].trim();
+    return { label: `🏗 ${project}`, color: "#8b5cf6", title: src };
+  }
+
+  // Follow-up emails: "Quick Follow-up: Our bid on "Ingraham"" → extract project
+  const followUpMatch = src.match(/our bid on [""]([^""]+)[""]/i);
+  if (followUpMatch) {
+    return { label: `🏗 ${followUpMatch[1].trim()}`, color: "#8b5cf6", title: src };
+  }
+
   if (url.startsWith("gmail:") || /gmail|google/i.test(src))
     return { label: "📧 Gmail", color: "#3b82f6", title: src || "Gmail sync" };
   if (src) return { label: "📧 Email", color: "#3b82f6", title: src };
