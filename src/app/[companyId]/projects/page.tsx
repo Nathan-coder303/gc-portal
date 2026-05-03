@@ -2,8 +2,7 @@ import { prisma } from "@/lib/prisma";
 import { auth } from "@/lib/auth";
 import { redirect } from "next/navigation";
 import { can } from "@/lib/auth/permissions";
-import Link from "next/link";
-import ProjectCard from "./ProjectCard";
+import ProjectsGrid from "./ProjectsGrid";
 
 export default async function ProjectsPage({
   params,
@@ -29,7 +28,7 @@ export default async function ProjectsPage({
   const [projects, partnerUsers] = await Promise.all([
     prisma.project.findMany({
       where: projectFilter,
-      orderBy: { createdAt: "desc" },
+      orderBy: { sortOrder: "asc" },
       include: {
         userAccess: {
           include: { user: { select: { id: true, name: true, email: true } } },
@@ -54,44 +53,28 @@ export default async function ProjectsPage({
         </p>
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 md:gap-6">
-        {projects.map((p) => (
-          <ProjectCard
-            key={p.id}
-            project={{
-              id: p.id,
-              name: p.name,
-              address: p.address,
-              city: p.city,
-              state: p.state,
-              zip: p.zip,
-              startDate: p.startDate,
-              budget: Number(p.budget),
-              status: p.status,
-              partners: p.userAccess.map(a => ({
-                id: a.user.id,
-                name: a.user.name,
-                email: a.user.email,
-              })),
-            }}
-            companyId={params.companyId}
-            isAdmin={isAdmin}
-            isPartner={isPartner}
-            partnerUsers={partnerUsers}
-          />
-        ))}
-
-        {isAdmin && (
-          <Link
-            href={`/${params.companyId}/projects/new`}
-            className="flex flex-col items-center justify-center rounded-2xl py-10 px-10 text-center transition-all hover:border-[#C9A84C88]"
-            style={{ background: "#0d1117", border: "1px dashed #C9A84C66", minHeight: "220px" }}
-          >
-            <div className="text-6xl font-bold leading-none mb-4" style={{ color: "#C9A84C55" }}>+</div>
-            <div className="text-xl font-semibold" style={{ color: "#C9A84C88" }}>New Project</div>
-          </Link>
-        )}
-      </div>
+      <ProjectsGrid
+        initialProjects={projects.map((p) => ({
+          id: p.id,
+          name: p.name,
+          address: p.address,
+          city: p.city,
+          state: p.state,
+          zip: p.zip,
+          startDate: p.startDate,
+          budget: Number(p.budget),
+          status: p.status,
+          partners: p.userAccess.map(a => ({
+            id: a.user.id,
+            name: a.user.name,
+            email: a.user.email,
+          })),
+        }))}
+        companyId={params.companyId}
+        isAdmin={isAdmin}
+        isPartner={isPartner}
+        partnerUsers={partnerUsers}
+      />
     </div>
   );
 }

@@ -412,6 +412,7 @@ model Project {
   userAccess          UserProjectAccess[]
   llcBeginningBalance Decimal             @default(0) @db.Decimal(14, 2)
   llcName             String?
+  sortOrder           Int                 @default(0)
   partnerAccountEntries PartnerAccountEntry[]
   partners              Partner[]
   subBids               SubBid[]
