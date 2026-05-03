@@ -36,7 +36,7 @@ type DragState = {
   originalStart: Date;
   originalEnd: Date;
   startDayOffset: number;
-  mouseStartX: number;
+  pointerStartX: number;
   currentDeltaDays: number;
 };
 
@@ -152,7 +152,7 @@ export default function GanttChart({
   }
   barPosRef.current = barPos;
 
-  // Svg coordinate helpers
+  // SVG coordinate helpers — work for both mouse and touch via PointerEvent
   const getSvgX = useCallback((clientX: number) => {
     if (!svgRef.current) return 0;
     return clientX - svgRef.current.getBoundingClientRect().left;
@@ -163,8 +163,8 @@ export default function GanttChart({
     return clientY - svgRef.current.getBoundingClientRect().top;
   }, []);
 
-  // Bar drag
-  const handleBarMouseDown = useCallback((e: React.MouseEvent, task: GanttTask) => {
+  // Bar drag — pointer events work for mouse and touch
+  const handleBarPointerDown = useCallback((e: React.PointerEvent, task: GanttTask) => {
     if (!canEdit || task.isMilestone || linkDrag) return;
     e.preventDefault();
     e.stopPropagation();
@@ -173,14 +173,14 @@ export default function GanttChart({
       originalStart: task.startDate,
       originalEnd: task.endDate,
       startDayOffset: differenceInDays(task.startDate, projectStart),
-      mouseStartX: getSvgX(e.clientX),
+      pointerStartX: getSvgX(e.clientX),
       currentDeltaDays: 0,
     });
   }, [canEdit, getSvgX, projectStart, linkDrag]);
 
   // Circle drag
-  const handleCircleMouseDown = useCallback((
-    e: React.MouseEvent,
+  const handleCirclePointerDown = useCallback((
+    e: React.PointerEvent,
     task: GanttTask,
     end: "start" | "finish",
     cx: number,
@@ -192,12 +192,12 @@ export default function GanttChart({
     setLinkDrag({ sourceTaskId: task.id, sourceEnd: end, sourceX: cx, sourceY: cy, currentX: cx, currentY: cy, snapTarget: null });
   }, [canEdit]);
 
-  const handleSvgMouseMove = useCallback((e: React.MouseEvent) => {
+  const handleSvgPointerMove = useCallback((e: React.PointerEvent) => {
     if (!drag && !linkDrag) return;
     const svgX = getSvgX(e.clientX);
 
     if (drag) {
-      const deltaDays = Math.round((svgX - drag.mouseStartX) / CELL_WIDTH);
+      const deltaDays = Math.round((svgX - drag.pointerStartX) / CELL_WIDTH);
       setDrag(prev => prev ? { ...prev, currentDeltaDays: deltaDays } : null);
       return;
     }
@@ -220,7 +220,7 @@ export default function GanttChart({
     }
   }, [drag, linkDrag, getSvgX, getSvgY]);
 
-  const handleSvgMouseUp = useCallback(async () => {
+  const handleSvgPointerUp = useCallback(async () => {
     // Bar drag
     if (drag) {
       const { taskId, originalStart, originalEnd, currentDeltaDays } = drag;
@@ -244,6 +244,11 @@ export default function GanttChart({
     }
   }, [drag, linkDrag]);
 
+  const handleSvgPointerCancel = useCallback(() => {
+    setDrag(null);
+    setLinkDrag(null);
+  }, []);
+
   const getBarColor = (task: GanttTask, isCritical: boolean) => {
     if (isCritical) return "#ef4444";
     if (task.status === "DONE") return "#22c55e";
@@ -252,6 +257,7 @@ export default function GanttChart({
     return "#C9A84C";
   };
 
+  const isDraggingAny = drag !== null || linkDrag !== null;
   const svgCursor = linkDrag ? "crosshair" : drag ? "grabbing" : "default";
 
   return (
@@ -260,10 +266,14 @@ export default function GanttChart({
         ref={svgRef}
         width={svgWidth}
         height={svgHeight}
-        onMouseMove={handleSvgMouseMove}
-        onMouseUp={handleSvgMouseUp}
-        onMouseLeave={handleSvgMouseUp}
-        style={{ display: "block" }}
+        onPointerMove={handleSvgPointerMove}
+        onPointerUp={handleSvgPointerUp}
+        onPointerLeave={handleSvgPointerUp}
+        onPointerCancel={handleSvgPointerCancel}
+        style={{
+          display: "block",
+          touchAction: isDraggingAny ? "none" : "pan-x pan-y",
+        }}
       >
         {/* Arrow marker defs */}
         <defs>
@@ -353,9 +363,9 @@ export default function GanttChart({
           const width = Math.max(task.durationDays * CELL_WIDTH, CELL_WIDTH);
           const barColor = getBarColor(task, isCritical);
           const isEven = row.rowNum % 2 === 0;
-          const isHovered = hoveredTaskId === task.id;
           const isLinkSource = linkDrag?.sourceTaskId === task.id;
-          const circleOpacity = isLinkSource ? 0 : (isHovered || linkDrag ? 0.85 : 0.2);
+          // Circles: visible at 0.5 always (mobile-friendly), brighter on hover or during any drag
+          const circleOpacity = isLinkSource ? 0 : (hoveredTaskId === task.id || linkDrag ? 0.9 : 0.5);
           const circleY = y + ROW_HEIGHT / 2;
           const isStartSnap = linkDrag?.snapTarget?.taskId === task.id && linkDrag.snapTarget.end === "start";
           const isFinishSnap = linkDrag?.snapTarget?.taskId === task.id && linkDrag.snapTarget.end === "finish";
@@ -395,7 +405,7 @@ export default function GanttChart({
                     x={barX} y={y + 8} width={width} height={ROW_HEIGHT - 16} rx={4}
                     fill={barColor} opacity={isSaving ? 0.4 : isDragging ? 0.9 : 0.75}
                     style={{ cursor: canEdit && !linkDrag ? "grab" : "default" }}
-                    onMouseDown={(e) => handleBarMouseDown(e, task)}
+                    onPointerDown={(e) => handleBarPointerDown(e, task)}
                   />
                   {task.percentComplete > 0 && (
                     <rect x={barX} y={y + 8} width={(width * task.percentComplete) / 100} height={ROW_HEIGHT - 16} rx={4} fill={barColor} opacity={0.95} />
@@ -415,7 +425,7 @@ export default function GanttChart({
                     stroke={isStartSnap ? "#22c55e" : "#8b949e"}
                     strokeWidth={1.5} opacity={isStartSnap ? 1 : circleOpacity}
                     style={{ cursor: "crosshair" }}
-                    onMouseDown={(e) => handleCircleMouseDown(e, task, "start", barX, circleY)}
+                    onPointerDown={(e) => handleCirclePointerDown(e, task, "start", barX, circleY)}
                   />
                   <circle
                     cx={barX + width} cy={circleY} r={CIRCLE_R}
@@ -423,7 +433,7 @@ export default function GanttChart({
                     stroke={isFinishSnap ? "#22c55e" : "#8b949e"}
                     strokeWidth={1.5} opacity={isFinishSnap ? 1 : circleOpacity}
                     style={{ cursor: "crosshair" }}
-                    onMouseDown={(e) => handleCircleMouseDown(e, task, "finish", barX + width, circleY)}
+                    onPointerDown={(e) => handleCirclePointerDown(e, task, "finish", barX + width, circleY)}
                   />
                 </g>
               )}
