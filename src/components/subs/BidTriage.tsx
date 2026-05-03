@@ -370,25 +370,9 @@ export default function BidTriage({
                     return bid.notes ? <div className="text-xs mt-1" style={{ color: "#8b949e" }}>{bid.notes}</div> : null;
                   })()}
                   <div className="text-xs mt-1.5 flex items-center gap-2 flex-wrap" style={{ color: "#484f58" }}>
-                    {/* Source badge / selector */}
+                    {/* Source badge */}
                     {(() => {
                       const s = getDerivedSource(bid);
-                      const isExcel = !!parseContactNotes(bid.notes) && !bid.emailSource && !(bid.fileUrl ?? "").startsWith("gmail:");
-                      if (isExcel) {
-                        return (
-                          <select
-                            value={bid.sourceLabel ?? ""}
-                            onChange={e => saveSourceLabel(bid.id, e.target.value)}
-                            disabled={savingSource === bid.id}
-                            title="Pick Excel source"
-                            className="rounded px-1.5 py-0.5 text-[10px] font-bold"
-                            style={{ background: s.color + "22", color: s.color, border: `1px solid ${s.color}44`, cursor: "pointer", outline: "none" }}
-                          >
-                            <option value="">{bid.sourceLabel ? "📊 " + bid.sourceLabel : "📊 Excel…"}</option>
-                            {SOURCE_OPTIONS.map(o => <option key={o} value={o}>{o}</option>)}
-                          </select>
-                        );
-                      }
                       return (
                         <span title={s.title} className="px-1.5 py-0.5 rounded font-bold text-[10px]"
                           style={{ background: s.color + "22", color: s.color, border: `1px solid ${s.color}44` }}>
