@@ -110,15 +110,6 @@ function EstimateCard({
     setStep(null);
   }
 
-  function handlePdfPreview(opts: PdfOptions) {
-    const url = buildPdfUrl(opts, true);
-    const newWin = window.open(url, "_blank");
-    if (!newWin || newWin.closed) {
-      // Popup blocked — open inline in current tab (browser PDF viewer, back to return)
-      window.location.href = url;
-    }
-    setStep(null);
-  }
 
   function handleSendEmail(opts: PdfOptions) {
     setPdfOpts(opts);
@@ -264,7 +255,7 @@ function EstimateCard({
           companyId={companyId}
           clientId={clientId}
           onConfirm={handlePdfConfirm}
-          onPreview={handlePdfPreview}
+          previewUrlBuilder={(opts) => buildPdfUrl(opts, true)}
           onSendEmail={handleSendEmail}
           onClose={() => setStep(null)}
         />
