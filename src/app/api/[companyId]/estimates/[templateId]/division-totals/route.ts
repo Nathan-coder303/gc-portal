@@ -28,8 +28,17 @@ export async function GET(
       name: true,
       manualTotal: true,
       items: {
-        where: { archivedAt: null },
+        where: { archivedAt: null, groupId: null },
         select: { defaultQty: true, defaultUnitCost: true, defaultMarkupPct: true },
+      },
+      groups: {
+        where: { archivedAt: null },
+        select: {
+          items: {
+            where: { archivedAt: null },
+            select: { defaultQty: true, defaultUnitCost: true, defaultMarkupPct: true },
+          },
+        },
       },
     },
   });
@@ -39,7 +48,7 @@ export async function GET(
       name: d.name,
       total: d.manualTotal !== null && d.manualTotal !== undefined
         ? Number(d.manualTotal)
-        : d.items.reduce((s, i) => s + itemTotal(i), 0),
+        : [...d.items, ...d.groups.flatMap(g => g.items)].reduce((s, i) => s + itemTotal(i), 0),
     }))
   );
 }

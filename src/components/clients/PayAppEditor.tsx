@@ -182,23 +182,24 @@ export default function PayAppEditor({
     try {
       const res = await fetch(`/api/${companyId}/estimates/${syncEstimateId}/division-totals`);
       const divTotals: { name: string; total: number }[] = await res.json();
+      if (!Array.isArray(divTotals) || divTotals.length === 0) return;
+
+      // Replace all lines with estimate divisions; preserve existing invoice amounts when names match
       setLines(prev => {
-        const updated = prev.map(line => {
-          const match = divTotals.find(d => d.name.toLowerCase() === line.description.toLowerCase());
-          return match ? { ...line, scheduledValue: match.total } : line;
-        });
-        // Add estimate divisions not yet in lines
-        const existingDescs = new Set(prev.map(l => l.description.toLowerCase()));
-        const newLines: Line[] = divTotals
-          .filter(d => !existingDescs.has(d.name.toLowerCase()))
-          .map((d, i) => ({
-            sortOrder: prev.length + i,
-            itemNumber: `Div ${prev.length + i + 1}`,
+        const byDesc = new Map(prev.map(l => [l.description.toLowerCase(), l]));
+        return divTotals.map((d, i) => {
+          const existing = byDesc.get(d.name.toLowerCase());
+          return {
+            sortOrder: i,
+            itemNumber: `Div ${i + 1}`,
             description: d.name,
             scheduledValue: d.total,
-            fromPrevious: 0, thisInvoice: 0, retainageThis: 0, retainageTotal: 0,
-          }));
-        return [...updated, ...newLines];
+            fromPrevious: existing?.fromPrevious ?? 0,
+            thisInvoice: existing?.thisInvoice ?? 0,
+            retainageThis: existing?.retainageThis ?? 0,
+            retainageTotal: existing?.retainageTotal ?? 0,
+          };
+        });
       });
       scheduleSave();
     } finally { setSyncing(false); }
