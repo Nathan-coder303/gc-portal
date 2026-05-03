@@ -3,6 +3,24 @@ import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { put } from "@vercel/blob";
 import { FollowUpCategory } from "@prisma/client";
+import { createCalendarEvent } from "@/lib/google/calendar";
+
+function parseApptText(text: string) {
+  const clean = text.replace(/^📅 Appointment\s*[–-]\s*/, "");
+  const newlineIdx = clean.indexOf("\n");
+  const mainLine = newlineIdx >= 0 ? clean.slice(0, newlineIdx) : clean;
+  const notes = newlineIdx >= 0 ? clean.slice(newlineIdx + 1).trim() : "";
+  const parts = mainLine.split(" · ");
+  const name = parts[0]?.trim() ?? "";
+  const time = parts[1]?.trim() ?? "";
+  let address = "";
+  if (parts.length >= 4) address = parts.slice(3).join(" · ").trim();
+  else if (parts.length === 3) {
+    const p2 = parts[2]?.trim() ?? "";
+    if (!/^[\d\s\-()+.]{7,}$/.test(p2)) address = p2;
+  }
+  return { name, time, address, notes };
+}
 
 export const runtime = "nodejs";
 
@@ -86,7 +104,7 @@ export async function POST(
     validLeadId = lead ? leadId : null;
   }
 
-  const item = await prisma.followUp.create({
+  let item = await prisma.followUp.create({
     data: {
       companyId: params.companyId,
       category: category as FollowUpCategory,
@@ -104,6 +122,28 @@ export async function POST(
       lead: { select: { id: true, name: true } },
     },
   });
+
+  // Create Google Calendar event for appointments
+  if (text.startsWith("📅 Appointment") && dueDate) {
+    const { name, time, address, notes: apptNotes } = parseApptText(text);
+    const eventId = await createCalendarEvent(params.companyId, {
+      title: `Appointment – ${name}`,
+      date: new Date(dueDate),
+      timeStr: time || null,
+      address: address || null,
+      notes: apptNotes || null,
+    });
+    if (eventId) {
+      item = await prisma.followUp.update({
+        where: { id: item.id },
+        data: { googleCalendarEventId: eventId },
+        include: {
+          client: { select: { id: true, name: true } },
+          lead: { select: { id: true, name: true } },
+        },
+      });
+    }
+  }
 
   return NextResponse.json(item);
 }

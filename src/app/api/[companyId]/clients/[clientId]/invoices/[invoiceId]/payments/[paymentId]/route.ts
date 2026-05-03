@@ -29,5 +29,7 @@ export async function DELETE(
     }
   }
 
+  await prisma.client.update({ where: { id: params.clientId }, data: {} });
+
   return NextResponse.json({ success: true });
 }

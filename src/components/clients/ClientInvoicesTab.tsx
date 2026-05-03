@@ -266,17 +266,25 @@ export default function ClientInvoicesTab({
       const payment = { ...rawPayment, amount: Number(rawPayment.amount) };
 
       // Update invoice payments + possibly status
-      setInvoices(prev => prev.map(inv => {
-        if (inv.id !== payingInvoice.id) return inv;
-        const newPayments = [...inv.payments, payment];
-        const paid = newPayments.reduce((s, p) => s + p.amount, 0);
-        return {
-          ...inv,
-          payments: newPayments,
-          status: paid >= inv.amount ? "PAID" : inv.status,
-          paidAt: paid >= inv.amount ? new Date().toISOString() : inv.paidAt,
-        };
-      }));
+      setInvoices(prev => {
+        const next = prev.map(inv => {
+          if (inv.id !== payingInvoice.id) return inv;
+          const newPayments = [...inv.payments, payment];
+          const paid = newPayments.reduce((s, p) => s + p.amount, 0);
+          return {
+            ...inv,
+            payments: newPayments,
+            status: paid >= inv.amount ? "PAID" : inv.status,
+            paidAt: paid >= inv.amount ? new Date().toISOString() : inv.paidAt,
+          };
+        });
+        const totalInvoiced = next.reduce((s, i) => s + Number(i.amount), 0);
+        const totalPaid = next.reduce((s, i) => s + i.payments.reduce((ps, p) => ps + Number(p.amount), 0), 0);
+        window.dispatchEvent(new CustomEvent("payment-summary-updated", {
+          detail: totalInvoiced > 0 ? { totalInvoiced, totalPaid, balance: totalInvoiced - totalPaid } : null,
+        }));
+        return next;
+      });
       setPayingInvoice(null);
     } finally {
       setPayingSaving(false);
@@ -285,17 +293,25 @@ export default function ClientInvoicesTab({
 
   async function deletePayment(invoiceId: string, paymentId: string) {
     await fetch(`/api/${companyId}/clients/${clientId}/invoices/${invoiceId}/payments/${paymentId}`, { method: "DELETE" });
-    setInvoices(prev => prev.map(inv => {
-      if (inv.id !== invoiceId) return inv;
-      const newPayments = inv.payments.filter(p => p.id !== paymentId);
-      const paid = newPayments.reduce((s, p) => s + p.amount, 0);
-      return {
-        ...inv,
-        payments: newPayments,
-        status: paid >= inv.amount ? "PAID" : (inv.sentAt ? "SENT" : "DRAFT"),
-        paidAt: paid >= inv.amount ? inv.paidAt : null,
-      };
-    }));
+    setInvoices(prev => {
+      const next = prev.map(inv => {
+        if (inv.id !== invoiceId) return inv;
+        const newPayments = inv.payments.filter(p => p.id !== paymentId);
+        const paid = newPayments.reduce((s, p) => s + p.amount, 0);
+        return {
+          ...inv,
+          payments: newPayments,
+          status: paid >= inv.amount ? "PAID" : (inv.sentAt ? "SENT" : "DRAFT"),
+          paidAt: paid >= inv.amount ? inv.paidAt : null,
+        };
+      });
+      const totalInvoiced = next.reduce((s, i) => s + Number(i.amount), 0);
+      const totalPaid = next.reduce((s, i) => s + i.payments.reduce((ps, p) => ps + Number(p.amount), 0), 0);
+      window.dispatchEvent(new CustomEvent("payment-summary-updated", {
+        detail: totalInvoiced > 0 ? { totalInvoiced, totalPaid, balance: totalInvoiced - totalPaid } : null,
+      }));
+      return next;
+    });
   }
 
   async function deleteInvoice(id: string) {

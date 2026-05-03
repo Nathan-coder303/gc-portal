@@ -61,5 +61,8 @@ export async function POST(
     });
   }
 
+  // Touch client updatedAt so it bubbles to top of "newest" sort
+  await prisma.client.update({ where: { id: params.clientId }, data: {} });
+
   return NextResponse.json(payment);
 }

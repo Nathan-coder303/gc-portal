@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useState, useTransition, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { upsertClient } from "@/app/[companyId]/estimates/actions";
 import { PencilIcon } from "@/components/ui/icons";
@@ -32,7 +32,7 @@ export default function ClientDetailHeader({
   estimateCount,
   estimateTotal,
   canEdit,
-  paymentSummary,
+  paymentSummary: initialPaymentSummary,
 }: {
   client: Client;
   estimateCount: number;
@@ -41,6 +41,16 @@ export default function ClientDetailHeader({
   paymentSummary?: { totalInvoiced: number; totalPaid: number; balance: number } | null;
 }) {
   const [editing, setEditing] = useState(false);
+  const [paymentSummary, setPaymentSummary] = useState(initialPaymentSummary ?? null);
+
+  useEffect(() => {
+    function handler(e: Event) {
+      const detail = (e as CustomEvent).detail as { totalInvoiced: number; totalPaid: number; balance: number } | null;
+      setPaymentSummary(detail);
+    }
+    window.addEventListener("payment-summary-updated", handler);
+    return () => window.removeEventListener("payment-summary-updated", handler);
+  }, []);
   const [isPending, startTransition] = useTransition();
   const router = useRouter();
   const [form, setForm] = useState({

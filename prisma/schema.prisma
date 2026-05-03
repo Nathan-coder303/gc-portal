@@ -339,10 +339,11 @@ model FollowUp {
   client        Client?          @relation(fields: [clientId], references: [id], onDelete: SetNull)
   leadId        String?
   lead          Lead?            @relation(fields: [leadId], references: [id], onDelete: SetNull)
-  dueDate       DateTime?        @db.Date
-  completedAt   DateTime?
-  createdAt     DateTime         @default(now())
-  createdBy     String?
+  dueDate               DateTime?        @db.Date
+  completedAt           DateTime?
+  googleCalendarEventId String?
+  createdAt             DateTime         @default(now())
+  createdBy             String?
 
   @@index([companyId, category])
 }
