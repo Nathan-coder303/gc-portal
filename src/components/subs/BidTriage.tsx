@@ -20,7 +20,6 @@ function getPdfHref(fileUrl: string, companyId: string): string {
   return fileUrl;
 }
 
-const SOURCE_OPTIONS = ["Excel 1240", "Excel Ingraham"];
 
 type TriageBid = {
   id: string;
@@ -129,7 +128,6 @@ export default function BidTriage({
   // Per-bid division override (divisionCode)
   const [selectedDivision, setSelectedDivision] = useState<Record<string, string>>({});
   const [addSubModal, setAddSubModal] = useState<AddSubModal | null>(null);
-  const [savingSource, setSavingSource] = useState<string | null>(null);
 
   // Sub form state
   const [subForm, setSubForm] = useState({
@@ -276,16 +274,6 @@ export default function BidTriage({
     setBids(prev => prev.filter(b => b.id !== bidId));
   }
 
-  async function saveSourceLabel(bidId: string, sourceLabel: string) {
-    setSavingSource(bidId);
-    setBids(prev => prev.map(b => b.id === bidId ? { ...b, sourceLabel: sourceLabel || null } : b));
-    await fetch(`/api/${companyId}/bids/triage/${bidId}`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ sourceLabel: sourceLabel || null }),
-    });
-    setSavingSource(null);
-  }
 
   async function saveSub() {
     if (!addSubModal || !subForm.name || !subForm.divisionCode) return;
