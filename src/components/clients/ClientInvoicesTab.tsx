@@ -384,6 +384,8 @@ export default function ClientInvoicesTab({
           payAppId={openPayAppId}
           companyId={companyId}
           clientId={clientId}
+          clientEmail={clientEmail ?? ""}
+          estimates={estimates.map(e => ({ id: e.id, name: e.name ?? "", estimateNumber: e.estimateNumber ?? "" }))}
           onClose={refresh => {
             setOpenPayAppId(null);
             if (refresh) {

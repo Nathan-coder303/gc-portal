@@ -155,12 +155,13 @@ function rowComputed(l: Line) {
 
 // ─── Main Editor ──────────────────────────────────────────────────────────────
 export default function PayAppEditor({
-  payAppId, companyId, clientId, onClose,
+  payAppId, companyId, clientId, clientEmail, estimates, onClose,
 }: {
-  payAppId: string; companyId: string; clientId: string;
+  payAppId: string; companyId: string; clientId: string; clientEmail?: string;
+  estimates?: { id: string; name: string; estimateNumber: string }[];
   onClose: (refresh?: boolean) => void;
 }) {
-  const [tab, setTab] = useState<"summary" | "lines">("summary");
+  const [tab, setTab] = useState<"summary" | "lines" | "send">("summary");
   const [header, setHeader] = useState<Header>(EMPTY_HEADER);
   const [lines, setLines] = useState<Line[]>([]);
   const [loading, setLoading] = useState(true);
@@ -170,6 +171,46 @@ export default function PayAppEditor({
   const latestLines = useRef(lines);
   latestHeader.current = header;
   latestLines.current = lines;
+
+  // Sync from estimate
+  const [syncEstimateId, setSyncEstimateId] = useState(estimates?.[0]?.id ?? "");
+  const [syncing, setSyncing] = useState(false);
+
+  async function syncFromEstimate() {
+    if (!syncEstimateId) return;
+    setSyncing(true);
+    try {
+      const res = await fetch(`/api/${companyId}/estimates/${syncEstimateId}/division-totals`);
+      const divTotals: { name: string; total: number }[] = await res.json();
+      setLines(prev => {
+        const updated = prev.map(line => {
+          const match = divTotals.find(d => d.name.toLowerCase() === line.description.toLowerCase());
+          return match ? { ...line, scheduledValue: match.total } : line;
+        });
+        // Add estimate divisions not yet in lines
+        const existingDescs = new Set(prev.map(l => l.description.toLowerCase()));
+        const newLines: Line[] = divTotals
+          .filter(d => !existingDescs.has(d.name.toLowerCase()))
+          .map((d, i) => ({
+            sortOrder: prev.length + i,
+            itemNumber: `Div ${prev.length + i + 1}`,
+            description: d.name,
+            scheduledValue: d.total,
+            fromPrevious: 0, thisInvoice: 0, retainageThis: 0, retainageTotal: 0,
+          }));
+        return [...updated, ...newLines];
+      });
+      scheduleSave();
+    } finally { setSyncing(false); }
+  }
+
+  // Send state
+  const [sendTo, setSendTo] = useState(clientEmail ?? "");
+  const [sendCc, setSendCc] = useState("mikebaruh@gmail.com");
+  const [sendSubject, setSendSubject] = useState("");
+  const [sendBody, setSendBody] = useState("");
+  const [sending, setSending] = useState(false);
+  const [sendResult, setSendResult] = useState<string | null>(null);
 
   // Load
   useEffect(() => {
@@ -208,6 +249,8 @@ export default function PayAppEditor({
           notaryName: data.notaryName ?? "",
         });
         setLines(data.lines ?? []);
+        setSendSubject(`Pay App #${data.payAppNumber}${data.invoiceNumber ? ` - Invoice #${data.invoiceNumber}` : ""} - ${data.fromName ?? "MIBH Construction"}`);
+        setSendBody(`Please find attached Pay Application #${data.payAppNumber}${data.periodStart ? ` for the period ${data.periodStart} – ${data.periodEnd ?? ""}` : ""}.\n\nPlease review and advise.\n\nThank you,\n${data.fromContact ?? "Mike Baruh"}\n${data.fromName ?? "MIBH Construction"}`);
         setLoading(false);
       });
   }, [payAppId, companyId, clientId]);
@@ -326,12 +369,16 @@ export default function PayAppEditor({
 
       {/* Tab bar */}
       <div style={{ background: BG, borderBottom: `1px solid ${BORDER}`, padding: "0 20px", display: "flex", gap: 0, flexShrink: 0 }}>
-        {(["summary", "lines"] as const).map(t => (
+        {([
+          ["summary", "📄 Summary Sheet"],
+          ["lines", "📊 Continuation Sheet"],
+          ["send", "✉️ Send / Preview"],
+        ] as const).map(([t, label]) => (
           <button key={t} onClick={() => setTab(t)}
             style={{ padding: "10px 20px", fontSize: 12, fontWeight: 600, border: "none", cursor: "pointer",
               background: tab === t ? CARD : "transparent", color: tab === t ? GOLD : MUTED,
               borderBottom: tab === t ? `2px solid ${GOLD}` : "2px solid transparent" }}>
-            {t === "summary" ? "📄 Summary Sheet" : "📊 Continuation Sheet"}
+            {label}
           </button>
         ))}
       </div>
@@ -540,10 +587,10 @@ export default function PayAppEditor({
             </div>
 
           </div>
-        ) : (
+        ) : tab === "lines" ? (
           /* ── Continuation Sheet ─────────────────────────────────────────────── */
           <div style={{ maxWidth: 1300, margin: "0 auto" }}>
-            <div style={{ display: "flex", gap: 8, marginBottom: 12 }}>
+            <div style={{ display: "flex", gap: 8, marginBottom: 12, flexWrap: "wrap", alignItems: "center" }}>
               <button onClick={() => addLine("div")}
                 style={{ background: `${GOLD}22`, color: GOLD, border: `1px solid ${GOLD}44`, borderRadius: 8, padding: "6px 14px", fontSize: 12, fontWeight: 600, cursor: "pointer" }}>
                 + Add Division
@@ -552,6 +599,24 @@ export default function PayAppEditor({
                 style={{ background: "#3b82f622", color: "#3b82f6", border: "1px solid #3b82f633", borderRadius: 8, padding: "6px 14px", fontSize: 12, fontWeight: 600, cursor: "pointer" }}>
                 + Add Change Order
               </button>
+              {/* Sync from estimate */}
+              {estimates && estimates.length > 0 && (
+                <div style={{ marginLeft: "auto", display: "flex", alignItems: "center", gap: 6 }}>
+                  <span style={{ fontSize: 11, color: MUTED }}>Sync scheduled values from:</span>
+                  <select value={syncEstimateId} onChange={e => setSyncEstimateId(e.target.value)}
+                    style={{ background: CARD, border: `1px solid ${BORDER}`, color: TEXT, borderRadius: 6, padding: "4px 8px", fontSize: 11 }}>
+                    {estimates.map(e => (
+                      <option key={e.id} value={e.id}>
+                        {e.estimateNumber ? `#${e.estimateNumber} — ` : ""}{e.name}
+                      </option>
+                    ))}
+                  </select>
+                  <button onClick={syncFromEstimate} disabled={syncing || !syncEstimateId}
+                    style={{ background: "#22c55e22", color: "#22c55e", border: "1px solid #22c55e33", borderRadius: 8, padding: "4px 12px", fontSize: 11, fontWeight: 700, cursor: "pointer", opacity: syncing ? 0.5 : 1 }}>
+                    {syncing ? "Syncing…" : "⟳ Sync"}
+                  </button>
+                </div>
+              )}
             </div>
 
             <div style={{ overflowX: "auto", borderRadius: 8, border: `1px solid ${BORDER}` }}>
@@ -653,6 +718,98 @@ export default function PayAppEditor({
                   </tr>
                 </tfoot>
               </table>
+            </div>
+          </div>
+        ) : (
+          /* ── Send / Preview Tab ───────────────────────────────────────────── */
+          <div style={{ maxWidth: 700, margin: "0 auto", display: "flex", flexDirection: "column", gap: 16 }}>
+
+            {/* Summary preview */}
+            <div style={{ background: CARD, border: `1px solid ${BORDER}`, borderRadius: 8, padding: 20 }}>
+              <div style={{ fontWeight: 700, fontSize: 13, color: TEXT, marginBottom: 12 }}>
+                Pay App #{header.payAppNumber}{header.invoiceNumber ? ` — Invoice #${header.invoiceNumber}` : ""} Preview
+              </div>
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, fontSize: 12, color: MUTED }}>
+                <div><span>From:</span> <span style={{ color: TEXT }}>{header.fromName} / {header.fromContact}</span></div>
+                <div><span>To:</span> <span style={{ color: TEXT }}>{header.toName}</span></div>
+                <div><span>Period:</span> <span style={{ color: TEXT }}>{header.periodStart} – {header.periodEnd}</span></div>
+                <div><span>Invoice Date:</span> <span style={{ color: TEXT }}>{header.invoiceDate}</span></div>
+              </div>
+              <div style={{ marginTop: 14, paddingTop: 14, borderTop: `1px solid ${BORDER}`, display: "flex", gap: 24 }}>
+                <div style={{ textAlign: "center" }}>
+                  <div style={{ fontSize: 10, color: MUTED, marginBottom: 2 }}>CONTRACT SUM TO DATE</div>
+                  <div style={{ fontSize: 16, fontWeight: 700, color: TEXT }}>${$$(header.originalContractSum + (header.coAdditionsPrev + header.coAdditionsThis) - (header.coDeductionsPrev + header.coDeductionsThis))}</div>
+                </div>
+                <div style={{ textAlign: "center" }}>
+                  <div style={{ fontSize: 10, color: MUTED, marginBottom: 2 }}>THIS INVOICE</div>
+                  <div style={{ fontSize: 16, fontWeight: 700, color: GOLD }}>${$$(lines.reduce((s, l) => s + l.thisInvoice, 0))}</div>
+                </div>
+                <div style={{ textAlign: "center" }}>
+                  <div style={{ fontSize: 10, color: MUTED, marginBottom: 2 }}>CURRENT PAYMENT DUE</div>
+                  {(() => {
+                    const tc = lines.reduce((s, l) => s + l.fromPrevious + l.thisInvoice, 0);
+                    const ra = lines.reduce((s, l) => s + l.retainageTotal, 0);
+                    const tels = tc - ra;
+                    const cpd = tels - header.lessPreviousInvoices;
+                    return <div style={{ fontSize: 16, fontWeight: 700, color: "#22c55e" }}>${$$(cpd)}</div>;
+                  })()}
+                </div>
+              </div>
+            </div>
+
+            {/* Email form */}
+            <div style={{ background: CARD, border: `1px solid ${BORDER}`, borderRadius: 8, padding: 20, display: "flex", flexDirection: "column", gap: 12 }}>
+              <div style={{ fontWeight: 700, fontSize: 12, color: TEXT }}>Send Pay App via Email</div>
+              {[
+                ["To", sendTo, setSendTo],
+                ["CC", sendCc, setSendCc],
+                ["Subject", sendSubject, setSendSubject],
+              ].map(([label, value, setter]) => (
+                <div key={label as string}>
+                  <div style={{ fontSize: 10, color: MUTED, marginBottom: 3, fontWeight: 600 }}>{label as string}</div>
+                  <input value={value as string} onChange={e => (setter as (v: string) => void)(e.target.value)}
+                    style={{ width: "100%", background: BG, border: `1px solid ${BORDER}`, color: TEXT, borderRadius: 6, padding: "7px 10px", fontSize: 12, outline: "none" }} />
+                </div>
+              ))}
+              <div>
+                <div style={{ fontSize: 10, color: MUTED, marginBottom: 3, fontWeight: 600 }}>Message</div>
+                <textarea value={sendBody} onChange={e => setSendBody(e.target.value)} rows={6}
+                  style={{ width: "100%", background: BG, border: `1px solid ${BORDER}`, color: TEXT, borderRadius: 6, padding: "7px 10px", fontSize: 12, outline: "none", resize: "vertical", fontFamily: "inherit" }} />
+              </div>
+              {sendResult && (
+                <div style={{ fontSize: 12, color: sendResult.startsWith("✓") ? "#22c55e" : "#f85149" }}>{sendResult}</div>
+              )}
+              <button
+                disabled={sending || !sendTo}
+                onClick={async () => {
+                  setSending(true); setSendResult(null);
+                  try {
+                    const res = await fetch(`/api/${companyId}/send-estimate-email`, {
+                      method: "POST", headers: { "Content-Type": "application/json" },
+                      body: JSON.stringify({
+                        to: sendTo, cc: sendCc, subject: sendSubject, body: sendBody,
+                        payAppSummary: {
+                          payAppNumber: header.payAppNumber,
+                          invoiceNumber: header.invoiceNumber,
+                          fromName: header.fromName,
+                          toName: header.toName,
+                          periodStart: header.periodStart,
+                          periodEnd: header.periodEnd,
+                          currentPaymentDue: (() => {
+                            const tc = lines.reduce((s, l) => s + l.fromPrevious + l.thisInvoice, 0);
+                            const ra = lines.reduce((s, l) => s + l.retainageTotal, 0);
+                            return tc - ra - header.lessPreviousInvoices;
+                          })(),
+                        },
+                      }),
+                    });
+                    setSendResult(res.ok ? "✓ Email sent successfully" : "✗ Failed to send email");
+                  } catch { setSendResult("✗ Failed to send email"); }
+                  finally { setSending(false); }
+                }}
+                style={{ background: GOLD, color: BG, border: "none", borderRadius: 8, padding: "9px 0", fontWeight: 700, fontSize: 12, cursor: "pointer", opacity: sending || !sendTo ? 0.5 : 1 }}>
+                {sending ? "Sending…" : "Send Email"}
+              </button>
             </div>
           </div>
         )}
