@@ -153,9 +153,9 @@ function ItemRowEdit({
         <td className="px-3 py-2 text-xs" style={{ color: item.detail === "Allowances" ? "#b45309" : item.detail === "Excluded" ? "#dc2626" : "#64748b" }}>{item.detail ?? "—"}</td>
         <td className="px-3 py-2 text-sm text-slate-700 text-right">{item.qty}</td>
         <td className="px-3 py-2 text-sm text-slate-500 text-center">{item.unit ?? "—"}</td>
-        <td className="px-3 py-2 text-sm text-right" style={{ color: isOverridden ? "#cbd5e1" : undefined }}>{isOverridden ? "—" : `$${fmt(item.unitCost)}`}</td>
+        <td className="px-3 py-2 text-sm text-right" style={{ color: isOverridden ? "#cbd5e1" : undefined }}>{isOverridden ? "$0.00" : `$${fmt(item.unitCost)}`}</td>
         <td className="px-3 py-2 text-sm text-slate-700 text-right">{item.markupPct}%</td>
-        <td className="px-3 py-2 text-sm font-semibold text-right" style={{ color: isOverridden ? "#cbd5e1" : "#0f172a" }}>{isOverridden ? "—" : `$${fmt(total)}`}</td>
+        <td className="px-3 py-2 text-sm font-semibold text-right" style={{ color: isOverridden ? "#cbd5e1" : "#0f172a" }}>{isOverridden ? "$0.00" : `$${fmt(total)}`}</td>
         <td className="px-3 py-2 text-right">
           <div className="flex gap-1 justify-end opacity-0 group-hover:opacity-100 transition-opacity">
             {canEdit && (
@@ -419,6 +419,7 @@ function DivisionSection({
   function saveLumpSum(value: string) {
     const parsed = value.trim() === "" ? null : parseFloat(value.replace(/,/g, ""));
     if (value.trim() !== "" && isNaN(parsed!)) return;
+    setLumpSumOpen(false);
     startTransition(async () => {
       await upsertEstimateDivision(division.id, { id: division.id, name: division.name, manualTotal: parsed });
       router.refresh();
