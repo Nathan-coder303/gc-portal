@@ -2089,7 +2089,20 @@ export default function TemplateEditor({
                     </div>
                   </div>
                   {emailResult && (
-                    <p className="text-sm font-medium" style={{ color: emailResult.ok ? "#22c55e" : "#ef4444" }}>{emailResult.msg}</p>
+                    emailResult.msg === "gmail_auth_expired" ? (
+                      <div className="rounded-lg px-3 py-2" style={{ background: "#2d1b1b", border: "1px solid #f8514933" }}>
+                        <p className="text-sm font-medium mb-1" style={{ color: "#f85149" }}>Gmail authorization has expired.</p>
+                        <a
+                          href={`/api/google-oauth?companyId=${template.companyId}`}
+                          className="text-xs font-semibold underline"
+                          style={{ color: "#C9A84C" }}
+                        >
+                          Re-authorize Gmail →
+                        </a>
+                      </div>
+                    ) : (
+                      <p className="text-sm font-medium" style={{ color: emailResult.ok ? "#22c55e" : "#ef4444" }}>{emailResult.msg}</p>
+                    )
                   )}
                   <div className="flex gap-3 pt-1">
                     <button

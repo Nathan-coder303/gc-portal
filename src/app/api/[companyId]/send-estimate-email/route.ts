@@ -4,6 +4,7 @@ import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { renderTemplatePdf } from "@/lib/estimates/templatePdf";
 import { insertClientPageIntoEstimate } from "@/lib/estimates/insertClientPage";
+import { getGmailOAuth } from "@/lib/gmail";
 import crypto from "crypto";
 
 export const runtime = "nodejs";
@@ -33,23 +34,16 @@ const DEFAULT_PAYMENT_SCHEDULE = [
   { payment: "Completion", trigger: "Final inspection / punchlist", pct: 10 },
 ];
 
-function getOAuthClient() {
-  const oauth2Client = new google.auth.OAuth2(
-    process.env.GOOGLE_CLIENT_ID,
-    process.env.GOOGLE_CLIENT_SECRET,
-    "urn:ietf:wg:oauth:2.0:oob"
-  );
-  oauth2Client.setCredentials({ refresh_token: process.env.GOOGLE_REFRESH_TOKEN });
-  return oauth2Client;
-}
-
 // GET — returns the authenticated Gmail address and default signature for the modal
-export async function GET() {
+export async function GET(
+  _req: NextRequest,
+  { params }: { params: { companyId: string } }
+) {
   const session = await auth();
   if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   try {
-    const oauth2Client = getOAuthClient();
+    const oauth2Client = await getGmailOAuth(params.companyId);
     const gmail = google.gmail({ version: "v1", auth: oauth2Client });
 
     const [profile, sendAsList] = await Promise.all([
@@ -232,7 +226,7 @@ export async function POST(
   const signUrl = `https://portal.mibhconstruction.com/sign/${signToken}`;
   const fullEmailBody = `${emailBody}\n\n---\nSign your estimate here: ${signUrl}`;
 
-  const oauth2Client = getOAuthClient();
+  const oauth2Client = await getGmailOAuth(params.companyId);
   const gmail = google.gmail({ version: "v1", auth: oauth2Client });
 
   // Use the actual authenticated Gmail address as From
@@ -311,6 +305,10 @@ export async function POST(
   return NextResponse.json({ success: true });
   } catch (err) {
     console.error("send-estimate-email unhandled error:", err);
-    return NextResponse.json({ error: "Internal error", detail: String(err) }, { status: 500 });
+    const msg = String(err);
+    if (msg.includes("invalid_grant")) {
+      return NextResponse.json({ error: "gmail_auth_expired" }, { status: 401 });
+    }
+    return NextResponse.json({ error: "Internal error", detail: msg }, { status: 500 });
   }
 }
