@@ -1572,7 +1572,18 @@ export default function TemplateEditor({
         className="sticky top-0 z-40 flex items-center justify-between gap-4 px-5 py-3 shadow-xl"
         style={{ background: "#161b22", borderTop: "3px solid #C9A84C", borderBottom: "1px solid #30373f" }}
       >
-        <span className="text-xs font-bold uppercase tracking-widest" style={{ color: "#C9A84C" }}>💰 Live Total</span>
+        <div className="flex items-center gap-3">
+          {currentClient && template.type === "CLIENT_ESTIMATE" && (
+            <a
+              href={`/${template.companyId}/clients/${currentClient.id}`}
+              className="text-xs px-3 py-1.5 rounded-lg font-medium"
+              style={{ background: "#1e2736", border: "1px solid #30373f", color: "#8b949e" }}
+            >
+              ← {currentClient.name}
+            </a>
+          )}
+          <span className="text-xs font-bold uppercase tracking-widest" style={{ color: "#C9A84C" }}>💰 Live Total</span>
+        </div>
         <div className="flex items-center gap-6">
           {gcFeeAmount > 0 && (
             <>
