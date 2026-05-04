@@ -1196,6 +1196,7 @@ function EditModal({
   });
   const [saving, setSaving] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
+  const [dateError, setDateError] = useState<string | null>(null);
 
   const parent = allTasks.find(t => t.id === form.parentId);
   const children = allTasks.filter(t => t.parentId === task.id);
@@ -1205,6 +1206,11 @@ function EditModal({
   }
 
   async function handleSave() {
+    if (form.startDate && form.endDate && form.endDate < form.startDate) {
+      setDateError("End date cannot be before start date.");
+      return;
+    }
+    setDateError(null);
     setSaving(true);
     const dur = Math.max(1, parseInt(form.durationDays) || 1);
     const body = {
@@ -1270,8 +1276,13 @@ function EditModal({
             </div>
             <div>
               <label className="block text-[11px] mb-1" style={{ color: "#8b949e" }}>End Date</label>
-              <input type="date" value={form.endDate} onChange={e => setForm(f => ({ ...f, endDate: e.target.value }))} style={INPUT} className="outline-none" />
+              <input type="date" value={form.endDate} onChange={e => { setForm(f => ({ ...f, endDate: e.target.value })); setDateError(null); }} style={{ ...INPUT, borderColor: dateError ? "#f85149" : undefined }} className="outline-none" />
             </div>
+            {dateError && (
+              <div className="col-span-2 text-xs font-medium px-2 py-1.5 rounded" style={{ color: "#f85149", background: "#f8514911", border: "1px solid #f8514933" }}>
+                {dateError}
+              </div>
+            )}
             <div>
               <label className="block text-[11px] mb-1" style={{ color: "#8b949e" }}>Trade</label>
               <input value={form.trade} onChange={e => setForm(f => ({ ...f, trade: e.target.value }))} style={INPUT} className="outline-none" placeholder="e.g. Framing" />
@@ -1339,7 +1350,7 @@ function EditModal({
         </div>
 
         <div className="flex gap-2 mt-4">
-          <button onClick={handleSave} disabled={!form.name.trim() || saving} className="flex-1 py-2 text-xs font-semibold rounded-lg disabled:opacity-50" style={{ background: GOLD, color: "#0d1117" }}>
+          <button onClick={handleSave} disabled={!form.name.trim() || saving || !!dateError} className="flex-1 py-2 text-xs font-semibold rounded-lg disabled:opacity-50" style={{ background: GOLD, color: "#0d1117" }}>
             {saving ? "Saving…" : "Save Changes"}
           </button>
           <button onClick={onClose} className="px-4 py-2 text-xs rounded-lg" style={{ background: "#30373f", color: "#8b949e" }}>Cancel</button>
@@ -1532,6 +1543,11 @@ function ClientGanttChart({ tasks, projectStart, companyId, clientId, canEdit, o
   const [contextMenu, setContextMenu] = useState<{ x: number; y: number; task: ClientTask; confirmDelete?: boolean } | null>(null);
   const svgRef = useRef<SVGSVGElement>(null);
   const [labelW, setLabelW] = useState(LABEL_WIDTH);
+  const barPosRef = useRef<Map<string, { startX: number; finishX: number; centerY: number }>>(new Map());
+  type LinkDragState = { sourceTaskId: string; currentX: number; currentY: number; snapTarget: { taskId: string } | null };
+  const [linkDrag, setLinkDrag] = useState<LinkDragState | null>(null);
+  const linkDragRef = useRef<LinkDragState | null>(null);
+  linkDragRef.current = linkDrag;
 
   // ── Label column resize ─────────────────────────────────────────────────────
   const labelResizeRef = useRef<{ startX: number; startW: number } | null>(null);
@@ -1615,6 +1631,23 @@ function ClientGanttChart({ tasks, projectStart, companyId, clientId, canEdit, o
   // Keep refs up to date for phase drag handler
   phaseOrderRef.current = phaseOrder;
   rowsRef.current = rows.map((r, i) => r.kind === "phase" ? { kind: "phase" as const, phase: r.phase, y: rowYs[i] } : null).filter(Boolean) as Array<{ kind: "phase"; phase: string; y: number }>;
+
+  // Build bar position map for link-drag snapping
+  const _barPosMap = new Map<string, { startX: number; finishX: number; centerY: number }>();
+  for (let _i = 0; _i < rows.length; _i++) {
+    const _row = rows[_i];
+    if (_row.kind !== "task") continue;
+    const _t = _row.task;
+    const _y = rowYs[_i];
+    const _sd = parseDate(_t.startDate) ?? today;
+    const _ed = parseDate(_t.endDate) ?? addDays(_sd, _t.durationDays - 1);
+    const _sx = differenceInDays(_sd, projectStart);
+    const _ex = differenceInDays(_ed, projectStart);
+    const _bx = labelW + _sx * CELL_WIDTH;
+    const _bw = Math.max((_ex - _sx + 1) * CELL_WIDTH, CELL_WIDTH);
+    _barPosMap.set(_t.id, { startX: _bx, finishX: _bx + _bw, centerY: _y + ROW_HEIGHT / 2 });
+  }
+  barPosRef.current = _barPosMap;
 
   const getSvgX = useCallback((clientX: number) => {
     if (!svgRef.current) return 0;
@@ -1717,6 +1750,38 @@ function ClientGanttChart({ tasks, projectStart, companyId, clientId, canEdit, o
     };
   }, [phaseDrag]);
 
+  // ── Link drag ───────────────────────────────────────────────────────────────
+  useEffect(() => {
+    if (!linkDrag) return;
+    const SNAP = 20;
+    function onMove(e: MouseEvent) {
+      const d = linkDragRef.current;
+      if (!d) return;
+      const svgRect = svgRef.current?.getBoundingClientRect();
+      if (!svgRect) return;
+      const x = e.clientX - svgRect.left;
+      const y = e.clientY - svgRect.top;
+      let snap: { taskId: string } | null = null;
+      for (const [tid, pos] of Array.from(barPosRef.current)) {
+        if (tid === d.sourceTaskId) continue;
+        if (Math.hypot(x - pos.startX, y - pos.centerY) < SNAP || Math.hypot(x - pos.finishX, y - pos.centerY) < SNAP ||
+            (x >= pos.startX && x <= pos.finishX && Math.abs(y - pos.centerY) < 14)) {
+          snap = { taskId: tid }; break;
+        }
+      }
+      setLinkDrag(prev => prev ? { ...prev, currentX: x, currentY: y, snapTarget: snap } : null);
+    }
+    function onUp() {
+      const d = linkDragRef.current;
+      if (d?.snapTarget) handleAddLink(d.snapTarget.taskId, d.sourceTaskId);
+      setLinkDrag(null);
+    }
+    document.addEventListener("mousemove", onMove);
+    document.addEventListener("mouseup", onUp);
+    return () => { document.removeEventListener("mousemove", onMove); document.removeEventListener("mouseup", onUp); };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [linkDrag]);
+
   const handleBarMouseDown = useCallback((e: React.MouseEvent, task: ClientTask, type: "move" | "resize") => {
     if (!canEdit || task.isMilestone) return;
     e.preventDefault();
@@ -1783,6 +1848,18 @@ function ClientGanttChart({ tasks, projectStart, companyId, clientId, canEdit, o
   async function handleDeleteTask(task: ClientTask) {
     await fetch(`/api/${companyId}/clients/${clientId}/schedule/${task.id}`, { method: "DELETE" });
     onTasksChange(tasks.filter(t => t.id !== task.id));
+  }
+
+  async function handleAddLink(targetTaskId: string, predecessorId: string) {
+    const target = tasks.find(t => t.id === targetTaskId);
+    if (!target || target.id === predecessorId || target.predecessorIds.includes(predecessorId)) return;
+    const newPreds = [...target.predecessorIds, predecessorId];
+    const res = await fetch(`/api/${companyId}/clients/${clientId}/schedule/${targetTaskId}`, {
+      method: "PATCH", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ predecessorIds: newPreds }),
+    });
+    const updated = await res.json();
+    onTasksChange(tasks.map(t => t.id === targetTaskId ? { ...t, predecessorIds: newPreds, ...updated } : t));
   }
 
   return (
@@ -1889,7 +1966,7 @@ function ClientGanttChart({ tasks, projectStart, companyId, clientId, canEdit, o
                 <rect x={0} y={y} width={svgWidth} height={ROW_HEIGHT} fill={isEven ? "#0d1117" : "#0a0e14"} />
                 <line x1={0} y1={y + ROW_HEIGHT} x2={svgWidth} y2={y + ROW_HEIGHT} stroke="#30373f" strokeWidth={0.3} />
                 <text x={isChild ? 28 : 16} y={y + ROW_HEIGHT / 2 + 4} fontSize={11} fill={task.status === "DONE" ? "#484f58" : "#e6edf3"}>
-                  {task.name.length > 22 ? task.name.slice(0, 22) + "…" : task.name}
+                  {(() => { const avail = Math.floor((labelW - (canEdit ? 30 : 8) - (isChild ? 28 : 16)) / 6.5); return task.name.length > avail ? task.name.slice(0, avail) + "…" : task.name; })()}
                 </text>
                 {task.trade && <text x={isChild ? 28 : 16} y={y + ROW_HEIGHT - 5} fontSize={9} fill="#484f58">{task.trade}</text>}
                 <circle cx={isChild ? 20 : 8} cy={y + ROW_HEIGHT / 2} r={3} fill={barColor} />
@@ -1906,6 +1983,22 @@ function ClientGanttChart({ tasks, projectStart, companyId, clientId, canEdit, o
                     </g>
                   </g>
                 )}
+                {/* Link drag circles — start and finish of bar */}
+                {canEdit && !task.isMilestone && (() => {
+                  const pos = barPosRef.current.get(task.id);
+                  if (!pos) return null;
+                  const isSnap = linkDrag?.snapTarget?.taskId === task.id;
+                  return (
+                    <>
+                      <circle cx={pos.startX} cy={pos.centerY} r={5} fill={isSnap ? "#4b9cf5" : "#161b22"} stroke="#4b9cf5" strokeWidth={1.5}
+                        style={{ cursor: "crosshair" }}
+                        onMouseDown={e => { e.stopPropagation(); e.preventDefault(); const svgR = svgRef.current?.getBoundingClientRect(); if (!svgR) return; setLinkDrag({ sourceTaskId: task.id, currentX: e.clientX - svgR.left, currentY: e.clientY - svgR.top, snapTarget: null }); }} />
+                      <circle cx={pos.finishX} cy={pos.centerY} r={5} fill={isSnap ? "#4b9cf5" : "#161b22"} stroke="#4b9cf5" strokeWidth={1.5}
+                        style={{ cursor: "crosshair" }}
+                        onMouseDown={e => { e.stopPropagation(); e.preventDefault(); const svgR = svgRef.current?.getBoundingClientRect(); if (!svgR) return; setLinkDrag({ sourceTaskId: task.id, currentX: e.clientX - svgR.left, currentY: e.clientY - svgR.top, snapTarget: null }); }} />
+                    </>
+                  );
+                })()}
 
                 {task.isMilestone ? (
                   <polygon
@@ -1999,10 +2092,27 @@ function ClientGanttChart({ tasks, projectStart, companyId, clientId, canEdit, o
               </g>
             ))}
           </g>
+
+          {/* Link drag line */}
+          {linkDrag && (() => {
+            const src = barPosRef.current.get(linkDrag.sourceTaskId);
+            if (!src) return null;
+            const x1 = src.finishX;
+            const y1 = src.centerY;
+            const snap = linkDrag.snapTarget ? barPosRef.current.get(linkDrag.snapTarget.taskId) : null;
+            const x2 = snap ? snap.startX : linkDrag.currentX;
+            const y2 = snap ? snap.centerY : linkDrag.currentY;
+            return (
+              <g style={{ pointerEvents: "none" }}>
+                <line x1={x1} y1={y1} x2={x2} y2={y2} stroke="#4b9cf5" strokeWidth={1.5} strokeDasharray="5,3" />
+                <circle cx={x2} cy={y2} r={5} fill="#4b9cf5" opacity={0.8} />
+              </g>
+            );
+          })()}
         </svg>
         {canEdit && (
           <p className="text-xs mt-1" style={{ color: "#484f58" }}>
-            Drag bars to move · Drag right edge to resize · Double-click to edit · Drag ⠿ on phase header to reorder
+            Drag bars to move · Drag right edge to resize · Double-click to edit · Drag ⠿ to reorder · Drag 🔵 dot to link tasks
           </p>
         )}
       </div>
