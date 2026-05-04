@@ -302,6 +302,40 @@ export async function POST(
     });
   }
 
+  // Auto-save a version snapshot after successful send
+  if (template.clientId) {
+    try {
+      const gcFeePercent = template.gcFeePercent ? Number(template.gcFeePercent) : 0;
+      const divSubtotal = template.divisions.reduce((sum, div) => {
+        if (div.manualTotal != null) return sum + Number(div.manualTotal);
+        const allItems = [
+          ...div.items,
+          ...div.groups.flatMap(g => g.items),
+        ];
+        return sum + allItems.reduce((s, i) => {
+          const qty = i.defaultQty ? Number(i.defaultQty) : 0;
+          const cost = i.defaultUnitCost ? Number(i.defaultUnitCost) : 0;
+          const markup = i.defaultMarkupPct ? Number(i.defaultMarkupPct) : 0;
+          return s + qty * cost * (1 + markup / 100);
+        }, 0);
+      }, 0);
+      const gcFeeAmt = gcFeePercent > 0 ? divSubtotal * gcFeePercent / 100 : 0;
+      const versionTotal = divSubtotal + gcFeeAmt;
+      await prisma.estimateVersion.create({
+        data: {
+          companyId: params.companyId,
+          clientId: template.clientId,
+          templateId: templateId,
+          label: `Sent to ${to}`,
+          total: versionTotal,
+          subtotal: divSubtotal,
+          gcFee: gcFeeAmt,
+          createdBy: session.user?.name ?? session.user?.email ?? null,
+        },
+      });
+    } catch { /* version save failure is non-critical */ }
+  }
+
   return NextResponse.json({ success: true });
   } catch (err) {
     console.error("send-estimate-email unhandled error:", err);

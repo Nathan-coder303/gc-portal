@@ -18,6 +18,16 @@ Certified & Licensed Roofer CCC 1336817
 🌐 Website: www.mibhconstruction.com
 📸 Instagram: @mibh_construction`;
 
+type EstimateVersion = {
+  id: string;
+  label: string;
+  total: number;
+  subtotal: number;
+  gcFee: number;
+  createdAt: string;
+  createdBy: string | null;
+};
+
 type EstimateRow = {
   id: string;
   name: string;
@@ -34,6 +44,7 @@ type EstimateRow = {
   signedByName: string | null;
   counterSignedAt: string | null;
   total: number;
+  versions: EstimateVersion[];
 };
 
 function fmt(n: number) {
@@ -58,6 +69,7 @@ function EstimateCard({
 }) {
   const router = useRouter();
   const [hovered, setHovered] = useState(false);
+  const [showVersions, setShowVersions] = useState(false);
   const [step, setStep] = useState<"cover" | "email" | null>(null);
   const [pdfOpts, setPdfOpts] = useState<PdfOptions | null>(null);
   const [duplicating, setDuplicating] = useState(false);
@@ -238,7 +250,41 @@ function EstimateCard({
             {canDelete && (
               <DeleteEstimateButton estimateId={est.id} clientId={clientId} companyId={companyId} />
             )}
+            {est.versions.length > 0 && (
+              <button
+                onClick={() => setShowVersions(v => !v)}
+                className="px-3 py-1.5 rounded-lg text-xs font-semibold"
+                style={{ background: showVersions ? "#C9A84C22" : "transparent", color: "#8b949e", border: "1px solid #30373f" }}
+              >
+                🕐 {est.versions.length} version{est.versions.length !== 1 ? "s" : ""}
+              </button>
+            )}
           </div>
+
+          {/* Version history */}
+          {showVersions && est.versions.length > 0 && (
+            <div className="mt-3 rounded-lg overflow-hidden" style={{ border: "1px solid #21262d" }} onClick={e => e.stopPropagation()}>
+              <div className="px-3 py-2" style={{ background: "#0d1117", borderBottom: "1px solid #21262d" }}>
+                <span className="text-xs font-bold uppercase tracking-widest" style={{ color: "#8b949e" }}>Version History</span>
+              </div>
+              {est.versions.map((v, i) => {
+                const ts = new Date(v.createdAt).toLocaleString("en-US", {
+                  timeZone: "America/New_York", month: "short", day: "numeric", year: "numeric",
+                  hour: "numeric", minute: "2-digit", hour12: true,
+                });
+                return (
+                  <div key={v.id} className="flex items-center justify-between gap-3 px-3 py-2.5"
+                    style={{ background: i % 2 === 0 ? "#0d1117" : "#0a0f15", borderBottom: i < est.versions.length - 1 ? "1px solid #161b22" : "none" }}>
+                    <div className="min-w-0">
+                      <div className="text-xs font-medium truncate" style={{ color: "#e6edf3" }}>{v.label}</div>
+                      <div className="text-[11px] mt-0.5" style={{ color: "#484f58" }}>{ts} ET{v.createdBy ? ` · ${v.createdBy}` : ""}</div>
+                    </div>
+                    <span className="text-xs font-bold shrink-0" style={{ color: "#C9A84C" }}>${fmt(v.total)}</span>
+                  </div>
+                );
+              })}
+            </div>
+          )}
         </div>
       </div>
 

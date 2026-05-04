@@ -1311,6 +1311,8 @@ export default function TemplateEditor({
   const [savedToClient, setSavedToClient] = useState(false);
   const [globalSaveSignal, setGlobalSaveSignal] = useState(0);
   const [templateSaved, setTemplateSaved] = useState(false);
+  const [versionSaving, setVersionSaving] = useState(false);
+  const [versionSaved, setVersionSaved] = useState(false);
 
   const subtotal = grandTotal(divisions);
   const [gcFeePercent, setGcFeePercent] = useState<number | "">(template.gcFeePercent ?? "");
@@ -1490,6 +1492,23 @@ export default function TemplateEditor({
     return base;
   }
 
+  async function saveVersion(label?: string) {
+    if (!currentClient || template.type !== "CLIENT_ESTIMATE") return;
+    setVersionSaving(true);
+    setVersionSaved(false);
+    try {
+      await fetch(`/api/${template.companyId}/estimates/${template.id}/versions`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ label: label ?? "Manual save", total, subtotal, gcFee: gcFeeAmount, clientId: currentClient.id }),
+      });
+      setVersionSaved(true);
+      setTimeout(() => setVersionSaved(false), 3000);
+    } finally {
+      setVersionSaving(false);
+    }
+  }
+
   async function sendEmail() {
     if (!emailTo || !pdfOpts) return;
     setEmailSending(true);
@@ -1581,6 +1600,16 @@ export default function TemplateEditor({
             >
               ← {currentClient.name}
             </a>
+          )}
+          {currentClient && template.type === "CLIENT_ESTIMATE" && (
+            <button
+              onClick={() => saveVersion()}
+              disabled={versionSaving}
+              className="text-xs px-3 py-1.5 rounded-lg font-semibold disabled:opacity-40"
+              style={{ background: versionSaved ? "#0d2318" : "#1e2736", border: `1px solid ${versionSaved ? "#22c55e55" : "#30373f"}`, color: versionSaved ? "#22c55e" : "#8b949e" }}
+            >
+              {versionSaving ? "Saving…" : versionSaved ? "✓ Version saved" : "📌 Save Version"}
+            </button>
           )}
           <span className="text-xs font-bold uppercase tracking-widest" style={{ color: "#C9A84C" }}>💰 Live Total</span>
         </div>

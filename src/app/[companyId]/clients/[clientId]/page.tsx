@@ -48,6 +48,10 @@ export default async function ClientDetailPage({
               groups: { where: { archivedAt: null }, include: { items: { where: { archivedAt: null } } } },
             },
           },
+          versions: {
+            orderBy: { createdAt: "desc" },
+            select: { id: true, label: true, total: true, subtotal: true, gcFee: true, createdAt: true, createdBy: true },
+          },
         },
       },
     },
@@ -272,6 +276,15 @@ export default async function ClientDetailPage({
             signedByName: est.signedByName ?? null,
             counterSignedAt: est.counterSignedAt?.toISOString() ?? null,
             total: calcEstimateTotal(est.divisions, est.gcFeePercent),
+            versions: est.versions.map(v => ({
+              id: v.id,
+              label: v.label,
+              total: Number(v.total),
+              subtotal: Number(v.subtotal),
+              gcFee: Number(v.gcFee),
+              createdAt: v.createdAt.toISOString(),
+              createdBy: v.createdBy,
+            })),
           }))}
           companyId={params.companyId}
           clientId={params.clientId}
