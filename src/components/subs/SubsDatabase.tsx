@@ -85,6 +85,7 @@ function getSubSourceDisplay(src: string | null | undefined): { label: string; c
   if (!src) return null;
   if (src.startsWith("Excel")) return { label: `📊 ${src}`, color: src.includes("1240") ? "#f97316" : "#a855f7" };
   if (src.startsWith("Email")) return { label: `📧 ${src}`, color: "#3b82f6" };
+  if (src === "PlanHub") return { label: "📧 PlanHub", color: "#3b82f6" };
   if (src === "Manual") return { label: "✏ Manual", color: "#6b7280" };
   return { label: src, color: "#8b949e" };
 }
