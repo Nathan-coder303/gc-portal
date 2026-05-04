@@ -220,11 +220,8 @@ export default async function TodayPage({
   // MIBH Income = sum of (internalProfit + gcFee) across active + completed clients
   const clientIncomeSummaries: ClientIncomeSummary[] = activeClients.map(c => {
     const internalProfit = c.templates.reduce((s, t) => {
-      const override = t.internalProfitOverride != null ? Number(t.internalProfitOverride) : null;
-      if (override !== null && override > 0) return s + override;
-      const markupTotal = calcMarkupTotal(t.divisions);
-      if (markupTotal > 0) return s + markupTotal;
-      return s + calcGcFeeAmt(t.divisions, t.gcFeePercent);
+      if (t.internalProfitOverride != null) return s + Number(t.internalProfitOverride);
+      return s + calcMarkupTotal(t.divisions);
     }, 0);
     const gcFee = c.templates.reduce((s, t) => s + calcGcFeeAmt(t.divisions, t.gcFeePercent), 0);
     const estimateTotal = c.templates.reduce((s, t) => s + calcEstimateTotal(t.divisions, t.gcFeePercent), 0);

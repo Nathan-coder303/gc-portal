@@ -1847,7 +1847,7 @@ function ClientGanttChart({ tasks, projectStart, companyId, clientId, canEdit, o
 
   async function handleDeleteTask(task: ClientTask) {
     await fetch(`/api/${companyId}/clients/${clientId}/schedule/${task.id}`, { method: "DELETE" });
-    onTasksChange(tasks.filter(t => t.id !== task.id));
+    onTasksChange(tasks.filter(t => t.id !== task.id).map(t => t.parentId === task.id ? { ...t, parentId: null } : t));
   }
 
   async function handleAddLink(targetTaskId: string, predecessorId: string) {
@@ -2543,7 +2543,12 @@ type TableRow = {
 
 function buildTableRows(tasks: ClientTask[], collapsedIds: Set<string>): TableRow[] {
   // Sort tasks by sortOrder
-  const sorted = [...tasks].sort((a, b) => a.sortOrder - b.sortOrder);
+  const taskIds = new Set(tasks.map(t => t.id));
+  // Treat tasks with a parentId that no longer exists as top-level (defensive against orphans from deletions)
+  const sorted = [...tasks].sort((a, b) => a.sortOrder - b.sortOrder).map(t => ({
+    ...t,
+    parentId: (t.parentId && taskIds.has(t.parentId)) ? t.parentId : null,
+  }));
 
   // Build parent→children map
   const childrenOf = new Map<string | null, ClientTask[]>();
@@ -2949,7 +2954,7 @@ function ScheduleTableView({
 
   async function deleteTask(task: ClientTask) {
     await fetch(`/api/${companyId}/clients/${clientId}/schedule/${task.id}`, { method: "DELETE" });
-    onTasksChange(tasks.filter(t => t.id !== task.id));
+    onTasksChange(tasks.filter(t => t.id !== task.id).map(t => t.parentId === task.id ? { ...t, parentId: null } : t));
   }
 
   // ── Predecessor cascade (respects link type: FS, SS, FF, SF) ─────────────
