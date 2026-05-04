@@ -1889,10 +1889,23 @@ function ClientGanttChart({ tasks, projectStart, companyId, clientId, canEdit, o
                 <rect x={0} y={y} width={svgWidth} height={ROW_HEIGHT} fill={isEven ? "#0d1117" : "#0a0e14"} />
                 <line x1={0} y1={y + ROW_HEIGHT} x2={svgWidth} y2={y + ROW_HEIGHT} stroke="#30373f" strokeWidth={0.3} />
                 <text x={isChild ? 28 : 16} y={y + ROW_HEIGHT / 2 + 4} fontSize={11} fill={task.status === "DONE" ? "#484f58" : "#e6edf3"}>
-                  {task.name.length > 26 ? task.name.slice(0, 26) + "…" : task.name}
+                  {task.name.length > 22 ? task.name.slice(0, 22) + "…" : task.name}
                 </text>
                 {task.trade && <text x={isChild ? 28 : 16} y={y + ROW_HEIGHT - 5} fontSize={9} fill="#484f58">{task.trade}</text>}
                 <circle cx={isChild ? 20 : 8} cy={y + ROW_HEIGHT / 2} r={3} fill={barColor} />
+
+                {canEdit && (
+                  <g style={{ cursor: "pointer" }} onClick={e => { e.stopPropagation(); handleDeleteTask(task); }}>
+                    <rect x={labelW - 22} y={y + ROW_HEIGHT / 2 - 9} width={18} height={18} rx={3} fill="#f8514922" stroke="#f8514933" strokeWidth={1} />
+                    <g transform={`translate(${labelW - 21}, ${y + ROW_HEIGHT / 2 - 7}) scale(${14 / 24})`} stroke="#f85149" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" fill="none" style={{ pointerEvents: "none" }}>
+                      <polyline points="3 6 5 6 21 6" />
+                      <path d="M19 6l-1 14H6L5 6" />
+                      <path d="M10 11v6" />
+                      <path d="M14 11v6" />
+                      <path d="M9 6V4h6v2" />
+                    </g>
+                  </g>
+                )}
 
                 {task.isMilestone ? (
                   <polygon
