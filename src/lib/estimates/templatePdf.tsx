@@ -1063,17 +1063,30 @@ function DivisionSummaryPage({ template, client, divisions, gcFeePercent }: Pick
           </View>
           {hasAllowances && (
             <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", backgroundColor: "#2d2410", paddingHorizontal: 16, paddingVertical: 8, borderRadius: 4, marginTop: 4 }}>
-              <Text style={{ fontSize: 10, fontFamily: "Helvetica-Bold", color: GOLD }}>TOTAL ALLOWANCES</Text>
+              <Text style={{ fontSize: 10, fontFamily: "Helvetica-Bold", color: GOLD }}>TOTAL ALLOWANCES INCLUDED</Text>
               <Text style={{ fontSize: 13, fontFamily: "Helvetica-Bold", color: GOLD }}>{allowancesTotal > 0 ? `$${fmt(allowancesTotal)}` : "TBD"}</Text>
             </View>
           )}
-          {template.durationMonths ? (
-            <View style={{ flexDirection: "row", justifyContent: "center", alignItems: "center", gap: 10, marginTop: 18, marginBottom: 4 }}>
-              <Text style={{ fontSize: 22, fontFamily: "Helvetica-Bold", color: DARK }}>{Number(template.durationMonths).toLocaleString("en-US", { maximumFractionDigits: 1 })} MONTHS</Text>
-              <Text style={{ fontSize: 22, fontFamily: "Helvetica-Bold", color: "#94a3b8" }}>EST. DURATION</Text>
+          {(template.sqFt || template.durationMonths) && (
+            <View style={{ flexDirection: "row", justifyContent: "center", gap: 32, marginTop: 18, marginBottom: 4 }}>
+              {template.sqFt ? (
+                <View style={{ alignItems: "center" }}>
+                  <Text style={{ fontSize: 22, fontFamily: "Helvetica-Bold", color: DARK }}>{Number(template.sqFt).toLocaleString("en-US", { maximumFractionDigits: 0 })} SF</Text>
+                  <Text style={{ fontSize: 8, color: "#94a3b8", marginTop: 2 }}>SQUARE FEET</Text>
+                </View>
+              ) : null}
+              {template.sqFt && template.durationMonths ? (
+                <View style={{ width: 1, backgroundColor: "#e2e8f0", marginVertical: 4 }} />
+              ) : null}
+              {template.durationMonths ? (
+                <View style={{ flexDirection: "row", alignItems: "center", gap: 10 }}>
+                  <Text style={{ fontSize: 22, fontFamily: "Helvetica-Bold", color: DARK }}>{Number(template.durationMonths).toLocaleString("en-US", { maximumFractionDigits: 1 })} MONTHS</Text>
+                  <Text style={{ fontSize: 22, fontFamily: "Helvetica-Bold", color: "#94a3b8" }}>EST. DURATION</Text>
+                </View>
+              ) : null}
             </View>
-          ) : null}
-          <Text style={{ fontSize: 8, color: "#94a3b8", textAlign: "center", marginTop: template.durationMonths ? 8 : 20 }}>
+          )}
+          <Text style={{ fontSize: 8, color: "#94a3b8", textAlign: "center", marginTop: (template.sqFt || template.durationMonths) ? 8 : 20 }}>
             Detailed scope of work and line items follow on the next pages.
           </Text>
         </View>
