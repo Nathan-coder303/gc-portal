@@ -295,7 +295,9 @@ export default function BidTriage({
     try {
       const div = ALL_DIVISIONS.find(d => d.code === subForm.divisionCode);
       const srcLabel = getSubSourceLabel(addSubModal.bid);
-      const notesJson = JSON.stringify({ src: srcLabel });
+      const notesObj: Record<string, unknown> = { src: srcLabel };
+      if (subForm.notes.trim()) notesObj.text = subForm.notes.trim();
+      const notesJson = JSON.stringify(notesObj);
       const res = await fetch(`/api/${companyId}/subs`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },

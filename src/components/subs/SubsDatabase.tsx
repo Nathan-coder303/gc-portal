@@ -54,7 +54,7 @@ function tagColor(tag: string) {
   for (let i = 0; i < tag.length; i++) h = (h * 31 + tag.charCodeAt(i)) % TAG_COLORS.length;
   return TAG_COLORS[h];
 }
-type NotesData = { t?: string[]; d?: { c: string; n: string }[]; src?: string };
+type NotesData = { t?: string[]; d?: { c: string; n: string }[]; src?: string; text?: string };
 function parseNotesData(notes: string | null): NotesData {
   if (!notes) return {};
   try {
@@ -73,12 +73,16 @@ function parseExtraDivs(notes: string | null): { c: string; n: string }[] {
 function parseSrc(notes: string | null): string | null {
   return parseNotesData(notes).src ?? null;
 }
-function serializeNotes(tags: string[], divs: { c: string; n: string }[], src?: string | null): string | null {
-  if (!tags.length && !divs.length && !src) return null;
+function parseText(notes: string | null): string {
+  return parseNotesData(notes).text ?? "";
+}
+function serializeNotes(tags: string[], divs: { c: string; n: string }[], src?: string | null, text?: string): string | null {
+  if (!tags.length && !divs.length && !src && !text) return null;
   const obj: NotesData = {};
   if (tags.length) obj.t = tags;
   if (divs.length) obj.d = divs;
   if (src) obj.src = src;
+  if (text) obj.text = text;
   return JSON.stringify(obj);
 }
 function getSubSourceDisplay(src: string | null | undefined): { label: string; color: string } | null {
@@ -246,6 +250,11 @@ function SubCard({
         return <span className="text-[10px] px-1.5 py-0.5 rounded font-semibold w-fit" style={{ background: s.color + "22", color: s.color, border: `1px solid ${s.color}44` }}>{s.label}</span>;
       })()}
 
+      {/* Notes text */}
+      {parseText(sub.notes) && (
+        <p className="text-xs leading-snug" style={{ color: "#8b949e" }}>{parseText(sub.notes)}</p>
+      )}
+
       {/* Tags */}
       {tags.length > 0 && (
         <div className="flex flex-wrap gap-1">
@@ -326,7 +335,7 @@ function SubModal({
   title, initial, suggestions = [], onSave, onClose,
 }: {
   title: string;
-  initial: { name: string; contactName: string; address: string; email: string; phone: string; divisionCode: string; divisionName: string; tags: string[]; extraDivs: { c: string; n: string }[]; src?: string | null };
+  initial: { name: string; contactName: string; address: string; email: string; phone: string; divisionCode: string; divisionName: string; tags: string[]; extraDivs: { c: string; n: string }[]; src?: string | null; text?: string };
   suggestions?: string[];
   onSave: (data: typeof initial) => Promise<void>;
   onClose: () => void;
@@ -376,6 +385,16 @@ function SubModal({
           <div>
             <label className="block text-xs mb-1" style={{ color: "#8b949e" }}>Phone</label>
             <input type="tel" value={form.phone} onChange={e => setForm(f => ({ ...f, phone: e.target.value }))} style={INPUT} className="outline-none" placeholder="(305) 000-0000" />
+          </div>
+          <div>
+            <label className="block text-xs mb-1" style={{ color: "#8b949e" }}>Notes</label>
+            <textarea
+              value={form.text ?? ""}
+              onChange={e => setForm(f => ({ ...f, text: e.target.value }))}
+              style={{ ...INPUT, resize: "vertical", minHeight: 60 }}
+              className="outline-none"
+              placeholder="Any notes about this sub…"
+            />
           </div>
           <div>
             <label className="block text-xs mb-1" style={{ color: "#8b949e" }}>Tags <span style={{ color: "#484f58" }}>(Enter or comma)</span></label>
@@ -740,10 +759,10 @@ export default function SubsDatabase({
 
   // ── CRUD ──────────────────────────────────────────────────────────────────
   async function handleSave(
-    form: { name: string; contactName: string; address: string; email: string; phone: string; divisionCode: string; divisionName: string; tags: string[]; extraDivs: { c: string; n: string }[]; src?: string | null },
+    form: { name: string; contactName: string; address: string; email: string; phone: string; divisionCode: string; divisionName: string; tags: string[]; extraDivs: { c: string; n: string }[]; src?: string | null; text?: string },
     editId?: string
   ) {
-    const notes = serializeNotes(form.tags, form.extraDivs, form.src);
+    const notes = serializeNotes(form.tags, form.extraDivs, form.src, form.text?.trim() || undefined);
     const body = { name: form.name, contactName: form.contactName || null, address: form.address || null, email: form.email || null, phone: form.phone || null, divisionCode: form.divisionCode, divisionName: form.divisionName, notes };
     if (editId) {
       const res = await fetch(`/api/${companyId}/subs/${editId}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
@@ -894,8 +913,8 @@ export default function SubsDatabase({
 
   const defaultDivision = ALL_DIVISIONS[0];
   const modalInitial = modal?.mode === "edit" && modal.sub
-    ? { name: modal.sub.name, contactName: modal.sub.contactName ?? "", address: modal.sub.address ?? "", email: modal.sub.email ?? "", phone: modal.sub.phone ?? "", divisionCode: modal.sub.divisionCode, divisionName: modal.sub.divisionName, tags: parseTags(modal.sub.notes), extraDivs: parseExtraDivs(modal.sub.notes), src: parseSrc(modal.sub.notes) }
-    : { name: "", contactName: "", address: "", email: "", phone: "", divisionCode: modal?.prefillDiv?.code ?? defaultDivision.code, divisionName: modal?.prefillDiv?.name ?? defaultDivision.name, tags: [], extraDivs: [], src: null };
+    ? { name: modal.sub.name, contactName: modal.sub.contactName ?? "", address: modal.sub.address ?? "", email: modal.sub.email ?? "", phone: modal.sub.phone ?? "", divisionCode: modal.sub.divisionCode, divisionName: modal.sub.divisionName, tags: parseTags(modal.sub.notes), extraDivs: parseExtraDivs(modal.sub.notes), src: parseSrc(modal.sub.notes), text: parseText(modal.sub.notes) }
+    : { name: "", contactName: "", address: "", email: "", phone: "", divisionCode: modal?.prefillDiv?.code ?? defaultDivision.code, divisionName: modal?.prefillDiv?.name ?? defaultDivision.name, tags: [], extraDivs: [], src: null, text: "" };
 
   return (
     <div>
