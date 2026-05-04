@@ -1264,7 +1264,17 @@ function EditModal({
             </div>
             <div>
               <label className="block text-[11px] mb-1" style={{ color: "#8b949e" }}>Phase</label>
-              <input value={form.phase} onChange={e => setForm(f => ({ ...f, phase: e.target.value }))} style={INPUT} className="outline-none" placeholder="General" />
+              {(() => {
+                const phaseOpts = Array.from(new Set(allTasks.map(t => t.phase))).sort();
+                return phaseOpts.length > 0 ? (
+                  <select value={form.phase} onChange={e => setForm(f => ({ ...f, phase: e.target.value }))}
+                    style={{ ...INPUT, cursor: "pointer", appearance: "none" }} className="outline-none">
+                    {phaseOpts.map(p => <option key={p} value={p}>{p}</option>)}
+                  </select>
+                ) : (
+                  <input value={form.phase} onChange={e => setForm(f => ({ ...f, phase: e.target.value }))} style={INPUT} className="outline-none" placeholder="General" />
+                );
+              })()}
             </div>
             <div>
               <label className="block text-[11px] mb-1" style={{ color: "#8b949e" }}>Duration (days)</label>
@@ -2475,7 +2485,17 @@ function EditTaskModal({
             </div>
             <div>
               <label className="block text-[11px] mb-1" style={{ color: "#8b949e" }}>Phase</label>
-              <input value={form.phase} onChange={e => setForm(f => ({ ...f, phase: e.target.value }))} style={INPUT} className="outline-none" placeholder="General" />
+              {(() => {
+                const phaseOpts = allTasks ? Array.from(new Set(allTasks.map(t => t.phase))).sort() : [];
+                return phaseOpts.length > 0 ? (
+                  <select value={form.phase} onChange={e => setForm(f => ({ ...f, phase: e.target.value }))}
+                    style={{ ...INPUT, cursor: "pointer", appearance: "none" }} className="outline-none">
+                    {phaseOpts.map(p => <option key={p} value={p}>{p}</option>)}
+                  </select>
+                ) : (
+                  <input value={form.phase} onChange={e => setForm(f => ({ ...f, phase: e.target.value }))} style={INPUT} className="outline-none" placeholder="General" />
+                );
+              })()}
             </div>
             <div>
               <label className="block text-[11px] mb-1" style={{ color: "#8b949e" }}>Duration (days)</label>
