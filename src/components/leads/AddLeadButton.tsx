@@ -1,6 +1,7 @@
 "use client";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { ProjectTypeSelector } from "@/components/leads/ProjectTypeSelector";
 
 export default function AddLeadButton({ companyId }: { companyId: string }) {
   const [open, setOpen] = useState(false);
@@ -114,7 +115,7 @@ export default function AddLeadButton({ companyId }: { companyId: string }) {
               </div>
               <div className="col-span-2">
                 <label style={labelStyle}>Project Type</label>
-                <input style={inputStyle} placeholder="e.g. Flat Roof, Addition, HVAC..." value={form.projectType} onChange={e => set("projectType", e.target.value)} />
+                <ProjectTypeSelector value={form.projectType} onChange={v => set("projectType", v)} />
               </div>
               <div className="col-span-2">
                 <label style={labelStyle}>Notes</label>

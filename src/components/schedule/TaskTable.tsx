@@ -347,7 +347,6 @@ export default function TaskTable({
       <div className="px-4 py-3 flex items-center justify-between gap-3" style={{ borderBottom: "1px solid #30373f" }}>
         <div>
           <span className="font-semibold text-sm" style={{ color: "#e6edf3" }}>Task List</span>
-          <span className="text-xs ml-2" style={{ color: "#8b949e" }}>Right-click phase or task to delete</span>
         </div>
         {canEdit && (
           <div className="flex items-center gap-2">
@@ -497,6 +496,16 @@ export default function TaskTable({
                         {late > 0 && (
                           <span className="text-xs bg-red-100 text-red-700 px-2 py-0.5 rounded-full font-medium">{late} late</span>
                         )}
+                        {canEdit && (
+                          <button
+                            onClick={e => { e.stopPropagation(); handleDeletePhase(phase); }}
+                            className="ml-auto w-6 h-6 rounded flex items-center justify-center"
+                            style={{ background: "#f8514922", color: "#f85149", border: "1px solid #f8514933" }}
+                            title={`Delete phase (${phaseTasks.length} tasks)`}
+                          >
+                            <TrashIcon size={11} />
+                          </button>
+                        )}
                       </div>
                     </td>
                   </tr>,
@@ -540,20 +549,30 @@ export default function TaskTable({
                             <td className="px-4 py-2 text-right text-slate-500 text-xs">{t.percentComplete}%</td>
                             {canEdit && (
                               <td className="px-4 py-2">
-                                <button
-                                  onClick={() => setEditingTask({
-                                    id: t.id, name: t.name, phase: t.phase, durationDays: t.durationDays,
-                                    startDate: format(t.startDate, "yyyy-MM-dd"),
-                                    endDate: format(t.endDate, "yyyy-MM-dd"),
-                                    trade: t.trade, assignee: t.assignee, notes: null,
-                                    percentComplete: t.percentComplete,
-                                  })}
-                                  className="w-7 h-7 rounded flex items-center justify-center"
-                                  style={{ background: "#C9A84C22", color: "#C9A84C", border: "1px solid #C9A84C44" }}
-                                  title="Edit"
-                                >
-                                  <PencilIcon size={13} />
-                                </button>
+                                <div className="flex items-center gap-1">
+                                  <button
+                                    onClick={() => setEditingTask({
+                                      id: t.id, name: t.name, phase: t.phase, durationDays: t.durationDays,
+                                      startDate: format(t.startDate, "yyyy-MM-dd"),
+                                      endDate: format(t.endDate, "yyyy-MM-dd"),
+                                      trade: t.trade, assignee: t.assignee, notes: null,
+                                      percentComplete: t.percentComplete,
+                                    })}
+                                    className="w-7 h-7 rounded flex items-center justify-center"
+                                    style={{ background: "#C9A84C22", color: "#C9A84C", border: "1px solid #C9A84C44" }}
+                                    title="Edit"
+                                  >
+                                    <PencilIcon size={13} />
+                                  </button>
+                                  <button
+                                    onClick={() => handleDeleteTask(t.id)}
+                                    className="w-7 h-7 rounded flex items-center justify-center"
+                                    style={{ background: "#f8514922", color: "#f85149", border: "1px solid #f8514933" }}
+                                    title="Delete task"
+                                  >
+                                    <TrashIcon size={13} />
+                                  </button>
+                                </div>
                               </td>
                             )}
                           </tr>
