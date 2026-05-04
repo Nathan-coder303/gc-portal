@@ -92,10 +92,12 @@ function ItemRowEdit({
   groupId,
   canEdit,
   canArchive,
+  isOverridden,
 }: {
   item: Item;
   divisionId: string;
   groupId?: string | null;
+  isOverridden?: boolean;
   canEdit: boolean;
   canArchive: boolean;
 }) {
@@ -151,9 +153,9 @@ function ItemRowEdit({
         <td className="px-3 py-2 text-xs" style={{ color: item.detail === "Allowances" ? "#b45309" : item.detail === "Excluded" ? "#dc2626" : "#64748b" }}>{item.detail ?? "—"}</td>
         <td className="px-3 py-2 text-sm text-slate-700 text-right">{item.qty}</td>
         <td className="px-3 py-2 text-sm text-slate-500 text-center">{item.unit ?? "—"}</td>
-        <td className="px-3 py-2 text-sm text-slate-700 text-right">${fmt(item.unitCost)}</td>
+        <td className="px-3 py-2 text-sm text-right" style={{ color: isOverridden ? "#cbd5e1" : undefined }}>{isOverridden ? "—" : `$${fmt(item.unitCost)}`}</td>
         <td className="px-3 py-2 text-sm text-slate-700 text-right">{item.markupPct}%</td>
-        <td className="px-3 py-2 text-sm font-semibold text-slate-900 text-right">${fmt(total)}</td>
+        <td className="px-3 py-2 text-sm font-semibold text-right" style={{ color: isOverridden ? "#cbd5e1" : "#0f172a" }}>{isOverridden ? "—" : `$${fmt(total)}`}</td>
         <td className="px-3 py-2 text-right">
           <div className="flex gap-1 justify-end opacity-0 group-hover:opacity-100 transition-opacity">
             {canEdit && (
@@ -296,12 +298,14 @@ function ItemTable({
   items,
   canEdit,
   canArchive,
+  isOverridden,
 }: {
   divisionId: string;
   groupId?: string | null;
   items: Item[];
   canEdit: boolean;
   canArchive: boolean;
+  isOverridden?: boolean;
 }) {
   return (
     <div className="overflow-x-auto">
@@ -328,6 +332,7 @@ function ItemTable({
               groupId={groupId}
               canEdit={canEdit}
               canArchive={canArchive}
+              isOverridden={isOverridden}
             />
           ))}
           <AddItemRow divisionId={divisionId} groupId={groupId} canEdit={canEdit} />
@@ -342,11 +347,13 @@ function GroupSection({
   divisionId,
   canEdit,
   canArchive,
+  isOverridden,
 }: {
   group: Group;
   divisionId: string;
   canEdit: boolean;
   canArchive: boolean;
+  isOverridden?: boolean;
 }) {
   const [isPending, startTransition] = useTransition();
   const total = computeGroupTotal(group.items);
@@ -370,7 +377,7 @@ function GroupSection({
           )}
         </div>
       </div>
-      <ItemTable divisionId={divisionId} groupId={group.id} items={group.items} canEdit={canEdit} canArchive={canArchive} />
+      <ItemTable divisionId={divisionId} groupId={group.id} items={group.items} canEdit={canEdit} canArchive={canArchive} isOverridden={isOverridden} />
     </div>
   );
 }
@@ -483,11 +490,11 @@ function DivisionSection({
       {open && (
         <div className="border-t border-slate-100 pb-2">
           {division.groups.map((grp) => (
-            <GroupSection key={grp.id} group={grp} divisionId={division.id} canEdit={canEdit} canArchive={canArchive} />
+            <GroupSection key={grp.id} group={grp} divisionId={division.id} canEdit={canEdit} canArchive={canArchive} isOverridden={division.manualTotal != null} />
           ))}
 
           {division.items.length > 0 && (
-            <ItemTable divisionId={division.id} groupId={null} items={division.items} canEdit={canEdit} canArchive={canArchive} />
+            <ItemTable divisionId={division.id} groupId={null} items={division.items} canEdit={canEdit} canArchive={canArchive} isOverridden={division.manualTotal != null} />
           )}
 
           {canEdit && (
