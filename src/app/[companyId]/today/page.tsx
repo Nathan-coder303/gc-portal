@@ -11,22 +11,26 @@ import PendingCountersignsCard from "@/components/today/PendingCountersignsCard"
 import AppointmentsCard from "@/components/today/AppointmentsCard";
 import BarometerSection, { type ClientIncomeSummary } from "@/components/today/BarometerSection";
 
-type DivisionLike = { items: { defaultQty: unknown; defaultUnitCost: unknown; defaultMarkupPct: unknown }[]; groups: { items: { defaultQty: unknown; defaultUnitCost: unknown; defaultMarkupPct: unknown }[] }[] };
+type DivisionLike = { manualTotal?: unknown; items: { defaultQty: unknown; defaultUnitCost: unknown; defaultMarkupPct: unknown }[]; groups: { items: { defaultQty: unknown; defaultUnitCost: unknown; defaultMarkupPct: unknown }[] }[] };
+
+function divisionRaw(div: DivisionLike): number {
+  if (div.manualTotal != null) return Number(div.manualTotal);
+  const allItems = [...div.items, ...div.groups.flatMap(g => g.items)];
+  return allItems.reduce((s, i) => {
+    const qty = i.defaultQty ? Number(i.defaultQty) : 0;
+    const cost = i.defaultUnitCost ? Number(i.defaultUnitCost) : 0;
+    const markup = i.defaultMarkupPct ? Number(i.defaultMarkupPct) : 0;
+    return s + qty * cost * (1 + markup / 100);
+  }, 0);
+}
 
 function calcRaw(divisions: DivisionLike[]): number {
-  return divisions.reduce((sum, div) => {
-    const allItems = [...div.items, ...div.groups.flatMap(g => g.items)];
-    return sum + allItems.reduce((s, i) => {
-      const qty = i.defaultQty ? Number(i.defaultQty) : 0;
-      const cost = i.defaultUnitCost ? Number(i.defaultUnitCost) : 0;
-      const markup = i.defaultMarkupPct ? Number(i.defaultMarkupPct) : 0;
-      return s + qty * cost * (1 + markup / 100);
-    }, 0);
-  }, 0);
+  return divisions.reduce((sum, div) => sum + divisionRaw(div), 0);
 }
 
 function calcMarkupTotal(divisions: DivisionLike[]): number {
   return divisions.reduce((sum, div) => {
+    if (div.manualTotal != null) return sum;
     const allItems = [...div.items, ...div.groups.flatMap(g => g.items)];
     return sum + allItems.reduce((s, i) => {
       const qty = i.defaultQty ? Number(i.defaultQty) : 0;
@@ -184,6 +188,7 @@ export default async function TodayPage({
             divisions: {
               where: { archivedAt: null },
               select: {
+                manualTotal: true,
                 items: { where: { archivedAt: null, groupId: null }, select: { defaultQty: true, defaultUnitCost: true, defaultMarkupPct: true } },
                 groups: { where: { archivedAt: null }, select: { items: { where: { archivedAt: null }, select: { defaultQty: true, defaultUnitCost: true, defaultMarkupPct: true } } } },
               },
@@ -214,7 +219,13 @@ export default async function TodayPage({
 
   // MIBH Income = sum of (internalProfit + gcFee) across active + completed clients
   const clientIncomeSummaries: ClientIncomeSummary[] = activeClients.map(c => {
-    const internalProfit = c.templates.reduce((s, t) => s + (t.internalProfitOverride != null ? Number(t.internalProfitOverride) : calcMarkupTotal(t.divisions)), 0);
+    const internalProfit = c.templates.reduce((s, t) => {
+      const override = t.internalProfitOverride != null ? Number(t.internalProfitOverride) : null;
+      if (override !== null && override > 0) return s + override;
+      const markupTotal = calcMarkupTotal(t.divisions);
+      if (markupTotal > 0) return s + markupTotal;
+      return s + calcGcFeeAmt(t.divisions, t.gcFeePercent);
+    }, 0);
     const gcFee = c.templates.reduce((s, t) => s + calcGcFeeAmt(t.divisions, t.gcFeePercent), 0);
     const estimateTotal = c.templates.reduce((s, t) => s + calcEstimateTotal(t.divisions, t.gcFeePercent), 0);
     return { id: c.id, name: c.name, status: c.status, estimateTotal, internalProfit, gcFee, mibhIncome: internalProfit + gcFee, companyId: params.companyId };

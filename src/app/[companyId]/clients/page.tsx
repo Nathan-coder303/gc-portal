@@ -6,22 +6,26 @@ import ClientsManager from "./ClientsManager";
 
 export const dynamic = "force-dynamic";
 
-type DivisionLike = { items: { defaultQty: unknown; defaultUnitCost: unknown; defaultMarkupPct: unknown }[]; groups: { items: { defaultQty: unknown; defaultUnitCost: unknown; defaultMarkupPct: unknown }[] }[] };
+type DivisionLike = { manualTotal?: unknown; items: { defaultQty: unknown; defaultUnitCost: unknown; defaultMarkupPct: unknown }[]; groups: { items: { defaultQty: unknown; defaultUnitCost: unknown; defaultMarkupPct: unknown }[] }[] };
+
+function divisionRaw(div: DivisionLike): number {
+  if (div.manualTotal != null) return Number(div.manualTotal);
+  const allItems = [...div.items, ...div.groups.flatMap(g => g.items)];
+  return allItems.reduce((s, i) => {
+    const qty = i.defaultQty ? Number(i.defaultQty) : 0;
+    const cost = i.defaultUnitCost ? Number(i.defaultUnitCost) : 0;
+    const markup = i.defaultMarkupPct ? Number(i.defaultMarkupPct) : 0;
+    return s + qty * cost * (1 + markup / 100);
+  }, 0);
+}
 
 function calcRaw(divisions: DivisionLike[]): number {
-  return divisions.reduce((sum, div) => {
-    const allItems = [...div.items, ...div.groups.flatMap(g => g.items)];
-    return sum + allItems.reduce((s, i) => {
-      const qty = i.defaultQty ? Number(i.defaultQty) : 0;
-      const cost = i.defaultUnitCost ? Number(i.defaultUnitCost) : 0;
-      const markup = i.defaultMarkupPct ? Number(i.defaultMarkupPct) : 0;
-      return s + qty * cost * (1 + markup / 100);
-    }, 0);
-  }, 0);
+  return divisions.reduce((sum, div) => sum + divisionRaw(div), 0);
 }
 
 function calcMarkupTotal(divisions: DivisionLike[]): number {
   return divisions.reduce((sum, div) => {
+    if (div.manualTotal != null) return sum; // lump-sum divisions don't have item-level markup
     const allItems = [...div.items, ...div.groups.flatMap(g => g.items)];
     return sum + allItems.reduce((s, i) => {
       const qty = i.defaultQty ? Number(i.defaultQty) : 0;
@@ -62,6 +66,7 @@ export default async function ClientsPage({ params }: { params: { companyId: str
           divisions: {
             where: { archivedAt: null },
             select: {
+              manualTotal: true,
               items: { where: { archivedAt: null, groupId: null }, select: { defaultQty: true, defaultUnitCost: true, defaultMarkupPct: true } },
               groups: {
                 where: { archivedAt: null },
