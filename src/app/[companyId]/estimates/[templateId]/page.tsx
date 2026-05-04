@@ -4,7 +4,6 @@ import { prisma } from "@/lib/prisma";
 import { can } from "@/lib/auth/permissions";
 import TemplateEditor from "@/components/estimates/TemplateEditor";
 import { getCorrectCsiCode, lookupItemCsiCode } from "@/lib/divisions";
-import { getFileTermsPresets } from "@/lib/fileTerms";
 
 export const dynamic = "force-dynamic";
 
@@ -48,7 +47,11 @@ export default async function TemplateEditorPage({
         : []
       ),
   ]);
-  const termsTemplates = getFileTermsPresets();
+  const termsTemplates = await prisma.termsTemplate.findMany({
+    where: { companyId: params.companyId },
+    orderBy: { createdAt: "asc" },
+    select: { id: true, name: true, content: true },
+  });
 
   if (!template) redirect(`/${params.companyId}/estimates`);
 

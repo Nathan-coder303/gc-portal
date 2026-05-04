@@ -217,15 +217,24 @@ export default function TemplateList({
         <div>
           <h1 className="text-2xl font-bold" style={{ color: "#e6edf3" }}>Create Estimate</h1>
         </div>
-        {canEdit && (
-          <button
-            onClick={() => setShowCreate(!showCreate)}
+        <div className="flex gap-2 items-center">
+          <a
+            href={`/${companyId}/estimates/terms-library`}
             className="px-4 py-2 rounded-lg text-sm font-medium"
-            style={{ background: "#C9A84C", color: "#0d1117" }}
+            style={{ border: "1px solid #30373f", color: "#8b949e" }}
           >
-            + New Template
-          </button>
-        )}
+            T&C Library
+          </a>
+          {canEdit && (
+            <button
+              onClick={() => setShowCreate(!showCreate)}
+              className="px-4 py-2 rounded-lg text-sm font-medium"
+              style={{ background: "#C9A84C", color: "#0d1117" }}
+            >
+              + New Template
+            </button>
+          )}
+        </div>
       </div>
 
       {showCreate && (
