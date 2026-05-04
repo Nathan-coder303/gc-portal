@@ -2982,11 +2982,20 @@ function ScheduleTableView({
       if (!pt) return;
       if ("touches" in ev) (ev as TouchEvent).preventDefault?.();
       const el = document.elementFromPoint(pt.clientX, pt.clientY);
-      const tr = el?.closest("tr[data-task-id]");
-      const rowId = tr?.getAttribute("data-task-id");
+      // Check for task row first
+      const taskTr = el?.closest("tr[data-task-id]");
+      const rowId = taskTr?.getAttribute("data-task-id");
       if (rowId && rowId !== taskId && rowId !== dropIdRef.current) {
-        dropIdRef.current = rowId;
-        setDropId(rowId);
+        dropIdRef.current = rowId; setDropId(rowId); return;
+      }
+      // Check for virtual phase header row — use first visible task of that phase as target
+      const vphTr = el?.closest("tr[data-vphase]");
+      const vphase = vphTr?.getAttribute("data-vphase");
+      if (vphase) {
+        const firstTask = (rowsRef.current.filter(r => r.kind === "task") as TaskRow[]).find(r => r.task.phase === vphase && r.task.id !== taskId);
+        if (firstTask && firstTask.task.id !== dropIdRef.current) {
+          dropIdRef.current = firstTask.task.id; setDropId(firstTask.task.id);
+        }
       }
     }
 
@@ -3004,16 +3013,25 @@ function ScheduleTableView({
       if (!target || target === taskId) return;
       const flatIds = rowsRef.current.filter(r => r.kind === "task").map(r => (r as TaskRow).task.id);
       if (!flatIds.includes(taskId) || !flatIds.includes(target)) return;
+      const draggedTask = tasksRef.current.find(t => t.id === taskId);
+      const targetTask = tasksRef.current.find(t => t.id === target);
+      const newPhase = (draggedTask && targetTask && draggedTask.phase !== targetTask.phase) ? targetTask.phase : null;
       const filtered = flatIds.filter(id => id !== taskId);
-      filtered.splice(filtered.indexOf(target), 0, taskId); // insert before drop target
+      filtered.splice(filtered.indexOf(target), 0, taskId);
       const newOrders = new Map(filtered.map((id, i) => [id, i]));
-      const updated = tasksRef.current.map(t => ({ ...t, sortOrder: newOrders.get(t.id) ?? t.sortOrder }));
+      const updated = tasksRef.current.map(t => ({
+        ...t,
+        sortOrder: newOrders.get(t.id) ?? t.sortOrder,
+        ...(t.id === taskId && newPhase ? { phase: newPhase } : {}),
+      }));
       onTasksChange(updated);
       Promise.all(filtered.map(id => {
         const t = updated.find(x => x.id === id);
         if (!t) return Promise.resolve();
+        const body: Record<string, unknown> = { sortOrder: t.sortOrder };
+        if (id === taskId && newPhase) body.phase = newPhase;
         return fetch(`/api/${companyId}/clients/${clientId}/schedule/${t.id}`, {
-          method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ sortOrder: t.sortOrder }),
+          method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body),
         });
       }));
     }
@@ -3249,7 +3267,7 @@ function ScheduleTableView({
                 const phaseEnd = sortedDates[sortedDates.length - 1] ? fmtDate(sortedDates[sortedDates.length - 1]) : "";
                 const donePct = vr.phaseTasks.length ? Math.round(vr.phaseTasks.filter(t => t.status === "DONE").length / vr.phaseTasks.length * 100) : 0;
                 return (
-                  <tr key={`vphase-${vr.phase}`} style={{ background: "#191f2b", boxShadow: `inset 3px 0 0 ${GOLD}44` }}>
+                  <tr key={`vphase-${vr.phase}`} data-vphase={vr.phase} style={{ background: "#191f2b", boxShadow: `inset 3px 0 0 ${GOLD}44` }}>
                     <td style={{ ...col("num"), textAlign: "center", color: "#484f58", position: "sticky", left: 0, background: "#191f2b", zIndex: 1 }}>
                       <button onClick={() => setCollapsedIds(prev => { const n = new Set(prev); if (n.has(`vphase:${vr.phase}`)) n.delete(`vphase:${vr.phase}`); else n.add(`vphase:${vr.phase}`); return n; })}
                         style={{ background: "none", border: "none", cursor: "pointer", color: GOLD, fontSize: 11, padding: 0 }}>
