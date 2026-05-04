@@ -12,10 +12,12 @@ export async function PATCH(
   const session = await auth();
   if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-  const { netProfit } = await req.json();
+  const { netProfit, hasExpenses } = await req.json();
   if (typeof netProfit !== "number") {
     return NextResponse.json({ error: "netProfit required" }, { status: 400 });
   }
+  // Don't overwrite with 0 if there are no actual expenses entered — the estimate hasn't been tracked yet
+  if (netProfit === 0 && !hasExpenses) return NextResponse.json({ ok: true });
 
   // Find all non-archived CLIENT_ESTIMATE templates for this client, ordered by most recently updated
   const estimates = await prisma.estimateTemplate.findMany({

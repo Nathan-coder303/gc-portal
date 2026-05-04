@@ -93,8 +93,11 @@ export default async function ClientsPage({ params }: { params: { companyId: str
           estimateCount: c._count.templates,
           estimateTotal: c.templates.reduce((sum, t) => sum + calcEstimateTotal(t.divisions, t.gcFeePercent), 0),
           internalProfit: c.templates.reduce((sum, t) => {
-            if (t.internalProfitOverride != null) return sum + Number(t.internalProfitOverride);
-            return sum + calcMarkupTotal(t.divisions);
+            const override = t.internalProfitOverride != null ? Number(t.internalProfitOverride) : null;
+            if (override !== null && override > 0) return sum + override;
+            const markupTotal = calcMarkupTotal(t.divisions);
+            if (markupTotal > 0) return sum + markupTotal;
+            return sum + calcGcFeeAmt(t.divisions, t.gcFeePercent);
           }, 0),
           gcFee: c.templates.reduce((sum, t) => sum + calcGcFeeAmt(t.divisions, t.gcFeePercent), 0),
           status: c.status,

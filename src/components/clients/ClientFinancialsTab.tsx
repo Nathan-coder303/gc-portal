@@ -476,7 +476,7 @@ export default function ClientFinancialsTab({
       fetch(`/api/${companyId}/clients/${clientId}/financials/sync-profit`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ netProfit }),
+        body: JSON.stringify({ netProfit, hasExpenses: totalExpenses > 0 }),
       });
     }, 800);
     return () => clearTimeout(timer);
