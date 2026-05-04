@@ -97,7 +97,7 @@ export async function POST(req: NextRequest, { params }: { params: { companyId: 
 
   const bids = await prisma.subBid.findMany({
     where: { companyId: params.companyId, isPlaceholder: false, contractorName: { not: null } },
-    select: { contractorName: true, divisionCode: true, divisionName: true, emailSource: true, fileUrl: true, sourceLabel: true },
+    select: { contractorName: true, divisionCode: true, divisionName: true, emailSource: true, fileUrl: true, sourceLabel: true, notes: true },
   });
 
   const existing = await prisma.subContractor.findMany({
@@ -156,7 +156,10 @@ export async function POST(req: NextRequest, { params }: { params: { companyId: 
       }
 
       const srcNote = bid.sourceLabel ?? (isPlanhub ? "PlanHub" : null);
-      const notesJson = srcNote ? JSON.stringify({ src: srcNote }) : null;
+      const notesObj: Record<string, unknown> = {};
+      if (srcNote) notesObj.src = srcNote;
+      if (bid.notes?.trim()) notesObj.text = bid.notes.trim();
+      const notesJson = Object.keys(notesObj).length ? JSON.stringify(notesObj) : null;
       await prisma.subContractor.create({
         data: { companyId: params.companyId, name: bid.contractorName, email, phone, divisionCode: divCode, divisionName: divName, notes: notesJson, source: "bid" },
       });
