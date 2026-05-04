@@ -6,6 +6,7 @@ import { computeCriticalPath, parsePredLink, type GanttTask, type LinkType } fro
 import {
   rescheduleTask,
   updateTaskPredecessorLink,
+  archiveTask,
 } from "@/app/[companyId]/[projectId]/schedule/actions";
 
 const CELL_WIDTH = 28;
@@ -65,6 +66,7 @@ export default function GanttChart({
   const [linkDrag, setLinkDrag] = useState<LinkDragState | null>(null);
   const [saving, setSaving] = useState<string | null>(null);
   const [hoveredTaskId, setHoveredTaskId] = useState<string | null>(null);
+  const [deletingPhase, setDeletingPhase] = useState<string | null>(null);
   const svgRef = useRef<SVGSVGElement>(null);
   const barPosRef = useRef<Map<string, BarPos>>(new Map());
 
@@ -340,6 +342,7 @@ export default function GanttChart({
             const bw = Math.max((differenceInDays(phaseEnd, phaseStart) + 1) * CELL_WIDTH, CELL_WIDTH);
             const done = row.phaseTasks.filter(t => t.status === "DONE").length;
             const pct = Math.round((done / row.phaseTasks.length) * 100);
+            const isDeleting = deletingPhase === row.phase;
             return (
               <g key={row.phase} onClick={() => toggle(row.phase)} style={{ cursor: "pointer" }}>
                 <rect x={0} y={y} width={svgWidth} height={PHASE_ROW_HEIGHT} fill="#161b22" />
@@ -349,6 +352,24 @@ export default function GanttChart({
                 <text x={24 + row.phase.length * 7} y={y + 17} fontSize={10} fill="#484f58">{" "}({row.phaseTasks.length} tasks · {pct}%)</text>
                 <rect x={bx} y={y + 7} width={bw} height={PHASE_ROW_HEIGHT - 14} rx={3} fill="#30373f" />
                 {pct > 0 && <rect x={bx} y={y + 7} width={(bw * pct) / 100} height={PHASE_ROW_HEIGHT - 14} rx={3} fill="#C9A84C" opacity={0.5} />}
+                {canEdit && (
+                  <g
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      if (isDeleting) return;
+                      setDeletingPhase(row.phase);
+                      Promise.all(row.phaseTasks.map((t) => archiveTask(t.id))).finally(() =>
+                        setDeletingPhase(null)
+                      );
+                    }}
+                    style={{ cursor: isDeleting ? "wait" : "pointer" }}
+                  >
+                    <rect x={LABEL_WIDTH - 26} y={y + 5} width={18} height={18} rx={3} fill={isDeleting ? "#30373f" : "#3d1515"} />
+                    <text x={LABEL_WIDTH - 19} y={y + 17} fontSize={11} fill={isDeleting ? "#484f58" : "#f87171"} fontWeight={700} textAnchor="middle">
+                      {isDeleting ? "…" : "✕"}
+                    </text>
+                  </g>
+                )}
               </g>
             );
           }
