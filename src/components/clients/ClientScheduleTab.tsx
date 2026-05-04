@@ -1830,6 +1830,28 @@ function ClientGanttChart({ tasks, projectStart, companyId, clientId, canEdit, o
     void parentTask;
   }
 
+  async function cascadeAfterSave(saved: ClientTask): Promise<ClientTask> {
+    if (!saved.predecessorIds.length || !saved.startDate) return saved;
+    let latestEnd: Date | null = null;
+    for (const predId of saved.predecessorIds) {
+      const pred = tasks.find(t => t.id === predId);
+      if (!pred?.endDate) continue;
+      const d = parseDate(pred.endDate);
+      if (d && (!latestEnd || d > latestEnd)) latestEnd = d;
+    }
+    if (!latestEnd) return saved;
+    const minStart = addDays(latestEnd, 1);
+    const curStart = parseDate(saved.startDate);
+    if (!curStart || minStart <= curStart) return saved;
+    const newStart = toDateStr(minStart);
+    const newEnd = toDateStr(addDays(minStart, saved.durationDays - 1));
+    await fetch(`/api/${companyId}/clients/${clientId}/schedule/${saved.id}`, {
+      method: "PATCH", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ startDate: newStart, endDate: newEnd }),
+    });
+    return { ...saved, startDate: newStart, endDate: newEnd };
+  }
+
   async function handleDuplicate(task: ClientTask) {
     const res = await fetch(`/api/${companyId}/clients/${clientId}/schedule`, {
       method: "POST", headers: { "Content-Type": "application/json" },
@@ -2124,6 +2146,38 @@ function ClientGanttChart({ tasks, projectStart, companyId, clientId, canEdit, o
             ))}
           </g>
 
+          {/* Dependency arrows (FS links) */}
+          <g style={{ pointerEvents: "none" }}>
+            {tasks.flatMap(task => {
+              if (!task.predecessorIds.length) return [];
+              const tp = barPosRef.current.get(task.id);
+              if (!tp) return [];
+              return task.predecessorIds.map(predId => {
+                const pp = barPosRef.current.get(predId);
+                if (!pp) return null;
+                const x1 = pp.finishX, y1 = pp.centerY;
+                const x2 = tp.startX, y2 = tp.centerY;
+                const m = 10, a = 6;
+                let d: string;
+                if (Math.abs(y1 - y2) < 3) {
+                  d = `M ${x1} ${y1} H ${x2 - a}`;
+                } else if (x1 + m <= x2 - m) {
+                  const midX = Math.round((x1 + m + x2 - m) / 2);
+                  d = `M ${x1} ${y1} H ${midX} V ${y2} H ${x2 - a}`;
+                } else {
+                  const stepY = y1 + (y2 > y1 ? ROW_HEIGHT / 2 : -ROW_HEIGHT / 2);
+                  d = `M ${x1} ${y1} H ${x1 + m} V ${stepY} H ${x2 - m} V ${y2} H ${x2 - a}`;
+                }
+                return (
+                  <g key={`arrow-${predId}-${task.id}`}>
+                    <path d={d} fill="none" stroke="#4b9cf555" strokeWidth={1.5} />
+                    <polygon points={`${x2},${y2} ${x2 - a},${y2 - 3} ${x2 - a},${y2 + 3}`} fill="#4b9cf577" />
+                  </g>
+                );
+              }).filter(Boolean);
+            })}
+          </g>
+
           {/* Link drag line */}
           {linkDrag && (() => {
             const src = barPosRef.current.get(linkDrag.sourceTaskId);
@@ -2151,7 +2205,7 @@ function ClientGanttChart({ tasks, projectStart, companyId, clientId, canEdit, o
       {editTask && (
         <EditModal
           task={editTask} allTasks={tasks} companyId={companyId} clientId={clientId}
-          onSave={updated => { onTasksChange(tasks.map(t => t.id === updated.id ? updated : t)); setEditTask(null); }}
+          onSave={updated => { (async () => { const cascaded = await cascadeAfterSave({ ...editTask!, ...updated }); onTasksChange(tasks.map(t => t.id === cascaded.id ? cascaded : t)); setEditTask(null); })(); }}
           onDelete={id => { onTasksChange(tasks.filter(t => t.id !== id)); setEditTask(null); }}
           onClose={() => setEditTask(null)}
         />
