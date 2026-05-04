@@ -10,6 +10,7 @@ const PRESETS: { id: string; name: string; file: string }[] = [
   { id: "bathroom", name: "Bathroom", file: "bathroom.txt" },
   { id: "kitchen", name: "Kitchen", file: "kitchen.txt" },
   { id: "retail", name: "Retail Build-Out (AIA-Style)", file: "retail.txt" },
+  { id: "interior-renovation", name: "Interior Renovation", file: "interior-renovation.txt" },
 ];
 
 export function getFileTermsPresets(): TermsPreset[] {
