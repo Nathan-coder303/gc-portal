@@ -1852,14 +1852,26 @@ function ClientGanttChart({ tasks, projectStart, companyId, clientId, canEdit, o
 
   async function handleAddLink(targetTaskId: string, predecessorId: string) {
     const target = tasks.find(t => t.id === targetTaskId);
-    if (!target || target.id === predecessorId || target.predecessorIds.includes(predecessorId)) return;
+    const predecessor = tasks.find(t => t.id === predecessorId);
+    if (!target || !predecessor || target.id === predecessorId || target.predecessorIds.includes(predecessorId)) return;
     const newPreds = [...target.predecessorIds, predecessorId];
+    // Cascade: push target start to day after predecessor's end (FS link)
+    const predEnd = parseDate(predecessor.endDate);
+    const targetStart = parseDate(target.startDate);
+    const minStart = predEnd ? addDays(predEnd, 1) : null;
+    const needsPush = minStart && (!targetStart || minStart > targetStart);
+    const newStartDate = needsPush ? toDateStr(minStart!) : target.startDate;
+    const newEndDate = needsPush && newStartDate
+      ? toDateStr(addDays(parseDate(newStartDate)!, target.durationDays - 1))
+      : target.endDate;
+    const patchBody: Record<string, unknown> = { predecessorIds: newPreds };
+    if (needsPush) { patchBody.startDate = newStartDate; patchBody.endDate = newEndDate; }
     const res = await fetch(`/api/${companyId}/clients/${clientId}/schedule/${targetTaskId}`, {
       method: "PATCH", headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ predecessorIds: newPreds }),
+      body: JSON.stringify(patchBody),
     });
     const updated = await res.json();
-    onTasksChange(tasks.map(t => t.id === targetTaskId ? { ...t, predecessorIds: newPreds, ...updated } : t));
+    onTasksChange(tasks.map(t => t.id === targetTaskId ? { ...t, predecessorIds: newPreds, startDate: newStartDate, endDate: newEndDate, ...updated } : t));
   }
 
   return (
@@ -2222,7 +2234,7 @@ function ClientGanttChart({ tasks, projectStart, companyId, clientId, canEdit, o
           const cur = queue.pop()!;
           tasks.filter(t => t.parentId === cur).forEach(t => { excluded.add(t.id); queue.push(t.id); });
         }
-        const rows = buildTableRows(tasks, new Set()).filter(r => !excluded.has(r.task.id));
+        const rows = (buildTableRows(tasks, new Set()).filter(r => r.kind === "task") as TaskRow[]).filter(r => !excluded.has(r.task.id));
         return (
           <div style={{ position: "fixed", inset: 0, zIndex: 80, background: "rgba(0,0,0,0.8)", display: "flex", alignItems: "center", justifyContent: "center", padding: 16 }}
             onClick={() => setSetParentFor(null)}>
@@ -2552,24 +2564,18 @@ function fmtDate(s: string | null | undefined): string {
   return `${d.getMonth() + 1}/${d.getDate()}/${d.getFullYear()}`;
 }
 
-type TableRow = {
-  task: ClientTask;
-  rowNum: number;    // 1-based sequential
-  depth: number;
-  wbs: string;
-  hasChildren: boolean;
-};
+type TaskRow = { kind: "task"; task: ClientTask; rowNum: number; depth: number; wbs: string; hasChildren: boolean };
+type VPhaseRow = { kind: "vphase"; phase: string; phaseTasks: ClientTask[]; wbsPrefix: string };
+type TableRow = TaskRow | VPhaseRow;
 
 function buildTableRows(tasks: ClientTask[], collapsedIds: Set<string>): TableRow[] {
-  // Sort tasks by sortOrder
   const taskIds = new Set(tasks.map(t => t.id));
-  // Treat tasks with a parentId that no longer exists as top-level (defensive against orphans from deletions)
+  // Normalize orphaned parentIds to null
   const sorted = [...tasks].sort((a, b) => a.sortOrder - b.sortOrder).map(t => ({
     ...t,
     parentId: (t.parentId && taskIds.has(t.parentId)) ? t.parentId : null,
   }));
 
-  // Build parent→children map
   const childrenOf = new Map<string | null, ClientTask[]>();
   for (const t of sorted) {
     const pid = t.parentId ?? null;
@@ -2578,11 +2584,39 @@ function buildTableRows(tasks: ClientTask[], collapsedIds: Set<string>): TableRo
   }
 
   const hasChildrenSet = new Set<string>();
-  for (const t of sorted) {
-    if (t.parentId) hasChildrenSet.add(t.parentId);
+  for (const t of sorted) { if (t.parentId) hasChildrenSet.add(t.parentId); }
+
+  // If all top-level tasks are leaves AND span multiple phases, use virtual phase grouping
+  const topLevel = childrenOf.get(null) ?? [];
+  const allLeaves = topLevel.length > 0 && topLevel.every(t => !hasChildrenSet.has(t.id));
+  const distinctPhases = Array.from(new Set(topLevel.map(t => t.phase)));
+  const useVirtualPhases = allLeaves && distinctPhases.length > 1;
+
+  const rows: TableRow[] = [];
+  let rowNum = 0;
+
+  if (useVirtualPhases) {
+    // Group tasks by their phase, preserving sortOrder within each group
+    const phaseGroups = new Map<string, ClientTask[]>();
+    for (const p of distinctPhases) phaseGroups.set(p, []);
+    for (const t of topLevel) phaseGroups.get(t.phase)!.push(t);
+
+    distinctPhases.forEach((phase, phaseIdx) => {
+      const phaseTasks = phaseGroups.get(phase)!;
+      const wbsPrefix = String(phaseIdx + 1);
+      rows.push({ kind: "vphase", phase, phaseTasks, wbsPrefix });
+      if (!collapsedIds.has(`vphase:${phase}`)) {
+        phaseTasks.forEach((t, taskIdx) => {
+          rowNum++;
+          const wbs = `${wbsPrefix}.${taskIdx + 1}`;
+          rows.push({ kind: "task", task: t, rowNum, depth: 1, wbs, hasChildren: false });
+        });
+      }
+    });
+    return rows;
   }
 
-  // Compute depth
+  // Standard tree traversal
   const depthOf = new Map<string, number>();
   function getDepth(id: string): number {
     if (depthOf.has(id)) return depthOf.get(id)!;
@@ -2594,7 +2628,6 @@ function buildTableRows(tasks: ClientTask[], collapsedIds: Set<string>): TableRo
   }
   for (const t of sorted) getDepth(t.id);
 
-  // WBS numbering: assign sequential numbers at each level
   const wbsOf = new Map<string, string>();
   function assignWbs(parentId: string | null, prefix: string) {
     const children = childrenOf.get(parentId) ?? [];
@@ -2606,28 +2639,15 @@ function buildTableRows(tasks: ClientTask[], collapsedIds: Set<string>): TableRo
   }
   assignWbs(null, "");
 
-  // Flatten in tree order, respecting collapse
-  const rows: TableRow[] = [];
-  let rowNum = 0;
-
   function visit(parentId: string | null) {
     const children = childrenOf.get(parentId) ?? [];
     for (const t of children) {
       rowNum++;
-      rows.push({
-        task: t,
-        rowNum,
-        depth: depthOf.get(t.id) ?? 0,
-        wbs: wbsOf.get(t.id) ?? "",
-        hasChildren: hasChildrenSet.has(t.id),
-      });
-      if (!collapsedIds.has(t.id)) {
-        visit(t.id);
-      }
+      rows.push({ kind: "task", task: t, rowNum, depth: depthOf.get(t.id) ?? 0, wbs: wbsOf.get(t.id) ?? "", hasChildren: hasChildrenSet.has(t.id) });
+      if (!collapsedIds.has(t.id)) visit(t.id);
     }
   }
   visit(null);
-
   return rows;
 }
 
@@ -2831,7 +2851,7 @@ function ScheduleTableView({
   const phases = useMemo(() => Array.from(new Set(tasks.map(t => t.phase))), [tasks]);
   const phaseNames = useMemo(() => new Set(tasks.map(t => t.phase)), [tasks]);
   const rows = useMemo(() => buildTableRows(tasks, collapsedIds), [tasks, collapsedIds]);
-  const idToRow = useMemo(() => { const m = new Map<string, number>(); for (const r of rows) m.set(r.task.id, r.rowNum); return m; }, [rows]);
+  const idToRow = useMemo(() => { const m = new Map<string, number>(); for (const r of rows) { if (r.kind === "task") m.set(r.task.id, r.rowNum); } return m; }, [rows]);
 
   // Refs so drag/move callbacks always see latest data (no stale closure)
   const rowsRef = useRef<TableRow[]>([]);
@@ -2908,7 +2928,7 @@ function ScheduleTableView({
       window.removeEventListener("touchend", handleUp);
 
       if (!target || target === taskId) return;
-      const flatIds = rowsRef.current.map(r => r.task.id);
+      const flatIds = rowsRef.current.filter(r => r.kind === "task").map(r => (r as TaskRow).task.id);
       if (!flatIds.includes(taskId) || !flatIds.includes(target)) return;
       const filtered = flatIds.filter(id => id !== taskId);
       filtered.splice(filtered.indexOf(target), 0, taskId); // insert before drop target
@@ -2932,10 +2952,11 @@ function ScheduleTableView({
 
   // ── Indent: make task child of the task immediately above it ─────────────
   async function indent(task: ClientTask) {
-    const flatIds = rows.map(r => r.task.id);
+    const taskRows = rows.filter(r => r.kind === "task") as TaskRow[];
+    const flatIds = taskRows.map(r => r.task.id);
     const idx = flatIds.indexOf(task.id);
     if (idx <= 0) return;
-    const parentTask = rows[idx - 1].task;
+    const parentTask = taskRows[idx - 1].task;
     if (parentTask.id === task.id) return;
     await fetch(`/api/${companyId}/clients/${clientId}/schedule/${task.id}`, {
       method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ parentId: parentTask.id }),
@@ -3103,7 +3124,7 @@ function ScheduleTableView({
 
       {/* Collapse/expand toolbar */}
       <div style={{ display: "flex", gap: 6, marginBottom: 6 }}>
-        <button onClick={() => setCollapsedIds(new Set(parentIdSet))}
+        <button onClick={() => { const vphaseIds = rows.filter(r => r.kind === "vphase").map(r => `vphase:${(r as VPhaseRow).phase}`); setCollapsedIds(new Set(Array.from(parentIdSet).concat(vphaseIds))); }}
           style={{ background: "#1e2736", border: "1px solid #30373f", color: "#8b949e", borderRadius: 6, padding: "3px 10px", fontSize: 11, cursor: "pointer", fontWeight: 600 }}>
           ▶ Collapse All
         </button>
@@ -3144,7 +3165,42 @@ function ScheduleTableView({
           </thead>
           <tbody>
             {rows.map(r => {
-              const { task, rowNum: rn, depth, wbs, hasChildren } = r;
+              // Virtual phase header row
+              if (r.kind === "vphase") {
+                const vr = r as VPhaseRow;
+                const isCollapsed = collapsedIds.has(`vphase:${vr.phase}`);
+                const allDates = vr.phaseTasks.flatMap(t => [t.startDate, t.endDate]).filter(Boolean) as string[];
+                const sortedDates = [...allDates].sort();
+                const phaseStart = sortedDates[0] ? fmtDate(sortedDates[0]) : "";
+                const phaseEnd = sortedDates[sortedDates.length - 1] ? fmtDate(sortedDates[sortedDates.length - 1]) : "";
+                const donePct = vr.phaseTasks.length ? Math.round(vr.phaseTasks.filter(t => t.status === "DONE").length / vr.phaseTasks.length * 100) : 0;
+                return (
+                  <tr key={`vphase-${vr.phase}`} style={{ background: "#191f2b", boxShadow: `inset 3px 0 0 ${GOLD}44` }}>
+                    <td style={{ ...col("num"), textAlign: "center", color: "#484f58", position: "sticky", left: 0, background: "#191f2b", zIndex: 1 }}>
+                      <button onClick={() => setCollapsedIds(prev => { const n = new Set(prev); if (n.has(`vphase:${vr.phase}`)) n.delete(`vphase:${vr.phase}`); else n.add(`vphase:${vr.phase}`); return n; })}
+                        style={{ background: "none", border: "none", cursor: "pointer", color: GOLD, fontSize: 11, padding: 0 }}>
+                        {isCollapsed ? "▶" : "▼"}
+                      </button>
+                    </td>
+                    <td style={{ ...col("link") }} />
+                    <td style={{ ...col("wbs"), color: GOLD, fontWeight: 700 }}>{vr.wbsPrefix}</td>
+                    <td style={{ ...col("name"), fontWeight: 700, color: GOLD, paddingLeft: 8 }}>
+                      {vr.phase}
+                      <span style={{ color: "#484f58", fontWeight: 400, fontSize: 11, marginLeft: 8 }}>({vr.phaseTasks.length} tasks)</span>
+                    </td>
+                    <td style={{ ...col("dur"), textAlign: "center", color: "#8b949e" }} />
+                    <td style={{ ...col("pct"), textAlign: "center", color: "#e6edf3", fontWeight: 700 }}>{donePct}%</td>
+                    <td style={{ ...col("start"), color: "#8b949e" }}>{phaseStart}</td>
+                    <td style={{ ...col("end"), color: "#8b949e" }}>{phaseEnd}</td>
+                    <td style={{ ...col("actual") }} />
+                    <td style={{ ...col("priority") }} />
+                    <td style={{ ...col("status"), color: "#e6edf3", fontWeight: 700 }}>{donePct}%</td>
+                    <td style={{ ...col("assignee"), borderRight: "none" }} />
+                  </tr>
+                );
+              }
+
+              const { task, rowNum: rn, depth, wbs, hasChildren } = r as TaskRow;
               const isDragging = dragId === task.id;
               const isDropOver = dropId === task.id && dragId !== task.id;
               const isSection = hasChildren || (!task.parentId && phaseNames.has(task.name));
@@ -3225,7 +3281,7 @@ function ScheduleTableView({
                   {/* PLANNED START */}
                   <td style={{ ...col("start"), color: isSection ? "#e6edf3" : "#8b949e", fontWeight: isSection ? 700 : 400 }}>{fmtDate(displayStart)}</td>
                   {/* PLANNED END */}
-                  <td style={{ ...col("end"), color: isSection ? "#e6edf3" : "#8b949e", fontWeight: isSection ? 700 : 400 }}>{fmtDate(displayEnd)}</td>
+                  {(() => { const badDate = !isSection && task.endDate && task.startDate && task.endDate < task.startDate; return <td style={{ ...col("end"), color: badDate ? "#f85149" : isSection ? "#e6edf3" : "#8b949e", fontWeight: isSection ? 700 : 400 }} title={badDate ? "End date is before start date" : undefined}>{fmtDate(displayEnd)}{badDate ? " ⚠" : ""}</td>; })()}
                   {/* ACTUAL FINISH */}
                   <td style={{ ...col("actual"), color: task.actualFinish ? "#22c55e" : "#484f58" }}>{fmtDate(task.actualFinish)}</td>
                   {/* PRIORITY */}
