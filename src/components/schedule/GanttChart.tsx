@@ -69,6 +69,7 @@ export default function GanttChart({
   const [deletingPhase, setDeletingPhase] = useState<string | null>(null);
   const svgRef = useRef<SVGSVGElement>(null);
   const barPosRef = useRef<Map<string, BarPos>>(new Map());
+  const phaseSwipeRef = useRef<{ phase: string; tasks: GanttTask[]; startX: number } | null>(null);
 
   const toggle = (phase: string) => {
     setCollapsed((prev) => {
@@ -222,7 +223,19 @@ export default function GanttChart({
     }
   }, [drag, linkDrag, getSvgX, getSvgY]);
 
-  const handleSvgPointerUp = useCallback(async () => {
+  const handleSvgPointerUp = useCallback(async (e: React.PointerEvent) => {
+    // Phase swipe-left to delete
+    if (phaseSwipeRef.current) {
+      const { phase, tasks, startX } = phaseSwipeRef.current;
+      phaseSwipeRef.current = null;
+      const dx = getSvgX(e.clientX) - startX;
+      if (dx < -80) {
+        setDeletingPhase(phase);
+        Promise.all(tasks.map((t) => archiveTask(t.id))).finally(() => setDeletingPhase(null));
+      }
+      return;
+    }
+
     // Bar drag
     if (drag) {
       const { taskId, originalStart, originalEnd, currentDeltaDays } = drag;
@@ -244,9 +257,10 @@ export default function GanttChart({
       const type = getLinkType(sourceEnd, snapTarget.end);
       await updateTaskPredecessorLink(snapTarget.taskId, sourceTaskId, type);
     }
-  }, [drag, linkDrag]);
+  }, [drag, linkDrag, getSvgX]);
 
   const handleSvgPointerCancel = useCallback(() => {
+    phaseSwipeRef.current = null;
     setDrag(null);
     setLinkDrag(null);
   }, []);
@@ -270,7 +284,7 @@ export default function GanttChart({
         height={svgHeight}
         onPointerMove={handleSvgPointerMove}
         onPointerUp={handleSvgPointerUp}
-        onPointerLeave={handleSvgPointerUp}
+        onPointerLeave={(e) => { phaseSwipeRef.current = null; handleSvgPointerUp(e); }}
         onPointerCancel={handleSvgPointerCancel}
         style={{
           display: "block",
@@ -344,7 +358,15 @@ export default function GanttChart({
             const pct = Math.round((done / row.phaseTasks.length) * 100);
             const isDeleting = deletingPhase === row.phase;
             return (
-              <g key={row.phase} onClick={() => toggle(row.phase)} style={{ cursor: "pointer" }}>
+              <g
+                key={row.phase}
+                onClick={() => toggle(row.phase)}
+                style={{ cursor: "pointer" }}
+                onPointerDown={(e) => {
+                  if (e.pointerType !== "touch" || !canEdit) return;
+                  phaseSwipeRef.current = { phase: row.phase, tasks: row.phaseTasks, startX: getSvgX(e.clientX) };
+                }}
+              >
                 <rect x={0} y={y} width={svgWidth} height={PHASE_ROW_HEIGHT} fill="#161b22" />
                 <line x1={0} y1={y} x2={svgWidth} y2={y} stroke="#30373f" strokeWidth={0.5} />
                 <text x={10} y={y + 17} fontSize={10} fill="#8b949e" fontWeight={700}>{isCollapsed ? "▶" : "▼"}</text>
