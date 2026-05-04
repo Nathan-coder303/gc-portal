@@ -999,6 +999,16 @@ function DivisionSummaryPage({ template, client, divisions, gcFeePercent }: Pick
   const gcFeeAmount = gcFeePercent && gcFeePercent > 0 ? subtotal * gcFeePercent / 100 : 0;
   const grandTotalWithGc = subtotal + gcFeeAmount;
   const dateDisplay = fmtDate(template.estimateDate);
+  const hasAllowances = divisions.some(div =>
+    div.items.some(i => i.detail === "Allowances") ||
+    div.groups.some(g => g.items.some(i => i.detail === "Allowances"))
+  );
+  const allowancesTotal = divisions.reduce((sum, div) => {
+    return sum + [
+      ...div.items.filter(i => i.detail === "Allowances"),
+      ...div.groups.flatMap(g => g.items.filter(i => i.detail === "Allowances")),
+    ].reduce((s, i) => s + calcTotal(i.defaultQty, i.defaultUnitCost, i.defaultMarkupPct), 0);
+  }, 0);
 
   return (
     <Page size="LETTER" style={{ fontFamily: "Helvetica", paddingTop: 0, paddingBottom: 0 }}>
@@ -1051,26 +1061,19 @@ function DivisionSummaryPage({ template, client, divisions, gcFeePercent }: Pick
             <Text style={{ fontSize: 14, fontFamily: "Helvetica-Bold", color: GOLD }}>ESTIMATE TOTAL</Text>
             <Text style={{ fontSize: 16, fontFamily: "Helvetica-Bold", color: GOLD }}>${fmt(grandTotalWithGc)}</Text>
           </View>
-          {(template.sqFt || template.durationMonths) && (
-            <View style={{ flexDirection: "row", justifyContent: "center", gap: 32, marginTop: 18, marginBottom: 4 }}>
-              {template.sqFt ? (
-                <View style={{ alignItems: "center" }}>
-                  <Text style={{ fontSize: 22, fontFamily: "Helvetica-Bold", color: DARK }}>{Number(template.sqFt).toLocaleString("en-US", { maximumFractionDigits: 0 })} SF</Text>
-                  <Text style={{ fontSize: 8, color: "#94a3b8", marginTop: 2 }}>SQUARE FEET</Text>
-                </View>
-              ) : null}
-              {template.sqFt && template.durationMonths ? (
-                <View style={{ width: 1, backgroundColor: "#e2e8f0", marginVertical: 4 }} />
-              ) : null}
-              {template.durationMonths ? (
-                <View style={{ alignItems: "center" }}>
-                  <Text style={{ fontSize: 22, fontFamily: "Helvetica-Bold", color: DARK }}>{Number(template.durationMonths).toLocaleString("en-US", { maximumFractionDigits: 1 })} MONTHS</Text>
-                  <Text style={{ fontSize: 8, color: "#94a3b8", marginTop: 2 }}>EST. DURATION</Text>
-                </View>
-              ) : null}
+          {hasAllowances && (
+            <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", backgroundColor: "#2d2410", paddingHorizontal: 16, paddingVertical: 8, borderRadius: 4, marginTop: 4 }}>
+              <Text style={{ fontSize: 10, fontFamily: "Helvetica-Bold", color: GOLD }}>TOTAL ALLOWANCES</Text>
+              <Text style={{ fontSize: 13, fontFamily: "Helvetica-Bold", color: GOLD }}>{allowancesTotal > 0 ? `$${fmt(allowancesTotal)}` : "TBD"}</Text>
             </View>
           )}
-          <Text style={{ fontSize: 8, color: "#94a3b8", textAlign: "center", marginTop: (template.sqFt || template.durationMonths) ? 8 : 20 }}>
+          {template.durationMonths ? (
+            <View style={{ flexDirection: "row", justifyContent: "center", alignItems: "center", gap: 10, marginTop: 18, marginBottom: 4 }}>
+              <Text style={{ fontSize: 22, fontFamily: "Helvetica-Bold", color: DARK }}>{Number(template.durationMonths).toLocaleString("en-US", { maximumFractionDigits: 1 })} MONTHS</Text>
+              <Text style={{ fontSize: 22, fontFamily: "Helvetica-Bold", color: "#94a3b8" }}>EST. DURATION</Text>
+            </View>
+          ) : null}
+          <Text style={{ fontSize: 8, color: "#94a3b8", textAlign: "center", marginTop: template.durationMonths ? 8 : 20 }}>
             Detailed scope of work and line items follow on the next pages.
           </Text>
         </View>

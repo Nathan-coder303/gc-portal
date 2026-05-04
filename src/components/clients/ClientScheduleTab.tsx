@@ -1242,7 +1242,10 @@ function EditModal({
         onClick={e => e.stopPropagation()}>
         <div className="flex items-center justify-between mb-4">
           <h3 className="text-sm font-bold" style={{ color: "#e6edf3" }}>Edit Task</h3>
-          <div className="flex gap-2">
+          <div className="flex gap-2 items-center">
+            <button onClick={handleSave} disabled={!form.name.trim() || saving || !!dateError} className="text-xs px-3 py-1 rounded font-semibold disabled:opacity-40" style={{ background: GOLD, color: "#0d1117" }}>
+              {saving ? "Saving…" : "Save"}
+            </button>
             {confirmDelete ? (
               <>
                 <span className="text-xs" style={{ color: "#8b949e" }}>Delete?</span>
@@ -1552,12 +1555,23 @@ function ClientGanttChart({ tasks, projectStart, companyId, clientId, canEdit, o
   const [setParentFor, setSetParentFor] = useState<ClientTask | null>(null);
   const [contextMenu, setContextMenu] = useState<{ x: number; y: number; task: ClientTask; confirmDelete?: boolean } | null>(null);
   const svgRef = useRef<SVGSVGElement>(null);
+  const scrollRef = useRef<HTMLDivElement>(null);
   const [labelW, setLabelW] = useState(LABEL_WIDTH);
   const barPosRef = useRef<Map<string, { startX: number; finishX: number; centerY: number }>>(new Map());
   type LinkDragState = { sourceTaskId: string; currentX: number; currentY: number; snapTarget: { taskId: string } | null };
   const [linkDrag, setLinkDrag] = useState<LinkDragState | null>(null);
   const linkDragRef = useRef<LinkDragState | null>(null);
   linkDragRef.current = linkDrag;
+
+  // Auto-scroll to today on mount
+  useEffect(() => {
+    if (!scrollRef.current) return;
+    const todayOffset = differenceInDays(new Date(), projectStart);
+    if (todayOffset > 0) {
+      scrollRef.current.scrollLeft = Math.max(0, todayOffset * CELL_WIDTH - 40);
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // ── Label column resize ─────────────────────────────────────────────────────
   const labelResizeRef = useRef<{ startX: number; startW: number } | null>(null);
@@ -1882,6 +1896,17 @@ function ClientGanttChart({ tasks, projectStart, companyId, clientId, canEdit, o
     onTasksChange(tasks.filter(t => t.id !== task.id).map(t => t.parentId === task.id ? { ...t, parentId: null } : t));
   }
 
+  async function handleRemoveLink(taskId: string, predId: string) {
+    const task = tasks.find(t => t.id === taskId);
+    if (!task) return;
+    const newPreds = task.predecessorIds.filter(p => p !== predId);
+    await fetch(`/api/${companyId}/clients/${clientId}/schedule/${taskId}`, {
+      method: "PATCH", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ predecessorIds: newPreds }),
+    });
+    onTasksChange(tasks.map(t => t.id === taskId ? { ...t, predecessorIds: newPreds } : t));
+  }
+
   async function handleAddLink(targetTaskId: string, predecessorId: string) {
     const target = tasks.find(t => t.id === targetTaskId);
     const predecessor = tasks.find(t => t.id === predecessorId);
@@ -1908,7 +1933,7 @@ function ClientGanttChart({ tasks, projectStart, companyId, clientId, canEdit, o
 
   return (
     <>
-      <div className="overflow-x-auto select-none" style={{ cursor: drag || phaseDrag ? "grabbing" : "default" }}>
+      <div ref={scrollRef} className="overflow-x-auto select-none" style={{ cursor: drag || phaseDrag ? "grabbing" : "default" }}>
         <svg ref={svgRef} width={svgWidth} height={svgHeight} style={{ display: "block" }}>
           <rect x={0} y={0} width={svgWidth} height={svgHeight} fill="#0d1117" />
           {/* Label column header */}
@@ -2055,9 +2080,11 @@ function ClientGanttChart({ tasks, projectStart, companyId, clientId, canEdit, o
                     <>
                       <circle cx={pos.startX} cy={pos.centerY} r={5} fill={isSnap ? "#4b9cf5" : "#161b22"} stroke="#4b9cf5" strokeWidth={1.5}
                         style={{ cursor: "crosshair" }}
+                        onClick={e => e.stopPropagation()}
                         onMouseDown={e => { e.stopPropagation(); e.preventDefault(); const svgR = svgRef.current?.getBoundingClientRect(); if (!svgR) return; setLinkDrag({ sourceTaskId: task.id, currentX: e.clientX - svgR.left, currentY: e.clientY - svgR.top, snapTarget: null }); }} />
                       <circle cx={pos.finishX} cy={pos.centerY} r={5} fill={isSnap ? "#4b9cf5" : "#161b22"} stroke="#4b9cf5" strokeWidth={1.5}
                         style={{ cursor: "crosshair" }}
+                        onClick={e => e.stopPropagation()}
                         onMouseDown={e => { e.stopPropagation(); e.preventDefault(); const svgR = svgRef.current?.getBoundingClientRect(); if (!svgR) return; setLinkDrag({ sourceTaskId: task.id, currentX: e.clientX - svgR.left, currentY: e.clientY - svgR.top, snapTarget: null }); }} />
                     </>
                   );
@@ -2156,8 +2183,39 @@ function ClientGanttChart({ tasks, projectStart, companyId, clientId, canEdit, o
             ))}
           </g>
 
-          {/* Dependency arrows (FS links) */}
-          <g style={{ pointerEvents: "none" }}>
+          {/* Dependency arrows (FS links) — click to remove */}
+          {canEdit && tasks.flatMap(task => {
+            if (!task.predecessorIds.length) return [];
+            const tp = barPosRef.current.get(task.id);
+            if (!tp) return [];
+            return task.predecessorIds.map(predId => {
+              const pp = barPosRef.current.get(predId);
+              if (!pp) return null;
+              const x1 = pp.finishX, y1 = pp.centerY;
+              const x2 = tp.startX, y2 = tp.centerY;
+              const m = 10, a = 6;
+              let d: string;
+              if (Math.abs(y1 - y2) < 3) {
+                d = `M ${x1} ${y1} H ${x2 - a}`;
+              } else if (x1 + m <= x2 - m) {
+                const midX = Math.round((x1 + m + x2 - m) / 2);
+                d = `M ${x1} ${y1} H ${midX} V ${y2} H ${x2 - a}`;
+              } else {
+                const stepY = y1 + (y2 > y1 ? ROW_HEIGHT / 2 : -ROW_HEIGHT / 2);
+                d = `M ${x1} ${y1} H ${x1 + m} V ${stepY} H ${x2 - m} V ${y2} H ${x2 - a}`;
+              }
+              return (
+                <g key={`arrow-${predId}-${task.id}`} style={{ cursor: "pointer" }}
+                  onClick={e => { e.stopPropagation(); handleRemoveLink(task.id, predId); }}>
+                  {/* Wide invisible hit area */}
+                  <path d={d} fill="none" stroke="transparent" strokeWidth={10} />
+                  <path d={d} fill="none" stroke="#4b9cf555" strokeWidth={1.5} />
+                  <polygon points={`${x2},${y2} ${x2 - a},${y2 - 3} ${x2 - a},${y2 + 3}`} fill="#4b9cf577" />
+                </g>
+              );
+            }).filter(Boolean);
+          })}
+          {!canEdit && <g style={{ pointerEvents: "none" }}>
             {tasks.flatMap(task => {
               if (!task.predecessorIds.length) return [];
               const tp = barPosRef.current.get(task.id);
@@ -2186,7 +2244,7 @@ function ClientGanttChart({ tasks, projectStart, companyId, clientId, canEdit, o
                 );
               }).filter(Boolean);
             })}
-          </g>
+          </g>}
 
           {/* Link drag line */}
           {linkDrag && (() => {
@@ -2454,6 +2512,9 @@ function EditTaskModal({
         <div className="flex items-center justify-between mb-3">
           <h3 className="text-sm font-bold" style={{ color: "#e6edf3" }}>Edit Task</h3>
           <div className="flex gap-2 items-center">
+            <button onClick={handleSave} disabled={!form.name.trim() || saving} className="text-xs px-3 py-1 rounded font-semibold disabled:opacity-40" style={{ background: GOLD, color: "#0d1117" }}>
+              {saving ? "Saving…" : "Save"}
+            </button>
             {confirmDelete ? (
               <>
                 <span className="text-xs" style={{ color: "#8b949e" }}>Delete this task?</span>
