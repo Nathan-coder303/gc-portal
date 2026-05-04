@@ -1068,15 +1068,12 @@ function DivisionSummaryPage({ template, client, divisions, gcFeePercent }: Pick
             </View>
           )}
           {(template.sqFt || template.durationMonths) && (
-            <View style={{ flexDirection: "row", justifyContent: "center", gap: 32, marginTop: 18, marginBottom: 4 }}>
+            <View style={{ flexDirection: "row", justifyContent: "center", alignItems: "center", gap: 32, marginTop: 18, marginBottom: 4 }}>
               {template.sqFt ? (
-                <View style={{ alignItems: "center" }}>
-                  <Text style={{ fontSize: 22, fontFamily: "Helvetica-Bold", color: DARK }}>{Number(template.sqFt).toLocaleString("en-US", { maximumFractionDigits: 0 })} SF</Text>
-                  <Text style={{ fontSize: 8, color: "#94a3b8", marginTop: 2 }}>SQUARE FEET</Text>
-                </View>
+                <Text style={{ fontSize: 22, fontFamily: "Helvetica-Bold", color: DARK }}>{Number(template.sqFt).toLocaleString("en-US", { maximumFractionDigits: 0 })} SF</Text>
               ) : null}
               {template.sqFt && template.durationMonths ? (
-                <View style={{ width: 1, backgroundColor: "#e2e8f0", marginVertical: 4 }} />
+                <View style={{ width: 1, backgroundColor: "#e2e8f0", alignSelf: "stretch" }} />
               ) : null}
               {template.durationMonths ? (
                 <View style={{ flexDirection: "row", alignItems: "center", gap: 10 }}>
