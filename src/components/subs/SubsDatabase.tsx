@@ -163,6 +163,7 @@ function SubCard({
   usedDivisions,
   onDragStart, onDragOver, onDrop, onDragEnd,
   onEdit, onDelete, onDuplicate, onMoveToDiv, onToggleSelect, onToggleFavorite,
+  onSaveExtraDivs,
 }: {
   sub: Sub; isDragOver: boolean; isSelected: boolean;
   usedDivisions: { code: string; name: string }[];
@@ -172,9 +173,12 @@ function SubCard({
   onMoveToDiv: (code: string, name: string) => void;
   onToggleSelect: () => void;
   onToggleFavorite: () => void;
+  onSaveExtraDivs: (divs: { c: string; n: string }[]) => void;
 }) {
   const tags = parseTags(sub.notes);
+  const extraDivs = parseExtraDivs(sub.notes);
   const [showMoveMenu, setShowMoveMenu] = useState(false);
+  const [showAddDiv, setShowAddDiv] = useState(false);
   const otherDivisions = usedDivisions.filter(d => d.code !== sub.divisionCode);
 
   return (
@@ -264,6 +268,55 @@ function SubCard({
           })}
         </div>
       )}
+
+      {/* Extra divisions */}
+      <div className="flex flex-wrap gap-1 items-center" onClick={e => e.stopPropagation()}>
+        {extraDivs.map(d => (
+          <span key={d.c} className="flex items-center gap-1 text-[10px] px-1.5 py-0.5 rounded-full"
+            style={{ background: "#1e2736", border: "1px solid #58a6ff44", color: "#58a6ff" }}>
+            {d.c.slice(0, 2)} – {d.n}
+            <button type="button"
+              onClick={() => onSaveExtraDivs(extraDivs.filter(x => x.c !== d.c))}
+              className="leading-none hover:opacity-70 ml-0.5">×</button>
+          </span>
+        ))}
+        {/* + Add division button */}
+        <div className="relative">
+          <button
+            type="button"
+            onClick={() => setShowAddDiv(v => !v)}
+            className="text-[10px] px-1.5 py-0.5 rounded-full leading-none font-bold transition-all hover:opacity-80"
+            style={{ background: "#1e2736", border: "1px solid #30373f", color: "#484f58" }}
+            title="Add another division"
+          >
+            + div
+          </button>
+          {showAddDiv && (
+            <div
+              className="absolute bottom-7 left-0 z-50 rounded-xl shadow-xl overflow-y-auto"
+              style={{ background: "#161b22", border: "1px solid #30373f", minWidth: 180, maxHeight: 260 }}
+              onClick={e => e.stopPropagation()}
+            >
+              {ALL_DIVISIONS.filter(d => d.code !== sub.divisionCode && !extraDivs.find(x => x.c === d.code)).map(d => (
+                <button
+                  key={d.code}
+                  type="button"
+                  onMouseDown={e => {
+                    e.preventDefault();
+                    onSaveExtraDivs([...extraDivs, { c: d.code, n: d.name }]);
+                    setShowAddDiv(false);
+                  }}
+                  className="w-full text-left px-3 py-1.5 text-xs hover:bg-[#1e2736] transition-colors"
+                  style={{ color: "#e6edf3" }}
+                >
+                  <span className="font-mono" style={{ color: "#58a6ff" }}>{d.code.slice(0, 2)}</span>
+                  {" – "}{d.name}
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
 
       {/* Actions */}
       <div className="flex gap-1.5 mt-auto pt-1" onClick={e => e.stopPropagation()}>
@@ -1108,6 +1161,19 @@ export default function SubsDatabase({
                   }}
                   onToggleSelect={() => toggleSelect(group.code, sub.id)}
                   onToggleFavorite={() => handleToggleFavorite(sub.id)}
+                  onSaveExtraDivs={async (divs) => {
+                    const newNotes = serializeNotes(
+                      parseTags(sub.notes),
+                      divs,
+                      parseSrc(sub.notes),
+                      parseText(sub.notes) || undefined,
+                    );
+                    setSubs(prev => prev.map(s => s.id === sub.id ? { ...s, notes: newNotes } : s));
+                    await fetch(`/api/${companyId}/subs/${sub.id}`, {
+                      method: "PATCH", headers: { "Content-Type": "application/json" },
+                      body: JSON.stringify({ name: sub.name, email: sub.email, phone: sub.phone, divisionCode: sub.divisionCode, divisionName: sub.divisionName, notes: newNotes }),
+                    });
+                  }}
                 />
               ))}
             </div>
