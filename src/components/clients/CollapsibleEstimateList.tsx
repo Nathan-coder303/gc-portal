@@ -6,7 +6,7 @@ import DeleteEstimateButton from "@/components/clients/DeleteEstimateButton";
 import EditEstimateModal from "@/components/clients/EditEstimateModal";
 import CoverPagePickerModal, { PdfOptions, Page2Type, CoverType, COVER_OPTIONS } from "@/components/clients/CoverPagePickerModal";
 import { duplicateTemplate } from "@/app/[companyId]/estimates/actions";
-import EstimateVersionDiff from "@/components/clients/EstimateVersionDiff";
+import EstimateVersionDiff, { Snapshot } from "@/components/clients/EstimateVersionDiff";
 
 const MIKE_SIGNATURE = `Mike Baruh
 Founder/CEO | MIBH Construction
@@ -25,7 +25,7 @@ type EstimateVersion = {
   total: number;
   subtotal: number;
   gcFee: number;
-  snapshot: unknown;
+  snapshot: Snapshot | null;
   createdAt: string;
   createdBy: string | null;
 };
@@ -72,7 +72,7 @@ function EstimateCard({
   const router = useRouter();
   const [hovered, setHovered] = useState(false);
   const [showVersions, setShowVersions] = useState(false);
-  const [diffState, setDiffState] = useState<{ versionA: unknown; versionB: unknown; labelA: string; labelB: string } | null>(null);
+  const [diffState, setDiffState] = useState<{ versionA: Snapshot; versionB: Snapshot; labelA: string; labelB: string } | null>(null);
   const [step, setStep] = useState<"cover" | "email" | null>(null);
   const [pdfOpts, setPdfOpts] = useState<PdfOptions | null>(null);
   const [duplicating, setDuplicating] = useState(false);
@@ -286,7 +286,7 @@ function EstimateCard({
                       cursor: canCompare ? "pointer" : "default",
                     }}
                     onClick={() => {
-                      if (!canCompare) return;
+                      if (!canCompare || !prevVersion.snapshot || !v.snapshot) return;
                       setDiffState({
                         versionA: prevVersion.snapshot,
                         versionB: v.snapshot,
@@ -313,10 +313,9 @@ function EstimateCard({
 
       {/* Version diff modal */}
       {diffState && (
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         <EstimateVersionDiff
-          versionA={diffState.versionA as any}
-          versionB={diffState.versionB as any}
+          versionA={diffState.versionA}
+          versionB={diffState.versionB}
           labelA={diffState.labelA}
           labelB={diffState.labelB}
           onClose={() => setDiffState(null)}

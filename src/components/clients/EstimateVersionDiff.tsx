@@ -8,7 +8,7 @@ const YELLOW = "#d29922";
 type SnapItem = { name: string; qty: number | null; unitCost: number | null; markup: number | null; unit: string | null; detail: string | null; total: number };
 type SnapGroup = { name: string; items: SnapItem[] };
 type SnapDivision = { name: string; csiCode: string | null; manualTotal: number | null; total: number; groups: SnapGroup[]; items: SnapItem[] };
-type Snapshot = { divisions: SnapDivision[]; subtotal: number; gcFee: number; total: number };
+export type Snapshot = { divisions: SnapDivision[]; subtotal: number; gcFee: number; total: number };
 
 function fmt(n: number) {
   return n.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
