@@ -2,8 +2,7 @@ import { prisma } from "@/lib/prisma";
 import { auth } from "@/lib/auth";
 import { redirect } from "next/navigation";
 import Link from "next/link";
-import SubsDatabase from "@/components/subs/SubsDatabase";
-import BidTriage from "@/components/subs/BidTriage";
+import SubsPageClient from "@/components/subs/SubsPageClient";
 
 export const dynamic = "force-dynamic";
 
@@ -58,26 +57,11 @@ export default async function SubsDatabasePage({ params, searchParams }: { param
         )}
       </div>
 
-      {/* Bid Triage */}
-      <div className="mb-8">
-        <div className="flex items-center gap-3 mb-4">
-          <h2 className="text-sm font-bold uppercase tracking-widest" style={{ color: "#C9A84C" }}>
-            Bid Inbox
-          </h2>
-        </div>
-        <BidTriage
-          companyId={params.companyId}
-          clients={clients.map(c => ({ id: c.id, name: c.name }))}
-          leads={leads.map(l => ({ id: l.id, name: l.name ?? "Unnamed Lead" }))}
-          projects={projects.map(p => ({ id: p.id, name: p.name }))}
-        />
-      </div>
-
-      {/* Divider */}
-      <div className="mb-8" style={{ borderTop: "1px solid #30373f" }} />
-
-      <SubsDatabase
+      <SubsPageClient
         companyId={params.companyId}
+        clients={clients.map(c => ({ id: c.id, name: c.name }))}
+        leads={leads.map(l => ({ id: l.id, name: l.name ?? "Unnamed Lead" }))}
+        projects={projects.map(p => ({ id: p.id, name: p.name }))}
         initialSubs={subs.map(s => ({
           id: s.id,
           name: s.name,

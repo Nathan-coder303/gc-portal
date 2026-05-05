@@ -672,9 +672,9 @@ function BidEmailModal({
 
 // ─── Main Component ───────────────────────────────────────────────────────────
 export default function SubsDatabase({
-  companyId, initialSubs,
+  companyId, initialSubs, filterQuery = "",
 }: {
-  companyId: string; initialSubs: Sub[];
+  companyId: string; initialSubs: Sub[]; filterQuery?: string;
 }) {
   const normalizedInit = initialSubs.map(s => {
     const { code, name } = normalizeDivision(s.divisionCode, s.divisionName);
@@ -891,13 +891,15 @@ export default function SubsDatabase({
   }
 
   // ── Derived data ──────────────────────────────────────────────────────────
-  const q = search.trim().toLowerCase();
-  const searched = q
+  // External filterQuery (from shared page search) takes priority over internal search bar
+  const activeQ = (filterQuery.trim() || search.trim()).toLowerCase();
+  const searched = activeQ
     ? subs.filter(s =>
-        s.name.toLowerCase().includes(q) ||
-        (s.contactName ?? "").toLowerCase().includes(q) ||
-        (s.email ?? "").toLowerCase().includes(q) ||
-        (s.phone ?? "").toLowerCase().includes(q)
+        s.name.toLowerCase().includes(activeQ) ||
+        (s.contactName ?? "").toLowerCase().includes(activeQ) ||
+        (s.email ?? "").toLowerCase().includes(activeQ) ||
+        (s.phone ?? "").toLowerCase().includes(activeQ) ||
+        s.divisionName.toLowerCase().includes(activeQ)
       )
     : subs;
   const base = favOnly ? searched.filter(s => s.isFavorite) : searched;
@@ -959,27 +961,29 @@ export default function SubsDatabase({
         </div>
       </div>
 
-      {/* Search */}
-      <div className="relative mb-4">
-        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm" style={{ color: "#484f58" }}>🔍</span>
-        <input
-          type="text"
-          value={search}
-          onChange={e => setSearch(e.target.value)}
-          placeholder="Search by name, contact, email, or phone…"
-          className="w-full text-sm rounded-xl pl-9 pr-4 py-2.5 outline-none"
-          style={{ background: "#161b22", border: "1px solid #30373f", color: "#e6edf3" }}
-        />
-        {search && (
-          <button
-            onClick={() => setSearch("")}
-            className="absolute right-3 top-1/2 -translate-y-1/2 text-xs"
-            style={{ color: "#484f58" }}
-          >
-            ✕
-          </button>
-        )}
-      </div>
+      {/* Search — hidden when page-level filterQuery is active */}
+      {!filterQuery && (
+        <div className="relative mb-4">
+          <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm" style={{ color: "#484f58" }}>🔍</span>
+          <input
+            type="text"
+            value={search}
+            onChange={e => setSearch(e.target.value)}
+            placeholder="Search by name, contact, email, or phone…"
+            className="w-full text-sm rounded-xl pl-9 pr-4 py-2.5 outline-none"
+            style={{ background: "#161b22", border: "1px solid #30373f", color: "#e6edf3" }}
+          />
+          {search && (
+            <button
+              onClick={() => setSearch("")}
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-xs"
+              style={{ color: "#484f58" }}
+            >
+              ✕
+            </button>
+          )}
+        </div>
+      )}
 
       {/* Filter pills */}
       <div className="flex gap-2 flex-wrap mb-6">

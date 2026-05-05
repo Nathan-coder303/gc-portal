@@ -282,7 +282,7 @@ export default async function ClientDetailPage({
               total: Number(v.total),
               subtotal: Number(v.subtotal),
               gcFee: Number(v.gcFee),
-              snapshot: (v.snapshot ?? null) as Snapshot | null,
+              snapshot: ((v as unknown as { snapshot?: unknown }).snapshot ?? null) as Snapshot | null,
               createdAt: v.createdAt.toISOString(),
               createdBy: v.createdBy,
             })),

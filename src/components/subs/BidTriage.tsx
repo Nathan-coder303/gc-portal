@@ -128,11 +128,13 @@ export default function BidTriage({
   clients,
   leads = [],
   projects = [],
+  filterQuery = "",
 }: {
   companyId: string;
   clients: Client[];
   leads?: Lead[];
   projects?: Project[];
+  filterQuery?: string;
 }) {
   const [bids, setBids] = useState<TriageBid[]>([]);
   const [loading, setLoading] = useState(true);
@@ -338,16 +340,26 @@ export default function BidTriage({
     );
   }
 
+  const triageQ = filterQuery.trim().toLowerCase();
+  const visibleBids = triageQ
+    ? bids.filter(b =>
+        (b.contractorName ?? "").toLowerCase().includes(triageQ) ||
+        b.divisionName.toLowerCase().includes(triageQ)
+      )
+    : bids;
+
   return (
     <>
       <div className="flex items-center gap-2 mb-3">
         <span className="text-xs font-bold px-2 py-0.5 rounded-full" style={{ background: "#C9A84C22", color: "#C9A84C", border: "1px solid #C9A84C44" }}>
-          {bids.length}
+          {triageQ ? visibleBids.length : bids.length}
         </span>
-        <span className="text-xs" style={{ color: "#484f58" }}>bids remaining</span>
+        <span className="text-xs" style={{ color: "#484f58" }}>
+          {triageQ ? `of ${bids.length} bids match` : "bids remaining"}
+        </span>
       </div>
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-        {bids.map(bid => {
+        {visibleBids.map(bid => {
           const divCode = selectedDivision[bid.id] ?? bid.divisionCode;
           return (
             <div
