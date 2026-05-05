@@ -1,31 +1,21 @@
 import { NextRequest, NextResponse } from "next/server";
 import { google } from "googleapis";
 import { auth } from "@/lib/auth";
+import { getGmailOAuth } from "@/lib/gmail";
 
 export const runtime = "nodejs";
-
-function getOAuthClient() {
-  const oauth2Client = new google.auth.OAuth2(
-    process.env.GOOGLE_CLIENT_ID,
-    process.env.GOOGLE_CLIENT_SECRET,
-    "urn:ietf:wg:oauth:2.0:oob"
-  );
-  oauth2Client.setCredentials({ refresh_token: process.env.GOOGLE_REFRESH_TOKEN });
-  return oauth2Client;
-}
 
 function encodeSubject(s: string): string {
   if (/^[\x20-\x7E]*$/.test(s)) return s;
   return `=?UTF-8?B?${Buffer.from(s, "utf-8").toString("base64")}?=`;
 }
 
-export async function POST(req: NextRequest) {
+export async function POST(
+  req: NextRequest,
+  { params }: { params: { companyId: string } }
+) {
   const session = await auth();
   if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-
-  if (!process.env.GOOGLE_CLIENT_ID || !process.env.GOOGLE_REFRESH_TOKEN) {
-    return NextResponse.json({ error: "Gmail not configured" }, { status: 500 });
-  }
 
   const formData = await req.formData();
   const to = formData.get("to") as string;
@@ -72,10 +62,16 @@ export async function POST(req: NextRequest) {
   const raw = Buffer.from(lines.join("\r\n")).toString("base64url");
 
   try {
-    const gmail = google.gmail({ version: "v1", auth: getOAuthClient() });
+    const oauth2Client = await getGmailOAuth(params.companyId);
+    const gmail = google.gmail({ version: "v1", auth: oauth2Client });
     await gmail.users.messages.send({ userId: "me", requestBody: { raw } });
     return NextResponse.json({ success: true });
   } catch (e) {
-    return NextResponse.json({ error: String(e) }, { status: 500 });
+    console.error("subs send-email error:", e);
+    const msg = String(e);
+    if (msg.includes("invalid_grant")) {
+      return NextResponse.json({ error: "gmail_auth_expired" }, { status: 401 });
+    }
+    return NextResponse.json({ error: msg }, { status: 500 });
   }
 }

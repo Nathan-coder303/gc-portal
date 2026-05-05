@@ -253,6 +253,8 @@ export default function SubsBidsTab({ clientId, companyId, clientName, subBids: 
       if (data.success) {
         setSendResult("✓ Email sent successfully");
         setTimeout(() => { setSendModal(null); setSendResult(null); }, 1500);
+      } else if (data.error === "gmail_auth_expired") {
+        setSendResult("Gmail authorization expired — please re-authorize Gmail and try again.");
       } else {
         setSendResult("Error: " + (data.error ?? "Unknown error"));
       }

@@ -500,7 +500,14 @@ function BidEmailModal({
 
       const res = await fetch(`/api/${companyId}/subs/send-email`, { method: "POST", body: fd });
       const data = await res.json();
-      if (data.error) { alert("Send failed: " + data.error); return; }
+      if (data.error) {
+        if (data.error === "gmail_auth_expired") {
+          alert("Gmail authorization expired. Please re-authorize Gmail at:\n\n" + window.location.origin + `/api/google-oauth?companyId=${companyId}`);
+        } else {
+          alert("Send failed: " + data.error);
+        }
+        return;
+      }
       setSent(true);
       setTimeout(onClose, 1800);
     } finally {
