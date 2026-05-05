@@ -51,7 +51,6 @@ export default async function ClientDetailPage({
           },
           versions: {
             orderBy: { createdAt: "desc" },
-            select: { id: true, label: true, total: true, subtotal: true, gcFee: true, snapshot: true, createdAt: true, createdBy: true },
           },
         },
       },
