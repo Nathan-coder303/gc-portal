@@ -143,6 +143,9 @@ export default function BidTriage({
   const [selectedTarget, setSelectedTarget] = useState<Record<string, string>>({});
   // Per-bid division override (divisionCode)
   const [selectedDivision, setSelectedDivision] = useState<Record<string, string>>({});
+  // Per-bid extra divisions
+  const [extraDivs, setExtraDivs] = useState<Record<string, { c: string; n: string }[]>>({});
+  const [showAddDiv, setShowAddDiv] = useState<string | null>(null); // bid.id that has the dropdown open
   const [addSubModal, setAddSubModal] = useState<AddSubModal | null>(null);
 
   // Sub form state
@@ -156,6 +159,7 @@ export default function BidTriage({
     divisionCode: "",
     divisionName: "",
     notes: "",
+    extraDivs: [] as { c: string; n: string }[],
   });
   const [savingSub, setSavingSub] = useState(false);
 
@@ -232,6 +236,8 @@ export default function BidTriage({
 
       const parsedContact = parseContactNotes(bid.notes);
 
+      const bidExtraDivs = extraDivs[bid.id] ?? [];
+
       // For Excel-imported bids (no PDF), pre-fill from stored notes immediately
       if (!bid.fileUrl) {
         setSubForm({
@@ -244,6 +250,7 @@ export default function BidTriage({
           divisionCode: divCode,
           divisionName: divName,
           notes: "",
+          extraDivs: bidExtraDivs,
         });
         setAddSubModal(prev => prev ? { ...prev, loading: false } : null);
       } else {
@@ -257,6 +264,7 @@ export default function BidTriage({
           divisionCode: divCode,
           divisionName: divName,
           notes: "",
+          extraDivs: bidExtraDivs,
         });
 
         // Extract sub info from PDF in background
@@ -298,6 +306,7 @@ export default function BidTriage({
       const div = ALL_DIVISIONS.find(d => d.code === subForm.divisionCode);
       const srcLabel = getSubSourceLabel(addSubModal.bid);
       const notesObj: Record<string, unknown> = { src: srcLabel };
+      if (subForm.extraDivs.length) notesObj.d = subForm.extraDivs;
       if (subForm.notes.trim()) notesObj.text = subForm.notes.trim();
       const notesJson = JSON.stringify(notesObj);
       const res = await fetch(`/api/${companyId}/subs`, {
@@ -438,6 +447,55 @@ export default function BidTriage({
                       <option key={d.code} value={d.code}>{d.code} – {d.name}</option>
                     ))}
                   </select>
+
+                  {/* Extra divisions */}
+                  <div className="flex flex-wrap gap-1 items-center">
+                    {(extraDivs[bid.id] ?? []).map(d => (
+                      <span key={d.c} className="flex items-center gap-1 text-[10px] px-1.5 py-0.5 rounded-full"
+                        style={{ background: "#1e2736", border: "1px solid #58a6ff44", color: "#58a6ff" }}>
+                        {d.c.slice(0, 2)} – {d.n}
+                        <button type="button"
+                          onClick={() => setExtraDivs(prev => ({ ...prev, [bid.id]: (prev[bid.id] ?? []).filter(x => x.c !== d.c) }))}
+                          className="leading-none hover:opacity-70 ml-0.5">×</button>
+                      </span>
+                    ))}
+                    <div className="relative">
+                      <button
+                        type="button"
+                        onClick={() => setShowAddDiv(v => v === bid.id ? null : bid.id)}
+                        className="text-[10px] px-1.5 py-0.5 rounded-full font-bold transition-all hover:opacity-80"
+                        style={{ background: "#1e2736", border: "1px solid #30373f", color: "#484f58" }}
+                        title="Add another division"
+                      >
+                        + div
+                      </button>
+                      {showAddDiv === bid.id && (
+                        <div
+                          className="absolute bottom-7 left-0 z-50 rounded-xl shadow-xl overflow-y-auto"
+                          style={{ background: "#161b22", border: "1px solid #30373f", minWidth: 180, maxHeight: 240 }}
+                        >
+                          {ALL_DIVISIONS.filter(d =>
+                            d.code !== divCode && !(extraDivs[bid.id] ?? []).find(x => x.c === d.code)
+                          ).map(d => (
+                            <button
+                              key={d.code}
+                              type="button"
+                              onMouseDown={e => {
+                                e.preventDefault();
+                                setExtraDivs(prev => ({ ...prev, [bid.id]: [...(prev[bid.id] ?? []), { c: d.code, n: d.name }] }));
+                                setShowAddDiv(null);
+                              }}
+                              className="w-full text-left px-3 py-1.5 text-xs hover:bg-[#1e2736] transition-colors"
+                              style={{ color: "#e6edf3" }}
+                            >
+                              <span className="font-mono" style={{ color: "#58a6ff" }}>{d.code.slice(0, 2)}</span>
+                              {" – "}{d.name}
+                            </button>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  </div>
 
                   {/* Target + Move */}
                   <div className="flex items-center gap-2">
@@ -591,6 +649,36 @@ export default function BidTriage({
                 >
                   <option value="">Select division…</option>
                   {ALL_DIVISIONS.map(d => (
+                    <option key={d.code} value={d.code}>{d.code} – {d.name}</option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label className="text-xs font-semibold block mb-1" style={{ color: "#8b949e" }}>Also covers <span style={{ color: "#484f58" }}>(extra divisions)</span></label>
+                <div className="flex flex-wrap gap-1 items-center mb-1.5">
+                  {subForm.extraDivs.map(d => (
+                    <span key={d.c} className="flex items-center gap-1 text-[10px] px-1.5 py-0.5 rounded-full"
+                      style={{ background: "#1e2736", border: "1px solid #58a6ff44", color: "#58a6ff" }}>
+                      {d.c.slice(0, 2)} – {d.n}
+                      <button type="button"
+                        onClick={() => setSubForm(p => ({ ...p, extraDivs: p.extraDivs.filter(x => x.c !== d.c) }))}
+                        className="leading-none hover:opacity-70 ml-0.5">×</button>
+                    </span>
+                  ))}
+                </div>
+                <select
+                  value=""
+                  onChange={e => {
+                    const div = ALL_DIVISIONS.find(d => d.code === e.target.value);
+                    if (div && !subForm.extraDivs.find(x => x.c === div.code) && div.code !== subForm.divisionCode) {
+                      setSubForm(p => ({ ...p, extraDivs: [...p.extraDivs, { c: div.code, n: div.name }] }));
+                    }
+                  }}
+                  className="w-full text-sm rounded-lg px-3 py-2"
+                  style={{ background: "#1e2736", border: "1px solid #30373f", color: "#8b949e" }}
+                >
+                  <option value="">+ Add division…</option>
+                  {ALL_DIVISIONS.filter(d => d.code !== subForm.divisionCode && !subForm.extraDivs.find(x => x.c === d.code)).map(d => (
                     <option key={d.code} value={d.code}>{d.code} – {d.name}</option>
                   ))}
                 </select>
