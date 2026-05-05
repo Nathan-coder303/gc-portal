@@ -6,6 +6,7 @@ import DeleteEstimateButton from "@/components/clients/DeleteEstimateButton";
 import EditEstimateModal from "@/components/clients/EditEstimateModal";
 import CoverPagePickerModal, { PdfOptions, Page2Type, CoverType, COVER_OPTIONS } from "@/components/clients/CoverPagePickerModal";
 import { duplicateTemplate } from "@/app/[companyId]/estimates/actions";
+import EstimateVersionDiff from "@/components/clients/EstimateVersionDiff";
 
 const MIKE_SIGNATURE = `Mike Baruh
 Founder/CEO | MIBH Construction
@@ -24,6 +25,7 @@ type EstimateVersion = {
   total: number;
   subtotal: number;
   gcFee: number;
+  snapshot: unknown;
   createdAt: string;
   createdBy: string | null;
 };
@@ -70,6 +72,7 @@ function EstimateCard({
   const router = useRouter();
   const [hovered, setHovered] = useState(false);
   const [showVersions, setShowVersions] = useState(false);
+  const [diffState, setDiffState] = useState<{ versionA: unknown; versionB: unknown; labelA: string; labelB: string } | null>(null);
   const [step, setStep] = useState<"cover" | "email" | null>(null);
   const [pdfOpts, setPdfOpts] = useState<PdfOptions | null>(null);
   const [duplicating, setDuplicating] = useState(false);
@@ -272,11 +275,31 @@ function EstimateCard({
                   timeZone: "America/New_York", month: "short", day: "numeric", year: "numeric",
                   hour: "numeric", minute: "2-digit", hour12: true,
                 });
+                const prevVersion = est.versions[i + 1]; // older version (sorted desc)
+                const canCompare = !!prevVersion?.snapshot && !!v.snapshot;
                 return (
-                  <div key={v.id} className="flex items-center justify-between gap-3 px-3 py-2.5"
-                    style={{ background: i % 2 === 0 ? "#0d1117" : "#0a0f15", borderBottom: i < est.versions.length - 1 ? "1px solid #161b22" : "none" }}>
+                  <div key={v.id}
+                    className="flex items-center justify-between gap-3 px-3 py-2.5 transition-colors"
+                    style={{
+                      background: i % 2 === 0 ? "#0d1117" : "#0a0f15",
+                      borderBottom: i < est.versions.length - 1 ? "1px solid #161b22" : "none",
+                      cursor: canCompare ? "pointer" : "default",
+                    }}
+                    onClick={() => {
+                      if (!canCompare) return;
+                      setDiffState({
+                        versionA: prevVersion.snapshot,
+                        versionB: v.snapshot,
+                        labelA: prevVersion.label,
+                        labelB: v.label,
+                      });
+                    }}
+                  >
                     <div className="min-w-0">
-                      <div className="text-xs font-medium truncate" style={{ color: "#e6edf3" }}>{v.label}</div>
+                      <div className="flex items-center gap-1.5">
+                        <div className="text-xs font-medium truncate" style={{ color: "#e6edf3" }}>{v.label}</div>
+                        {canCompare && <span className="text-[10px] px-1 rounded" style={{ background: "#21262d", color: "#484f58" }}>compare ↗</span>}
+                      </div>
                       <div className="text-[11px] mt-0.5" style={{ color: "#484f58" }}>{ts} ET{v.createdBy ? ` · ${v.createdBy}` : ""}</div>
                     </div>
                     <span className="text-xs font-bold shrink-0" style={{ color: "#C9A84C" }}>${fmt(v.total)}</span>
@@ -287,6 +310,18 @@ function EstimateCard({
           )}
         </div>
       </div>
+
+      {/* Version diff modal */}
+      {diffState && (
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        <EstimateVersionDiff
+          versionA={diffState.versionA as any}
+          versionB={diffState.versionB as any}
+          labelA={diffState.labelA}
+          labelB={diffState.labelB}
+          onClose={() => setDiffState(null)}
+        />
+      )}
 
       {/* PDF Options modal */}
       {step === "cover" && (

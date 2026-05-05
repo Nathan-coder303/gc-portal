@@ -50,7 +50,7 @@ export default async function ClientDetailPage({
           },
           versions: {
             orderBy: { createdAt: "desc" },
-            select: { id: true, label: true, total: true, subtotal: true, gcFee: true, createdAt: true, createdBy: true },
+            select: { id: true, label: true, total: true, subtotal: true, gcFee: true, snapshot: true, createdAt: true, createdBy: true },
           },
         },
       },
@@ -282,6 +282,7 @@ export default async function ClientDetailPage({
               total: Number(v.total),
               subtotal: Number(v.subtotal),
               gcFee: Number(v.gcFee),
+              snapshot: v.snapshot ?? null,
               createdAt: v.createdAt.toISOString(),
               createdBy: v.createdBy,
             })),
