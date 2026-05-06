@@ -274,14 +274,27 @@ export async function upsertTemplateDivision(
   requirePermission(session, "estimateTemplate:edit");
 
   if (data.id) {
+    // Update name/csiCode via Prisma (fields known to cached client)
     await prisma.estimateTemplateDivision.update({
       where: { id: data.id },
-      data: {
-        csiCode: data.csiCode,
-        name: data.name,
-        ...(data.manualTotal !== undefined && { manualTotal: data.manualTotal }),
-      },
+      data: { csiCode: data.csiCode, name: data.name },
     });
+    // Set manualTotal via raw SQL — Vercel caches an older Prisma client that
+    // doesn't know about this column, so using the ORM throws "Unknown argument"
+    if (data.manualTotal !== undefined) {
+      if (data.manualTotal === null) {
+        await prisma.$executeRawUnsafe(
+          `UPDATE "EstimateTemplateDivision" SET "manualTotal" = NULL WHERE id = $1`,
+          data.id,
+        );
+      } else {
+        await prisma.$executeRawUnsafe(
+          `UPDATE "EstimateTemplateDivision" SET "manualTotal" = $1 WHERE id = $2`,
+          data.manualTotal,
+          data.id,
+        );
+      }
+    }
     // Zero out all line items when a lump-sum override is applied
     if (data.manualTotal != null) {
       await prisma.estimateTemplateItem.updateMany({
