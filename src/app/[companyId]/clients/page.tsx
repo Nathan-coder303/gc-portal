@@ -61,6 +61,7 @@ export default async function ClientsPage({ params }: { params: { companyId: str
       templates: {
         where: { type: "CLIENT_ESTIMATE", archivedAt: null },
         select: {
+          updatedAt: true,
           gcFeePercent: true,
           internalProfitOverride: true,
           divisions: {
@@ -104,7 +105,10 @@ export default async function ClientsPage({ params }: { params: { companyId: str
           gcFee: c.templates.reduce((sum, t) => sum + calcGcFeeAmt(t.divisions, t.gcFeePercent), 0),
           status: c.status,
           sortOrder: c.sortOrder,
-          updatedAt: c.updatedAt.toISOString(),
+          updatedAt: new Date(Math.max(
+            c.updatedAt.getTime(),
+            ...c.templates.map(t => t.updatedAt.getTime()),
+          )).toISOString(),
         }))}
         isAdmin={isAdmin}
       />
