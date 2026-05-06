@@ -306,22 +306,34 @@ export async function POST(
   if (template.clientId) {
     try {
       const gcFeePercent = template.gcFeePercent ? Number(template.gcFeePercent) : 0;
+      const calcItemTotal = (qty: number | null, cost: number | null, markup: number | null) => {
+        const q = qty ?? 0; const c = cost ?? 0; const m = markup ?? 0;
+        return q * c * (1 + m / 100);
+      };
       const divSubtotal = template.divisions.reduce((sum, div) => {
         if (div.manualTotal != null) return sum + Number(div.manualTotal);
-        const allItems = [
-          ...div.items,
-          ...div.groups.flatMap(g => g.items),
-        ];
-        return sum + allItems.reduce((s, i) => {
-          const qty = i.defaultQty ? Number(i.defaultQty) : 0;
-          const cost = i.defaultUnitCost ? Number(i.defaultUnitCost) : 0;
-          const markup = i.defaultMarkupPct ? Number(i.defaultMarkupPct) : 0;
-          return s + qty * cost * (1 + markup / 100);
-        }, 0);
+        const allItems = [...div.items, ...div.groups.flatMap(g => g.items)];
+        return sum + allItems.reduce((s, i) => s + calcItemTotal(i.defaultQty ? Number(i.defaultQty) : null, i.defaultUnitCost ? Number(i.defaultUnitCost) : null, i.defaultMarkupPct ? Number(i.defaultMarkupPct) : null), 0);
       }, 0);
       const gcFeeAmt = gcFeePercent > 0 ? divSubtotal * gcFeePercent / 100 : 0;
       const versionTotal = divSubtotal + gcFeeAmt;
-      await prisma.estimateVersion.create({
+      const snapshot = {
+        divisions: template.divisions.map(div => {
+          const divTotal = div.manualTotal != null ? Number(div.manualTotal)
+            : [...div.items, ...div.groups.flatMap(g => g.items)].reduce((s, i) => s + calcItemTotal(i.defaultQty ? Number(i.defaultQty) : null, i.defaultUnitCost ? Number(i.defaultUnitCost) : null, i.defaultMarkupPct ? Number(i.defaultMarkupPct) : null), 0);
+          return {
+            name: div.name, csiCode: div.csiCode, manualTotal: div.manualTotal != null ? Number(div.manualTotal) : null, total: divTotal,
+            groups: div.groups.map(g => ({
+              name: g.name,
+              items: g.items.map(i => ({ name: i.name, qty: i.defaultQty ? Number(i.defaultQty) : null, unitCost: i.defaultUnitCost ? Number(i.defaultUnitCost) : null, markup: i.defaultMarkupPct ? Number(i.defaultMarkupPct) : null, unit: i.unit, detail: i.detail, total: calcItemTotal(i.defaultQty ? Number(i.defaultQty) : null, i.defaultUnitCost ? Number(i.defaultUnitCost) : null, i.defaultMarkupPct ? Number(i.defaultMarkupPct) : null) })),
+            })),
+            items: div.items.map(i => ({ name: i.name, qty: i.defaultQty ? Number(i.defaultQty) : null, unitCost: i.defaultUnitCost ? Number(i.defaultUnitCost) : null, markup: i.defaultMarkupPct ? Number(i.defaultMarkupPct) : null, unit: i.unit, detail: i.detail, total: calcItemTotal(i.defaultQty ? Number(i.defaultQty) : null, i.defaultUnitCost ? Number(i.defaultUnitCost) : null, i.defaultMarkupPct ? Number(i.defaultMarkupPct) : null) })),
+          };
+        }),
+        subtotal: divSubtotal, gcFee: gcFeeAmt, total: versionTotal,
+      };
+      // Create without snapshot first (avoids Prisma stale-cache type error on Vercel)
+      const ver = await prisma.estimateVersion.create({
         data: {
           companyId: params.companyId,
           clientId: template.clientId,
@@ -333,6 +345,8 @@ export async function POST(
           createdBy: session.user?.name ?? session.user?.email ?? null,
         },
       });
+      // Set snapshot via raw SQL — bypasses Prisma's stale generated client
+      await prisma.$executeRaw`UPDATE "EstimateVersion" SET snapshot = ${JSON.stringify(snapshot)}::jsonb WHERE id = ${ver.id}`;
     } catch { /* version save failure is non-critical */ }
   }
 

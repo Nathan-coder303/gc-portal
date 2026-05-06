@@ -25,7 +25,6 @@ type EstimateVersion = {
   total: number;
   subtotal: number;
   gcFee: number;
-  snapshot: Snapshot | null;
   createdAt: string;
   createdBy: string | null;
 };
@@ -72,6 +71,7 @@ function EstimateCard({
   const router = useRouter();
   const [hovered, setHovered] = useState(false);
   const [showVersions, setShowVersions] = useState(false);
+  const [loadingDiff, setLoadingDiff] = useState<string | null>(null); // version id being loaded
   const [diffState, setDiffState] = useState<{ versionA: Snapshot; versionB: Snapshot; labelA: string; labelB: string } | null>(null);
   const [step, setStep] = useState<"cover" | "email" | null>(null);
   const [pdfOpts, setPdfOpts] = useState<PdfOptions | null>(null);
@@ -275,30 +275,40 @@ function EstimateCard({
                   timeZone: "America/New_York", month: "short", day: "numeric", year: "numeric",
                   hour: "numeric", minute: "2-digit", hour12: true,
                 });
-                const prevVersion = est.versions[i + 1]; // older version (sorted desc)
-                const canCompare = !!prevVersion?.snapshot && !!v.snapshot;
+                const hasPrev = i < est.versions.length - 1;
+                const isLoading = loadingDiff === v.id;
                 return (
                   <div key={v.id}
                     className="flex items-center justify-between gap-3 px-3 py-2.5 transition-colors"
                     style={{
                       background: i % 2 === 0 ? "#0d1117" : "#0a0f15",
                       borderBottom: i < est.versions.length - 1 ? "1px solid #161b22" : "none",
-                      cursor: canCompare ? "pointer" : "default",
+                      cursor: hasPrev ? "pointer" : "default",
                     }}
-                    onClick={() => {
-                      if (!canCompare || !prevVersion.snapshot || !v.snapshot) return;
-                      setDiffState({
-                        versionA: prevVersion.snapshot,
-                        versionB: v.snapshot,
-                        labelA: prevVersion.label,
-                        labelB: v.label,
-                      });
+                    onClick={async () => {
+                      if (!hasPrev || isLoading) return;
+                      setLoadingDiff(v.id);
+                      try {
+                        const res = await fetch(`/api/${companyId}/estimates/${est.id}/versions`);
+                        if (!res.ok) return;
+                        const all: (EstimateVersion & { snapshot: Snapshot | null })[] = await res.json();
+                        const cur = all.find(x => x.id === v.id);
+                        const prev = all[all.findIndex(x => x.id === v.id) + 1];
+                        if (!cur?.snapshot || !prev?.snapshot) {
+                          alert("Snapshot not available for this version. Save a new version to enable comparisons.");
+                          return;
+                        }
+                        setDiffState({ versionA: prev.snapshot, versionB: cur.snapshot, labelA: prev.label, labelB: cur.label });
+                      } finally {
+                        setLoadingDiff(null);
+                      }
                     }}
                   >
                     <div className="min-w-0">
                       <div className="flex items-center gap-1.5">
                         <div className="text-xs font-medium truncate" style={{ color: "#e6edf3" }}>{v.label}</div>
-                        {canCompare && <span className="text-[10px] px-1 rounded" style={{ background: "#21262d", color: "#484f58" }}>compare ↗</span>}
+                        {hasPrev && !isLoading && <span className="text-[10px] px-1 rounded" style={{ background: "#21262d", color: "#484f58" }}>compare ↗</span>}
+                        {isLoading && <span className="text-[10px]" style={{ color: "#484f58" }}>loading…</span>}
                       </div>
                       <div className="text-[11px] mt-0.5" style={{ color: "#484f58" }}>{ts} ET{v.createdBy ? ` · ${v.createdBy}` : ""}</div>
                     </div>

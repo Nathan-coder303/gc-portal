@@ -1,7 +1,6 @@
 import { prisma } from "@/lib/prisma";
 import { auth } from "@/lib/auth";
 import { redirect } from "next/navigation";
-import type { Snapshot } from "@/components/clients/EstimateVersionDiff";
 
 export const dynamic = "force-dynamic";
 import Link from "next/link";
@@ -282,7 +281,6 @@ export default async function ClientDetailPage({
               total: Number(v.total),
               subtotal: Number(v.subtotal),
               gcFee: Number(v.gcFee),
-              snapshot: ((v as unknown as { snapshot?: unknown }).snapshot ?? null) as Snapshot | null,
               createdAt: v.createdAt.toISOString(),
               createdBy: v.createdBy,
             })),
