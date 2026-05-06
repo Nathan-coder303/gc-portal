@@ -346,7 +346,11 @@ export async function POST(
         },
       });
       // Set snapshot via raw SQL — bypasses Prisma's stale generated client
-      await prisma.$executeRaw`UPDATE "EstimateVersion" SET snapshot = ${JSON.stringify(snapshot)}::jsonb WHERE id = ${ver.id}`;
+      await prisma.$executeRawUnsafe(
+        `UPDATE "EstimateVersion" SET snapshot = $1::jsonb WHERE id = $2`,
+        JSON.stringify(snapshot),
+        ver.id,
+      );
     } catch { /* version save failure is non-critical */ }
   }
 

@@ -72,9 +72,15 @@ export async function POST(
 
   // Set snapshot via raw SQL — bypasses Prisma's stale generated client
   if (snapshot != null) {
-    await prisma.$executeRaw`
-      UPDATE "EstimateVersion" SET snapshot = ${JSON.stringify(snapshot)}::jsonb WHERE id = ${version.id}
-    `;
+    try {
+      await prisma.$executeRawUnsafe(
+        `UPDATE "EstimateVersion" SET snapshot = $1::jsonb WHERE id = $2`,
+        JSON.stringify(snapshot),
+        version.id,
+      );
+    } catch (e) {
+      console.error("snapshot save failed:", e);
+    }
   }
 
   return NextResponse.json({

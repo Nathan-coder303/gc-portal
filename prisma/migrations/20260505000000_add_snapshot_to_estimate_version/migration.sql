@@ -1,0 +1,1 @@
+ALTER TABLE "EstimateVersion" ADD COLUMN IF NOT EXISTS "snapshot" JSONB;
