@@ -94,10 +94,15 @@ function LoginForm() {
             </button>
           </form>
 
-          <p className="text-center text-xs mt-6" style={{ color: "#8b949e" }}>
-            Don&apos;t have an account?{" "}
-            <Link href="/signup" className="font-medium" style={{ color: "#C9A84C" }}>Sign up</Link>
-          </p>
+          <div className="flex items-center justify-between mt-6">
+            <p className="text-xs" style={{ color: "#8b949e" }}>
+              Don&apos;t have an account?{" "}
+              <Link href="/signup" className="font-medium" style={{ color: "#C9A84C" }}>Sign up</Link>
+            </p>
+            <Link href="/forgot-password" className="text-xs font-medium" style={{ color: "#8b949e" }}>
+              Forgot password?
+            </Link>
+          </div>
         </div>
       </div>
     </div>

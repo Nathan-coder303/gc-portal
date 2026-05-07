@@ -449,11 +449,11 @@ export default function AppointmentsCard({
   }
 
   return (
-    <div className="mb-4 rounded-2xl px-4 py-4 sm:px-6 sm:py-5" style={{ background: "#0a0e1a", border: "1px solid #C9A84C33" }}>
+    <div className="mb-3 rounded-2xl px-4 py-3 sm:px-6 sm:py-5" style={{ background: "#0a0e1a", border: "1px solid #C9A84C33" }}>
 
       {/* Header */}
       <div className="flex items-center gap-3">
-        <div className="flex-1 text-center text-[52px] sm:text-6xl font-black leading-none tracking-tight" style={{ color: "#C9A84C" }}>
+        <div className="flex-1 text-center text-[22px] sm:text-6xl font-black leading-none tracking-tight" style={{ color: "#C9A84C" }}>
           Today&apos;s appointments
         </div>
         <button

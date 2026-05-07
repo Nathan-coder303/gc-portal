@@ -436,6 +436,15 @@ model User {
   projectAccess  UserProjectAccess[]
   clientId       String?              @unique
   clientLink     Client?              @relation("PortalUser", fields: [clientId], references: [id], onDelete: SetNull)
+  passwordResetToken PasswordResetToken?
+}
+
+model PasswordResetToken {
+  id      String   @id @default(cuid())
+  userId  String   @unique
+  token   String   @unique
+  expires DateTime
+  user    User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
 
 model UserProjectAccess {

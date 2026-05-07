@@ -270,9 +270,9 @@ export default async function TodayPage({
   }));
 
   return (
-    <div className="w-full px-3 sm:px-4 py-4 sm:py-8">
+    <div className="w-full px-3 sm:px-4 py-2 sm:py-8">
       {/* Header */}
-      <div className="flex flex-wrap items-start justify-between mb-1 gap-2">
+      <div className="flex flex-wrap items-start justify-between mb-1 gap-1">
         <div className="min-w-0">
           <h1 className="text-xl sm:text-2xl font-bold leading-tight" style={{ color: "#e6edf3" }}>
             Today&apos;s Overview
@@ -301,14 +301,14 @@ export default async function TodayPage({
 
         {/* CLIENTS card — full width, before Leads */}
         <div
-          className="col-span-2 lg:col-span-3 rounded-2xl p-4 sm:p-5"
+          className="col-span-2 lg:col-span-3 rounded-2xl p-3 sm:p-5"
           style={{ background: "#161b22", border: "1px solid #30373f" }}
         >
           <div className="flex items-center gap-3">
-            <Link href={`/${params.companyId}/clients`} className="flex-1 text-center text-[52px] sm:text-6xl font-black leading-none tracking-tight hover:opacity-80 transition-opacity" style={{ color: "#C9A84C" }}>Clients</Link>
+            <Link href={`/${params.companyId}/clients`} className="flex-1 text-center text-[22px] sm:text-6xl font-black leading-none tracking-tight hover:opacity-80 transition-opacity" style={{ color: "#C9A84C" }}>Clients</Link>
             <Link href={`/${params.companyId}/clients`} className="text-xs px-2 py-0.5 rounded font-medium shrink-0" style={{ border: "1px solid #C9A84C66", color: "#C9A84C" }}>+</Link>
           </div>
-          <div className="grid grid-cols-2 gap-4 mt-3">
+          <div className="grid grid-cols-2 gap-3 mt-2">
             <Link
               href={`/${params.companyId}/clients`}
               className="flex flex-col gap-1 p-3 rounded-xl transition-opacity hover:opacity-80"

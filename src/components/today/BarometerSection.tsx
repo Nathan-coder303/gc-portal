@@ -58,19 +58,19 @@ export default function BarometerSection({ mibhIncome, clients }: { mibhIncome: 
   return (
     <>
       <div
-        className="mt-4 mb-4 rounded-2xl px-4 py-4 sm:px-6 sm:py-5 cursor-pointer transition-all hover:border-[#22c55e66] active:scale-[0.99]"
+        className="mt-2 mb-3 rounded-2xl px-4 py-3 sm:px-6 sm:py-5 cursor-pointer transition-all hover:border-[#22c55e66] active:scale-[0.99]"
         style={{ background: "#0a1a0f", border: "1px solid #22c55e33" }}
         onClick={() => setOpen(true)}
       >
         {/* Label */}
-        <div className="text-center text-[36px] sm:text-[52px] font-black leading-none tracking-tight" style={{ color: "#C9A84C" }}>
+        <div className="text-center text-[22px] sm:text-[52px] font-black leading-none tracking-tight" style={{ color: "#C9A84C" }}>
           MIBH PROFIT 2026
         </div>
 
         {/* Income left · % center · Goal right */}
         <div className="grid grid-cols-3 items-center mt-1 gap-1">
           <div>
-            <div className="text-[22px] sm:text-[52px] font-black leading-none tracking-tight" style={{ color: "#C9A84C" }}>
+            <div className="text-[18px] sm:text-[52px] font-black leading-none tracking-tight" style={{ color: "#C9A84C" }}>
               ${fmt(mibhIncome)}
             </div>
             <div className="flex gap-3 mt-1 text-[10px] font-semibold uppercase tracking-wide flex-wrap">
@@ -84,13 +84,13 @@ export default function BarometerSection({ mibhIncome, clients }: { mibhIncome: 
           </div>
           <div className="text-center">
             <span
-              className="text-[22px] sm:text-[52px] font-black leading-none tracking-tight"
+              className="text-[18px] sm:text-[52px] font-black leading-none tracking-tight"
               style={{ color: "#22c55e" }}
             >
               {goalPct.toFixed(1)}%
             </span>
           </div>
-          <div className="text-[22px] sm:text-[52px] font-black leading-none tracking-tight text-right" style={{ color: "#22c55e" }}>
+          <div className="text-[18px] sm:text-[52px] font-black leading-none tracking-tight text-right" style={{ color: "#22c55e" }}>
             $5,000,000
           </div>
         </div>
