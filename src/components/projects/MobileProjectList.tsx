@@ -41,27 +41,38 @@ function PhotoThumb({
 }) {
   const inputRef = useRef<HTMLInputElement>(null);
   const [uploading, setUploading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   async function handleFile(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     if (!file) return;
     setUploading(true);
-    const fd = new FormData();
-    fd.append("photo", file);
-    const res = await fetch(`/api/${companyId}/projects/${projectId}/photo`, { method: "POST", body: fd });
-    const { url } = await res.json() as { url: string };
-    onUploaded(url);
-    setUploading(false);
+    setError(null);
+    try {
+      const fd = new FormData();
+      fd.append("photo", file);
+      const res = await fetch(`/api/${companyId}/projects/${projectId}/photo`, { method: "POST", body: fd });
+      const json = await res.json() as { url?: string; error?: string };
+      if (!res.ok || !json.url) throw new Error(json.error ?? `Upload failed (${res.status})`);
+      onUploaded(json.url);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Upload failed");
+    } finally {
+      setUploading(false);
+      if (inputRef.current) inputRef.current.value = "";
+    }
   }
 
   return (
+    <>
     <div
-      className="relative w-12 h-12 rounded-xl overflow-hidden shrink-0 flex items-center justify-center"
+      className="relative w-12 h-12 rounded-xl overflow-hidden shrink-0 flex items-center justify-center cursor-pointer"
       style={{ background: "#2d3748" }}
       onClick={isAdmin ? () => inputRef.current?.click() : undefined}
     >
       {photoUrl ? (
-        <Image src={photoUrl} alt={name} fill className="object-cover" sizes="48px" />
+        // eslint-disable-next-line @next/next/no-img-element
+        <img src={photoUrl} alt={name} className="w-full h-full object-cover" />
       ) : (
         <span className="text-2xl select-none">🏗️</span>
       )}
@@ -78,6 +89,13 @@ function PhotoThumb({
       )}
       {isAdmin && <input ref={inputRef} type="file" accept="image/*" className="hidden" onChange={handleFile} />}
     </div>
+    {error && (
+      <div className="absolute top-14 left-0 z-10 rounded-lg px-2 py-1 text-xs whitespace-nowrap"
+        style={{ background: "#f8514922", color: "#f85149", border: "1px solid #f8514944" }}>
+        {error}
+      </div>
+    )}
+    </>
   );
 }
 

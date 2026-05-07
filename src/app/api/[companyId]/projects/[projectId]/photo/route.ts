@@ -12,19 +12,27 @@ export async function POST(
   const session = await auth();
   if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-  const form = await req.formData();
-  const file = form.get("photo") as File | null;
-  if (!file) return NextResponse.json({ error: "No file" }, { status: 400 });
+  try {
+    const form = await req.formData();
+    const file = form.get("photo") as File | null;
+    if (!file || file.size === 0) return NextResponse.json({ error: "No file provided" }, { status: 400 });
 
-  const blob = await put(`project-photos/${params.projectId}/${file.name}`, file, {
-    access: "public",
-    addRandomSuffix: true,
-  });
+    const ext = file.name.split(".").pop() ?? "jpg";
+    const safeName = `${Date.now()}.${ext}`;
 
-  await prisma.project.update({
-    where: { id: params.projectId, companyId: params.companyId },
-    data: { photoUrl: blob.url },
-  });
+    const blob = await put(`project-photos/${params.projectId}/${safeName}`, file, {
+      access: "public",
+      contentType: file.type || "image/jpeg",
+    });
 
-  return NextResponse.json({ url: blob.url });
+    await prisma.project.update({
+      where: { id: params.projectId, companyId: params.companyId },
+      data: { photoUrl: blob.url },
+    });
+
+    return NextResponse.json({ url: blob.url });
+  } catch (err) {
+    console.error("Photo upload error:", err);
+    return NextResponse.json({ error: String(err) }, { status: 500 });
+  }
 }
