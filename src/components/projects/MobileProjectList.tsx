@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import { format } from "date-fns";
 import { updateProject } from "@/app/[companyId]/projects/actions";
@@ -31,21 +31,36 @@ function fmtBudget(n: number) {
   return `$${n.toLocaleString()}`;
 }
 
+function PhotoToast({ message, onDismiss }: { message: string; onDismiss: () => void }) {
+  useEffect(() => {
+    const t = setTimeout(onDismiss, 5000);
+    return () => clearTimeout(t);
+  }, [onDismiss]);
+  return (
+    <div
+      className="fixed bottom-24 left-4 right-4 z-50 rounded-xl px-4 py-3 text-sm text-center"
+      style={{ background: "#1e0a0a", color: "#f85149", border: "1px solid #f8514966" }}
+    >
+      {message}
+    </div>
+  );
+}
+
 function PhotoThumb({
-  projectId, companyId, photoUrl, name, isAdmin, onUploaded,
+  projectId, companyId, photoUrl, name, isAdmin, onUploaded, onError,
 }: {
   projectId: string; companyId: string; photoUrl: string | null;
   name: string; isAdmin: boolean;
   onUploaded: (url: string) => void;
+  onError: (msg: string) => void;
 }) {
   const [uploading, setUploading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const router = useRouter();
 
   async function handleFile(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     if (!file) return;
     setUploading(true);
-    setError(null);
     try {
       const fd = new FormData();
       fd.append("photo", file);
@@ -53,8 +68,9 @@ function PhotoThumb({
       const json = await res.json() as { url?: string; error?: string };
       if (!res.ok || !json.url) throw new Error(json.error ?? `Upload failed (${res.status})`);
       onUploaded(json.url);
+      router.refresh();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Upload failed");
+      onError(err instanceof Error ? err.message : "Upload failed");
     } finally {
       setUploading(false);
       e.target.value = "";
@@ -86,27 +102,19 @@ function PhotoThumb({
     </div>
   );
 
+  if (!isAdmin) return <div className="shrink-0">{thumb}</div>;
+
   return (
-    <div className="relative shrink-0">
-      {isAdmin ? (
-        <label className="cursor-pointer block">
-          {thumb}
-          <input
-            type="file"
-            accept="image/*"
-            className="sr-only"
-            onChange={handleFile}
-            disabled={uploading}
-          />
-        </label>
-      ) : thumb}
-      {error && (
-        <div className="absolute top-14 left-0 z-10 rounded-lg px-2 py-1 text-xs whitespace-nowrap"
-          style={{ background: "#f8514922", color: "#f85149", border: "1px solid #f8514944" }}>
-          {error}
-        </div>
-      )}
-    </div>
+    <label className="cursor-pointer shrink-0 block">
+      {thumb}
+      <input
+        type="file"
+        accept="image/*"
+        className="sr-only"
+        onChange={handleFile}
+        disabled={uploading}
+      />
+    </label>
   );
 }
 
@@ -117,6 +125,7 @@ function MobileProjectCard({
 }) {
   const [expanded, setExpanded] = useState(false);
   const [photoUrl, setPhotoUrl] = useState(project.photoUrl);
+  const [uploadError, setUploadError] = useState<string | null>(null);
   const [editing, setEditing] = useState(false);
   const [form, setForm] = useState({
     name: project.name,
@@ -153,10 +162,12 @@ function MobileProjectCard({
 
   if (editing) {
     return (
+      <>
+        {uploadError && <PhotoToast message={uploadError} onDismiss={() => setUploadError(null)} />}
       <div className="rounded-2xl p-4 space-y-3" style={{ background: "#161b22", border: "1px solid #C9A84C88" }}>
         <div className="flex items-center gap-3 mb-1">
           <PhotoThumb projectId={project.id} companyId={companyId} photoUrl={photoUrl}
-            name={project.name} isAdmin={isAdmin} onUploaded={setPhotoUrl} />
+            name={project.name} isAdmin={isAdmin} onUploaded={setPhotoUrl} onError={setUploadError} />
           <span className="text-sm font-semibold" style={{ color: "#C9A84C" }}>Edit Project</span>
           <button onClick={() => setEditing(false)} className="ml-auto text-lg leading-none" style={{ color: "#8b949e" }}>×</button>
         </div>
@@ -196,15 +207,18 @@ function MobileProjectCard({
           </button>
         </div>
       </div>
+      </>
     );
   }
 
   return (
+    <>
+      {uploadError && <PhotoToast message={uploadError} onDismiss={() => setUploadError(null)} />}
     <div className="rounded-2xl overflow-hidden" style={{ background: "#161b22", border: "1px solid #30373f" }}>
       {/* Card header row */}
       <div className="flex items-center gap-3 px-4 py-3">
         <PhotoThumb projectId={project.id} companyId={companyId} photoUrl={photoUrl}
-          name={project.name} isAdmin={isAdmin} onUploaded={setPhotoUrl} />
+          name={project.name} isAdmin={isAdmin} onUploaded={setPhotoUrl} onError={setUploadError} />
 
         <Link href={href} className="flex-1 min-w-0">
           <p className="text-sm font-semibold leading-tight" style={{ color: "#e6edf3" }}>{project.name}</p>
@@ -270,6 +284,7 @@ function MobileProjectCard({
         </div>
       )}
     </div>
+    </>
   );
 }
 
