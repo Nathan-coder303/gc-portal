@@ -2,21 +2,31 @@
 
 import Link from "next/link";
 import { usePathname, useSearchParams } from "next/navigation";
+import {
+  DashboardIcon, ProjectsIcon, SubsIcon, EstimatesIcon, ClientsIcon,
+  SalesIcon, MarketingIcon, CalendarIcon, MemoryIcon, TeamsIcon,
+} from "./NavIcons";
 
-const NAV = [
-  { label: "Dashboard", icon: "✅", href: (c: string) => `/${c}/today` },
-  { label: "Projects",  icon: "📋", href: (c: string) => `/${c}/projects` },
-  { label: "Subs",      icon: "🔧", href: (c: string) => `/${c}/subs` },
-  { label: "Estimates", icon: "📊", href: (c: string) => `/${c}/estimates` },
-  { label: "Clients",   icon: "👤", href: (c: string) => `/${c}/clients` },
-  { label: "Sales",     icon: "🎯", href: (c: string) => `/${c}/leads` },
-  { label: "Marketing", icon: "📣", href: (c: string) => `/${c}/marketing` },
-  { label: "Calendar",  icon: "📅", href: (c: string) => `/${c}?tab=calendar` },
-  { label: "Memory",    icon: "🧠", href: (c: string) => `/${c}?tab=memory` },
-];
+type NavEntry = {
+  label: string;
+  icon: React.ReactNode;
+  activeIcon: React.ReactNode;
+  href: (c: string) => string;
+};
 
-const SOON = [
-  { label: "Teams", icon: "👥" },
+const ACTIVE_COLOR = "#0d1117";
+const IDLE_COLOR = "#8b949e";
+
+const NAV: NavEntry[] = [
+  { label: "Dashboard", icon: <DashboardIcon color={IDLE_COLOR} />,  activeIcon: <DashboardIcon color={ACTIVE_COLOR} />,  href: (c) => `/${c}/today` },
+  { label: "Projects",  icon: <ProjectsIcon color={IDLE_COLOR} />,   activeIcon: <ProjectsIcon color={ACTIVE_COLOR} />,   href: (c) => `/${c}/projects` },
+  { label: "Subs",      icon: <SubsIcon color={IDLE_COLOR} />,       activeIcon: <SubsIcon color={ACTIVE_COLOR} />,       href: (c) => `/${c}/subs` },
+  { label: "Estimates", icon: <EstimatesIcon color={IDLE_COLOR} />,  activeIcon: <EstimatesIcon color={ACTIVE_COLOR} />,  href: (c) => `/${c}/estimates` },
+  { label: "Clients",   icon: <ClientsIcon color={IDLE_COLOR} />,    activeIcon: <ClientsIcon color={ACTIVE_COLOR} />,    href: (c) => `/${c}/clients` },
+  { label: "Sales",     icon: <SalesIcon color={IDLE_COLOR} />,      activeIcon: <SalesIcon color={ACTIVE_COLOR} />,      href: (c) => `/${c}/leads` },
+  { label: "Marketing", icon: <MarketingIcon color={IDLE_COLOR} />,  activeIcon: <MarketingIcon color={ACTIVE_COLOR} />,  href: (c) => `/${c}/marketing` },
+  { label: "Calendar",  icon: <CalendarIcon color={IDLE_COLOR} />,   activeIcon: <CalendarIcon color={ACTIVE_COLOR} />,   href: (c) => `/${c}?tab=calendar` },
+  { label: "Memory",    icon: <MemoryIcon color={IDLE_COLOR} />,     activeIcon: <MemoryIcon color={ACTIVE_COLOR} />,     href: (c) => `/${c}?tab=memory` },
 ];
 
 function isActive(label: string, pathname: string, companyId: string, tab: string | null) {
@@ -42,23 +52,18 @@ export default function CompanySidebarNav({ companyId, role }: { companyId: stri
   const isPartner = role === "PARTNER";
   const visibleNav = isPartner ? NAV.filter((n) => n.label === "Projects") : NAV;
 
-
   return (
     <nav className="flex-1 px-3 pt-2 space-y-1">
-      {visibleNav.map(({ label, icon, href }) => {
+      {visibleNav.map(({ label, icon, activeIcon, href }) => {
         const active = isActive(label, pathname, companyId, tab);
         return (
           <Link
             key={label}
             href={href(companyId)}
             className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all"
-            style={
-              active
-                ? { background: "#C9A84C", color: "#0d1117" }
-                : { color: "#8b949e" }
-            }
+            style={active ? { background: "#C9A84C", color: "#0d1117" } : { color: IDLE_COLOR }}
           >
-            <span className="text-base leading-none">{icon}</span>
+            <span className="shrink-0">{active ? activeIcon : icon}</span>
             {label}
           </Link>
         );
@@ -69,16 +74,14 @@ export default function CompanySidebarNav({ companyId, role }: { companyId: stri
           <div className="text-[10px] uppercase tracking-widest px-3 pb-1 font-bold" style={{ color: "#30373f" }}>
             Coming Soon
           </div>
-          {SOON.map(({ label, icon }) => (
-            <div key={label} className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm opacity-40 cursor-not-allowed">
-              <span className="text-base leading-none">{icon}</span>
-              <span style={{ color: "#8b949e" }}>{label}</span>
-              <span className="ml-auto text-[9px] font-bold px-1.5 py-0.5 rounded uppercase tracking-wider"
-                style={{ background: "#C9A84C22", color: "#C9A84C", border: "1px solid #C9A84C44" }}>
-                Soon
-              </span>
-            </div>
-          ))}
+          <div className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm opacity-40 cursor-not-allowed">
+            <span className="shrink-0"><TeamsIcon color={IDLE_COLOR} /></span>
+            <span style={{ color: IDLE_COLOR }}>Teams</span>
+            <span className="ml-auto text-[9px] font-bold px-1.5 py-0.5 rounded uppercase tracking-wider"
+              style={{ background: "#C9A84C22", color: "#C9A84C", border: "1px solid #C9A84C44" }}>
+              Soon
+            </span>
+          </div>
         </div>
       )}
     </nav>
