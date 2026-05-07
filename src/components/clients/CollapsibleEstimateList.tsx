@@ -283,28 +283,31 @@ function EstimateCard({
                     style={{
                       background: i % 2 === 0 ? "#0d1117" : "#0a0f15",
                       borderBottom: i < est.versions.length - 1 ? "1px solid #161b22" : "none",
-                      cursor: hasPrev ? "pointer" : "default",
-                    }}
-                    onClick={async () => {
-                      if (!hasPrev || isLoading) return;
-                      setLoadingDiff(v.id);
-                      try {
-                        const res = await fetch(`/api/${companyId}/estimates/${est.id}/versions`);
-                        if (!res.ok) return;
-                        const all: (EstimateVersion & { snapshot: Snapshot | null })[] = await res.json();
-                        const cur = all.find(x => x.id === v.id);
-                        const prev = all[all.findIndex(x => x.id === v.id) + 1];
-                        if (!cur?.snapshot || !prev?.snapshot) {
-                          alert("Snapshot not available for this version. Save a new version to enable comparisons.");
-                          return;
-                        }
-                        setDiffState({ versionA: prev.snapshot, versionB: cur.snapshot, labelA: prev.label, labelB: cur.label });
-                      } finally {
-                        setLoadingDiff(null);
-                      }
                     }}
                   >
-                    <div className="min-w-0">
+                    {/* Left: label + meta — clickable for diff */}
+                    <div
+                      className="min-w-0 flex-1"
+                      style={{ cursor: hasPrev ? "pointer" : "default" }}
+                      onClick={async () => {
+                        if (!hasPrev || isLoading) return;
+                        setLoadingDiff(v.id);
+                        try {
+                          const res = await fetch(`/api/${companyId}/estimates/${est.id}/versions`);
+                          if (!res.ok) return;
+                          const all: (EstimateVersion & { snapshot: Snapshot | null })[] = await res.json();
+                          const cur = all.find(x => x.id === v.id);
+                          const prev = all[all.findIndex(x => x.id === v.id) + 1];
+                          if (!cur?.snapshot || !prev?.snapshot) {
+                            alert("Snapshot not available for this version. Save a new version to enable comparisons.");
+                            return;
+                          }
+                          setDiffState({ versionA: prev.snapshot, versionB: cur.snapshot, labelA: prev.label, labelB: cur.label });
+                        } finally {
+                          setLoadingDiff(null);
+                        }
+                      }}
+                    >
                       <div className="flex items-center gap-1.5">
                         <div className="text-xs font-medium truncate" style={{ color: "#e6edf3" }}>{v.label}</div>
                         {hasPrev && !isLoading && <span className="text-[10px] px-1 rounded" style={{ background: "#21262d", color: "#484f58" }}>compare ↗</span>}
@@ -312,7 +315,21 @@ function EstimateCard({
                       </div>
                       <div className="text-[11px] mt-0.5" style={{ color: "#484f58" }}>{ts} ET{v.createdBy ? ` · ${v.createdBy}` : ""}</div>
                     </div>
-                    <span className="text-xs font-bold shrink-0" style={{ color: "#C9A84C" }}>${fmt(v.total)}</span>
+                    {/* Right: total + PDF download */}
+                    <div className="flex items-center gap-2 shrink-0">
+                      <span className="text-xs font-bold" style={{ color: "#C9A84C" }}>${fmt(v.total)}</span>
+                      <a
+                        href={`/api/${companyId}/estimates/${est.id}/versions/${v.id}/pdf`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        onClick={e => e.stopPropagation()}
+                        className="text-[10px] px-1.5 py-0.5 rounded font-semibold"
+                        style={{ background: "#C9A84C22", color: "#C9A84C", border: "1px solid #C9A84C44", textDecoration: "none" }}
+                        title="Download PDF for this version"
+                      >
+                        ↓ PDF
+                      </a>
+                    </div>
                   </div>
                 );
               })}
