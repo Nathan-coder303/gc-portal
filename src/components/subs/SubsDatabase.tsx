@@ -924,6 +924,7 @@ export default function SubsDatabase({
   const [importingSheet, setImportingSheet] = useState(false);
   const [clearing, setClearing] = useState(false);
   const [backfilling, setBackfilling] = useState(false);
+  const [deduping, setDeduping] = useState(false);
   const dragIdRef = useRef<string | null>(null);
   const [dragOverDiv, setDragOverDiv] = useState<string | null>(null);
   const [dragOverSubId, setDragOverSubId] = useState<string | null>(null);
@@ -1093,6 +1094,21 @@ export default function SubsDatabase({
     } finally { setBackfilling(false); }
   }
 
+  async function handleDeduplicate() {
+    const previewRes = await fetch(`/api/${companyId}/subs/deduplicate?preview=1`, { method: "POST" });
+    const preview = await previewRes.json();
+    if (preview.wouldRemove === 0) { alert("No duplicates found."); return; }
+    const ok = confirm(`Found ${preview.duplicateGroups} duplicate group${preview.duplicateGroups !== 1 ? "s" : ""} — will remove ${preview.wouldRemove} record${preview.wouldRemove !== 1 ? "s" : ""}, keeping the richest version of each (most phone/email/address info).\n\nContinue?`);
+    if (!ok) return;
+    setDeduping(true);
+    try {
+      const res = await fetch(`/api/${companyId}/subs/deduplicate`, { method: "POST" });
+      const { removed } = await res.json();
+      await reloadSubs();
+      alert(`Done — removed ${removed} duplicate${removed !== 1 ? "s" : ""}.`);
+    } finally { setDeduping(false); }
+  }
+
   async function handleClearAll() {
     if (!confirm(`Delete ALL ${subs.length} subs? This cannot be undone.\n\nAfter clearing, re-import from Sheet and Bids.`)) return;
     setClearing(true);
@@ -1182,6 +1198,10 @@ export default function SubsDatabase({
           <button onClick={handleBackfillSources} disabled={backfilling} className="px-3 py-2 rounded-xl text-sm font-semibold transition-all hover:scale-105 disabled:opacity-50"
             style={{ background: "#1e2736", border: "1px solid #C9A84C44", color: "#C9A84C" }}>
             {backfilling ? "Tagging…" : "🏷 Tag Sources"}
+          </button>
+          <button onClick={handleDeduplicate} disabled={deduping} className="px-3 py-2 rounded-xl text-sm font-semibold transition-all hover:scale-105 disabled:opacity-50"
+            style={{ background: "#1e2736", border: "1px solid #a855f744", color: "#a855f7" }}>
+            {deduping ? "Deduping…" : "⧉ Deduplicate"}
           </button>
           <button onClick={handleClearAll} disabled={clearing || subs.length === 0} className="px-3 py-2 rounded-xl text-sm font-semibold transition-all hover:scale-105 disabled:opacity-40"
             style={{ background: "#1a0a0a", border: "1px solid #ef444444", color: "#ef4444" }}>
