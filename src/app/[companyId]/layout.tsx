@@ -6,6 +6,7 @@ import Link from "next/link";
 import { Suspense } from "react";
 import CompanySidebarNav from "@/components/layout/CompanySidebarNav";
 import MobileMenuDrawer from "@/components/layout/MobileMenuDrawer";
+import MobileFooterNav from "@/components/layout/MobileFooterNav";
 import { UndoRedoProvider } from "@/lib/undo-redo-context";
 import UndoRedoBar from "@/components/layout/UndoRedoBar";
 
@@ -99,7 +100,7 @@ export default async function CompanyLayout({
       </div>
 
       {/* ── Main content ── */}
-      <main className="flex-1 min-w-0 md:pt-0 pt-14">
+      <main className="flex-1 min-w-0 md:pt-0 pt-14 md:pb-0 pb-16">
         {/* Desktop undo/redo bar */}
         <div className="hidden md:flex items-center gap-2 px-6 py-2 border-b" style={{ borderColor: "#30373f" }}>
           <span className="text-xs" style={{ color: "#8b949e" }}>History</span>
@@ -107,6 +108,9 @@ export default async function CompanyLayout({
         </div>
         {children}
       </main>
+
+      {/* ── Mobile footer tab bar ── */}
+      <MobileFooterNav companyId={params.companyId} />
     </div>
     </UndoRedoProvider>
   );

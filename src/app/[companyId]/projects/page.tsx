@@ -3,6 +3,7 @@ import { auth } from "@/lib/auth";
 import { redirect } from "next/navigation";
 import { can } from "@/lib/auth/permissions";
 import ProjectsGrid from "./ProjectsGrid";
+import MobileProjectList from "@/components/projects/MobileProjectList";
 
 export default async function ProjectsPage({
   params,
@@ -44,37 +45,52 @@ export default async function ProjectsPage({
       : Promise.resolve([]),
   ]);
 
+  const projectItems = projects.map((p) => ({
+    id: p.id,
+    name: p.name,
+    address: p.address,
+    city: p.city,
+    state: p.state,
+    zip: p.zip,
+    startDate: p.startDate,
+    budget: Number(p.budget),
+    status: p.status,
+    photoUrl: (p as { photoUrl?: string | null }).photoUrl ?? null,
+    partners: p.userAccess.map(a => ({
+      id: a.user.id,
+      name: a.user.name,
+      email: a.user.email,
+    })),
+  }));
+
   return (
-    <div className="w-full px-4 md:px-8 py-6 md:py-8">
-      <div className="mb-8">
-        <h1 className="text-xl font-bold" style={{ color: "#e6edf3" }}>Projects</h1>
-        <p className="text-sm mt-0.5" style={{ color: "#8b949e" }}>
-          {projects.length} project{projects.length !== 1 ? "s" : ""}
-        </p>
+    <>
+      {/* Mobile view */}
+      <div className="md:hidden w-full px-4 py-4 pb-24">
+        <MobileProjectList
+          projects={projectItems}
+          companyId={params.companyId}
+          isAdmin={isAdmin}
+          isPartner={isPartner}
+        />
       </div>
 
-      <ProjectsGrid
-        initialProjects={projects.map((p) => ({
-          id: p.id,
-          name: p.name,
-          address: p.address,
-          city: p.city,
-          state: p.state,
-          zip: p.zip,
-          startDate: p.startDate,
-          budget: Number(p.budget),
-          status: p.status,
-          partners: p.userAccess.map(a => ({
-            id: a.user.id,
-            name: a.user.name,
-            email: a.user.email,
-          })),
-        }))}
-        companyId={params.companyId}
-        isAdmin={isAdmin}
-        isPartner={isPartner}
-        partnerUsers={partnerUsers}
-      />
-    </div>
+      {/* Desktop view */}
+      <div className="hidden md:block w-full px-8 py-8">
+        <div className="mb-8">
+          <h1 className="text-xl font-bold" style={{ color: "#e6edf3" }}>Projects</h1>
+          <p className="text-sm mt-0.5" style={{ color: "#8b949e" }}>
+            {projects.length} project{projects.length !== 1 ? "s" : ""}
+          </p>
+        </div>
+        <ProjectsGrid
+          initialProjects={projectItems}
+          companyId={params.companyId}
+          isAdmin={isAdmin}
+          isPartner={isPartner}
+          partnerUsers={partnerUsers}
+        />
+      </div>
+    </>
   );
 }

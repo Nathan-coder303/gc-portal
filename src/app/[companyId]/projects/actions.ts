@@ -87,7 +87,7 @@ export async function createProject(formData: FormData) {
 
 export async function updateProject(projectId: string, data: {
   name?: string; address?: string; city?: string; state?: string; zip?: string;
-  startDate?: string; budget?: number; status?: string;
+  startDate?: string; budget?: number; status?: string; photoUrl?: string;
 }) {
   const session = await auth();
   if (!session) throw new Error("Unauthorized");
@@ -104,6 +104,7 @@ export async function updateProject(projectId: string, data: {
       ...(data.startDate !== undefined && { startDate: new Date(data.startDate + "T00:00:00") }),
       ...(data.budget !== undefined && { budget: data.budget }),
       ...(data.status !== undefined && { status: data.status }),
+      ...(data.photoUrl !== undefined && { photoUrl: data.photoUrl }),
       updatedBy: session.user.id,
     },
   });
