@@ -163,7 +163,7 @@ export async function GET(
   return new Response(buf as unknown as BodyInit, {
     headers: {
       "Content-Type": "application/pdf",
-      "Content-Disposition": `attachment; filename="${safeName}"`,
+      "Content-Disposition": `inline; filename="${safeName}"`,
     },
   });
 }

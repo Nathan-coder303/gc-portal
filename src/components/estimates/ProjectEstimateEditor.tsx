@@ -188,7 +188,7 @@ function ItemRowEdit({
         <input className="w-20 border border-slate-300 rounded px-2 py-1 text-xs font-mono" value={form.csiCode} onChange={(e) => setForm({ ...form, csiCode: formatCsiCode(e.target.value) })} placeholder="CSI" />
       </td>
       <td className="px-2 py-1">
-        <input className="w-full border border-slate-300 rounded px-2 py-1 text-xs" value={form.name} onChange={(e) => { const n = e.target.value; const auto = lookupItemCsiCode(n); setForm({ ...form, name: n, csiCode: auto ?? form.csiCode, qty: autoQty(n, form.unit, form.qty) }); }} />
+        <textarea rows={1} className="w-full border border-slate-300 rounded px-2 py-1 text-xs" style={{ resize: "none", overflow: "hidden", lineHeight: "1.3" }} value={form.name} ref={(el) => { if (el) { el.style.height = "auto"; el.style.height = el.scrollHeight + "px"; } }} onInput={(e) => { const el = e.currentTarget; el.style.height = "auto"; el.style.height = el.scrollHeight + "px"; }} onChange={(e) => { const n = e.target.value; const auto = lookupItemCsiCode(n); setForm({ ...form, name: n, csiCode: auto ?? form.csiCode, qty: autoQty(n, form.unit, form.qty) }); }} />
       </td>
       <td className="px-2 py-1"><DetailSelect value={form.detail} onChange={(v) => setForm({ ...form, detail: v })} /></td>
       <td className="px-2 py-1">
@@ -271,7 +271,7 @@ function AddItemRow({ divisionId, groupId, canEdit }: { divisionId: string; grou
         <input className="w-20 border border-slate-300 rounded px-2 py-1 text-xs font-mono" value={form.csiCode} onChange={(e) => setForm({ ...form, csiCode: formatCsiCode(e.target.value) })} placeholder="CSI" />
       </td>
       <td className="px-2 py-1">
-        <input autoFocus className="w-full border border-slate-300 rounded px-2 py-1 text-xs" value={form.name} onChange={(e) => { const n = e.target.value; const auto = lookupItemCsiCode(n); setForm({ ...form, name: n, csiCode: auto ?? form.csiCode, qty: autoQty(n, form.unit, form.qty) }); }} placeholder="Item name" />
+        <textarea autoFocus rows={1} className="w-full border border-slate-300 rounded px-2 py-1 text-xs" style={{ resize: "none", overflow: "hidden", lineHeight: "1.3" }} value={form.name} ref={(el) => { if (el) { el.style.height = "auto"; el.style.height = el.scrollHeight + "px"; } }} onInput={(e) => { const el = e.currentTarget; el.style.height = "auto"; el.style.height = el.scrollHeight + "px"; }} onChange={(e) => { const n = e.target.value; const auto = lookupItemCsiCode(n); setForm({ ...form, name: n, csiCode: auto ?? form.csiCode, qty: autoQty(n, form.unit, form.qty) }); }} placeholder="Item name" />
       </td>
       <td className="px-2 py-1"><DetailSelect value={form.detail} onChange={(v) => setForm({ ...form, detail: v })} /></td>
       <td className="px-2 py-1">

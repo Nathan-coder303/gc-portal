@@ -226,6 +226,7 @@ export default function AppointmentsCard({
   type FullLeadForm = { name: string; email: string; phone: string; address: string; city: string; state: string; zip: string; projectType: string; message: string };
   const [popupEditForm, setPopupEditForm] = useState<FullLeadForm>({ name: "", email: "", phone: "", address: "", city: "", state: "FL", zip: "", projectType: "", message: "" });
   const [popupFormLoading, setPopupFormLoading] = useState(false);
+  const [popupSaveError, setPopupSaveError] = useState("");
 
   async function openPicker() {
     setShowPicker(true); setShowForm(false); setSearch(""); setError("");
@@ -333,6 +334,7 @@ export default function AppointmentsCard({
   async function savePopupEdits() {
     if (!popupLeadId) return;
     setPopupSaving(true);
+    setPopupSaveError("");
     try {
       await fetch(`/api/${companyId}/leads/${popupLeadId}`, {
         method: "PATCH",
@@ -382,6 +384,8 @@ export default function AppointmentsCard({
         lead: prev.lead ? { ...prev.lead, name: popupEditForm.name || prev.lead.name, email: popupEditForm.email || null, phone: popupEditForm.phone || null, address: popupEditForm.address || null, city: popupEditForm.city || null, state: popupEditForm.state || null, zip: popupEditForm.zip || null, projectType: popupEditForm.projectType || null } : prev.lead,
       } : prev);
       setPopupEditing(false);
+    } catch (err) {
+      setPopupSaveError(err instanceof Error ? err.message : "Save failed — please try again");
     } finally { setPopupSaving(false); }
   }
 
@@ -832,10 +836,13 @@ export default function AppointmentsCard({
                           style={{ background: "#C9A84C", color: "#0d1117" }}>
                           {popupSaving ? "Saving…" : "Save"}
                         </button>
-                        <button onClick={() => setPopupEditing(false)}
+                        <button onClick={() => { setPopupEditing(false); setPopupSaveError(""); }}
                           className="text-sm px-4 py-2 rounded-lg"
                           style={{ color: "#8b949e", border: "1px solid #30373f" }}>Cancel</button>
                       </div>
+                      {popupSaveError && (
+                        <p className="text-xs" style={{ color: "#ef4444" }}>⚠️ {popupSaveError}</p>
+                      )}
                     </div>
                   ) : (
                     <div className="text-sm space-y-1" style={{ color: "#8b949e" }}>
