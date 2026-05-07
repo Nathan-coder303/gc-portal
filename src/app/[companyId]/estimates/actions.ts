@@ -669,6 +669,22 @@ export async function restoreTemplateDivision(divisionId: string) {
   return { success: true };
 }
 
+export async function resetTemplateDivisionItems(divisionId: string) {
+  const session = await auth();
+  if (!session) throw new Error("Unauthorized");
+  requirePermission(session, "estimateTemplate:edit");
+  const division = await prisma.estimateTemplateDivision.findUnique({
+    where: { id: divisionId },
+    select: { templateId: true },
+  });
+  await prisma.estimateTemplateItem.updateMany({
+    where: { divisionId, archivedAt: null },
+    data: { defaultQty: null, defaultUnitCost: null, defaultLaborCost: null, defaultMaterialCost: null, defaultMarkupPct: null },
+  });
+  if (division?.templateId) await touchTemplate(division.templateId, session.user.id);
+  revalidatePath(`/${session.user.companyId}/estimates`);
+}
+
 export async function moveItemBetweenDivisions(itemId: string, newDivisionId: string) {
   const session = await auth();
   if (!session) throw new Error("Unauthorized");

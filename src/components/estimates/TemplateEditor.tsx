@@ -15,6 +15,7 @@ import {
   upsertTemplateDivision,
   seedTemplateDivisionFromHistory,
   archiveTemplateDivision,
+  resetTemplateDivisionItems,
   mergeTemplateDivisionInto,
   upsertTemplateGroup,
   archiveTemplateGroup,
@@ -689,7 +690,7 @@ function TemplateDivisionSection({ division, otherDivisions, canEdit, globalSave
         {/* Swipeable header */}
         <div
           className="w-full flex items-center gap-3 px-4 py-3 cursor-pointer select-none"
-          style={{ background: "#1e2736", transform: `translateX(${swipeX}px)`, transition: swipeX === 0 ? "transform 0.25s ease" : "none" }}
+          style={{ background: "#1e2736", transform: `translateX(${swipeX}px)`, transition: swipeX === 0 ? "transform 0.25s ease" : "none", touchAction: "pan-y" }}
           onTouchStart={handleTouchStart}
           onTouchMove={handleTouchMove}
           onTouchEnd={handleTouchEnd}
@@ -702,7 +703,12 @@ function TemplateDivisionSection({ division, otherDivisions, canEdit, globalSave
           </div>
           {/* Mobile action icons: Edit All, Save All, Reset All, Lump-sum */}
           {canEdit && (
-            <div className="flex items-center gap-1 shrink-0" onClick={e => e.stopPropagation()}>
+            <div
+              className="flex items-center gap-1 shrink-0"
+              onClick={e => e.stopPropagation()}
+              onTouchStart={e => e.stopPropagation()}
+              onTouchEnd={e => e.stopPropagation()}
+            >
               <button
                 onClick={() => { setOpen(true); setEditAllSignal(s => s + 1); }}
                 className="w-7 h-7 rounded flex items-center justify-center"
@@ -718,7 +724,10 @@ function TemplateDivisionSection({ division, otherDivisions, canEdit, globalSave
                 <SaveIcon size={12} />
               </button>
               <button
-                onClick={() => setResetAllSignal(s => s + 1)}
+                onClick={() => startTransition(async () => {
+                  await resetTemplateDivisionItems(division.id);
+                  setResetAllSignal(s => s + 1);
+                })}
                 className="w-7 h-7 rounded flex items-center justify-center text-sm font-bold"
                 style={{ color: "#60a5fa", border: "1px solid #60a5fa33" }}
                 title="Reset all items">
