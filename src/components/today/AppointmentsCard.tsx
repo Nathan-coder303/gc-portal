@@ -2,6 +2,7 @@
 
 import { useState, useCallback, useEffect } from "react";
 import { useRouter } from "next/navigation";
+import { ProjectTypeSelector } from "@/components/leads/ProjectTypeSelector";
 
 type Appointment = { id: string; text: string; dueDate: string | null };
 type Note = { id: string; content: string; noteDate: string; createdAt: string };
@@ -223,6 +224,10 @@ export default function AppointmentsCard({
   const [popupNewNote, setPopupNewNote] = useState("");
   const [popupSaving, setPopupSaving] = useState(false);
 
+  type FullLeadForm = { name: string; email: string; phone: string; address: string; city: string; state: string; zip: string; projectType: string; message: string };
+  const [popupEditForm, setPopupEditForm] = useState<FullLeadForm>({ name: "", email: "", phone: "", address: "", city: "", state: "FL", zip: "", projectType: "", message: "" });
+  const [popupFormLoading, setPopupFormLoading] = useState(false);
+
   async function openPicker() {
     setShowPicker(true); setShowForm(false); setSearch(""); setError("");
     setLoadingLeads(true);
@@ -309,15 +314,32 @@ export default function AppointmentsCard({
     setPopupLoading(false);
   }, [companyId]);
 
+  async function openPopupEdit() {
+    setPopupEditing(true);
+    setPopupFormLoading(true);
+    const blank: FullLeadForm = { name: "", email: "", phone: "", address: "", city: "", state: "FL", zip: "", projectType: "", message: "" };
+    if (popupLeadId) {
+      try {
+        const res = await fetch(`/api/${companyId}/leads/${popupLeadId}`);
+        if (res.ok) {
+          const d = await res.json();
+          setPopupEditForm({ name: d.name ?? "", email: d.email ?? "", phone: d.phone ?? "", address: d.address ?? "", city: d.city ?? "", state: d.state ?? "FL", zip: d.zip ?? "", projectType: d.projectType ?? "", message: d.message ?? "" });
+        } else { setPopupEditForm(blank); }
+      } catch { setPopupEditForm(blank); }
+    } else {
+      setPopupEditForm({ ...blank, name: popupLead?.displayName ?? "", email: popupLead?.lead?.email ?? "", phone: popupLead?.lead?.phone ?? "", address: popupLead?.lead?.address ?? "", city: popupLead?.lead?.city ?? "", projectType: popupLead?.lead?.projectType ?? "" });
+    }
+    setPopupFormLoading(false);
+  }
+
   async function savePopupEdits() {
     if (!popupLeadId) return;
     setPopupSaving(true);
     try {
-      // Save phone to lead record
       await fetch(`/api/${companyId}/leads/${popupLeadId}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ phone: popupPhone }),
+        body: JSON.stringify(popupEditForm),
       });
 
       // Save new note if provided
@@ -334,13 +356,12 @@ export default function AppointmentsCard({
         }
       }
 
-      // Patch the appointment text if phone changed so it shows on the card
+      // Patch appointment text if phone changed so it shows on the card
       if (popupAppt) {
         const { name, time, phone: currentPhone, address: currentAddr, notes: apptNotes } = parseAppt(popupAppt.text);
-        const phoneChanged = popupPhone.trim() !== currentPhone.trim();
-        if (phoneChanged && popupPhone.trim()) {
-          // currentAddr already parsed correctly by the updated parseAppt
-          const newMain = [name, time, popupPhone.trim(), currentAddr].map(s => s.trim()).filter(Boolean).join(" · ");
+        const newPhone = popupEditForm.phone.trim();
+        if (newPhone !== currentPhone.trim()) {
+          const newMain = [name, time, newPhone, currentAddr].map(s => s.trim()).filter(Boolean).join(" · ");
           const newText = `📅 Appointment – ${newMain}${apptNotes ? `\n${apptNotes}` : ""}`;
           const pr = await fetch(`/api/${companyId}/follow-ups/${popupAppt.id}`, {
             method: "PATCH",
@@ -357,7 +378,11 @@ export default function AppointmentsCard({
         }
       }
 
-      setPopupLead(prev => prev ? { ...prev, lead: prev.lead ? { ...prev.lead, phone: popupPhone || null } : prev.lead } : prev);
+      setPopupLead(prev => prev ? {
+        ...prev,
+        displayName: popupEditForm.name || prev.displayName,
+        lead: prev.lead ? { ...prev.lead, name: popupEditForm.name || prev.lead.name, email: popupEditForm.email || null, phone: popupEditForm.phone || null, address: popupEditForm.address || null, city: popupEditForm.city || null, state: popupEditForm.state || null, zip: popupEditForm.zip || null, projectType: popupEditForm.projectType || null } : prev.lead,
+      } : prev);
       setPopupEditing(false);
     } finally { setPopupSaving(false); }
   }
@@ -754,7 +779,7 @@ export default function AppointmentsCard({
                   <div className="flex items-center justify-between mb-3">
                     <p className="text-[10px] font-semibold uppercase tracking-widest" style={{ color: "#484f58" }}>Lead Info</p>
                     {!popupEditing && (
-                      <button onClick={() => setPopupEditing(true)}
+                      <button onClick={openPopupEdit}
                         className="text-xs px-3 py-1 rounded-md font-bold"
                         style={{ background: "#C9A84C", color: "#0d1117" }}>
                         ✏️ Edit lead
@@ -764,32 +789,47 @@ export default function AppointmentsCard({
 
                   {popupEditing ? (
                     <div className="flex flex-col gap-3">
-                      {popupLead && (
-                        <div className="text-sm space-y-1 mb-1" style={{ color: "#8b949e" }}>
-                          {popupLead.lead?.projectType && <div><span style={{ color: "#C9A84C" }}>Project:</span> {popupLead.lead.projectType}</div>}
-                          {popupLead.lead?.email && <div><span style={{ color: "#C9A84C" }}>Email:</span> {popupLead.lead.email}</div>}
-                          {popupLead.lead?.address && <div><span style={{ color: "#C9A84C" }}>Address:</span> {popupLead.lead.address}{popupLead.lead.city ? `, ${popupLead.lead.city}` : ""}{popupLead.lead.state ? `, ${popupLead.lead.state}` : ""}{popupLead.lead.zip ? ` ${popupLead.lead.zip}` : ""}</div>}
-                        </div>
+                      {popupFormLoading ? (
+                        <p className="text-xs text-center py-2" style={{ color: "#484f58" }}>Loading…</p>
+                      ) : (
+                        <>
+                          {(["name", "email", "phone", "address", "city", "state", "zip"] as const).map(field => (
+                            <div key={field}>
+                              <label className="text-[10px] font-semibold block mb-1 capitalize" style={{ color: "#8b949e" }}>{field}</label>
+                              <input
+                                type={field === "email" ? "email" : field === "phone" ? "tel" : "text"}
+                                value={popupEditForm[field]}
+                                onChange={e => setPopupEditForm(f => ({ ...f, [field]: e.target.value }))}
+                                className="w-full bg-transparent text-sm px-3 py-2 rounded-lg outline-none"
+                                style={{ border: "1px solid #30373f", color: "#e6edf3", background: "#0d1117", boxSizing: "border-box" as const }}
+                              />
+                            </div>
+                          ))}
+                          <div>
+                            <label className="text-[10px] font-semibold block mb-1" style={{ color: "#8b949e" }}>Project Type</label>
+                            <ProjectTypeSelector value={popupEditForm.projectType} onChange={v => setPopupEditForm(f => ({ ...f, projectType: v }))} />
+                          </div>
+                          <div>
+                            <label className="text-[10px] font-semibold block mb-1" style={{ color: "#8b949e" }}>Message</label>
+                            <textarea rows={3} value={popupEditForm.message}
+                              onChange={e => setPopupEditForm(f => ({ ...f, message: e.target.value }))}
+                              className="w-full bg-transparent text-sm px-3 py-2 rounded-lg outline-none resize-none"
+                              style={{ border: "1px solid #30373f", color: "#e6edf3", background: "#0d1117", boxSizing: "border-box" as const }} />
+                          </div>
+                          <div style={{ borderTop: "1px solid #30373f", paddingTop: 10 }}>
+                            <label className="text-[10px] font-semibold block mb-1" style={{ color: "#8b949e" }}>Add note</label>
+                            <textarea rows={2} value={popupNewNote} onChange={e => setPopupNewNote(e.target.value)}
+                              placeholder="Type a note…"
+                              className="w-full bg-transparent text-sm px-3 py-2 rounded-lg outline-none resize-none"
+                              style={{ border: "1px solid #30373f", color: "#e6edf3", background: "#0d1117", boxSizing: "border-box" as const }} />
+                          </div>
+                        </>
                       )}
-                      <div>
-                        <label className="text-[10px] font-semibold block mb-1" style={{ color: "#8b949e" }}>Phone number</label>
-                        <input type="tel" value={popupPhone} onChange={e => setPopupPhone(e.target.value)}
-                          placeholder="305-000-0000" autoFocus
-                          className="w-full bg-transparent text-sm px-3 py-2 rounded-lg outline-none"
-                          style={{ border: "1px solid #C9A84C66", color: "#e6edf3" }} />
-                      </div>
-                      <div>
-                        <label className="text-[10px] font-semibold block mb-1" style={{ color: "#8b949e" }}>Add note</label>
-                        <textarea rows={3} value={popupNewNote} onChange={e => setPopupNewNote(e.target.value)}
-                          placeholder="Type a note…"
-                          className="w-full bg-transparent text-sm px-3 py-2 rounded-lg outline-none resize-none"
-                          style={{ border: "1px solid #30373f", color: "#e6edf3" }} />
-                      </div>
                       {!popupLeadId && (
                         <p className="text-xs" style={{ color: "#ef4444" }}>⚠️ Lead record not found — changes cannot be saved</p>
                       )}
                       <div className="flex gap-2">
-                        <button onClick={savePopupEdits} disabled={popupSaving || !popupLeadId}
+                        <button onClick={savePopupEdits} disabled={popupSaving || !popupLeadId || popupFormLoading}
                           className="flex-1 text-sm font-bold py-2 rounded-lg disabled:opacity-50"
                           style={{ background: "#C9A84C", color: "#0d1117" }}>
                           {popupSaving ? "Saving…" : "Save"}
