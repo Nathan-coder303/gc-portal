@@ -21,7 +21,7 @@ export async function POST(
     const safeName = `${Date.now()}.${ext}`;
 
     const blob = await put(`project-photos/${params.projectId}/${safeName}`, file, {
-      access: "public",
+      access: "private",
       contentType: file.type || "image/jpeg",
     });
 
@@ -30,7 +30,9 @@ export async function POST(
       data: { photoUrl: blob.url },
     });
 
-    return NextResponse.json({ url: blob.url });
+    // Return a proxy URL so the client can display private blob images
+    const proxyUrl = `/api/${params.companyId}/blob-proxy?u=${encodeURIComponent(blob.url)}`;
+    return NextResponse.json({ url: proxyUrl });
   } catch (err) {
     console.error("Photo upload error:", err);
     return NextResponse.json({ error: String(err) }, { status: 500 });
