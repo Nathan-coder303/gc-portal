@@ -1106,11 +1106,13 @@ function DivisionSummaryPage({ template, client, divisions, gcFeePercent }: Pick
   );
 }
 
-function ScopeOfWorkPage({ title, body }: { title: string; body: string }) {
+function ScopeOfWorkPage({ title, body, client }: { title: string; body: string; client?: TemplatePdfProps["client"] }) {
+  const logoPath = path.join(process.cwd(), "public", "logo.png");
   const blocks = body.split(/\n\n+/).map(b => b.trim()).filter(Boolean);
+  const clientName = client?.name ?? "";
   return (
-    <Page size="LETTER" style={styles.page}>
-      {/* Fixed footer */}
+    <Page size="LETTER" style={{ fontFamily: "Helvetica", padding: 0, paddingBottom: 96 }}>
+      {/* Footer pinned to bottom */}
       <View fixed style={{ position: "absolute", bottom: 0, left: 0, right: 0, backgroundColor: DARK, paddingHorizontal: 24, paddingVertical: 9, flexDirection: "row", alignItems: "center", gap: 12 }}>
         <Text style={{ fontSize: 8.5, color: GOLD, fontFamily: "Helvetica-Bold" }}>MIBH CONSTRUCTION</Text>
         <Text style={{ fontSize: 7, color: "#94a3b8" }}>|</Text>
@@ -1122,28 +1124,43 @@ function ScopeOfWorkPage({ title, body }: { title: string; body: string }) {
         <View style={{ flex: 1 }} />
         <Text style={{ fontSize: 8, color: "#94a3b8" }} render={({ pageNumber, totalPages }) => `Page ${pageNumber} of ${totalPages}`} />
       </View>
-      {/* Title */}
-      <Text style={{ fontSize: 13, fontFamily: "Helvetica-Bold", color: DARK, textAlign: "center", textTransform: "uppercase", letterSpacing: 1, marginBottom: 6 }}>{title}</Text>
-      <View style={{ height: 2, backgroundColor: GOLD, marginBottom: 16 }} />
-      {/* Body blocks */}
-      {blocks.map((block, i) => {
-        const lines = block.split("\n");
-        const firstLine = lines[0];
-        const isNumbered = /^\d+\.\s+/.test(firstLine);
-        const rest = lines.slice(1).join("\n").trim();
-        return (
-          <View key={i} style={{ marginBottom: 10 }}>
-            {isNumbered ? (
-              <>
-                <Text style={{ fontSize: 10, fontFamily: "Helvetica-Bold", color: DARK, marginBottom: 3 }}>{firstLine}</Text>
-                {rest ? <Text style={{ fontSize: 9.5, color: "#334155", lineHeight: 1.55, paddingLeft: 14 }}>{rest}</Text> : null}
-              </>
-            ) : (
+      {/* Header */}
+      <View style={{ flexDirection: "row", alignItems: "center", backgroundColor: DARK, paddingHorizontal: 24, paddingVertical: 10, gap: 14 }}>
+        {/* eslint-disable-next-line jsx-a11y/alt-text */}
+        <Image src={logoPath} style={{ width: 52, height: 52 }} />
+        <View style={{ flex: 1 }}>
+          <Text style={{ fontSize: 20, fontFamily: "Helvetica-Bold", color: GOLD, letterSpacing: 2 }}>MIBH CONSTRUCTION</Text>
+          <Text style={{ fontSize: 8, color: "#94a3b8", marginTop: 2 }}>Licensed &amp; Insured  |  CGC1527069  |  CCC1336817  |  2950 N 28 Terr, Hollywood, FL  |  (305) 746-7307</Text>
+        </View>
+        {clientName ? <Text style={{ fontSize: 10, color: "#94a3b8", textAlign: "right" }}>{clientName}</Text> : null}
+      </View>
+      <View style={{ height: 3, backgroundColor: GOLD }} />
+
+      {/* Page title */}
+      <View style={{ paddingHorizontal: 28, paddingTop: 14, paddingBottom: 4 }}>
+        <Text style={{ fontSize: 14, fontFamily: "Helvetica-Bold", color: DARK, letterSpacing: 0.5, textTransform: "uppercase", marginBottom: 10 }}>{title}</Text>
+
+        {/* Body blocks */}
+        {blocks.map((block, i) => {
+          const lines = block.split("\n");
+          const firstLine = lines[0];
+          const isNumbered = /^\d+\.\s+/.test(firstLine);
+          const rest = lines.slice(1).join("\n").trim();
+          if (isNumbered) {
+            return (
+              <View key={i} style={{ marginBottom: 10, backgroundColor: "#f8fafc", borderRadius: 4, padding: 10, borderLeft: "3px solid " + GOLD }}>
+                <Text style={{ fontSize: 10, fontFamily: "Helvetica-Bold", color: DARK, marginBottom: rest ? 4 : 0 }}>{firstLine}</Text>
+                {rest ? <Text style={{ fontSize: 9.5, color: "#334155", lineHeight: 1.55 }}>{rest}</Text> : null}
+              </View>
+            );
+          }
+          return (
+            <View key={i} style={{ marginBottom: 10 }}>
               <Text style={{ fontSize: 9.5, color: "#334155", lineHeight: 1.55 }}>{block}</Text>
-            )}
-          </View>
-        );
-      })}
+            </View>
+          );
+        })}
+      </View>
     </Page>
   );
 }
@@ -1310,7 +1327,7 @@ function TemplatePdfDocument({ companyName, template, client, divisions, showTer
       {includeAdditionPages && <AdditionPage2 client={client} />}
       {includeRetailPages && <RetailPage1 template={template} client={client} clientCoverPhotoType={clientCoverPhotoType} clientCoverPhotoUrl={clientCoverPhotoUrl} clientCoverTitle={clientCoverTitle} />}
       {includeRetailPages && <RetailPage2 client={client} />}
-      {scopeOfWork && <ScopeOfWorkPage title={scopeOfWork.title} body={scopeOfWork.body} />}
+      {scopeOfWork && <ScopeOfWorkPage title={scopeOfWork.title} body={scopeOfWork.body} client={client} />}
       {includeDivisionSummary && !includeRoofUpgradesPage && (
         <DivisionSummaryPage template={template} client={client} divisions={divisions} gcFeePercent={gcFeePercent} />
       )}
