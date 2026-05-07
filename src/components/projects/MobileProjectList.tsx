@@ -38,7 +38,6 @@ function PhotoThumb({
   name: string; isAdmin: boolean;
   onUploaded: (url: string) => void;
 }) {
-  const inputRef = useRef<HTMLInputElement>(null);
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -58,16 +57,14 @@ function PhotoThumb({
       setError(err instanceof Error ? err.message : "Upload failed");
     } finally {
       setUploading(false);
-      if (inputRef.current) inputRef.current.value = "";
+      e.target.value = "";
     }
   }
 
-  return (
-    <>
+  const thumb = (
     <div
-      className="relative w-12 h-12 rounded-xl overflow-hidden shrink-0 flex items-center justify-center cursor-pointer"
+      className="relative w-12 h-12 rounded-xl overflow-hidden shrink-0 flex items-center justify-center"
       style={{ background: "#2d3748" }}
-      onClick={isAdmin ? () => inputRef.current?.click() : undefined}
     >
       {photoUrl ? (
         // eslint-disable-next-line @next/next/no-img-element
@@ -86,15 +83,30 @@ function PhotoThumb({
           ✎
         </div>
       )}
-      {isAdmin && <input ref={inputRef} type="file" accept="image/*" className="hidden" onChange={handleFile} />}
     </div>
-    {error && (
-      <div className="absolute top-14 left-0 z-10 rounded-lg px-2 py-1 text-xs whitespace-nowrap"
-        style={{ background: "#f8514922", color: "#f85149", border: "1px solid #f8514944" }}>
-        {error}
-      </div>
-    )}
-    </>
+  );
+
+  return (
+    <div className="relative shrink-0">
+      {isAdmin ? (
+        <label className="cursor-pointer block">
+          {thumb}
+          <input
+            type="file"
+            accept="image/*"
+            className="sr-only"
+            onChange={handleFile}
+            disabled={uploading}
+          />
+        </label>
+      ) : thumb}
+      {error && (
+        <div className="absolute top-14 left-0 z-10 rounded-lg px-2 py-1 text-xs whitespace-nowrap"
+          style={{ background: "#f8514922", color: "#f85149", border: "1px solid #f8514944" }}>
+          {error}
+        </div>
+      )}
+    </div>
   );
 }
 
