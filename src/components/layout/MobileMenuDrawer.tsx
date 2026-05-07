@@ -3,17 +3,25 @@
 import { useState } from "react";
 import Link from "next/link";
 import { usePathname, useSearchParams } from "next/navigation";
+import {
+  DashboardIcon, ProjectsIcon, SubsIcon, EstimatesIcon, ClientsIcon,
+  SalesIcon, MarketingIcon, CalendarIcon, MemoryIcon,
+} from "./NavIcons";
+
+const GOLD = "#C9A84C";
+const IDLE = "#8b949e";
+const DARK = "#0d1117";
 
 const NAV = [
-  { label: "Dashboard", icon: "✅", href: (c: string) => `/${c}/today` },
-  { label: "Projects",  icon: "📋", href: (c: string) => `/${c}/projects` },
-  { label: "Subs",      icon: "🔧", href: (c: string) => `/${c}/subs` },
-  { label: "Estimates", icon: "📊", href: (c: string) => `/${c}/estimates` },
-  { label: "Clients",   icon: "👤", href: (c: string) => `/${c}/clients` },
-  { label: "Sales",     icon: "🎯", href: (c: string) => `/${c}/leads` },
-  { label: "Marketing", icon: "📣", href: (c: string) => `/${c}/marketing` },
-  { label: "Calendar",  icon: "📅", href: (c: string) => `/${c}?tab=calendar` },
-  { label: "Memory",    icon: "🧠", href: (c: string) => `/${c}?tab=memory` },
+  { label: "Dashboard", Icon: DashboardIcon,  href: (c: string) => `/${c}/today` },
+  { label: "Projects",  Icon: ProjectsIcon,   href: (c: string) => `/${c}/projects` },
+  { label: "Subs",      Icon: SubsIcon,       href: (c: string) => `/${c}/subs` },
+  { label: "Estimates", Icon: EstimatesIcon,  href: (c: string) => `/${c}/estimates` },
+  { label: "Clients",   Icon: ClientsIcon,    href: (c: string) => `/${c}/clients` },
+  { label: "Sales",     Icon: SalesIcon,      href: (c: string) => `/${c}/leads` },
+  { label: "Marketing", Icon: MarketingIcon,  href: (c: string) => `/${c}/marketing` },
+  { label: "Calendar",  Icon: CalendarIcon,   href: (c: string) => `/${c}?tab=calendar` },
+  { label: "Memory",    Icon: MemoryIcon,     href: (c: string) => `/${c}?tab=memory` },
 ];
 
 function isActive(label: string, pathname: string, companyId: string, tab: string | null) {
@@ -85,17 +93,18 @@ export default function MobileMenuDrawer({
 
             {/* Nav */}
             <nav className="flex-1 px-3 space-y-1 overflow-y-auto">
-              {NAV.map(({ label, icon, href }) => {
+              {NAV.map(({ label, Icon, href }) => {
                 const active = isActive(label, pathname, companyId, tab);
+                const color = active ? DARK : IDLE;
                 return (
                   <Link
                     key={label}
                     href={href(companyId)}
                     onClick={() => setOpen(false)}
                     className="flex items-center gap-3 px-3 py-3 rounded-lg text-sm font-medium"
-                    style={active ? { background: "#C9A84C", color: "#0d1117" } : { color: "#8b949e" }}
+                    style={active ? { background: GOLD, color: DARK } : { color: IDLE }}
                   >
-                    <span className="text-base">{icon}</span>
+                    <span className="shrink-0"><Icon size={20} color={color} /></span>
                     {label}
                   </Link>
                 );
