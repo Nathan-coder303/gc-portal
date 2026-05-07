@@ -55,7 +55,7 @@ export async function POST(
   const toDelete: string[] = [];
   const groups: { name: string; kept: string; removed: string[] }[] = [];
 
-  for (const [, group] of byName) {
+  for (const [, group] of Array.from(byName.entries())) {
     if (group.length < 2) continue;
 
     // Sort by richness descending; break ties by preferring isFavorite, then older record
