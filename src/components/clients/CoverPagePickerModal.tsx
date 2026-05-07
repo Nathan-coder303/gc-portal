@@ -25,7 +25,10 @@ export type PdfOptions = {
   includeDivisionSummary: boolean;
   forcedBreakCsiPrefixes: string[];
   noPresentation: boolean; // skip presentation pages + T&C
+  scopeOfWorkId?: string | null;
 };
+
+type ScopeItem = { id: string; name: string; title: string; body: string };
 
 type CustomCover = { blobUrl: string; proxyUrl: string };
 
@@ -87,12 +90,30 @@ export default function CoverPagePickerModal({
   const [forcedBreakCsiPrefixes, setForcedBreakCsiPrefixes] = useState<string[]>([]);
   const [noPresentation, setNoPresentation] = useState(false);
 
+  // Scope of Work
+  const [scopes, setScopes] = useState<ScopeItem[]>([]);
+  const [scopeOfWorkId, setScopeOfWorkId] = useState<string | null>(null);
+  const [showAddScope, setShowAddScope] = useState(false);
+  const [newScopeName, setNewScopeName] = useState("");
+  const [newScopeTitle, setNewScopeTitle] = useState("");
+  const [newScopeBody, setNewScopeBody] = useState("");
+  const [savingScope, setSavingScope] = useState(false);
+
   // Custom cover gallery
   const [customCovers, setCustomCovers] = useState<CustomCover[]>([]);
   const [selectedBlobUrl, setSelectedBlobUrl] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
   const [uploadError, setUploadError] = useState<string | null>(null);
   const [dragOver, setDragOver] = useState(false);
+
+  // Load scopes of work
+  useEffect(() => {
+    if (!companyId) return;
+    fetch(`/api/${companyId}/scopes-of-work`)
+      .then(r => r.json())
+      .then(d => setScopes(d.scopes ?? []))
+      .catch(() => {});
+  }, [companyId]);
 
   // Load existing custom covers
   useEffect(() => {
@@ -149,7 +170,29 @@ export default function CoverPagePickerModal({
     includeDivisionSummary,
     forcedBreakCsiPrefixes,
     noPresentation,
+    scopeOfWorkId,
   };
+
+  async function handleSaveScope() {
+    if (!companyId || !newScopeName.trim() || !newScopeTitle.trim() || !newScopeBody.trim()) return;
+    setSavingScope(true);
+    try {
+      const res = await fetch(`/api/${companyId}/scopes-of-work`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name: newScopeName, title: newScopeTitle, body: newScopeBody }),
+      });
+      const data = await res.json() as { scope?: ScopeItem };
+      if (data.scope) {
+        setScopes(prev => [data.scope!, ...prev]);
+        setScopeOfWorkId(data.scope.id);
+        setShowAddScope(false);
+        setNewScopeName(""); setNewScopeTitle(""); setNewScopeBody("");
+      }
+    } finally {
+      setSavingScope(false);
+    }
+  }
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ background: "rgba(0,0,0,0.8)" }} onClick={onClose}>
@@ -386,6 +429,75 @@ export default function CoverPagePickerModal({
               );
             })}
           </div>
+        </div>
+
+        {/* ── Section: Scope of Work ── */}
+        <div>
+          <p className="text-xs font-semibold uppercase tracking-widest mb-2" style={{ color: "#8b949e" }}>Scope of Work Page</p>
+          <div className="flex gap-2 mb-2">
+            <select
+              value={scopeOfWorkId ?? ""}
+              onChange={e => {
+                const v = e.target.value;
+                if (v === "__add__") { setShowAddScope(true); setScopeOfWorkId(null); }
+                else { setScopeOfWorkId(v || null); setShowAddScope(false); }
+              }}
+              className="flex-1 rounded-xl px-3 py-2 text-sm"
+              style={{ background: "#1e2736", border: `1px solid ${scopeOfWorkId ? "#C9A84C66" : "#30373f"}`, color: "#e6edf3", outline: "none" }}
+            >
+              <option value="">None — skip scope page</option>
+              {scopes.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
+              <option value="__add__">+ Add new scope…</option>
+            </select>
+          </div>
+          {scopeOfWorkId && scopes.find(s => s.id === scopeOfWorkId) && (
+            <div className="rounded-lg px-3 py-2 text-xs" style={{ background: "#0d1117", border: "1px solid #30373f", color: "#8b949e" }}>
+              <span className="font-semibold" style={{ color: "#C9A84C" }}>{scopes.find(s => s.id === scopeOfWorkId)!.title}</span>
+              <span className="ml-2">— {scopes.find(s => s.id === scopeOfWorkId)!.body.slice(0, 80)}…</span>
+            </div>
+          )}
+          {showAddScope && (
+            <div className="mt-3 rounded-xl p-4 space-y-3" style={{ background: "#0d1117", border: "1px solid #C9A84C44" }}>
+              <p className="text-xs font-semibold" style={{ color: "#C9A84C" }}>New Scope of Work</p>
+              <input
+                value={newScopeName} onChange={e => setNewScopeName(e.target.value)}
+                placeholder="Short name (e.g. Outdoor Renovations)"
+                className="w-full rounded-lg px-3 py-2 text-sm"
+                style={{ background: "#161b22", border: "1px solid #30373f", color: "#e6edf3", outline: "none" }}
+              />
+              <input
+                value={newScopeTitle} onChange={e => setNewScopeTitle(e.target.value)}
+                placeholder="PDF heading (e.g. PERMIT & DESIGN SCOPE OF WORK)"
+                className="w-full rounded-lg px-3 py-2 text-sm"
+                style={{ background: "#161b22", border: "1px solid #30373f", color: "#e6edf3", outline: "none" }}
+              />
+              <div>
+                <p className="text-[10px] mb-1" style={{ color: "#484f58" }}>
+                  Body — use blank lines between paragraphs. Start numbered items with <span style={{ color: "#C9A84C" }}>1. Title</span> then a new line for the body.
+                </p>
+                <textarea
+                  value={newScopeBody} onChange={e => setNewScopeBody(e.target.value)}
+                  placeholder={"The following items shall be incorporated...\n\n1. Pergola\nThe pergola scope shall be included..."}
+                  rows={10}
+                  className="w-full rounded-lg px-3 py-2 text-sm font-mono"
+                  style={{ background: "#161b22", border: "1px solid #30373f", color: "#e6edf3", outline: "none", resize: "vertical" }}
+                />
+              </div>
+              <div className="flex gap-2">
+                <button
+                  onClick={handleSaveScope}
+                  disabled={savingScope || !newScopeName.trim() || !newScopeTitle.trim() || !newScopeBody.trim()}
+                  className="flex-1 rounded-xl py-2 text-sm font-semibold disabled:opacity-50"
+                  style={{ background: "#C9A84C", color: "#0d1117" }}
+                >
+                  {savingScope ? "Saving…" : "Save Scope"}
+                </button>
+                <button onClick={() => setShowAddScope(false)} className="px-4 py-2 rounded-xl text-sm" style={{ border: "1px solid #30373f", color: "#8b949e" }}>
+                  Cancel
+                </button>
+              </div>
+            </div>
+          )}
         </div>
 
         {/* ── Actions ── */}

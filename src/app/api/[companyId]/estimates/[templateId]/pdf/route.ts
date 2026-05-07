@@ -52,8 +52,9 @@ export async function GET(
 
   const includeInsert = req.nextUrl.searchParams.get("includeInsert") !== "0";
   const noPresentation = req.nextUrl.searchParams.get("noPresent") === "1";
+  const scopeId = req.nextUrl.searchParams.get("scopeId");
 
-  const [template, company] = await Promise.all([
+  const [template, company, scopeOfWork] = await Promise.all([
     prisma.estimateTemplate.findFirst({
       where: { id: params.templateId, companyId: params.companyId, archivedAt: null },
       include: {
@@ -77,6 +78,7 @@ export async function GET(
       },
     }),
     prisma.company.findFirst({ where: { id: params.companyId } }),
+    scopeId ? prisma.scopeOfWork.findFirst({ where: { id: scopeId, companyId: params.companyId }, select: { title: true, body: true } }) : Promise.resolve(null),
   ]);
 
   if (!template || !company) return NextResponse.json({ error: "Not found" }, { status: 404 });
@@ -152,6 +154,7 @@ export async function GET(
     ),
     clientCoverTitle: template.client?.coverTitle ?? null,
     forcedBreakCsiPrefixes,
+    scopeOfWork: scopeOfWork ?? null,
   });
   let finalBuffer = buffer;
   if (insertFileUrl) {

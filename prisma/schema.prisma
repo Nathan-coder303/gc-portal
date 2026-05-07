@@ -82,6 +82,20 @@ model Company {
   subContractors    SubContractor[]
   payApps           PayApp[]
   googleRefreshToken String?
+  scopesOfWork      ScopeOfWork[]
+}
+
+model ScopeOfWork {
+  id        String   @id @default(cuid())
+  companyId String
+  company   Company  @relation(fields: [companyId], references: [id])
+  name      String
+  title     String
+  body      String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([companyId])
 }
 
 model Lead {

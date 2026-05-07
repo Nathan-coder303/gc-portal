@@ -172,6 +172,7 @@ type TemplatePdfProps = {
   clientCoverTitle?: string | null;
   insertPageOffset?: number;
   forcedBreakCsiPrefixes?: string[];
+  scopeOfWork?: { title: string; body: string } | null;
 };
 
 function ItemTableHeader({ showLineNum }: { showLineNum?: boolean }) {
@@ -1105,7 +1106,49 @@ function DivisionSummaryPage({ template, client, divisions, gcFeePercent }: Pick
   );
 }
 
-function TemplatePdfDocument({ companyName, template, client, divisions, showTerms, termsContent, paymentSchedule, gcFeePercent, summaryGroups, clientSignatureData, clientSignedByName, clientSignedAt, contractorSignatureData, contractorSignedAt, includeRoofUpgradesPage, includeCoverPage, includeAdditionPages, includeRetailPages, includeDivisionSummary, insertPageOffset, insulationType, clientCoverPhotoType, clientCoverPhotoUrl, clientCoverTitle, forcedBreakCsiPrefixes = [] }: TemplatePdfProps) {
+function ScopeOfWorkPage({ title, body }: { title: string; body: string }) {
+  const blocks = body.split(/\n\n+/).map(b => b.trim()).filter(Boolean);
+  return (
+    <Page size="LETTER" style={styles.page}>
+      {/* Fixed footer */}
+      <View fixed style={{ position: "absolute", bottom: 0, left: 0, right: 0, backgroundColor: DARK, paddingHorizontal: 24, paddingVertical: 9, flexDirection: "row", alignItems: "center", gap: 12 }}>
+        <Text style={{ fontSize: 8.5, color: GOLD, fontFamily: "Helvetica-Bold" }}>MIBH CONSTRUCTION</Text>
+        <Text style={{ fontSize: 7, color: "#94a3b8" }}>|</Text>
+        <Text style={{ fontSize: 8.5, color: "#94a3b8" }}>mike@mibhconstruction.com</Text>
+        <Text style={{ fontSize: 7, color: "#94a3b8" }}>|</Text>
+        <Text style={{ fontSize: 8.5, color: "#94a3b8" }}>Mike Baruh</Text>
+        <Text style={{ fontSize: 7, color: "#94a3b8" }}>|</Text>
+        <Text style={{ fontSize: 8.5, color: "#94a3b8" }}>(305) 746-7307</Text>
+        <View style={{ flex: 1 }} />
+        <Text style={{ fontSize: 8, color: "#94a3b8" }} render={({ pageNumber, totalPages }) => `Page ${pageNumber} of ${totalPages}`} />
+      </View>
+      {/* Title */}
+      <Text style={{ fontSize: 13, fontFamily: "Helvetica-Bold", color: DARK, textAlign: "center", textTransform: "uppercase", letterSpacing: 1, marginBottom: 6 }}>{title}</Text>
+      <View style={{ height: 2, backgroundColor: GOLD, marginBottom: 16 }} />
+      {/* Body blocks */}
+      {blocks.map((block, i) => {
+        const lines = block.split("\n");
+        const firstLine = lines[0];
+        const isNumbered = /^\d+\.\s+/.test(firstLine);
+        const rest = lines.slice(1).join("\n").trim();
+        return (
+          <View key={i} style={{ marginBottom: 10 }}>
+            {isNumbered ? (
+              <>
+                <Text style={{ fontSize: 10, fontFamily: "Helvetica-Bold", color: DARK, marginBottom: 3 }}>{firstLine}</Text>
+                {rest ? <Text style={{ fontSize: 9.5, color: "#334155", lineHeight: 1.55, paddingLeft: 14 }}>{rest}</Text> : null}
+              </>
+            ) : (
+              <Text style={{ fontSize: 9.5, color: "#334155", lineHeight: 1.55 }}>{block}</Text>
+            )}
+          </View>
+        );
+      })}
+    </Page>
+  );
+}
+
+function TemplatePdfDocument({ companyName, template, client, divisions, showTerms, termsContent, paymentSchedule, gcFeePercent, summaryGroups, clientSignatureData, clientSignedByName, clientSignedAt, contractorSignatureData, contractorSignedAt, includeRoofUpgradesPage, includeCoverPage, includeAdditionPages, includeRetailPages, includeDivisionSummary, insertPageOffset, insulationType, clientCoverPhotoType, clientCoverPhotoUrl, clientCoverTitle, forcedBreakCsiPrefixes = [], scopeOfWork }: TemplatePdfProps) {
   const grouped = groupDivisions(divisions);
 
   // Compute raw totals per group label (or null for ungrouped)
@@ -1267,6 +1310,7 @@ function TemplatePdfDocument({ companyName, template, client, divisions, showTer
       {includeAdditionPages && <AdditionPage2 client={client} />}
       {includeRetailPages && <RetailPage1 template={template} client={client} clientCoverPhotoType={clientCoverPhotoType} clientCoverPhotoUrl={clientCoverPhotoUrl} clientCoverTitle={clientCoverTitle} />}
       {includeRetailPages && <RetailPage2 client={client} />}
+      {scopeOfWork && <ScopeOfWorkPage title={scopeOfWork.title} body={scopeOfWork.body} />}
       {includeDivisionSummary && !includeRoofUpgradesPage && (
         <DivisionSummaryPage template={template} client={client} divisions={divisions} gcFeePercent={gcFeePercent} />
       )}
@@ -1344,6 +1388,7 @@ function TemplatePdfDocument({ companyName, template, client, divisions, showTer
           if (includeRoofUpgradesPage) prePages += 2; // CoverPages + RoofIntroPage
           if (includeAdditionPages) prePages += 2;
           if (includeRetailPages) prePages += 2;
+          if (scopeOfWork) prePages++;
           if (includeDivisionSummary && !includeRoofUpgradesPage) prePages++;
           // Insert file is spliced in after generation — it adds 1 page that shifts all subsequent pages
           prePages += (insertPageOffset ?? 0);
