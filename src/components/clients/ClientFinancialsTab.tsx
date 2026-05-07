@@ -480,7 +480,7 @@ export default function ClientFinancialsTab({
       });
     }, 800);
     return () => clearTimeout(timer);
-  }, [netProfit, companyId, clientId, loading]);
+  }, [netProfit, totalExpenses, companyId, clientId, loading]);
 
   // Group materials by supplier
   const matsBySupplier: Record<string, MaterialPurchase[]> = {};

@@ -220,7 +220,6 @@ export default function AppointmentsCard({
   const [popupNotes, setPopupNotes] = useState<Note[]>([]);
   const [popupLoading, setPopupLoading] = useState(false);
   const [popupEditing, setPopupEditing] = useState(false);
-  const [popupPhone, setPopupPhone] = useState("");
   const [popupNewNote, setPopupNewNote] = useState("");
   const [popupSaving, setPopupSaving] = useState(false);
 
@@ -280,7 +279,7 @@ export default function AppointmentsCard({
     const { name } = parseAppt(appt.text);
     setPopupAppt(appt); setPopupLoading(true);
     setPopupLead(null); setPopupLeadId(null); setPopupNotes([]);
-    setPopupEditing(false); setPopupPhone(""); setPopupNewNote("");
+    setPopupEditing(false); setPopupNewNote("");
     try {
       const [pr, lr] = await Promise.all([
         fetch(`/api/${companyId}/pipeline?type=sales`),
@@ -305,7 +304,6 @@ export default function AppointmentsCard({
         leadId = raw.id;
       }
       setPopupLead(found); setPopupLeadId(leadId);
-      setPopupPhone(found?.lead?.phone ?? "");
       if (leadId) {
         const nr = await fetch(`/api/${companyId}/notes?leadId=${leadId}`);
         if (nr.ok) setPopupNotes(await nr.json());
