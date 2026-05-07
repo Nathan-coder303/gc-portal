@@ -127,6 +127,7 @@ export async function POST(
   let notBid = 0;
   let noInfo = 0;
   const errors: string[] = [];
+  const importedBids: { contractorName: string; projectName: string | null; amount: number | null; division: string }[] = [];
   // Keep a mutable copy so newly-created clients can be matched in the same run
   const clients = [...existingClients];
 
@@ -358,6 +359,13 @@ Respond ONLY with valid JSON, no markdown:
         },
       });
 
+      const projectName = clients.find(c => c.id === clientId)?.name ?? null;
+      importedBids.push({
+        contractorName: parsed.contractorName ?? from,
+        projectName,
+        amount: parsed.amount ?? null,
+        division: division.name,
+      });
       added++;
     } catch (err) {
       errors.push(String(err).slice(0, 100));
@@ -374,6 +382,7 @@ Respond ONLY with valid JSON, no markdown:
     notBid,
     triage: noInfo,
     remaining,
+    importedBids,
     errors: errors.slice(0, 10),
   });
   } catch (err) {

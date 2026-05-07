@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useCallback } from "react";
 import BidTriage from "@/components/subs/BidTriage";
 import SubsDatabase from "@/components/subs/SubsDatabase";
 
@@ -22,6 +22,60 @@ type Client = { id: string; name: string };
 type Lead = { id: string; name: string };
 type Project = { id: string; name: string };
 
+function scrollTo(id: string) {
+  document.getElementById(id)?.scrollIntoView({ behavior: "smooth", block: "start" });
+}
+
+function SectionTabs({
+  active,
+  triageOpen,
+  onToggleTriage,
+}: {
+  active: "triage" | "database";
+  triageOpen: boolean;
+  onToggleTriage: () => void;
+}) {
+  return (
+    <div className="flex items-center gap-1 mb-4">
+      {active === "triage" ? (
+        <button
+          onClick={onToggleTriage}
+          className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold"
+          style={{ background: "#C9A84C22", border: "1px solid #C9A84C55", color: "#C9A84C" }}
+        >
+          <span style={{ fontSize: 10, lineHeight: 1 }}>{triageOpen ? "▼" : "▶"}</span>
+          Subs Triage
+        </button>
+      ) : (
+        <button
+          onClick={() => scrollTo("subs-triage")}
+          className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium"
+          style={{ background: "transparent", border: "1px solid #30373f", color: "#8b949e" }}
+        >
+          ↑ Subs Triage
+        </button>
+      )}
+
+      {active === "database" ? (
+        <button
+          className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold cursor-default"
+          style={{ background: "#1e2736", border: "1px solid #484f58", color: "#e6edf3" }}
+        >
+          Subs Database
+        </button>
+      ) : (
+        <button
+          onClick={() => scrollTo("subs-database")}
+          className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium"
+          style={{ background: "transparent", border: "1px solid #30373f", color: "#8b949e" }}
+        >
+          Subs Database ↓
+        </button>
+      )}
+    </div>
+  );
+}
+
 export default function SubsPageClient({
   companyId,
   initialSubs,
@@ -36,11 +90,14 @@ export default function SubsPageClient({
   projects: Project[];
 }) {
   const [search, setSearch] = useState("");
+  const [triageOpen, setTriageOpen] = useState(true);
   const isSearching = search.trim().length > 0;
+
+  const toggleTriage = useCallback(() => setTriageOpen(o => !o), []);
 
   return (
     <>
-      {/* Global search bar — always at top, before triage */}
+      {/* Global search bar */}
       <div className="relative mb-6">
         <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm" style={{ color: "#484f58" }}>🔍</span>
         <input
@@ -64,13 +121,12 @@ export default function SubsPageClient({
       </div>
 
       {isSearching ? (
-        /* ── Search results mode: triage + database stacked with clear labels ── */
+        /* ── Search results mode ── */
         <div className="space-y-6">
-          {/* Triage matches */}
           <div className="rounded-2xl overflow-hidden" style={{ border: "1px solid #C9A84C33" }}>
             <div className="flex items-center gap-2 px-4 py-3" style={{ background: "#161b22", borderBottom: "1px solid #C9A84C22" }}>
               <span className="text-[10px] font-bold uppercase tracking-widest" style={{ color: "#C9A84C" }}>In Triage</span>
-              <span className="text-[10px] px-1.5 py-0.5 rounded-full" style={{ background: "#C9A84C22", color: "#C9A84C" }}>bid inbox</span>
+              <span className="text-[10px] px-1.5 py-0.5 rounded-full" style={{ background: "#C9A84C22", color: "#C9A84C" }}>subs triage</span>
             </div>
             <div className="p-4">
               <BidTriage
@@ -83,7 +139,6 @@ export default function SubsPageClient({
             </div>
           </div>
 
-          {/* Existing sub matches */}
           <div className="rounded-2xl overflow-hidden" style={{ border: "1px solid #30373f" }}>
             <div className="flex items-center gap-2 px-4 py-3" style={{ background: "#161b22", borderBottom: "1px solid #30373f" }}>
               <span className="text-[10px] font-bold uppercase tracking-widest" style={{ color: "#8b949e" }}>In Database</span>
@@ -101,30 +156,31 @@ export default function SubsPageClient({
       ) : (
         /* ── Normal mode ── */
         <>
-          {/* Bid Triage */}
-          <div className="mb-8">
-            <div className="flex items-center gap-3 mb-4">
-              <h2 className="text-sm font-bold uppercase tracking-widest" style={{ color: "#C9A84C" }}>
-                Bid Inbox
-              </h2>
-            </div>
-            <BidTriage
+          {/* Subs Triage section */}
+          <div id="subs-triage" className="mb-8 scroll-mt-4">
+            <SectionTabs active="triage" triageOpen={triageOpen} onToggleTriage={toggleTriage} />
+            {triageOpen && (
+              <BidTriage
+                companyId={companyId}
+                clients={clients}
+                leads={leads}
+                projects={projects}
+                filterQuery=""
+              />
+            )}
+          </div>
+
+          <div className="mb-8" style={{ borderTop: "1px solid #30373f" }} />
+
+          {/* Subs Database section */}
+          <div id="subs-database" className="scroll-mt-4">
+            <SectionTabs active="database" triageOpen={triageOpen} onToggleTriage={toggleTriage} />
+            <SubsDatabase
               companyId={companyId}
-              clients={clients}
-              leads={leads}
-              projects={projects}
+              initialSubs={initialSubs}
               filterQuery=""
             />
           </div>
-
-          {/* Divider */}
-          <div className="mb-8" style={{ borderTop: "1px solid #30373f" }} />
-
-          <SubsDatabase
-            companyId={companyId}
-            initialSubs={initialSubs}
-            filterQuery=""
-          />
         </>
       )}
     </>
