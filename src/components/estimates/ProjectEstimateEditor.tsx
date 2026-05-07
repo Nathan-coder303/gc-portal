@@ -258,7 +258,7 @@ function AddItemRow({ divisionId, groupId, canEdit }: { divisionId: string; grou
   if (!open) {
     return (
       <tr>
-        <td colSpan={9} className="px-3 py-1">
+        <td colSpan={10} className="px-3 py-1">
           <button onClick={() => setOpen(true)} className="text-xs text-blue-600 hover:text-blue-800">+ Add Item</button>
         </td>
       </tr>
@@ -267,6 +267,12 @@ function AddItemRow({ divisionId, groupId, canEdit }: { divisionId: string; grou
 
   return (
     <tr className="bg-green-50 border-t border-green-100">
+      <td className="px-2 py-1 sm:hidden">
+        <div className="flex gap-1">
+          <button onClick={save} disabled={isPending} className="text-xs bg-green-600 text-white px-2 py-1 rounded">Add</button>
+          <button onClick={() => setOpen(false)} className="text-xs text-slate-500 px-2 py-1">Cancel</button>
+        </div>
+      </td>
       <td className="px-2 py-1">
         <input className="w-20 border border-slate-300 rounded px-2 py-1 text-xs font-mono" value={form.csiCode} onChange={(e) => setForm({ ...form, csiCode: formatCsiCode(e.target.value) })} placeholder="CSI" />
       </td>
@@ -287,7 +293,7 @@ function AddItemRow({ divisionId, groupId, canEdit }: { divisionId: string; grou
         <input type="number" step="any" className="w-16 border border-slate-300 rounded px-2 py-1 text-xs text-right" value={form.markupPct} onChange={(e) => setForm({ ...form, markupPct: e.target.value })} />
       </td>
       <td />
-      <td className="px-2 py-1">
+      <td className="px-2 py-1 hidden sm:table-cell">
         <div className="flex gap-1 justify-end">
           <button onClick={save} disabled={isPending} className="text-xs bg-green-600 text-white px-2 py-1 rounded">Add</button>
           <button onClick={() => setOpen(false)} className="text-xs text-slate-500 px-2 py-1">Cancel</button>
