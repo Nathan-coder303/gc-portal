@@ -6,6 +6,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { google } from "googleapis";
 import { prisma } from "@/lib/prisma";
+import { getGmailOAuth } from "@/lib/gmail";
 
 export const runtime = "nodejs";
 export const maxDuration = 60;
@@ -13,15 +14,6 @@ export const maxDuration = 60;
 const COMPANY_ID = "cmmij161r000004jm8il8bd0e";
 const LEAD_SENDER = "info@emailings.mibhconstruction-services.com";
 
-function getOAuthClient() {
-  const oauth2Client = new google.auth.OAuth2(
-    process.env.GOOGLE_CLIENT_ID,
-    process.env.GOOGLE_CLIENT_SECRET,
-    "urn:ietf:wg:oauth:2.0:oob"
-  );
-  oauth2Client.setCredentials({ refresh_token: process.env.GOOGLE_REFRESH_TOKEN });
-  return oauth2Client;
-}
 
 function decodeBase64(data: string): string {
   return Buffer.from(data.replace(/-/g, "+").replace(/_/g, "/"), "base64").toString("utf-8");
@@ -77,11 +69,7 @@ export async function GET(req: NextRequest) {
   if (authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
-  if (!process.env.GOOGLE_CLIENT_ID || !process.env.GOOGLE_CLIENT_SECRET || !process.env.GOOGLE_REFRESH_TOKEN) {
-    return NextResponse.json({ error: "Gmail credentials not configured" }, { status: 500 });
-  }
-
-  const authClient = getOAuthClient();
+  const authClient = await getGmailOAuth(COMPANY_ID);
   const gmail = google.gmail({ version: "v1", auth: authClient });
 
   // Look back 10 minutes to catch any missed emails

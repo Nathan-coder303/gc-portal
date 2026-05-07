@@ -10,19 +10,10 @@ import { NextRequest, NextResponse } from "next/server";
 import { google } from "googleapis";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { getGmailOAuth } from "@/lib/gmail";
 
 export const runtime = "nodejs";
 export const maxDuration = 300;
-
-function getOAuthClient() {
-  const oauth2Client = new google.auth.OAuth2(
-    process.env.GOOGLE_CLIENT_ID,
-    process.env.GOOGLE_CLIENT_SECRET,
-    "http://localhost:4000/callback"
-  );
-  oauth2Client.setCredentials({ refresh_token: process.env.GOOGLE_REFRESH_TOKEN });
-  return oauth2Client;
-}
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 function findFirstPdfPart(payload: any): any | null {
@@ -59,7 +50,7 @@ async function fetchPdfBytes(fileUrl: string): Promise<{ buffer: Buffer | null; 
     const attachmentId = parts.length >= 3 && parts[2] ? parts[2] : null;
 
     try {
-      const gmail = google.gmail({ version: "v1", auth: getOAuthClient() });
+      const gmail = google.gmail({ version: "v1", auth: await getGmailOAuth(params.companyId) });
 
       if (attachmentId) {
         const att = await gmail.users.messages.attachments.get({

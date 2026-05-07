@@ -3,22 +3,13 @@ import { google } from "googleapis";
 import Anthropic from "@anthropic-ai/sdk";
 import { prisma } from "@/lib/prisma";
 import { STANDARD_DIVISIONS } from "@/lib/divisions";
+import { getGmailOAuth } from "@/lib/gmail";
 
 export const runtime = "nodejs";
 export const maxDuration = 60;
 
 // Gmail search query — picks up emails likely to contain sub bids (no is:unread so we don't miss already-opened emails)
 const GMAIL_QUERY = "has:attachment filename:pdf (bid OR estimate OR proposal OR quote)";
-
-function getOAuthClient() {
-  const oauth2Client = new google.auth.OAuth2(
-    process.env.GOOGLE_CLIENT_ID,
-    process.env.GOOGLE_CLIENT_SECRET,
-    "urn:ietf:wg:oauth:2.0:oob"
-  );
-  oauth2Client.setCredentials({ refresh_token: process.env.GOOGLE_REFRESH_TOKEN });
-  return oauth2Client;
-}
 
 function decodeBase64(data: string): Buffer {
   return Buffer.from(data.replace(/-/g, "+").replace(/_/g, "/"), "base64");
@@ -72,12 +63,8 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  if (!process.env.GOOGLE_CLIENT_ID || !process.env.GOOGLE_CLIENT_SECRET || !process.env.GOOGLE_REFRESH_TOKEN) {
-    return NextResponse.json({ error: "Gmail credentials not configured" }, { status: 500 });
-  }
-
-  const auth = getOAuthClient();
-  const gmail = google.gmail({ version: "v1", auth });
+  const gmailAuth = await getGmailOAuth(process.env.SMS_COMPANY_ID);
+  const gmail = google.gmail({ version: "v1", auth: gmailAuth });
   const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 
   // Fetch all clients and their addresses for matching

@@ -3,19 +3,10 @@ import { google } from "googleapis";
 import { prisma } from "@/lib/prisma";
 import { STANDARD_DIVISIONS } from "@/lib/divisions";
 import { auth } from "@/lib/auth";
+import { getGmailOAuth } from "@/lib/gmail";
 
 export const runtime = "nodejs";
 export const maxDuration = 60;
-
-function getOAuthClient() {
-  const oauth2Client = new google.auth.OAuth2(
-    process.env.GOOGLE_CLIENT_ID,
-    process.env.GOOGLE_CLIENT_SECRET,
-    "urn:ietf:wg:oauth:2.0:oob"
-  );
-  oauth2Client.setCredentials({ refresh_token: process.env.GOOGLE_REFRESH_TOKEN });
-  return oauth2Client;
-}
 
 function decodeBase64(data: string): Buffer {
   return Buffer.from(data.replace(/-/g, "+").replace(/_/g, "/"), "base64");
@@ -94,10 +85,6 @@ export async function POST(req: NextRequest, { params }: { params: { companyId: 
   const session = await auth();
   if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-  if (!process.env.GOOGLE_CLIENT_ID || !process.env.GOOGLE_CLIENT_SECRET || !process.env.GOOGLE_REFRESH_TOKEN) {
-    return NextResponse.json({ error: "Gmail credentials not configured" }, { status: 500 });
-  }
-
   const body = await req.json().catch(() => ({}));
   const { clientId, clientName, clientAddress } = body as { clientId?: string; clientName?: string; clientAddress?: string };
 
@@ -105,7 +92,7 @@ export async function POST(req: NextRequest, { params }: { params: { companyId: 
     return NextResponse.json({ error: "clientId required" }, { status: 400 });
   }
 
-  const authClient = getOAuthClient();
+  const authClient = await getGmailOAuth(params.companyId);
   const gmail = google.gmail({ version: "v1", auth: authClient });
   const safeApiKey = (process.env.ANTHROPIC_API_KEY ?? "").replace(/[^\x20-\x7E]/g, "").trim();
 
