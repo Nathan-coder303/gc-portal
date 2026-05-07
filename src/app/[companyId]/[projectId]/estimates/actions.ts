@@ -280,16 +280,30 @@ export async function upsertEstimateDivision(
   requirePermission(session, "estimate:edit");
 
   if (data.id) {
+    // Update name/csiCode via ORM (fields the cached Vercel client knows about)
     await prisma.projectEstimateDivision.update({
       where: { id: data.id },
       data: {
         ...(data.csiCode !== undefined && { csiCode: data.csiCode }),
         name: data.name,
-        ...(data.manualTotal !== undefined && { manualTotal: data.manualTotal }),
       },
     });
+    // manualTotal via raw SQL — stale Vercel Prisma client doesn't know this column
+    if (data.manualTotal !== undefined) {
+      if (data.manualTotal === null) {
+        await prisma.$executeRawUnsafe(
+          `UPDATE "ProjectEstimateDivision" SET "manualTotal" = NULL WHERE id = $1`,
+          data.id,
+        );
+      } else {
+        await prisma.$executeRawUnsafe(
+          `UPDATE "ProjectEstimateDivision" SET "manualTotal" = $1 WHERE id = $2`,
+          data.manualTotal,
+          data.id,
+        );
+      }
+    }
     // Zero all line items in this division when a lump-sum override is applied.
-    // Every item (including those inside groups) has divisionId set, so one query suffices.
     if (data.manualTotal != null) {
       await prisma.projectEstimateItem.updateMany({
         where: { divisionId: data.id, archivedAt: null },
