@@ -2,7 +2,6 @@
 
 import { useState, useRef } from "react";
 import Link from "next/link";
-import Image from "next/image";
 import { format } from "date-fns";
 import { updateProject } from "@/app/[companyId]/projects/actions";
 import { useRouter } from "next/navigation";
