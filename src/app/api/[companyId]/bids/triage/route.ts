@@ -12,12 +12,27 @@ export async function GET(
   const session = await auth();
   if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-  const bids = await prisma.subBid.findMany({
-    where: { companyId: params.companyId, status: "TRIAGE" },
-    orderBy: { createdAt: "desc" },
+  const [bids, existingSubs] = await Promise.all([
+    prisma.subBid.findMany({
+      where: { companyId: params.companyId, status: "TRIAGE" },
+      orderBy: { createdAt: "desc" },
+    }),
+    prisma.subContractor.findMany({
+      where: { companyId: params.companyId },
+      select: { name: true },
+    }),
+  ]);
+
+  // Build a normalized set of existing sub names for fast lookup
+  const existingNames = new Set(existingSubs.map(s => s.name.toLowerCase().trim()));
+
+  // Filter out bids whose contractor name already exists in the subs database
+  const dedupedBids = bids.filter(b => {
+    if (!b.contractorName) return true;
+    return !existingNames.has(b.contractorName.toLowerCase().trim());
   });
 
-  return NextResponse.json(bids.map(b => ({
+  return NextResponse.json(dedupedBids.map(b => ({
     id: b.id,
     contractorName: b.contractorName,
     divisionCode: b.divisionCode,
