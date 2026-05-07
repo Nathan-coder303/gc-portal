@@ -28,7 +28,7 @@ function findFirstPdfPart(payload: any): any | null {
   return null;
 }
 
-async function fetchPdfBytes(fileUrl: string): Promise<{ buffer: Buffer | null; error?: string }> {
+async function fetchPdfBytes(fileUrl: string, companyId: string): Promise<{ buffer: Buffer | null; error?: string }> {
   // Vercel Blob private URL
   if (fileUrl.startsWith("https://")) {
     try {
@@ -50,7 +50,7 @@ async function fetchPdfBytes(fileUrl: string): Promise<{ buffer: Buffer | null; 
     const attachmentId = parts.length >= 3 && parts[2] ? parts[2] : null;
 
     try {
-      const gmail = google.gmail({ version: "v1", auth: await getGmailOAuth(params.companyId) });
+      const gmail = google.gmail({ version: "v1", auth: await getGmailOAuth(companyId) });
 
       if (attachmentId) {
         const att = await gmail.users.messages.attachments.get({
@@ -170,7 +170,7 @@ export async function POST(
       continue;
     }
 
-    const { buffer: pdfBytes, error: fetchError } = await fetchPdfBytes(bid.fileUrl);
+    const { buffer: pdfBytes, error: fetchError } = await fetchPdfBytes(bid.fileUrl, params.companyId);
     if (!pdfBytes) {
       results.push({ id: bid.id, amount: null, error: fetchError ?? "Could not fetch PDF" });
       continue;
