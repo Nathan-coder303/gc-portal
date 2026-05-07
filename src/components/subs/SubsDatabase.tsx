@@ -163,7 +163,7 @@ function SubCard({
   usedDivisions,
   onDragStart, onDragOver, onDrop, onDragEnd,
   onEdit, onDelete, onDuplicate, onMoveToDiv, onToggleSelect, onToggleFavorite,
-  onSaveExtraDivs,
+  onSaveExtraDivs, onHistory,
 }: {
   sub: Sub; isDragOver: boolean; isSelected: boolean;
   usedDivisions: { code: string; name: string }[];
@@ -174,6 +174,7 @@ function SubCard({
   onToggleSelect: () => void;
   onToggleFavorite: () => void;
   onSaveExtraDivs: (divs: { c: string; n: string }[]) => void;
+  onHistory: () => void;
 }) {
   const tags = parseTags(sub.notes);
   const extraDivs = parseExtraDivs(sub.notes);
@@ -320,6 +321,15 @@ function SubCard({
 
       {/* Actions */}
       <div className="flex gap-1.5 mt-auto pt-1" onClick={e => e.stopPropagation()}>
+        {/* Bid history icon */}
+        <button
+          onClick={onHistory}
+          title="Bid history"
+          className="w-8 h-8 flex items-center justify-center rounded-lg transition-all hover:opacity-80"
+          style={{ background: "#161b22", border: "1px solid #C9A84C44", color: "#C9A84C", fontSize: 13 }}
+        >
+          📋
+        </button>
         {/* Edit icon */}
         <button
           onClick={onEdit}
@@ -487,6 +497,175 @@ function SubModal({
             {saving ? "Saving…" : "Save"}
           </button>
         </div>
+      </div>
+    </div>
+  );
+}
+
+// ─── Bid History Modal ────────────────────────────────────────────────────────
+type BidRecord = {
+  id: string;
+  divisionCode: string;
+  divisionName: string;
+  amount: number | null;
+  notes: string | null;
+  fileUrl: string | null;
+  fileName: string | null;
+  status: string;
+  emailSource: string | null;
+  sourceLabel: string | null;
+  bidDate: string | null;
+  createdAt: string;
+  projectName: string | null;
+};
+
+function fmt(n: number) {
+  return n.toLocaleString("en-US", { minimumFractionDigits: 0, maximumFractionDigits: 0 });
+}
+
+function BidHistoryModal({ sub, companyId, onClose }: { sub: Sub; companyId: string; onClose: () => void }) {
+  const [bids, setBids] = useState<BidRecord[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    fetch(`/api/${companyId}/subs/${sub.id}/bids`)
+      .then(r => r.json())
+      .then(data => { setBids(data); setLoading(false); })
+      .catch(() => setLoading(false));
+  }, [companyId, sub.id]);
+
+  function getGmailUrl(fileUrl: string): string | null {
+    const parts = fileUrl.split(":");
+    if (parts[0] === "gmail" && parts.length >= 2) {
+      return `https://mail.google.com/mail/u/0/#inbox/${parts[1]}`;
+    }
+    return fileUrl.startsWith("http") ? fileUrl : null;
+  }
+
+  function getSourceLabel(bid: BidRecord): string {
+    if (bid.sourceLabel) {
+      if (bid.sourceLabel.match(/^\d{4}/)) return `📊 ${bid.sourceLabel}`;
+      return bid.sourceLabel;
+    }
+    if (bid.emailSource) {
+      const s = bid.emailSource;
+      if (s.toLowerCase().includes("planhub") || s.toLowerCase().includes("new bid proposal")) return "📧 PlanHub";
+      return `📧 ${s.length > 40 ? s.slice(0, 40) + "…" : s}`;
+    }
+    return "—";
+  }
+
+  const totalByProject = new Map<string, number>();
+  for (const b of bids) {
+    if (b.amount && b.projectName) {
+      totalByProject.set(b.projectName, (totalByProject.get(b.projectName) ?? 0) + b.amount);
+    }
+  }
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ background: "rgba(0,0,0,0.85)" }} onClick={onClose}>
+      <div className="w-full max-w-2xl rounded-2xl flex flex-col overflow-hidden" style={{ background: "#161b22", border: "1px solid #30373f", maxHeight: "88vh" }} onClick={e => e.stopPropagation()}>
+        {/* Header */}
+        <div className="flex items-start justify-between px-5 py-4" style={{ borderBottom: "1px solid #30373f", background: "#1e2736" }}>
+          <div>
+            <h2 className="text-base font-bold" style={{ color: "#e6edf3" }}>{sub.name}</h2>
+            <p className="text-xs mt-0.5" style={{ color: "#8b949e" }}>
+              {sub.divisionCode.slice(0, 2)} – {sub.divisionName}
+              {bids.length > 0 && <span className="ml-2" style={{ color: "#C9A84C" }}>{bids.length} bid{bids.length !== 1 ? "s" : ""} on record</span>}
+            </p>
+          </div>
+          <button onClick={onClose} style={{ color: "#8b949e", fontSize: 22, lineHeight: 1 }}>×</button>
+        </div>
+
+        {/* Body */}
+        <div className="overflow-y-auto flex-1 px-5 py-4">
+          {loading && <p className="text-sm text-center py-8" style={{ color: "#484f58" }}>Loading bid history…</p>}
+          {!loading && bids.length === 0 && (
+            <div className="text-center py-10">
+              <p className="text-sm" style={{ color: "#8b949e" }}>No bids on record for this sub.</p>
+              <p className="text-xs mt-1" style={{ color: "#484f58" }}>Bids are pulled from your Gmail inbox — sync to update.</p>
+            </div>
+          )}
+          {!loading && bids.length > 0 && (
+            <div className="space-y-2">
+              {bids.map(bid => {
+                const gmailUrl = bid.fileUrl ? getGmailUrl(bid.fileUrl) : null;
+                const dateStr = bid.bidDate
+                  ? bid.bidDate
+                  : new Date(bid.createdAt).toLocaleDateString("en-US", { timeZone: "UTC", month: "short", day: "numeric", year: "numeric" });
+                return (
+                  <div key={bid.id} className="rounded-xl px-4 py-3 flex flex-col gap-1.5" style={{ background: "#0d1117", border: "1px solid #21262d" }}>
+                    {/* Top row: project + amount */}
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="flex flex-col min-w-0">
+                        <span className="text-sm font-bold truncate" style={{ color: bid.projectName ? "#e6edf3" : "#484f58" }}>
+                          {bid.projectName ?? "Unassigned"}
+                        </span>
+                        <span className="text-[10px]" style={{ color: "#484f58" }}>
+                          {bid.divisionCode.slice(0, 2)} – {bid.divisionName}
+                        </span>
+                      </div>
+                      <div className="text-right shrink-0">
+                        {bid.amount != null
+                          ? <span className="text-base font-bold" style={{ color: "#C9A84C" }}>${fmt(bid.amount)}</span>
+                          : <span className="text-xs" style={{ color: "#484f58" }}>No amount</span>
+                        }
+                      </div>
+                    </div>
+
+                    {/* Source + date + status */}
+                    <div className="flex flex-wrap items-center gap-2">
+                      <span className="text-[10px] px-1.5 py-0.5 rounded font-medium" style={{
+                        background: bid.status === "RECEIVED" ? "#0a1a0f" : "#1a1a1a",
+                        color: bid.status === "RECEIVED" ? "#22c55e" : "#8b949e",
+                        border: `1px solid ${bid.status === "RECEIVED" ? "#22c55e44" : "#30373f"}`,
+                      }}>{bid.status}</span>
+                      <span className="text-[10px]" style={{ color: "#8b949e" }}>{dateStr}</span>
+                      <span className="text-[10px] flex-1 truncate" style={{ color: "#484f58" }}>{getSourceLabel(bid)}</span>
+                      {gmailUrl && (
+                        <a href={gmailUrl} target="_blank" rel="noopener noreferrer"
+                          className="text-[10px] px-1.5 py-0.5 rounded font-semibold shrink-0"
+                          style={{ background: "#1e2736", color: "#58a6ff", border: "1px solid #58a6ff44" }}
+                          onClick={e => e.stopPropagation()}>
+                          📎 {bid.fileName ? bid.fileName.slice(0, 20) + (bid.fileName.length > 20 ? "…" : "") : "View"}
+                        </a>
+                      )}
+                    </div>
+
+                    {/* Notes */}
+                    {bid.notes && !/\|/.test(bid.notes) && (
+                      <p className="text-[11px] leading-snug" style={{ color: "#8b949e" }}>{bid.notes}</p>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+
+        {/* Footer summary */}
+        {bids.length > 0 && (
+          <div className="px-5 py-3 flex flex-wrap gap-4" style={{ borderTop: "1px solid #30373f", background: "#0d1117" }}>
+            <div>
+              <p className="text-[10px] font-semibold uppercase tracking-widest mb-0.5" style={{ color: "#484f58" }}>Total bids</p>
+              <p className="text-sm font-bold" style={{ color: "#e6edf3" }}>{bids.length}</p>
+            </div>
+            {bids.some(b => b.amount) && (
+              <div>
+                <p className="text-[10px] font-semibold uppercase tracking-widest mb-0.5" style={{ color: "#484f58" }}>Projects bid</p>
+                <p className="text-sm font-bold" style={{ color: "#e6edf3" }}>{new Set(bids.filter(b => b.projectName).map(b => b.projectName)).size}</p>
+              </div>
+            )}
+            {bids.some(b => b.amount) && (
+              <div>
+                <p className="text-[10px] font-semibold uppercase tracking-widest mb-0.5" style={{ color: "#484f58" }}>Avg bid</p>
+                <p className="text-sm font-bold" style={{ color: "#C9A84C" }}>
+                  ${fmt(bids.filter(b => b.amount).reduce((s, b) => s + b.amount!, 0) / bids.filter(b => b.amount).length)}
+                </p>
+              </div>
+            )}
+          </div>
+        )}
       </div>
     </div>
   );
@@ -740,6 +919,7 @@ export default function SubsDatabase({
   const [search, setSearch] = useState("");
   const [modal, setModal] = useState<{ mode: "add" | "edit"; sub?: Sub; prefillDiv?: { code: string; name: string } } | null>(null);
   const [emailModal, setEmailModal] = useState<{ emails: string[]; divName: string } | null>(null);
+  const [historyModal, setHistoryModal] = useState<Sub | null>(null);
   const [importing, setImporting] = useState(false);
   const [importingSheet, setImportingSheet] = useState(false);
   const [clearing, setClearing] = useState(false);
@@ -1149,6 +1329,7 @@ export default function SubsDatabase({
                   onDragOver={e => { e.preventDefault(); e.stopPropagation(); setDragOverSubId(sub.id); }}
                   onDrop={() => { setDragOverSubId(null); }}
                   onDragEnd={() => { dragIdRef.current = null; setDragOverSubId(null); setDragOverDiv(null); }}
+                  onHistory={() => setHistoryModal(sub)}
                   onEdit={() => setModal({ mode: "edit", sub })}
                   onDelete={() => handleDelete(sub.id)}
                   onDuplicate={() => handleDuplicate(sub)}
@@ -1189,6 +1370,15 @@ export default function SubsDatabase({
           suggestions={allTags}
           onSave={form => handleSave(form, modal.sub?.id)}
           onClose={() => setModal(null)}
+        />
+      )}
+
+      {/* Bid History Modal */}
+      {historyModal && (
+        <BidHistoryModal
+          sub={historyModal}
+          companyId={companyId}
+          onClose={() => setHistoryModal(null)}
         />
       )}
 
