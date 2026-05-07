@@ -281,13 +281,7 @@ function AudioPlayer({ src, mimeType }: { src: string; mimeType: string | null }
     }
   }, [mimeType]);
 
-  if (canPlay === false) {
-    return (
-      <p className="text-xs italic" style={{ color: "#8b949e" }}>
-        ⚠ Audio not supported on this device
-      </p>
-    );
-  }
+  if (canPlay === false) return null;
 
   return (
     <audio

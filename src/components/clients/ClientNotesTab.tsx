@@ -43,13 +43,7 @@ function AudioPlayer({ src, mimeType }: { src: string; mimeType: string | null }
     }
   }, [mimeType]);
 
-  if (canPlay === false) {
-    return (
-      <p className="text-xs italic py-2" style={{ color: "#8b949e" }}>
-        ⚠ Audio format not supported on this device. Play on desktop or re-record.
-      </p>
-    );
-  }
+  if (canPlay === false) return null;
 
   return (
     <audio
