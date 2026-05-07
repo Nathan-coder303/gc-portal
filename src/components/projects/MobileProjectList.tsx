@@ -25,14 +25,6 @@ const STATUS = {
   COMPLETE: { bg: "#1e2736", text: "#8b949e", label: "Complete" },
 } as const;
 
-function blobProxy(url: string | null, companyId: string): string | null {
-  if (!url) return null;
-  if (url.includes("vercel-storage.com") || url.includes("blob.vercel")) {
-    return `/api/${companyId}/blob-proxy?u=${encodeURIComponent(url)}`;
-  }
-  return url;
-}
-
 function fmtBudget(n: number) {
   if (n >= 1_000_000) return `$${(n / 1_000_000).toFixed(n % 1_000_000 === 0 ? 0 : 1)}M`;
   if (n >= 1_000) return `$${(n / 1_000).toFixed(0)}K`;
@@ -92,7 +84,7 @@ function PhotoThumb({
     >
       {photoUrl ? (
         // eslint-disable-next-line @next/next/no-img-element
-        <img src={blobProxy(photoUrl, companyId) ?? photoUrl} alt={name} className="w-full h-full object-cover" />
+        <img src={`/api/${companyId}/projects/${projectId}/photo`} alt={name} className="w-full h-full object-cover" />
       ) : (
         <span className="text-2xl select-none">🏗️</span>
       )}

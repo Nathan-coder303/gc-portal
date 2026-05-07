@@ -5,6 +5,36 @@ import { prisma } from "@/lib/prisma";
 
 export const runtime = "nodejs";
 
+// GET — serve the project's private photo
+export async function GET(
+  _req: NextRequest,
+  { params }: { params: { companyId: string; projectId: string } }
+) {
+  const session = await auth();
+  if (!session) return new NextResponse("Unauthorized", { status: 401 });
+
+  const project = await prisma.project.findFirst({
+    where: { id: params.projectId, companyId: params.companyId },
+    select: { photoUrl: true },
+  });
+  if (!project?.photoUrl) return new NextResponse("Not found", { status: 404 });
+
+  const res = await fetch(project.photoUrl, {
+    headers: { Authorization: `Bearer ${process.env.BLOB_READ_WRITE_TOKEN}` },
+  });
+  if (!res.ok) return new NextResponse("Blob not found", { status: 404 });
+
+  const buffer = await res.arrayBuffer();
+  const contentType = res.headers.get("content-type") ?? "image/jpeg";
+  return new NextResponse(buffer, {
+    headers: {
+      "Content-Type": contentType,
+      "Cache-Control": "private, max-age=3600",
+    },
+  });
+}
+
+// POST — upload a project photo
 export async function POST(
   req: NextRequest,
   { params }: { params: { companyId: string; projectId: string } }
@@ -30,9 +60,8 @@ export async function POST(
       data: { photoUrl: blob.url },
     });
 
-    // Return a proxy URL so the client can display private blob images
-    const proxyUrl = `/api/${params.companyId}/blob-proxy?u=${encodeURIComponent(blob.url)}`;
-    return NextResponse.json({ url: proxyUrl });
+    // Return the dedicated photo endpoint URL (not the raw private blob URL)
+    return NextResponse.json({ url: `/api/${params.companyId}/projects/${params.projectId}/photo` });
   } catch (err) {
     console.error("Photo upload error:", err);
     return NextResponse.json({ error: String(err) }, { status: 500 });
