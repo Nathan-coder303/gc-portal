@@ -450,12 +450,26 @@ function DivisionSection({
           <span className="text-sm font-bold text-slate-900 truncate">{division.name}</span>
         </div>
         {canEdit && (
-          <button onClick={e => { e.stopPropagation(); setLumpSumOpen(v => !v); }} className="text-xs px-1.5 py-0.5 rounded shrink-0" style={{ border: `1px solid ${lumpSumOpen ? "#2563eb88" : "#cbd5e1"}`, color: lumpSumOpen ? "#2563eb" : "#94a3b8", background: lumpSumOpen ? "#eff6ff" : "transparent" }} title="Lump-sum override">∑</button>
+          <div className="flex items-center gap-1 shrink-0" onClick={e => e.stopPropagation()}>
+            {division.manualTotal != null && (
+              <button
+                onClick={() => { setLumpSumInput(""); saveLumpSum(""); setLumpSumOpen(false); }}
+                className="w-7 h-7 rounded flex items-center justify-center text-sm font-bold"
+                style={{ color: "#ef4444", border: "1px solid #fca5a522" }}
+                title="Clear lump-sum override">
+                ↺
+              </button>
+            )}
+            <button onClick={e => { e.stopPropagation(); setLumpSumOpen(v => !v); }} className="text-xs px-1.5 py-0.5 rounded shrink-0" style={{ border: `1px solid ${lumpSumOpen ? "#2563eb88" : "#cbd5e1"}`, color: lumpSumOpen ? "#2563eb" : "#94a3b8", background: lumpSumOpen ? "#eff6ff" : "transparent" }} title="Lump-sum override">∑</button>
+          </div>
         )}
-        <span className="text-sm font-bold text-slate-900 shrink-0">
+        <button
+          onClick={e => { e.stopPropagation(); if (canEdit) setLumpSumOpen(v => !v); }}
+          className="text-sm font-bold text-slate-900 shrink-0"
+          style={{ background: "transparent", border: "none", padding: 0 }}>
           {division.manualTotal != null && <span className="text-[10px] font-normal text-slate-400 mr-1">override</span>}
           ${fmt(total)}
-        </span>
+        </button>
       </div>
       {/* Mobile lump-sum input */}
       {lumpSumOpen && canEdit && (

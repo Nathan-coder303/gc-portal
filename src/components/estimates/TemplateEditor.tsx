@@ -700,7 +700,7 @@ function TemplateDivisionSection({ division, otherDivisions, canEdit, globalSave
             {division.csiCode && <span className="text-[10px] font-semibold" style={{ color: "#8b949e" }}>{division.csiCode}</span>}
             <span className="text-sm font-bold truncate" style={{ color: "#e6edf3" }}>{division.name}</span>
           </div>
-          {/* Mobile action icons: Edit All, Save All, Lump-sum */}
+          {/* Mobile action icons: Edit All, Save All, Reset All, Lump-sum */}
           {canEdit && (
             <div className="flex items-center gap-1 shrink-0" onClick={e => e.stopPropagation()}>
               <button
@@ -718,6 +718,13 @@ function TemplateDivisionSection({ division, otherDivisions, canEdit, globalSave
                 <SaveIcon size={12} />
               </button>
               <button
+                onClick={() => setResetAllSignal(s => s + 1)}
+                className="w-7 h-7 rounded flex items-center justify-center text-sm font-bold"
+                style={{ color: "#60a5fa", border: "1px solid #60a5fa33" }}
+                title="Reset all items">
+                ↺
+              </button>
+              <button
                 onClick={() => setLumpSumOpen(v => !v)}
                 className="text-xs px-1.5 py-0.5 rounded shrink-0"
                 style={{ background: lumpSumOpen ? "#C9A84C22" : "transparent", border: `1px solid ${lumpSumOpen ? "#C9A84C88" : "#30373f"}`, color: lumpSumOpen ? "#C9A84C" : "#484f58" }}
@@ -725,7 +732,15 @@ function TemplateDivisionSection({ division, otherDivisions, canEdit, globalSave
               >∑</button>
             </div>
           )}
-          {total > 0 && <span className="text-sm font-bold shrink-0" style={{ color: division.manualTotal != null ? "#C9A84C" : "#C9A84C" }}>{division.manualTotal != null ? "≈ " : ""}${fmt(total)}</span>}
+          {total > 0 && (
+            <button
+              onClick={e => { e.stopPropagation(); setLumpSumOpen(v => !v); }}
+              className="text-sm font-bold shrink-0"
+              style={{ color: "#C9A84C", background: "transparent", border: "none", padding: 0 }}
+              title="Set lump-sum total">
+              {division.manualTotal != null ? "≈ " : ""}${fmt(total)}
+            </button>
+          )}
         </div>
         {/* Mobile lump-sum input row */}
         {lumpSumOpen && canEdit && (
