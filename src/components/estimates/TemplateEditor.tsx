@@ -2,7 +2,7 @@
 
 import { useState, useTransition, useRef, useCallback, createContext, useContext, useEffect, useReducer } from "react";
 import { useRouter } from "next/navigation";
-import { TrashIcon, PencilIcon } from "@/components/ui/icons";
+import { TrashIcon, PencilIcon, SaveIcon } from "@/components/ui/icons";
 import CoverPagePickerModal, { PdfOptions, CoverType } from "@/components/clients/CoverPagePickerModal";
 import { lookupItemCsiCode, formatCsiCode, DIVISIONS } from "@/lib/divisions";
 import { DndContext, DragOverlay, useDroppable, useDraggable, closestCenter, PointerSensor, TouchSensor, useSensor, useSensors } from "@dnd-kit/core";
@@ -409,7 +409,19 @@ function ItemRow({ item, divisionId, groupId, canEdit }: { item: Item; divisionI
 
   return (
     <tr style={{ borderTop: "1px solid #30373f", background: "#1a2d1a" }}>
-      {canEdit && <td style={{ width: "24px" }} />}
+      {canEdit && (
+        <td style={{ width: "24px" }}>
+          {/* Mobile-only: save icon pinned to the right of this first cell */}
+          <div className="flex justify-end items-start pt-1 sm:hidden">
+            <button onClick={save} disabled={isPending}
+              className="w-7 h-7 rounded flex items-center justify-center disabled:opacity-50"
+              style={{ background: "#C9A84C", color: "#0d1117" }}
+              title="Save">
+              <SaveIcon size={14} />
+            </button>
+          </div>
+        </td>
+      )}
       <td className="px-2 py-1"><input className={INPUT} style={{ ...inputStyleSm, width: "80px", fontFamily: "monospace" }} value={form.csiCode} onChange={(e) => setForm({ ...form, csiCode: formatCsiCode(e.target.value) })} placeholder="CSI" /></td>
       <td className="px-2 py-1"><textarea className={INPUT} rows={2} style={{ ...inputStyleSm, resize: "none", lineHeight: "1.3" }} value={form.name} onChange={(e) => { const n = e.target.value; const auto = lookupItemCsiCode(n); setForm({ ...form, name: n, csiCode: auto ?? form.csiCode, defaultQty: autoQtyT(n, form.unit, form.defaultQty) }); }} /></td>
       <td className="px-2 py-1"><DetailSelect value={form.detail} onChange={(v) => setForm({ ...form, detail: v })} /></td>
@@ -426,7 +438,12 @@ function ItemRow({ item, divisionId, groupId, canEdit }: { item: Item; divisionI
             className="w-6 h-6 rounded flex items-center justify-center disabled:opacity-50 text-xs font-bold"
             style={{ background: "#1e40af22", color: "#60a5fa", border: "1px solid #60a5fa33" }}
             title="Reset values">↺</button>
-          <button onClick={save} disabled={isPending} className="text-xs px-2 py-1 rounded font-medium" style={{ background: "#C9A84C", color: "#0d1117" }}>Save</button>
+          <button onClick={save} disabled={isPending}
+            className="w-7 h-7 rounded flex items-center justify-center disabled:opacity-50 hidden sm:flex"
+            style={{ background: "#C9A84C", color: "#0d1117" }}
+            title="Save">
+            <SaveIcon size={14} />
+          </button>
           <button onClick={() => setEditing(false)} className="text-xs px-2" style={{ color: "#8b949e" }}>✕</button>
         </div>
       </td>
@@ -683,14 +700,30 @@ function TemplateDivisionSection({ division, otherDivisions, canEdit, globalSave
             {division.csiCode && <span className="text-[10px] font-semibold" style={{ color: "#8b949e" }}>{division.csiCode}</span>}
             <span className="text-sm font-bold truncate" style={{ color: "#e6edf3" }}>{division.name}</span>
           </div>
-          {/* Mobile lump-sum toggle */}
+          {/* Mobile action icons: Edit All, Save All, Lump-sum */}
           {canEdit && (
-            <button
-              onClick={e => { e.stopPropagation(); setLumpSumOpen(v => !v); }}
-              className="text-xs px-1.5 py-0.5 rounded shrink-0"
-              style={{ background: lumpSumOpen ? "#C9A84C22" : "transparent", border: `1px solid ${lumpSumOpen ? "#C9A84C88" : "#30373f"}`, color: lumpSumOpen ? "#C9A84C" : "#484f58" }}
-              title="Set lump-sum total for this division"
-            >∑</button>
+            <div className="flex items-center gap-1 shrink-0" onClick={e => e.stopPropagation()}>
+              <button
+                onClick={() => { setOpen(true); setEditAllSignal(s => s + 1); }}
+                className="w-7 h-7 rounded flex items-center justify-center"
+                style={{ color: "#8b949e", border: "1px solid #30373f" }}
+                title="Edit all items">
+                <PencilIcon size={12} />
+              </button>
+              <button
+                onClick={() => setSaveSignal(s => s + 1)}
+                className="w-7 h-7 rounded flex items-center justify-center"
+                style={{ color: "#C9A84C", border: "1px solid #C9A84C44" }}
+                title="Save all items">
+                <SaveIcon size={12} />
+              </button>
+              <button
+                onClick={() => setLumpSumOpen(v => !v)}
+                className="text-xs px-1.5 py-0.5 rounded shrink-0"
+                style={{ background: lumpSumOpen ? "#C9A84C22" : "transparent", border: `1px solid ${lumpSumOpen ? "#C9A84C88" : "#30373f"}`, color: lumpSumOpen ? "#C9A84C" : "#484f58" }}
+                title="Set lump-sum total for this division"
+              >∑</button>
+            </div>
           )}
           {total > 0 && <span className="text-sm font-bold shrink-0" style={{ color: division.manualTotal != null ? "#C9A84C" : "#C9A84C" }}>{division.manualTotal != null ? "≈ " : ""}${fmt(total)}</span>}
         </div>
@@ -740,7 +773,12 @@ function TemplateDivisionSection({ division, otherDivisions, canEdit, globalSave
               className={INPUT}
               style={{ ...inputStyle, flex: 1 }}
             />
-            <button onClick={saveHeader} disabled={isPending} className="text-xs px-2 py-1 rounded font-medium shrink-0" style={{ background: "#C9A84C", color: "#0d1117" }}>Save</button>
+            <button onClick={saveHeader} disabled={isPending}
+              className="w-7 h-7 rounded flex items-center justify-center disabled:opacity-50 shrink-0"
+              style={{ background: "#C9A84C", color: "#0d1117" }}
+              title="Save">
+              <SaveIcon size={14} />
+            </button>
             <button onClick={() => setEditingHeader(false)} className="text-xs shrink-0" style={{ color: "#8b949e" }}>Cancel</button>
           </div>
         ) : (
@@ -1497,10 +1535,26 @@ export default function TemplateEditor({
     setVersionSaving(true);
     setVersionSaved(false);
     try {
+      const snapshot = {
+        divisions: divisions.map(div => ({
+          name: div.name,
+          csiCode: div.csiCode,
+          manualTotal: div.manualTotal,
+          total: divisionTotal(div),
+          groups: div.groups.map(g => ({
+            name: g.name,
+            items: g.items.map(i => ({ name: i.name, qty: i.defaultQty, unitCost: i.defaultUnitCost, markup: i.defaultMarkupPct, unit: i.unit, detail: i.detail, total: itemTotal(i) })),
+          })),
+          items: div.items.map(i => ({ name: i.name, qty: i.defaultQty, unitCost: i.defaultUnitCost, markup: i.defaultMarkupPct, unit: i.unit, detail: i.detail, total: itemTotal(i) })),
+        })),
+        subtotal,
+        gcFee: gcFeeAmount,
+        total,
+      };
       await fetch(`/api/${template.companyId}/estimates/${template.id}/versions`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ label: label ?? "Manual save", total, subtotal, gcFee: gcFeeAmount, clientId: currentClient.id }),
+        body: JSON.stringify({ label: label ?? "Manual save", total, subtotal, gcFee: gcFeeAmount, clientId: currentClient.id, snapshot }),
       });
       setVersionSaved(true);
       setTimeout(() => setVersionSaved(false), 3000);

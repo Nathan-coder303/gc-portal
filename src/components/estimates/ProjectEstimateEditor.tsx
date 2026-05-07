@@ -2,7 +2,7 @@
 
 import { useState, useTransition, createContext, useContext } from "react";
 import { useRouter } from "next/navigation";
-import { TrashIcon } from "@/components/ui/icons";
+import { TrashIcon, SaveIcon } from "@/components/ui/icons";
 import { DndContext, DragOverlay, useDroppable, useDraggable, closestCenter, PointerSensor, TouchSensor, useSensor, useSensors } from "@dnd-kit/core";
 import type { DragStartEvent, DragEndEvent } from "@dnd-kit/core";
 import {
@@ -208,7 +208,12 @@ function ItemRowEdit({
       </td>
       <td className="px-2 py-1">
         <div className="flex gap-1 justify-end">
-          <button onClick={save} disabled={isPending} className="text-xs bg-blue-600 text-white px-2 py-1 rounded">Save</button>
+          <button onClick={save} disabled={isPending}
+            className="w-7 h-7 rounded flex items-center justify-center disabled:opacity-50"
+            style={{ background: "#2563eb", color: "#fff" }}
+            title="Save">
+            <SaveIcon size={14} />
+          </button>
           <button onClick={() => setEditing(false)} className="text-xs text-slate-500 px-2 py-1">Cancel</button>
         </div>
       </td>
@@ -675,7 +680,12 @@ export default function ProjectEstimateEditor({
               <input value={description} onChange={(e) => setDescription(e.target.value)} className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm" />
             </div>
             <div className="flex gap-2">
-              <button onClick={saveHeader} disabled={isPending} className="bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-medium">Save</button>
+              <button onClick={saveHeader} disabled={isPending}
+                className="w-8 h-8 rounded-lg flex items-center justify-center disabled:opacity-50"
+                style={{ background: "#2563eb", color: "#fff" }}
+                title="Save">
+                <SaveIcon size={16} />
+              </button>
               <button onClick={() => setEditingHeader(false)} className="border border-slate-200 text-slate-600 px-4 py-2 rounded-lg text-sm">Cancel</button>
             </div>
           </div>
