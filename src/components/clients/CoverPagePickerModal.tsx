@@ -282,8 +282,13 @@ export default function CoverPagePickerModal({
                 onClick={(e) => {
                   e.stopPropagation();
                   const url = previewUrlBuilder!(opts);
-                  const w = window.open(url, "_blank", "noopener,noreferrer");
-                  if (!w) window.location.assign(url);
+                  const a = document.createElement("a");
+                  a.href = url;
+                  a.target = "_blank";
+                  a.rel = "noopener noreferrer";
+                  document.body.appendChild(a);
+                  a.click();
+                  document.body.removeChild(a);
                 }}
                 className="px-4 rounded-xl py-2 text-sm font-semibold inline-flex items-center"
                 style={{ background: "#1e2736", border: "1px solid #C9A84C55", color: "#C9A84C" }}
