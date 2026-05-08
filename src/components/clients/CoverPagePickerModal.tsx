@@ -1,5 +1,5 @@
 "use client";
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 
 export const COVER_OPTIONS = [
   { type: "FLAT_ROOFS",    label: "Flat Roofs",    img: "/flat-roofs-cover.jpg",      desc: "Flat / low-slope roofing" },
@@ -30,7 +30,16 @@ export type PdfOptions = {
 };
 
 type ScopeItem = { id: string; name: string; title: string; body: string };
-type CustomCover = { blobUrl: string; proxyUrl: string };
+type CustomCover = { blobUrl: string; proxyUrl: string; filename: string };
+
+function formatCoverName(filename: string): string {
+  return (filename
+    .replace(/^\d{10,}-/, "") // strip timestamp prefix
+    .replace(/\.[^.]+$/, "")  // strip extension
+    .replace(/[-_]/g, " ")    // dashes → spaces
+    .trim()
+    .replace(/\b\w/g, c => c.toUpperCase())) || "Photo";
+}
 
 function compressImage(file: File, maxWidth = 1920, quality = 0.85): Promise<Blob> {
   return new Promise((resolve, reject) => {
@@ -99,6 +108,55 @@ export default function CoverPagePickerModal({
   const [uploading, setUploading] = useState(false);
   const [uploadError, setUploadError] = useState<string | null>(null);
   const [dragOver, setDragOver] = useState(false);
+
+  // Editable cover names (localStorage)
+  const [coverNames, setCoverNames] = useState<Record<string, string>>({});
+  const [editingCoverUrl, setEditingCoverUrl] = useState<string | null>(null);
+  const [editingCoverName, setEditingCoverName] = useState("");
+
+  // Track whether saved opts have been loaded (prevent overwriting before load)
+  const savedOptsLoaded = useRef(false);
+
+  // Load saved PDF options + cover names from localStorage on mount
+  useEffect(() => {
+    try {
+      const savedNames = JSON.parse(localStorage.getItem("gc-cover-names") ?? "{}");
+      setCoverNames(savedNames);
+    } catch {}
+    if (!companyId) { savedOptsLoaded.current = true; return; }
+    try {
+      const saved = JSON.parse(localStorage.getItem(`gc-pdf-opts-${companyId}`) ?? "null");
+      if (saved) {
+        if (saved.coverType) setCover(saved.coverType as CoverType);
+        if (saved.page2) setPage2(saved.page2 as Page2Type);
+        if ("scopeOfWorkId" in saved) setScopeOfWorkId(saved.scopeOfWorkId ?? null);
+        if ("selectedBlobUrl" in saved) setSelectedBlobUrl(saved.selectedBlobUrl ?? null);
+      }
+    } catch {}
+    savedOptsLoaded.current = true;
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Save PDF options to localStorage whenever they change (after initial load)
+  useEffect(() => {
+    if (!savedOptsLoaded.current || !companyId) return;
+    try {
+      localStorage.setItem(`gc-pdf-opts-${companyId}`, JSON.stringify({ coverType: cover, page2, scopeOfWorkId, selectedBlobUrl }));
+    } catch {}
+  }, [cover, page2, scopeOfWorkId, selectedBlobUrl, companyId]);
+
+  function getCoverName(c: CustomCover): string {
+    return coverNames[c.blobUrl] ?? formatCoverName(c.filename);
+  }
+
+  function saveCoverName(blobUrl: string, name: string) {
+    const trimmed = name.trim();
+    setCoverNames(prev => {
+      const updated = { ...prev, [blobUrl]: trimmed || formatCoverName(customCovers.find(c => c.blobUrl === blobUrl)?.filename ?? "") };
+      try { localStorage.setItem("gc-cover-names", JSON.stringify(updated)); } catch {}
+      return updated;
+    });
+  }
 
   useEffect(() => {
     if (!companyId) return;
@@ -275,16 +333,40 @@ export default function CoverPagePickerModal({
                 );
               })}
 
-              {customCovers.map((c, i) => {
+              {customCovers.map((c) => {
                 const active = cover === "CUSTOM" && selectedBlobUrl === c.blobUrl;
+                const isEditingThis = editingCoverUrl === c.blobUrl;
                 return (
                   <button key={c.blobUrl} onClick={() => { setCover("CUSTOM"); setSelectedBlobUrl(c.blobUrl); }}
                     className="rounded-lg overflow-hidden text-left transition-all shrink-0"
                     style={{ width: 100, border: `2px solid ${active ? "#C9A84C" : "#30373f"}`, outline: "none" }}>
                     {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img src={c.proxyUrl} alt={`Custom ${i + 1}`} style={{ width: "100%", height: 56, objectFit: "cover", display: "block" }} />
+                    <img src={c.proxyUrl} alt={getCoverName(c)} style={{ width: "100%", height: 56, objectFit: "cover", display: "block" }} />
                     <div className="px-1.5 py-1" style={{ background: active ? "#1e2a12" : "#1e2736" }}>
-                      <div className="text-[11px] font-semibold truncate" style={{ color: active ? "#C9A84C" : "#e6edf3" }}>Custom {i + 1}</div>
+                      {isEditingThis ? (
+                        <input
+                          autoFocus
+                          value={editingCoverName}
+                          onChange={e => setEditingCoverName(e.target.value)}
+                          onBlur={() => { saveCoverName(c.blobUrl, editingCoverName); setEditingCoverUrl(null); }}
+                          onKeyDown={e => {
+                            if (e.key === "Enter") { saveCoverName(c.blobUrl, editingCoverName); setEditingCoverUrl(null); }
+                            if (e.key === "Escape") setEditingCoverUrl(null);
+                          }}
+                          onClick={e => e.stopPropagation()}
+                          className="w-full bg-transparent border-none text-[11px] font-semibold"
+                          style={{ color: active ? "#C9A84C" : "#e6edf3", outline: "1px solid #C9A84C66", borderRadius: 2 }}
+                        />
+                      ) : (
+                        <div
+                          className="text-[11px] font-semibold truncate"
+                          style={{ color: active ? "#C9A84C" : "#e6edf3", cursor: "text" }}
+                          title="Click to rename"
+                          onClick={e => { e.stopPropagation(); setEditingCoverUrl(c.blobUrl); setEditingCoverName(getCoverName(c)); }}
+                        >
+                          {getCoverName(c)}
+                        </div>
+                      )}
                     </div>
                   </button>
                 );
