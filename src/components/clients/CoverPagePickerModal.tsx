@@ -270,7 +270,9 @@ export default function CoverPagePickerModal({
 
             {/* Upload tile */}
             {companyId && clientId && (
-              <label
+              <div
+                className="rounded-xl overflow-hidden text-left transition-all"
+                style={{ border: `2px dashed ${dragOver ? "#C9A84C" : "#30373f"}`, outline: "none", minHeight: 108, position: "relative" }}
                 onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
                 onDragLeave={() => setDragOver(false)}
                 onDrop={(e) => {
@@ -279,13 +281,12 @@ export default function CoverPagePickerModal({
                   const file = e.dataTransfer.files[0];
                   if (file) uploadFile(file);
                 }}
-                className="rounded-xl overflow-hidden text-left transition-all cursor-pointer"
-                style={{ border: `2px dashed ${dragOver ? "#C9A84C" : "#30373f"}`, outline: "none", minHeight: 108, display: "block" }}
               >
+                {/* Transparent full-cover input — most reliable cross-platform pattern */}
                 <input
                   type="file"
                   accept="image/*"
-                  className="sr-only"
+                  style={{ position: "absolute", inset: 0, width: "100%", height: "100%", opacity: 0, cursor: "pointer", zIndex: 2 }}
                   onChange={(e) => { const f = e.target.files?.[0]; if (f) uploadFile(f); e.target.value = ""; }}
                 />
                 <div style={{ width: "100%", height: 72, background: dragOver ? "#1e2a12" : "#0d1117", display: "flex", alignItems: "center", justifyContent: "center" }}>
@@ -298,7 +299,7 @@ export default function CoverPagePickerModal({
                   <div className="text-xs font-semibold" style={{ color: "#e6edf3" }}>Upload</div>
                   <div className="text-[10px]" style={{ color: "#8b949e" }}>Drag or click</div>
                 </div>
-              </label>
+              </div>
             )}
           </div>
           {uploadError && (
