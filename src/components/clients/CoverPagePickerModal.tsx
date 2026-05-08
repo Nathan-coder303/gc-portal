@@ -83,7 +83,6 @@ export default function CoverPagePickerModal({
   const [cover, setCover] = useState<CoverType>(defaultCover);
   const [page2, setPage2] = useState<Page2Type>(initialPage2 === "NONE" ? "ROOF" : initialPage2);
   const [includeInsert, setIncludeInsert] = useState(true);
-  const [includeDivisionSummary, setIncludeDivisionSummary] = useState(false);
   const [forcedBreakCsiPrefixes, setForcedBreakCsiPrefixes] = useState<string[]>([]);
 
   // Scope of Work (merged into presentation section)
@@ -151,7 +150,7 @@ export default function CoverPagePickerModal({
     coverBlobUrl: cover === "CUSTOM" ? selectedBlobUrl : null,
     page2,
     includeInsert,
-    includeDivisionSummary,
+    includeDivisionSummary: false,
     forcedBreakCsiPrefixes,
     noPresentation,
     scopeOfWorkId: noPresentation ? null : scopeOfWorkId,

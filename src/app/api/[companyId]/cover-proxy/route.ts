@@ -6,8 +6,7 @@ export const runtime = "nodejs";
 // Proxy any private Vercel Blob URL that belongs to this company.
 // Used by the company-wide cover gallery in CoverPagePickerModal.
 export async function GET(
-  req: NextRequest,
-  _: { params: { companyId: string } }
+  req: NextRequest
 ) {
   const session = await auth();
   if (!session) return new NextResponse("Unauthorized", { status: 401 });
