@@ -13,7 +13,7 @@ export async function PATCH(
   if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const body = await req.json();
-  const { status, dueDate, notes, paidAt } = body;
+  const { status, dueDate, notes, paidAt, phase, trigger, amount, pct } = body;
 
   const invoice = await prisma.invoice.update({
     where: { id: params.invoiceId },
@@ -22,6 +22,10 @@ export async function PATCH(
       ...(dueDate !== undefined && { dueDate: dueDate ? new Date(dueDate) : null }),
       ...(notes !== undefined && { notes }),
       ...(paidAt !== undefined && { paidAt: paidAt ? new Date(paidAt) : null }),
+      ...(phase !== undefined && { phase }),
+      ...(trigger !== undefined && { trigger }),
+      ...(amount !== undefined && { amount: parseFloat(amount) }),
+      ...(pct !== undefined && { pct: parseFloat(pct) }),
     },
   });
 

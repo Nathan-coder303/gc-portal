@@ -180,6 +180,54 @@ export default function ClientInvoicesTab({
   const [payNotes, setPayNotes] = useState("");
   const [payingSaving, setPayingSaving] = useState(false);
 
+  // Edit invoice state
+  const [editingInvoice, setEditingInvoice] = useState<Invoice | null>(null);
+  const [editPhase, setEditPhase] = useState("");
+  const [editTrigger, setEditTrigger] = useState("");
+  const [editAmount, setEditAmount] = useState("");
+  const [editPct, setEditPct] = useState("");
+  const [editDueDate, setEditDueDate] = useState("");
+  const [editNotes, setEditNotes] = useState("");
+  const [editSaving, setEditSaving] = useState(false);
+
+  function openEdit(inv: Invoice) {
+    setEditingInvoice(inv);
+    setEditPhase(inv.phase);
+    setEditTrigger(inv.trigger ?? "");
+    setEditAmount(inv.amount.toFixed(2));
+    setEditPct(inv.pct.toString());
+    setEditDueDate(inv.dueDate ? inv.dueDate.slice(0, 10) : "");
+    setEditNotes(inv.notes ?? "");
+  }
+
+  async function saveEdit() {
+    if (!editingInvoice || !editPhase.trim()) return;
+    setEditSaving(true);
+    try {
+      const res = await fetch(`/api/${companyId}/clients/${clientId}/invoices/${editingInvoice.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          phase: editPhase.trim(),
+          trigger: editTrigger.trim() || null,
+          amount: editAmount,
+          pct: editPct,
+          dueDate: editDueDate || null,
+          notes: editNotes.trim() || null,
+        }),
+      });
+      const updated = await res.json();
+      setInvoices(prev => prev.map(i =>
+        i.id === editingInvoice.id
+          ? { ...i, phase: updated.phase, trigger: updated.trigger, amount: Number(updated.amount), pct: Number(updated.pct), dueDate: updated.dueDate, notes: updated.notes }
+          : i
+      ));
+      setEditingInvoice(null);
+    } finally {
+      setEditSaving(false);
+    }
+  }
+
   // Send modal state
   const [sendInvoice, setSendInvoice] = useState<Invoice | null>(null);
   const [sendTo, setSendTo] = useState(clientEmail ?? "");
@@ -613,6 +661,57 @@ export default function ClientInvoicesTab({
         </div>
       )}
 
+      {/* Edit invoice modal */}
+      {editingInvoice && (
+        <div style={{ position: "fixed", inset: 0, zIndex: 60, background: "rgba(0,0,0,0.7)", display: "flex", alignItems: "center", justifyContent: "center", padding: 16 }}
+          onClick={() => setEditingInvoice(null)}>
+          <div style={{ background: "#161b22", border: "1px solid #30373f", borderRadius: 14, padding: 24, width: "100%", maxWidth: 480 }}
+            onClick={e => e.stopPropagation()}>
+            <h3 className="text-sm font-bold mb-4" style={{ color: "#e6edf3" }}>Edit Invoice #{editingInvoice.invoiceNumber}</h3>
+
+            <div className="space-y-3">
+              <div>
+                <label className="block text-[11px] mb-1" style={{ color: "#8b949e" }}>Phase / Name *</label>
+                <input type="text" value={editPhase} onChange={e => setEditPhase(e.target.value)} style={INPUT_STYLE} autoFocus />
+              </div>
+              <div>
+                <label className="block text-[11px] mb-1" style={{ color: "#8b949e" }}>Milestone / Trigger</label>
+                <input type="text" value={editTrigger} onChange={e => setEditTrigger(e.target.value)} style={INPUT_STYLE} placeholder="e.g. Contract signing" />
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-[11px] mb-1" style={{ color: "#8b949e" }}>Amount ($)</label>
+                  <input type="number" step="0.01" value={editAmount} onChange={e => setEditAmount(e.target.value)} style={INPUT_STYLE} />
+                </div>
+                <div>
+                  <label className="block text-[11px] mb-1" style={{ color: "#8b949e" }}>% of Contract</label>
+                  <input type="number" step="0.01" value={editPct} onChange={e => setEditPct(e.target.value)} style={INPUT_STYLE} />
+                </div>
+              </div>
+              <div>
+                <label className="block text-[11px] mb-1" style={{ color: "#8b949e" }}>Due Date</label>
+                <input type="date" value={editDueDate} onChange={e => setEditDueDate(e.target.value)} style={INPUT_STYLE} />
+              </div>
+              <div>
+                <label className="block text-[11px] mb-1" style={{ color: "#8b949e" }}>Notes</label>
+                <textarea value={editNotes} onChange={e => setEditNotes(e.target.value)} rows={2} style={{ ...INPUT_STYLE, resize: "none" }} />
+              </div>
+            </div>
+
+            <div className="flex gap-2 mt-4">
+              <button onClick={saveEdit} disabled={!editPhase.trim() || editSaving}
+                className="flex-1 py-2 text-xs font-semibold rounded-lg disabled:opacity-50"
+                style={{ background: GOLD, color: "#0d1117" }}>
+                {editSaving ? "Saving…" : "Save Changes"}
+              </button>
+              <button onClick={() => setEditingInvoice(null)}
+                className="px-4 py-2 text-xs rounded-lg"
+                style={{ background: "#30373f", color: "#8b949e" }}>Cancel</button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Send modal */}
       {sendInvoice && (
         <div style={{ position: "fixed", inset: 0, zIndex: 60, background: "rgba(0,0,0,0.8)", display: "flex", alignItems: "center", justifyContent: "center", padding: 16 }}
@@ -790,6 +889,11 @@ export default function ClientInvoicesTab({
                           $ Record Payment
                         </button>
                       )}
+                      <button onClick={() => openEdit(inv)}
+                        className="text-[10px] px-2 py-1 rounded font-semibold"
+                        style={{ background: "#1e2736", color: "#8b949e", border: "1px solid #30373f" }}>
+                        ✎ Edit
+                      </button>
                       <button onClick={() => duplicateInvoice(inv)}
                         className="text-[10px] px-2 py-1 rounded"
                         style={{ background: "#1e2736", color: "#8b949e", border: "1px solid #30373f" }}
