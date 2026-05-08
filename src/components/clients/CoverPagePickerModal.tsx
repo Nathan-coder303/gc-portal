@@ -219,15 +219,13 @@ export default function CoverPagePickerModal({
           </div>
           <div className="flex gap-2">
             {showPreview && previewUrlBuilder && (
-              <a
-                href={previewUrlBuilder(opts)}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="px-4 rounded-xl py-2 text-sm font-semibold inline-flex items-center gap-1.5"
-                style={{ background: "#1e2736", border: "1px solid #C9A84C55", color: "#C9A84C", textDecoration: "none" }}
+              <button
+                onClick={() => window.open(previewUrlBuilder!(opts), "_blank")}
+                className="px-4 rounded-xl py-2 text-sm font-semibold"
+                style={{ background: "#1e2736", border: "1px solid #C9A84C55", color: "#C9A84C" }}
               >
                 👁 Preview
-              </a>
+              </button>
             )}
             <button
               onClick={() => onConfirm(opts)}
@@ -257,34 +255,33 @@ export default function CoverPagePickerModal({
           {/* ── PAGE 1: COVER ── */}
           <div>
             <p className="text-xs font-semibold uppercase tracking-widest mb-2" style={{ color: "#8b949e" }}>Page 1 — Cover</p>
-            <div className="grid grid-cols-3 gap-2">
+            {/* Horizontal scroll strip */}
+            <div className="flex gap-2 overflow-x-auto pb-1" style={{ scrollbarWidth: "none" }}>
               {COVER_OPTIONS.map(opt => {
                 const active = cover === opt.type;
                 return (
                   <button key={opt.type} onClick={() => { setCover(opt.type); setSelectedBlobUrl(null); }}
-                    className="rounded-xl overflow-hidden text-left transition-all"
-                    style={{ border: `2px solid ${active ? "#C9A84C" : "#30373f"}`, outline: "none" }}>
+                    className="rounded-lg overflow-hidden text-left transition-all shrink-0"
+                    style={{ width: 100, border: `2px solid ${active ? "#C9A84C" : "#30373f"}`, outline: "none" }}>
                     {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img src={opt.img} alt={opt.label} style={{ width: "100%", height: 68, objectFit: "cover", display: "block" }} />
-                    <div className="px-2 py-1.5" style={{ background: active ? "#1e2a12" : "#1e2736" }}>
-                      <div className="text-xs font-semibold" style={{ color: active ? "#C9A84C" : "#e6edf3" }}>{opt.label}</div>
-                      <div className="text-[10px]" style={{ color: "#8b949e" }}>{opt.desc}</div>
+                    <img src={opt.img} alt={opt.label} style={{ width: "100%", height: 56, objectFit: "cover", display: "block" }} />
+                    <div className="px-1.5 py-1" style={{ background: active ? "#1e2a12" : "#1e2736" }}>
+                      <div className="text-[11px] font-semibold truncate" style={{ color: active ? "#C9A84C" : "#e6edf3" }}>{opt.label}</div>
                     </div>
                   </button>
                 );
               })}
 
-              {customCovers.map(c => {
+              {customCovers.map((c, i) => {
                 const active = cover === "CUSTOM" && selectedBlobUrl === c.blobUrl;
                 return (
                   <button key={c.blobUrl} onClick={() => { setCover("CUSTOM"); setSelectedBlobUrl(c.blobUrl); }}
-                    className="rounded-xl overflow-hidden text-left transition-all"
-                    style={{ border: `2px solid ${active ? "#C9A84C" : "#30373f"}`, outline: "none" }}>
+                    className="rounded-lg overflow-hidden text-left transition-all shrink-0"
+                    style={{ width: 100, border: `2px solid ${active ? "#C9A84C" : "#30373f"}`, outline: "none" }}>
                     {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img src={c.proxyUrl} alt="Custom" style={{ width: "100%", height: 68, objectFit: "cover", display: "block" }} />
-                    <div className="px-2 py-1.5" style={{ background: active ? "#1e2a12" : "#1e2736" }}>
-                      <div className="text-xs font-semibold" style={{ color: active ? "#C9A84C" : "#e6edf3" }}>Custom</div>
-                      <div className="text-[10px]" style={{ color: "#8b949e" }}>Uploaded</div>
+                    <img src={c.proxyUrl} alt={`Custom ${i + 1}`} style={{ width: "100%", height: 56, objectFit: "cover", display: "block" }} />
+                    <div className="px-1.5 py-1" style={{ background: active ? "#1e2a12" : "#1e2736" }}>
+                      <div className="text-[11px] font-semibold truncate" style={{ color: active ? "#C9A84C" : "#e6edf3" }}>Custom {i + 1}</div>
                     </div>
                   </button>
                 );
@@ -294,14 +291,13 @@ export default function CoverPagePickerModal({
               {(() => {
                 const active = cover === "NONE";
                 return (
-                  <button onClick={() => setCover("NONE")} className="rounded-xl overflow-hidden text-left transition-all"
-                    style={{ border: `2px solid ${active ? "#f85149" : "#30373f"}`, outline: "none" }}>
-                    <div style={{ width: "100%", height: 68, background: active ? "#2d1111" : "#0d1117", display: "flex", alignItems: "center", justifyContent: "center" }}>
-                      <span style={{ fontSize: 26, opacity: 0.7 }}>⊘</span>
+                  <button onClick={() => setCover("NONE")} className="rounded-lg overflow-hidden text-left transition-all shrink-0"
+                    style={{ width: 100, border: `2px solid ${active ? "#f85149" : "#30373f"}`, outline: "none" }}>
+                    <div style={{ width: "100%", height: 56, background: active ? "#2d1111" : "#0d1117", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                      <span style={{ fontSize: 22, opacity: 0.6 }}>⊘</span>
                     </div>
-                    <div className="px-2 py-1.5" style={{ background: active ? "#2d1111" : "#1e2736" }}>
-                      <div className="text-xs font-semibold" style={{ color: active ? "#f87171" : "#e6edf3" }}>No Cover</div>
-                      <div className="text-[10px]" style={{ color: "#8b949e" }}>Skip cover page</div>
+                    <div className="px-1.5 py-1" style={{ background: active ? "#2d1111" : "#1e2736" }}>
+                      <div className="text-[11px] font-semibold" style={{ color: active ? "#f87171" : "#e6edf3" }}>No Cover</div>
                     </div>
                   </button>
                 );
@@ -309,21 +305,20 @@ export default function CoverPagePickerModal({
 
               {/* Upload tile */}
               {companyId && clientId && (
-                <div className="rounded-xl overflow-hidden text-left transition-all"
-                  style={{ border: `2px dashed ${dragOver ? "#C9A84C" : "#30373f"}`, outline: "none", minHeight: 104, position: "relative" }}
+                <div className="rounded-lg overflow-hidden text-left transition-all shrink-0"
+                  style={{ width: 100, border: `2px dashed ${dragOver ? "#C9A84C" : "#30373f"}`, outline: "none", position: "relative" }}
                   onDragOver={e => { e.preventDefault(); setDragOver(true); }}
                   onDragLeave={() => setDragOver(false)}
                   onDrop={e => { e.preventDefault(); setDragOver(false); const f = e.dataTransfer.files[0]; if (f) uploadFile(f); }}>
                   <input type="file" accept="image/*"
                     style={{ position: "absolute", inset: 0, width: "100%", height: "100%", opacity: 0, cursor: "pointer", zIndex: 2 }}
                     onChange={e => { const f = e.target.files?.[0]; if (f) uploadFile(f); e.target.value = ""; }} />
-                  <div style={{ width: "100%", height: 68, background: dragOver ? "#1e2a12" : "#0d1117", display: "flex", alignItems: "center", justifyContent: "center" }}>
-                    {uploading ? <span style={{ color: "#8b949e", fontSize: 11 }}>Uploading…</span>
-                      : <span style={{ color: dragOver ? "#C9A84C" : "#484f58", fontSize: 20 }}>📁</span>}
+                  <div style={{ width: "100%", height: 56, background: dragOver ? "#1e2a12" : "#0d1117", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                    {uploading ? <span style={{ color: "#8b949e", fontSize: 10 }}>…</span>
+                      : <span style={{ color: dragOver ? "#C9A84C" : "#484f58", fontSize: 18 }}>📁</span>}
                   </div>
-                  <div className="px-2 py-1.5" style={{ background: "#1e2736" }}>
-                    <div className="text-xs font-semibold" style={{ color: "#e6edf3" }}>Upload</div>
-                    <div className="text-[10px]" style={{ color: "#8b949e" }}>Drag or click</div>
+                  <div className="px-1.5 py-1" style={{ background: "#1e2736" }}>
+                    <div className="text-[11px] font-semibold" style={{ color: "#e6edf3" }}>Upload</div>
                   </div>
                 </div>
               )}
