@@ -2127,9 +2127,7 @@ export default function TemplateEditor({
                   window.open(buildPdfUrl(opts), "_blank");
                   setPdfStep(null);
                 }}
-                onPreview={(opts: PdfOptions) => {
-                  window.open(buildPdfUrl(opts, true), "_blank");
-                }}
+                previewUrlBuilder={(opts: PdfOptions) => buildPdfUrl(opts, true)}
                 onSendEmail={(opts: PdfOptions) => {
                   setPdfOpts(opts);
                   setEmailResult(null);
