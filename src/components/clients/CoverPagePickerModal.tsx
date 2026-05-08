@@ -219,13 +219,16 @@ export default function CoverPagePickerModal({
           </div>
           <div className="flex gap-2">
             {showPreview && previewUrlBuilder && (
-              <button
-                onClick={() => window.open(previewUrlBuilder!(opts), "_blank")}
-                className="px-4 rounded-xl py-2 text-sm font-semibold"
-                style={{ background: "#1e2736", border: "1px solid #C9A84C55", color: "#C9A84C" }}
+              <a
+                href={previewUrlBuilder(opts)}
+                target="_blank"
+                rel="noopener noreferrer"
+                onClick={e => e.stopPropagation()}
+                className="px-4 rounded-xl py-2 text-sm font-semibold inline-flex items-center"
+                style={{ background: "#1e2736", border: "1px solid #C9A84C55", color: "#C9A84C", textDecoration: "none" }}
               >
                 👁 Preview
-              </button>
+              </a>
             )}
             <button
               onClick={() => onConfirm(opts)}
