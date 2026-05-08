@@ -15,7 +15,7 @@ export async function GET(
 
   const client = await prisma.client.findFirst({
     where: { id: params.clientId, companyId: params.companyId },
-    select: { id: true },
+    select: { id: true, coverPhotoType: true, coverPhotoUrl: true },
   });
   if (!client) return NextResponse.json({ error: "Not found" }, { status: 404 });
 
@@ -34,9 +34,27 @@ export async function GET(
         filename: blob.pathname.split("/").pop() ?? blob.pathname,
       }));
 
+    // If there's a stored coverPhotoUrl not already in the blob list, prepend it
+    // (handles covers uploaded through older flows with a different storage path)
+    if (client.coverPhotoType === "CUSTOM" && client.coverPhotoUrl) {
+      const alreadyListed = covers.some(c => c.blobUrl === client.coverPhotoUrl);
+      if (!alreadyListed) {
+        covers.unshift({
+          blobUrl: client.coverPhotoUrl,
+          proxyUrl: `/api/${params.companyId}/clients/${params.clientId}/cover?b=${encodeURIComponent(client.coverPhotoUrl)}`,
+          uploadedAt: new Date(),
+          filename: "cover",
+        });
+      }
+    }
+
     return NextResponse.json({ covers });
   } catch (err) {
     console.error("Failed to list covers:", err);
-    return NextResponse.json({ covers: [] });
+    // Fall back to just the stored coverPhotoUrl if blob listing fails
+    const fallback = client.coverPhotoType === "CUSTOM" && client.coverPhotoUrl
+      ? [{ blobUrl: client.coverPhotoUrl, proxyUrl: `/api/${params.companyId}/clients/${params.clientId}/cover`, uploadedAt: new Date(), filename: "cover" }]
+      : [];
+    return NextResponse.json({ covers: fallback });
   }
 }

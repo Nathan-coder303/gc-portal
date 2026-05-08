@@ -271,7 +271,6 @@ export default function CoverPagePickerModal({
             {/* Upload tile */}
             {companyId && clientId && (
               <label
-                htmlFor="cover-file-input"
                 onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
                 onDragLeave={() => setDragOver(false)}
                 onDrop={(e) => {
@@ -283,6 +282,12 @@ export default function CoverPagePickerModal({
                 className="rounded-xl overflow-hidden text-left transition-all cursor-pointer"
                 style={{ border: `2px dashed ${dragOver ? "#C9A84C" : "#30373f"}`, outline: "none", minHeight: 108, display: "block" }}
               >
+                <input
+                  type="file"
+                  accept="image/*"
+                  className="sr-only"
+                  onChange={(e) => { const f = e.target.files?.[0]; if (f) uploadFile(f); e.target.value = ""; }}
+                />
                 <div style={{ width: "100%", height: 72, background: dragOver ? "#1e2a12" : "#0d1117", display: "flex", alignItems: "center", justifyContent: "center" }}>
                   {uploading
                     ? <span style={{ color: "#8b949e", fontSize: 12 }}>Uploading…</span>
@@ -296,13 +301,6 @@ export default function CoverPagePickerModal({
               </label>
             )}
           </div>
-          <input
-            id="cover-file-input"
-            type="file"
-            accept="image/*"
-            className="hidden"
-            onChange={(e) => { const f = e.target.files?.[0]; if (f) uploadFile(f); e.target.value = ""; }}
-          />
           {uploadError && (
             <div className="mt-2 flex items-center justify-between gap-2 text-xs rounded px-3 py-2" style={{ background: "#2d1111", border: "1px solid #f8514944", color: "#f85149" }}>
               <span>{uploadError}</span>
