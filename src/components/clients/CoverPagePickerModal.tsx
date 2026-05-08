@@ -115,23 +115,21 @@ export default function CoverPagePickerModal({
       .catch(() => {});
   }, [companyId]);
 
-  // Load existing custom covers
+  // Load company-wide cover gallery (all clients, all uploads)
   useEffect(() => {
-    if (!companyId || !clientId) return;
-    fetch(`/api/${companyId}/clients/${clientId}/covers`)
+    if (!companyId) return;
+    fetch(`/api/${companyId}/covers`)
       .then(r => r.json())
       .then(data => {
         const covers: CustomCover[] = data.covers ?? [];
         setCustomCovers(covers);
-        // Auto-select the one matching customCoverUrl (current active cover)
+        // Auto-select the current active cover if present in the gallery
         if (customCoverUrl && covers.length > 0) {
-          // customCoverUrl is a proxy URL like /api/.../cover, find matching by matching the proxy pattern
-          // Just select the first cover that corresponds to the active one (newest = first)
           setSelectedBlobUrl(covers[0].blobUrl);
         }
       })
       .catch(() => {});
-  }, [companyId, clientId, customCoverUrl]);
+  }, [companyId, customCoverUrl]);
 
   const uploadFile = useCallback(async (file: File) => {
     if (!companyId || !clientId) return;
