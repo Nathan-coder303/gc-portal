@@ -320,6 +320,24 @@ export default function ClientInvoicesTab({
     setInvoices((prev) => prev.filter((i) => i.id !== id));
   }
 
+  async function duplicateInvoice(inv: Invoice) {
+    const res = await fetch(`/api/${companyId}/clients/${clientId}/invoices`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        estimateId: inv.estimateId,
+        phase: inv.phase,
+        trigger: inv.trigger,
+        pct: inv.pct,
+        amount: inv.amount,
+        dueDate: inv.dueDate ? inv.dueDate.slice(0, 10) : null,
+        notes: inv.notes,
+      }),
+    });
+    const newInv = await res.json();
+    setInvoices((prev) => [...prev, { ...newInv, amount: Number(newInv.amount), pct: Number(newInv.pct), payments: [] }]);
+  }
+
   async function sendEmail() {
     if (!sendInvoice) return;
     setSending(true);
@@ -772,6 +790,12 @@ export default function ClientInvoicesTab({
                           $ Record Payment
                         </button>
                       )}
+                      <button onClick={() => duplicateInvoice(inv)}
+                        className="text-[10px] px-2 py-1 rounded"
+                        style={{ background: "#1e2736", color: "#8b949e", border: "1px solid #30373f" }}
+                        title="Duplicate invoice">
+                        ⧉ Duplicate
+                      </button>
                       <button onClick={() => deleteInvoice(inv.id)}
                         className="text-[10px] px-2 py-1 rounded"
                         style={{ background: "#2d1b1b", color: "#f87171" }}>
