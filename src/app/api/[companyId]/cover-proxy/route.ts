@@ -7,7 +7,7 @@ export const runtime = "nodejs";
 // Used by the company-wide cover gallery in CoverPagePickerModal.
 export async function GET(
   req: NextRequest,
-  _ctx: { params: { companyId: string } }
+  _: { params: { companyId: string } }
 ) {
   const session = await auth();
   if (!session) return new NextResponse("Unauthorized", { status: 401 });
