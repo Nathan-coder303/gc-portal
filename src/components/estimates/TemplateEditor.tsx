@@ -590,7 +590,7 @@ function TemplateGroupSection({ group, divisionId, canEdit }: { group: Group; di
   );
 }
 
-function TemplateDivisionSection({ division, otherDivisions, canEdit, globalSaveSignal }: { division: Division; otherDivisions: Division[]; canEdit: boolean; globalSaveSignal?: number }) {
+function TemplateDivisionSection({ division, otherDivisions, canEdit, globalSaveSignal, templateId }: { division: Division; otherDivisions: Division[]; canEdit: boolean; globalSaveSignal?: number; templateId: string }) {
   const router = useRouter();
   const [open, setOpen] = useState(() => typeof window !== "undefined" ? window.innerWidth >= 768 : true);
   const [isPending, startTransition] = useTransition();
@@ -662,7 +662,7 @@ function TemplateDivisionSection({ division, otherDivisions, canEdit, globalSave
   function saveHeader() {
     if (!editName.trim()) return;
     startTransition(async () => {
-      await upsertTemplateDivision(division.id, { id: division.id, csiCode: editCsi.trim() || undefined, name: editName.trim() });
+      await upsertTemplateDivision(templateId, { id: division.id, csiCode: editCsi.trim() || undefined, name: editName.trim() });
       setEditingHeader(false);
     });
   }
@@ -671,7 +671,7 @@ function TemplateDivisionSection({ division, otherDivisions, canEdit, globalSave
     const parsed = value.trim() === "" ? null : parseFloat(value.replace(/,/g, ""));
     if (value.trim() !== "" && isNaN(parsed!)) return;
     startTransition(async () => {
-      await upsertTemplateDivision(division.id, { id: division.id, name: division.name, manualTotal: parsed });
+      await upsertTemplateDivision(templateId, { id: division.id, name: division.name, manualTotal: parsed });
       router.refresh();
     });
   }
@@ -2373,7 +2373,7 @@ export default function TemplateEditor({
               )}
               <div className={groupLabel ? "space-y-2 pl-2" : "space-y-3"}>
                 {divs.map((div) => (
-                  <TemplateDivisionSection key={div.id} division={div} otherDivisions={divisions.filter(d => d.id !== div.id)} canEdit={canEdit} globalSaveSignal={globalSaveSignal} />
+                  <TemplateDivisionSection key={div.id} division={div} otherDivisions={divisions.filter(d => d.id !== div.id)} canEdit={canEdit} globalSaveSignal={globalSaveSignal} templateId={template.id} />
                 ))}
               </div>
             </div>
