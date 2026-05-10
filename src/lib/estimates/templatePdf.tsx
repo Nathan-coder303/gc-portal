@@ -57,14 +57,14 @@ function fmtDate(dateStr: string | null): string {
 
 const styles = StyleSheet.create({
   page: { fontFamily: "Helvetica", fontSize: 9, paddingTop: 22, paddingBottom: 54, paddingHorizontal: 40 },
-  header: { flexDirection: "row", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 12, paddingBottom: 8, paddingTop: 8, borderBottomWidth: 2, borderBottomColor: GOLD, borderTopWidth: 2, borderTopColor: GOLD },
+  header: { flexDirection: "column", marginBottom: 12, paddingBottom: 8, paddingTop: 8, borderBottomWidth: 2, borderBottomColor: GOLD, borderTopWidth: 2, borderTopColor: GOLD },
 
   // Left column
   logo: { width: 76, height: 76, marginBottom: 4 },
   companyInfo: { fontSize: 11, fontFamily: "Helvetica-Bold", color: DARK, marginTop: 2 },
 
   // Center column
-  centerSection: { flex: 1, alignItems: "center", paddingHorizontal: 16, paddingTop: 4 },
+  centerSection: { width: "100%", alignItems: "center", paddingBottom: 6 },
   centerBold: { fontSize: 15, fontFamily: "Helvetica-Bold", color: DARK, textAlign: "center", marginBottom: 4 },
 
   // Right column
@@ -1489,18 +1489,9 @@ function TemplatePdfDocument({ companyName, template, client, divisions, showTer
           <Text style={{ fontSize: 8, color: "#94a3b8" }} render={({ pageNumber, totalPages }) => `Page ${pageNumber} of ${totalPages}`} />
         </View>
 
-        {/* Header: 3 columns */}
+        {/* Header: scope full-width on top, addresses on bottom row */}
         <View style={styles.header}>
-          {/* Left: Logo + company info all bold same size */}
-          <View>
-            {/* eslint-disable-next-line jsx-a11y/alt-text */}
-            <Image style={styles.logo} src={path.join(process.cwd(), "public", "logo.png")} />
-            <Text style={styles.companyInfo}>2950 N 28 Terr, Hollywood, FL 33020</Text>
-            <Text style={styles.companyInfo}>Tel: 305-746-7307</Text>
-            <Text style={styles.companyInfo}>CGC1527069 | CCC1336817</Text>
-          </View>
-
-          {/* Center: Scope of Work, Date, Estimate # — all same bold size */}
+          {/* Top: Scope of Work centered across full width */}
           <View style={styles.centerSection}>
             <Text style={styles.centerBold}>Scope of Work:</Text>
             <Text style={styles.centerBold}>{template.name}</Text>
@@ -1508,17 +1499,29 @@ function TemplatePdfDocument({ companyName, template, client, divisions, showTer
             <Text style={styles.centerBold}>{template.estimateNumber ? `Estimate #${template.estimateNumber}` : "ESTIMATE"}</Text>
           </View>
 
-          {/* Right: Client — marginTop aligns with address text (below 76px logo + gap) */}
-          <View style={{ marginTop: 76 }}>
-            {client ? (
-              <>
-                <Text style={styles.clientName}>{client.name}</Text>
-                {client.address ? <Text style={styles.clientName}>{client.address}</Text> : null}
-                {(client.city || client.state || client.zip) ? (
-                  <Text style={styles.clientName}>{[client.city, client.state, client.zip].filter(Boolean).join(", ")}</Text>
-                ) : null}
-              </>
-            ) : null}
+          {/* Bottom row: Logo + company left, client right */}
+          <View style={{ flexDirection: "row", justifyContent: "space-between", marginTop: 10 }}>
+            {/* Left: Logo + company info */}
+            <View>
+              {/* eslint-disable-next-line jsx-a11y/alt-text */}
+              <Image style={styles.logo} src={path.join(process.cwd(), "public", "logo.png")} />
+              <Text style={styles.companyInfo}>2950 N 28 Terr, Hollywood, FL 33020</Text>
+              <Text style={styles.companyInfo}>Tel: 305-746-7307</Text>
+              <Text style={styles.companyInfo}>CGC1527069 | CCC1336817</Text>
+            </View>
+
+            {/* Right: Client */}
+            <View style={{ alignItems: "flex-end" }}>
+              {client ? (
+                <>
+                  <Text style={styles.clientName}>{client.name}</Text>
+                  {client.address ? <Text style={styles.clientName}>{client.address}</Text> : null}
+                  {(client.city || client.state || client.zip) ? (
+                    <Text style={styles.clientName}>{[client.city, client.state, client.zip].filter(Boolean).join(", ")}</Text>
+                  ) : null}
+                </>
+              ) : null}
+            </View>
           </View>
         </View>
 
