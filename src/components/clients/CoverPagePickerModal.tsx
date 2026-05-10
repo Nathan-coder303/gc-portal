@@ -259,44 +259,29 @@ export default function CoverPagePickerModal({
           {/* ── PAGE 1: COVER ── */}
           <div>
             <p className="text-xs font-semibold uppercase tracking-widest mb-2" style={{ color: "#8b949e" }}>Picture for Cover Page</p>
-            {/* Horizontal scroll strip */}
-            <div className="flex gap-2 overflow-x-auto pb-1" style={{ scrollbarWidth: "none" }}>
-              {COVER_OPTIONS.map(opt => {
-                const active = cover === opt.type;
-                return (
-                  <button key={opt.type} onClick={() => { setCover(opt.type); setSelectedBlobUrl(null); }}
-                    className="rounded-lg overflow-hidden text-left transition-all shrink-0"
-                    style={{ width: 100, border: `2px solid ${active ? "#C9A84C" : "#30373f"}`, outline: "none" }}>
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img src={opt.img} alt={opt.label} style={{ width: "100%", height: 56, objectFit: "cover", display: "block" }} />
-                    <div className="px-1.5 py-1" style={{ background: active ? "#1e2a12" : "#1e2736" }}>
-                      <div className="text-[11px] font-semibold truncate" style={{ color: active ? "#C9A84C" : "#e6edf3" }}>{opt.label}</div>
-                    </div>
-                  </button>
-                );
-              })}
+            <div style={{ display: "flex", gap: 12, height: 220 }}>
 
-              {customCovers.map((c) => {
-                const active = cover === "CUSTOM" && selectedBlobUrl === c.blobUrl;
-                const isEditingThis = editingCoverUrl === c.blobUrl;
-                return (
-                  <button key={c.blobUrl} onClick={() => { setCover("CUSTOM"); setSelectedBlobUrl(c.blobUrl); }}
-                    className="rounded-lg overflow-hidden text-left transition-all shrink-0"
-                    style={{ width: 100, border: `2px solid ${active ? "#C9A84C" : "#30373f"}`, outline: "none", position: "relative" }}>
-                    {/* Delete X */}
-                    <span
-                      role="button"
-                      onClick={async e => {
-                        e.stopPropagation();
-                        await fetch(`/api/${companyId}/covers?b=${encodeURIComponent(c.blobUrl)}`, { method: "DELETE" });
-                        setCustomCovers(prev => prev.filter(x => x.blobUrl !== c.blobUrl));
-                        if (selectedBlobUrl === c.blobUrl) setSelectedBlobUrl(null);
-                      }}
-                      style={{ position: "absolute", top: 2, right: 2, zIndex: 10, width: 16, height: 16, borderRadius: 8, background: "rgba(0,0,0,0.65)", color: "#fff", fontSize: 10, display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", lineHeight: 1 }}
-                    >✕</span>
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img src={c.proxyUrl} alt={getCoverName(c)} style={{ width: "100%", height: 56, objectFit: "cover", display: "block" }} />
-                    <div className="px-1.5 py-1" style={{ background: active ? "#1e2a12" : "#1e2736" }}>
+              {/* Left: list */}
+              <div style={{ width: 200, overflowY: "auto", borderRadius: 8, border: "1px solid #30373f", background: "#0d1117", flexShrink: 0 }}>
+                {COVER_OPTIONS.map(opt => {
+                  const active = cover === opt.type;
+                  return (
+                    <button key={opt.type} onClick={() => { setCover(opt.type); setSelectedBlobUrl(null); }}
+                      style={{ width: "100%", display: "flex", alignItems: "center", gap: 8, padding: "7px 10px", background: active ? "#1e2a12" : "transparent", borderBottom: "1px solid #21262d", outline: "none", textAlign: "left", cursor: "pointer" }}>
+                      <span style={{ fontSize: 9, color: "#C9A84C", opacity: active ? 1 : 0, flexShrink: 0 }}>●</span>
+                      <span className="text-xs font-medium truncate" style={{ color: active ? "#C9A84C" : "#c9d1d9" }}>{opt.label}</span>
+                    </button>
+                  );
+                })}
+
+                {customCovers.map((c) => {
+                  const active = cover === "CUSTOM" && selectedBlobUrl === c.blobUrl;
+                  const isEditingThis = editingCoverUrl === c.blobUrl;
+                  return (
+                    <div key={c.blobUrl}
+                      onClick={() => { setCover("CUSTOM"); setSelectedBlobUrl(c.blobUrl); }}
+                      style={{ width: "100%", display: "flex", alignItems: "center", gap: 8, padding: "7px 10px", background: active ? "#1e2a12" : "transparent", borderBottom: "1px solid #21262d", cursor: "pointer" }}>
+                      <span style={{ fontSize: 9, color: "#C9A84C", opacity: active ? 1 : 0, flexShrink: 0 }}>●</span>
                       {isEditingThis ? (
                         <input
                           autoFocus
@@ -308,60 +293,77 @@ export default function CoverPagePickerModal({
                             if (e.key === "Escape") setEditingCoverUrl(null);
                           }}
                           onClick={e => e.stopPropagation()}
-                          className="w-full bg-transparent border-none text-[11px] font-semibold"
-                          style={{ color: active ? "#C9A84C" : "#e6edf3", outline: "1px solid #C9A84C66", borderRadius: 2 }}
+                          className="flex-1 min-w-0 bg-transparent border-none text-xs font-medium"
+                          style={{ color: "#C9A84C", outline: "1px solid #C9A84C66", borderRadius: 2 }}
                         />
                       ) : (
-                        <div
-                          className="text-[11px] font-semibold truncate"
-                          style={{ color: active ? "#C9A84C" : "#e6edf3", cursor: "text" }}
+                        <span className="flex-1 min-w-0 text-xs font-medium truncate"
+                          style={{ color: active ? "#C9A84C" : "#c9d1d9", cursor: "text" }}
                           title="Click to rename"
-                          onClick={e => { e.stopPropagation(); setEditingCoverUrl(c.blobUrl); setEditingCoverName(getCoverName(c)); }}
-                        >
+                          onClick={e => { e.stopPropagation(); setEditingCoverUrl(c.blobUrl); setEditingCoverName(getCoverName(c)); }}>
                           {getCoverName(c)}
-                        </div>
+                        </span>
                       )}
+                      <span
+                        role="button"
+                        title="Delete"
+                        onClick={async e => {
+                          e.stopPropagation();
+                          await fetch(`/api/${companyId}/covers?b=${encodeURIComponent(c.blobUrl)}`, { method: "DELETE" });
+                          setCustomCovers(prev => prev.filter(x => x.blobUrl !== c.blobUrl));
+                          if (selectedBlobUrl === c.blobUrl) setSelectedBlobUrl(null);
+                        }}
+                        style={{ fontSize: 10, color: "#484f58", cursor: "pointer", flexShrink: 0, lineHeight: 1 }}>✕</span>
                     </div>
-                  </button>
-                );
-              })}
+                  );
+                })}
 
-              {/* No Cover */}
-              {(() => {
-                const active = cover === "NONE";
-                return (
-                  <button onClick={() => setCover("NONE")} className="rounded-lg overflow-hidden text-left transition-all shrink-0"
-                    style={{ width: 100, border: `2px solid ${active ? "#f85149" : "#30373f"}`, outline: "none" }}>
-                    <div style={{ width: "100%", height: 56, background: active ? "#2d1111" : "#0d1117", display: "flex", alignItems: "center", justifyContent: "center" }}>
-                      <span style={{ fontSize: 22, opacity: 0.6 }}>⊘</span>
-                    </div>
-                    <div className="px-1.5 py-1" style={{ background: active ? "#2d1111" : "#1e2736" }}>
-                      <div className="text-[11px] font-semibold" style={{ color: active ? "#f87171" : "#e6edf3" }}>No Cover</div>
-                    </div>
-                  </button>
-                );
-              })()}
+                {/* No Cover */}
+                <button onClick={() => setCover("NONE")}
+                  style={{ width: "100%", display: "flex", alignItems: "center", gap: 8, padding: "7px 10px", background: cover === "NONE" ? "#2d1111" : "transparent", borderBottom: "1px solid #21262d", outline: "none", textAlign: "left", cursor: "pointer" }}>
+                  <span style={{ fontSize: 9, color: "#f85149", opacity: cover === "NONE" ? 1 : 0, flexShrink: 0 }}>●</span>
+                  <span className="text-xs font-medium" style={{ color: cover === "NONE" ? "#f87171" : "#c9d1d9" }}>No Cover</span>
+                </button>
 
-              {/* Upload tile */}
-              {companyId && clientId && (
-                <div className="rounded-lg overflow-hidden text-left transition-all shrink-0"
-                  style={{ width: 100, border: `2px dashed ${dragOver ? "#C9A84C" : "#30373f"}`, outline: "none", position: "relative" }}
-                  onDragOver={e => { e.preventDefault(); setDragOver(true); }}
-                  onDragLeave={() => setDragOver(false)}
-                  onDrop={e => { e.preventDefault(); setDragOver(false); const f = e.dataTransfer.files[0]; if (f) uploadFile(f); }}>
-                  <input type="file" accept="image/*"
-                    style={{ position: "absolute", inset: 0, width: "100%", height: "100%", opacity: 0, cursor: "pointer", zIndex: 2 }}
-                    onChange={e => { const f = e.target.files?.[0]; if (f) uploadFile(f); e.target.value = ""; }} />
-                  <div style={{ width: "100%", height: 56, background: dragOver ? "#1e2a12" : "#0d1117", display: "flex", alignItems: "center", justifyContent: "center" }}>
-                    {uploading ? <span style={{ color: "#8b949e", fontSize: 10 }}>…</span>
-                      : <span style={{ color: dragOver ? "#C9A84C" : "#484f58", fontSize: 18 }}>📁</span>}
+                {/* Upload */}
+                {companyId && clientId && (
+                  <div style={{ position: "relative", borderTop: "1px solid #21262d" }}
+                    onDragOver={e => { e.preventDefault(); setDragOver(true); }}
+                    onDragLeave={() => setDragOver(false)}
+                    onDrop={e => { e.preventDefault(); setDragOver(false); const f = e.dataTransfer.files[0]; if (f) uploadFile(f); }}>
+                    <input type="file" accept="image/*"
+                      style={{ position: "absolute", inset: 0, opacity: 0, cursor: "pointer", zIndex: 2 }}
+                      onChange={e => { const f = e.target.files?.[0]; if (f) uploadFile(f); e.target.value = ""; }} />
+                    <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "7px 10px", background: dragOver ? "#1e2a12" : "transparent", cursor: "pointer" }}>
+                      <span style={{ fontSize: 12, color: dragOver ? "#C9A84C" : "#484f58" }}>
+                        {uploading ? "…" : "＋"}
+                      </span>
+                      <span className="text-xs font-medium" style={{ color: dragOver ? "#C9A84C" : "#8b949e" }}>Upload photo</span>
+                    </div>
                   </div>
-                  <div className="px-1.5 py-1" style={{ background: "#1e2736" }}>
-                    <div className="text-[11px] font-semibold" style={{ color: "#e6edf3" }}>Upload</div>
-                  </div>
-                </div>
-              )}
+                )}
+              </div>
+
+              {/* Right: preview */}
+              <div style={{ flex: 1, borderRadius: 8, overflow: "hidden", border: "1px solid #30373f", background: "#0d1117", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                {cover === "NONE" ? (
+                  <span style={{ fontSize: 48, opacity: 0.2 }}>⊘</span>
+                ) : cover === "CUSTOM" ? (
+                  selectedBlobUrl ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img src={customCovers.find(c => c.blobUrl === selectedBlobUrl)?.proxyUrl ?? ""} alt="preview"
+                      style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} />
+                  ) : (
+                    <span className="text-xs" style={{ color: "#484f58" }}>No image selected</span>
+                  )
+                ) : (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img src={COVER_OPTIONS.find(o => o.type === cover)?.img ?? ""} alt="preview"
+                    style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} />
+                )}
+              </div>
             </div>
+
             {uploadError && (
               <div className="mt-2 flex items-center justify-between gap-2 text-xs rounded px-3 py-2" style={{ background: "#2d1111", border: "1px solid #f8514944", color: "#f85149" }}>
                 <span>{uploadError}</span>
