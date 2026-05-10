@@ -30,7 +30,6 @@ export type PdfOptions = {
   scopeOfWorkId?: string | null;
 };
 
-type ScopeItem = { id: string; name: string; title: string; body: string };
 type CustomCover = { blobUrl: string; proxyUrl: string; filename: string };
 
 function formatCoverName(filename: string): string {
@@ -95,13 +94,6 @@ export default function CoverPagePickerModal({
   const [includeInsert, setIncludeInsert] = useState(true);
   const [forcedBreakCsiPrefixes, setForcedBreakCsiPrefixes] = useState<string[]>([]);
 
-  // Scope of Work (merged into presentation section)
-  const [scopes, setScopes] = useState<ScopeItem[]>([]);
-  const [scopeOfWorkId, setScopeOfWorkId] = useState<string | null>(null);
-  const [showAddScope, setShowAddScope] = useState(false);
-  const [editingScope, setEditingScope] = useState<ScopeItem | null>(null);
-  const [scopeForm, setScopeForm] = useState({ name: "", title: "", body: "" });
-  const [savingScope, setSavingScope] = useState(false);
 
   // Custom cover gallery
   const [customCovers, setCustomCovers] = useState<CustomCover[]>([]);
@@ -130,7 +122,6 @@ export default function CoverPagePickerModal({
       if (saved) {
         if (saved.coverType) setCover(saved.coverType as CoverType);
         if (saved.page2) setPage2(saved.page2 as Page2Type);
-        if ("scopeOfWorkId" in saved) setScopeOfWorkId(saved.scopeOfWorkId ?? null);
         if ("selectedBlobUrl" in saved) setSelectedBlobUrl(saved.selectedBlobUrl ?? null);
       }
     } catch {}
@@ -142,9 +133,9 @@ export default function CoverPagePickerModal({
   useEffect(() => {
     if (!savedOptsLoaded.current || !companyId) return;
     try {
-      localStorage.setItem(`gc-pdf-opts-${companyId}`, JSON.stringify({ coverType: cover, page2, scopeOfWorkId, selectedBlobUrl }));
+      localStorage.setItem(`gc-pdf-opts-${companyId}`, JSON.stringify({ coverType: cover, page2, selectedBlobUrl }));
     } catch {}
-  }, [cover, page2, scopeOfWorkId, selectedBlobUrl, companyId]);
+  }, [cover, page2, selectedBlobUrl, companyId]);
 
   function getCoverName(c: CustomCover): string {
     return coverNames[c.blobUrl] ?? formatCoverName(c.filename);
@@ -158,12 +149,6 @@ export default function CoverPagePickerModal({
       return updated;
     });
   }
-
-  useEffect(() => {
-    if (!companyId) return;
-    fetch(`/api/${companyId}/scopes-of-work`)
-      .then(r => r.json()).then(d => setScopes(d.scopes ?? [])).catch(() => {});
-  }, [companyId]);
 
   useEffect(() => {
     if (!companyId) return;
@@ -212,59 +197,8 @@ export default function CoverPagePickerModal({
     includeDivisionSummary: false,
     forcedBreakCsiPrefixes,
     noPresentation,
-    scopeOfWorkId: noPresentation ? null : scopeOfWorkId,
+    scopeOfWorkId: null,
   };
-
-  function openAddScope() {
-    setScopeForm({ name: "", title: "", body: "" });
-    setEditingScope(null);
-    setShowAddScope(true);
-  }
-
-  function openEditScope(s: ScopeItem) {
-    setScopeForm({ name: s.name, title: s.title, body: s.body });
-    setEditingScope(s);
-    setShowAddScope(true);
-  }
-
-  async function handleSaveScope() {
-    if (!companyId || !scopeForm.name.trim() || !scopeForm.title.trim() || !scopeForm.body.trim()) return;
-    setSavingScope(true);
-    try {
-      if (editingScope) {
-        // Update existing
-        const res = await fetch(`/api/${companyId}/scopes-of-work/${editingScope.id}`, {
-          method: "PATCH",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ name: scopeForm.name, title: scopeForm.title, body: scopeForm.body }),
-        });
-        const data = await res.json() as { scope?: ScopeItem };
-        if (data.scope) {
-          setScopes(prev => prev.map(s => s.id === data.scope!.id ? data.scope! : s));
-          setScopeOfWorkId(data.scope.id);
-        }
-      } else {
-        // Create new
-        const res = await fetch(`/api/${companyId}/scopes-of-work`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ name: scopeForm.name, title: scopeForm.title, body: scopeForm.body }),
-        });
-        const data = await res.json() as { scope?: ScopeItem };
-        if (data.scope) {
-          setScopes(prev => [data.scope!, ...prev]);
-          setScopeOfWorkId(data.scope.id);
-        }
-      }
-      setShowAddScope(false);
-      setScopeForm({ name: "", title: "", body: "" });
-      setEditingScope(null);
-    } finally {
-      setSavingScope(false);
-    }
-  }
-
-  const selectedScope = scopes.find(s => s.id === scopeOfWorkId) ?? null;
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ background: "rgba(0,0,0,0.8)" }} onClick={onClose}>
