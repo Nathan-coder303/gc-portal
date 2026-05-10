@@ -510,23 +510,25 @@ function AdditionPage1({ template, client, clientCoverPhotoType, clientCoverPhot
           <View style={{ flex: 1, height: 2, backgroundColor: GOLD }} />
         </View>
         <Text style={{ fontSize: 10.5, fontFamily: "Helvetica-Bold", color: DARK, marginBottom: 10, textTransform: "uppercase", letterSpacing: 0.5 }}>Why Choose Us</Text>
-        {[
-          "Over 20 years of delivering high-quality workmanship across South Florida",
-          "Licensed & insured (CGC1527069 | CCC1336817) and fully compliant with Florida Building Code (FBC 2023)",
-          "Specialized expertise in additions, structural modifications, and custom home construction",
-          "Turnkey service: design, engineering, permitting, and construction handled in-house",
-          "Dedicated project manager from start to completion for clear communication and accountability",
-          "Highly skilled, experienced team delivering consistent, professional results",
-          "Built for Florida conditions: hurricanes, sun exposure, moisture, and high-wind resistance",
-          "Customized solutions with honest, transparent recommendations tailored to each project",
-          "Proven track record in both residential and high-end custom homes",
-          "Strong, long-term relationships with trusted suppliers and manufacturers ensuring quality materials",
-        ].map((item, i) => (
-          <View key={i} style={{ flexDirection: "row", alignItems: "flex-start", marginBottom: 7, gap: 8 }}>
-            <Text style={{ fontSize: 10, color: GOLD, fontFamily: "Helvetica-Bold" }}>•</Text>
-            <Text style={{ fontSize: 10, color: "#334155", flex: 1, lineHeight: 1.35 }}>{item}</Text>
-          </View>
-        ))}
+        <View style={{ flex: 1, justifyContent: "space-between" }}>
+          {[
+            "Over 20 years of delivering high-quality workmanship across South Florida",
+            "Licensed & insured (CGC1527069 | CCC1336817) and fully compliant with Florida Building Code (FBC 2023)",
+            "Specialized expertise in additions, structural modifications, and custom home construction",
+            "Turnkey service: design, engineering, permitting, and construction handled in-house",
+            "Dedicated project manager from start to completion for clear communication and accountability",
+            "Highly skilled, experienced team delivering consistent, professional results",
+            "Built for Florida conditions: hurricanes, sun exposure, moisture, and high-wind resistance",
+            "Customized solutions with honest, transparent recommendations tailored to each project",
+            "Proven track record in both residential and high-end custom homes",
+            "Strong, long-term relationships with trusted suppliers and manufacturers ensuring quality materials",
+          ].map((item, i) => (
+            <View key={i} style={{ flexDirection: "row", alignItems: "flex-start", gap: 8 }}>
+              <Text style={{ fontSize: 10, color: GOLD, fontFamily: "Helvetica-Bold" }}>•</Text>
+              <Text style={{ fontSize: 10, color: "#334155", flex: 1, lineHeight: 1.35 }}>{item}</Text>
+            </View>
+          ))}
+        </View>
       </View>
 
     </Page>
