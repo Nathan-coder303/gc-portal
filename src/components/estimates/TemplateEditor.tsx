@@ -1549,8 +1549,13 @@ export default function TemplateEditor({
   }
 
   function buildPdfUrl(opts: PdfOptions, preview = false) {
-    const base = `/api/${template.companyId}/estimates/${template.id}/pdf?cover=${opts.coverType !== "NONE" ? 1 : 0}&coverType=${opts.coverType}&page2=${opts.page2}&includeInsert=${opts.includeInsert ? 1 : 0}&divSummary=${opts.includeDivisionSummary ? 1 : 0}&forcedBreakCsi=${opts.forcedBreakCsiPrefixes.join(",")}${opts.noPresentation ? "&noPresent=1" : ""}${opts.scopeOfWorkId ? `&scopeId=${opts.scopeOfWorkId}` : ""}${preview ? "&preview=1" : ""}`;
-    if (opts.coverType === "CUSTOM" && opts.coverBlobUrl) return `${base}&coverBlobUrl=${encodeURIComponent(opts.coverBlobUrl)}`;
+    // Normalize layout cover types to params the PDF route understands
+    const urlCoverType =
+      opts.coverType === "CONSTRUCTION" ? (opts.coverBlobUrl ? "CUSTOM" : "ADDITIONS") :
+      opts.coverType === "ROOFING"       ? (opts.coverBlobUrl ? "CUSTOM" : "FLAT_ROOFS") :
+      opts.coverType;
+    const base = `/api/${template.companyId}/estimates/${template.id}/pdf?cover=${opts.coverType !== "NONE" ? 1 : 0}&coverType=${urlCoverType}&page2=${opts.page2}&includeInsert=${opts.includeInsert ? 1 : 0}&divSummary=${opts.includeDivisionSummary ? 1 : 0}&forcedBreakCsi=${opts.forcedBreakCsiPrefixes.join(",")}${opts.noPresentation ? "&noPresent=1" : ""}${opts.scopeOfWorkId ? `&scopeId=${opts.scopeOfWorkId}` : ""}${preview ? "&preview=1" : ""}`;
+    if ((opts.coverType === "CUSTOM" || opts.coverType === "CONSTRUCTION" || opts.coverType === "ROOFING") && opts.coverBlobUrl) return `${base}&coverBlobUrl=${encodeURIComponent(opts.coverBlobUrl)}`;
     return base;
   }
 
