@@ -780,7 +780,7 @@ function PermitDrawingsPage({ client }: Pick<TemplatePdfProps, "client">) {
       <View style={{ height: 3, backgroundColor: GOLD }} />
 
       {/* Main content */}
-      <View style={{ paddingHorizontal: 28, paddingTop: 14, paddingBottom: 8 }}>
+      <View style={{ paddingHorizontal: 28, paddingTop: 14, paddingBottom: 8, flex: 1 }}>
 
         {/* WHAT WE BUILD + OUR APPROACH side by side */}
         <View style={{ flexDirection: "row", gap: 20, marginBottom: 12 }}>
@@ -810,33 +810,33 @@ function PermitDrawingsPage({ client }: Pick<TemplatePdfProps, "client">) {
         </View>
 
         {/* Intro */}
-        <Text style={{ fontSize: 10, color: "#334155", lineHeight: 1.5, marginBottom: 10 }}>
+        <Text style={{ fontSize: 10.5, color: "#334155", lineHeight: 1.5, marginBottom: 10 }}>
           Preparation of architectural permit drawings and related site plan revisions for the proposed outdoor improvements at the Schwartz Residence project located at 3161 NE 165th St, North Miami Beach, FL. The scope is intended to document the applicable work for permit submittal and coordination with the required specialty contractors and vendors.
         </Text>
 
-        {/* Two-column sections — alignItems stretch makes both columns same height as the taller one */}
-        <View style={{ flexDirection: "row", gap: 20, alignItems: "stretch" }}>
+        {/* Two-column sections — flex: 1 so they fill space, pushing Exclusions to bottom */}
+        <View style={{ flexDirection: "row", gap: 20, alignItems: "stretch", flex: 1 }}>
           <View style={{ flex: 1, justifyContent: "space-between" }}>
             {PERMIT_SECTIONS.slice(0, 3).map((sec, si) => (
               <View key={si} style={{ marginBottom: 2 }}>
-                <Text style={{ fontSize: 10.5, fontFamily: "Helvetica-Bold", color: DARK, marginBottom: 3 }}>{sec.title}</Text>
-                <Text style={{ fontSize: 9.5, color: "#475569", lineHeight: 1.45 }}>{sec.body}</Text>
+                <Text style={{ fontSize: 11, fontFamily: "Helvetica-Bold", color: DARK, marginBottom: 3 }}>{sec.title}</Text>
+                <Text style={{ fontSize: 10, color: "#475569", lineHeight: 1.45 }}>{sec.body}</Text>
               </View>
             ))}
           </View>
           <View style={{ flex: 1, justifyContent: "space-between" }}>
             {PERMIT_SECTIONS.slice(3).map((sec, si) => (
               <View key={si} style={{ marginBottom: 2 }}>
-                <Text style={{ fontSize: 10.5, fontFamily: "Helvetica-Bold", color: DARK, marginBottom: 3 }}>{sec.title}</Text>
-                <Text style={{ fontSize: 9.5, color: "#475569", lineHeight: 1.45 }}>{sec.body}</Text>
+                <Text style={{ fontSize: 11, fontFamily: "Helvetica-Bold", color: DARK, marginBottom: 3 }}>{sec.title}</Text>
+                <Text style={{ fontSize: 10, color: "#475569", lineHeight: 1.45 }}>{sec.body}</Text>
               </View>
             ))}
           </View>
         </View>
 
-        {/* Exclusions — full width centered below both columns */}
-        <View style={{ marginTop: 14, paddingTop: 10, borderTop: "1px solid #e2e8f0" }}>
-          <Text style={{ fontSize: 9.5, color: "#475569", lineHeight: 1.45, textAlign: "center" }}>
+        {/* Exclusions — anchored at bottom of flex container */}
+        <View style={{ paddingTop: 10, marginTop: 10, borderTop: "1px solid #e2e8f0" }}>
+          <Text style={{ fontSize: 10, color: "#475569", lineHeight: 1.45, textAlign: "center" }}>
             <Text style={{ fontFamily: "Helvetica-Bold" }}>Exclusions: </Text>Surveys, permit expediter services, and any work, engineering, specialty permitting, product approvals, or shop drawings not specifically listed above are excluded unless otherwise noted in writing.
           </Text>
         </View>
