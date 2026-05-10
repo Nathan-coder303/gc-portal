@@ -417,8 +417,8 @@ function RoofIntroPage({ template, client }: Pick<TemplatePdfProps, "template" |
         ))}
       </View>
 
-      {/* Footer */}
-      <View style={{ position: "absolute", bottom: 0, left: 0, right: 0, backgroundColor: DARK, paddingHorizontal: 24, paddingVertical: 9, flexDirection: "row", alignItems: "center", gap: 12 }}>
+      {/* Footer — fixed so it repeats on overflow pages */}
+      <View fixed style={{ position: "absolute", bottom: 0, left: 0, right: 0, backgroundColor: DARK, paddingHorizontal: 24, paddingVertical: 9, flexDirection: "row", alignItems: "center", gap: 12 }}>
         <Text style={{ fontSize: 8.5, color: GOLD, fontFamily: "Helvetica-Bold" }}>MIBH CONSTRUCTION</Text>
         <Text style={{ fontSize: 7, color: "#94a3b8" }}>|</Text>
         <Text style={{ fontSize: 8.5, color: "#94a3b8" }}>mike@mibhconstruction.com</Text>
