@@ -610,7 +610,7 @@ function AdditionPage2({ client }: Pick<TemplatePdfProps, "client">) {
   ];
   const clientName = client?.name ?? "";
   return (
-    <Page size="LETTER" style={{ fontFamily: "Helvetica", padding: 0, paddingBottom: 96 }}>
+    <Page size="LETTER" style={{ fontFamily: "Helvetica", padding: 0, paddingBottom: 36 }}>
       {/* Footer pinned to bottom */}
       <View fixed style={{ position: "absolute", bottom: 0, left: 0, right: 0, backgroundColor: DARK, paddingHorizontal: 24, paddingVertical: 9, flexDirection: "row", alignItems: "center", gap: 12 }}>
         <Text style={{ fontSize: 8.5, color: GOLD, fontFamily: "Helvetica-Bold" }}>MIBH CONSTRUCTION</Text>
@@ -636,10 +636,10 @@ function AdditionPage2({ client }: Pick<TemplatePdfProps, "client">) {
       <View style={{ height: 3, backgroundColor: GOLD }} />
 
       {/* Main content */}
-      <View style={{ paddingHorizontal: 28, paddingTop: 8, paddingBottom: 8 }}>
+      <View style={{ paddingHorizontal: 28, paddingTop: 14, paddingBottom: 8 }}>
 
         {/* WHAT WE BUILD + OUR APPROACH side by side */}
-        <View style={{ flexDirection: "row", gap: 20, marginBottom: 10 }}>
+        <View style={{ flexDirection: "row", gap: 20, marginBottom: 12 }}>
           <View style={{ flex: 1 }}>
             <Text style={{ fontSize: 14, fontFamily: "Helvetica-Bold", color: DARK, letterSpacing: 0.5, marginBottom: 8 }}>WHAT WE BUILD</Text>
             {WHAT_ITEMS.map((item, i) => (
@@ -666,7 +666,7 @@ function AdditionPage2({ client }: Pick<TemplatePdfProps, "client">) {
         </View>
 
         {/* Intro */}
-        <Text style={{ fontSize: 11, color: "#334155", lineHeight: 1.55, marginBottom: 8 }}>
+        <Text style={{ fontSize: 11, color: "#334155", lineHeight: 1.55, marginBottom: 10 }}>
           We appreciate the opportunity to provide this proposal. MIBH Construction will deliver all labor, materials, equipment, and supervision required to complete your addition in full compliance with Florida Building Code (FBC 2023), local municipal requirements, and approved engineering plans.
         </Text>
 
@@ -674,7 +674,7 @@ function AdditionPage2({ client }: Pick<TemplatePdfProps, "client">) {
         <View style={{ flexDirection: "row", gap: 20 }}>
           <View style={{ flex: 1 }}>
             {SECTIONS.slice(0, 3).map((sec, si) => (
-              <View key={si} style={{ marginBottom: 11 }}>
+              <View key={si} style={{ marginTop: si === 0 ? 0 : 12, marginBottom: 4 }}>
                 <Text style={{ fontSize: 11, fontFamily: "Helvetica-Bold", color: DARK, marginBottom: 5, textTransform: "uppercase" }}>{sec.title}</Text>
                 {sec.items.map((item, ii) => (
                   <View key={ii} style={{ flexDirection: "row", alignItems: "flex-start", marginBottom: 3, gap: 7 }}>
@@ -687,7 +687,7 @@ function AdditionPage2({ client }: Pick<TemplatePdfProps, "client">) {
           </View>
           <View style={{ flex: 1 }}>
             {SECTIONS.slice(3).map((sec, si) => (
-              <View key={si} style={{ marginBottom: 11 }}>
+              <View key={si} style={{ marginTop: si === 0 ? 0 : 12, marginBottom: 4 }}>
                 <Text style={{ fontSize: 11, fontFamily: "Helvetica-Bold", color: DARK, marginBottom: 5, textTransform: "uppercase" }}>{sec.title}</Text>
                 {sec.items.map((item, ii) => (
                   <View key={ii} style={{ flexDirection: "row", alignItems: "flex-start", marginBottom: 3, gap: 7 }}>

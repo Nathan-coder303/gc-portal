@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { list } from "@vercel/blob";
+import { list, del } from "@vercel/blob";
 
 export const runtime = "nodejs";
 
@@ -67,5 +67,34 @@ export async function GET(
         filename: "cover",
       }));
     return NextResponse.json({ covers: fallback });
+  }
+}
+
+// DELETE ?b=encodedBlobUrl — remove a cover blob
+export async function DELETE(
+  req: NextRequest,
+  { params }: { params: { companyId: string } }
+) {
+  const session = await auth();
+  if (!session || session.user.companyId !== params.companyId)
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
+  const bParam = req.nextUrl.searchParams.get("b");
+  if (!bParam) return NextResponse.json({ error: "Missing b param" }, { status: 400 });
+
+  const blobUrl = decodeURIComponent(bParam);
+  if (!blobUrl.includes("vercel-storage.com"))
+    return NextResponse.json({ error: "Invalid blob URL" }, { status: 400 });
+
+  try {
+    await del(blobUrl, { token: process.env.BLOB_READ_WRITE_TOKEN });
+    // Clear coverPhotoUrl on any client that references this blob
+    await prisma.client.updateMany({
+      where: { companyId: params.companyId, coverPhotoUrl: blobUrl },
+      data: { coverPhotoUrl: null, coverPhotoType: "NONE" },
+    });
+    return NextResponse.json({ success: true });
+  } catch {
+    return NextResponse.json({ error: "Delete failed" }, { status: 502 });
   }
 }

@@ -347,7 +347,18 @@ export default function CoverPagePickerModal({
                 return (
                   <button key={c.blobUrl} onClick={() => { setCover("CUSTOM"); setSelectedBlobUrl(c.blobUrl); }}
                     className="rounded-lg overflow-hidden text-left transition-all shrink-0"
-                    style={{ width: 100, border: `2px solid ${active ? "#C9A84C" : "#30373f"}`, outline: "none" }}>
+                    style={{ width: 100, border: `2px solid ${active ? "#C9A84C" : "#30373f"}`, outline: "none", position: "relative" }}>
+                    {/* Delete X */}
+                    <span
+                      role="button"
+                      onClick={async e => {
+                        e.stopPropagation();
+                        await fetch(`/api/${companyId}/covers?b=${encodeURIComponent(c.blobUrl)}`, { method: "DELETE" });
+                        setCustomCovers(prev => prev.filter(x => x.blobUrl !== c.blobUrl));
+                        if (selectedBlobUrl === c.blobUrl) setSelectedBlobUrl(null);
+                      }}
+                      style={{ position: "absolute", top: 2, right: 2, zIndex: 10, width: 16, height: 16, borderRadius: 8, background: "rgba(0,0,0,0.65)", color: "#fff", fontSize: 10, display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", lineHeight: 1 }}
+                    >✕</span>
                     {/* eslint-disable-next-line @next/next/no-img-element */}
                     <img src={c.proxyUrl} alt={getCoverName(c)} style={{ width: "100%", height: 56, objectFit: "cover", display: "block" }} />
                     <div className="px-1.5 py-1" style={{ background: active ? "#1e2a12" : "#1e2736" }}>
