@@ -8,14 +8,14 @@ export const COVER_OPTIONS = [
   { type: "SHINGLE_ROOFS", label: "Shingle Roofs", img: "/shingle-roofs-cover.png",   desc: "Shingle roofing" },
 ] as const;
 
-export type CoverType = (typeof COVER_OPTIONS)[number]["type"] | "CUSTOM" | "NONE" | "CONSTRUCTION" | "ROOFING";
+export type CoverType = (typeof COVER_OPTIONS)[number]["type"] | "CUSTOM" | "NONE";
 export type Page2Type = "ROOF" | "ADDITION" | "RETAIL" | "NONE";
 
 const PAGE2_OPTIONS: { type: Page2Type; label: string; desc: string; icon: string }[] = [
-  { type: "ROOF",     label: "Roof",         desc: "Roof upgrades & options",      icon: "🏠" },
-  { type: "ADDITION", label: "Construction", desc: "Addition / construction intro", icon: "🏗️" },
-  { type: "RETAIL",   label: "Retail",       desc: "Retail buildout & scope",       icon: "🏪" },
-  { type: "NONE",     label: "None",         desc: "Skip presentation",             icon: "⊘" },
+  { type: "ADDITION", label: "Construction Page",   desc: "Pages 1 & 2 — WHY CHOOSE US + scope", icon: "🏗️" },
+  { type: "ROOF",     label: "Roofing Cover Page",  desc: "Pages 1 & 2 — cover + roofing intro",  icon: "🏠" },
+  { type: "RETAIL",   label: "Retail",              desc: "Retail buildout & scope",               icon: "🏪" },
+  { type: "NONE",     label: "None",                desc: "Skip presentation",                     icon: "⊘" },
 ];
 
 export type PdfOptions = {
@@ -201,21 +201,17 @@ export default function CoverPagePickerModal({
     }
   }, [companyId, clientId]);
 
-  // Layout covers (CONSTRUCTION / ROOFING) carry their own presentation page2
-  const layoutPage2: Page2Type | null =
-    cover === "CONSTRUCTION" ? "ADDITION" : cover === "ROOFING" ? "ROOF" : null;
-  const effectivePage2: Page2Type = layoutPage2 ?? page2;
-  const noPresentation = effectivePage2 === "NONE";
+  const noPresentation = page2 === "NONE";
 
   const opts: PdfOptions = {
     coverType: cover,
-    coverBlobUrl: (cover === "CUSTOM" || cover === "CONSTRUCTION" || cover === "ROOFING") ? selectedBlobUrl : null,
-    page2: effectivePage2,
+    coverBlobUrl: cover === "CUSTOM" ? selectedBlobUrl : null,
+    page2,
     includeInsert,
     includeDivisionSummary: false,
     forcedBreakCsiPrefixes,
-    noPresentation: false,
-    scopeOfWorkId: (noPresentation || !!layoutPage2) ? null : scopeOfWorkId,
+    noPresentation,
+    scopeOfWorkId: noPresentation ? null : scopeOfWorkId,
   };
 
   function openAddScope() {
@@ -327,31 +323,7 @@ export default function CoverPagePickerModal({
 
           {/* ── PAGE 1: COVER ── */}
           <div>
-            <p className="text-xs font-semibold uppercase tracking-widest mb-2" style={{ color: "#8b949e" }}>Page 1 — Cover</p>
-
-            {/* Layout cover options */}
-            <div className="grid grid-cols-2 gap-2 mb-3">
-              {([
-                { type: "CONSTRUCTION" as CoverType, label: "Construction Page", desc: "Pages 1 & 2 — photo + WHY CHOOSE US + scope", icon: "🏗️" },
-                { type: "ROOFING" as CoverType, label: "Roofing Cover Page", desc: "Pages 1 & 2 — photo cover + roofing intro", icon: "🏠" },
-              ] as const).map(opt => {
-                const active = cover === opt.type;
-                return (
-                  <button key={opt.type} onClick={() => { setCover(opt.type); }}
-                    className="rounded-xl p-2.5 text-left transition-all"
-                    style={{ border: `2px solid ${active ? "#C9A84C" : "#30373f"}`, background: active ? "#1e2a12" : "#1e2736", outline: "none" }}>
-                    <div className="text-xl mb-1">{opt.icon}</div>
-                    <div className="text-xs font-semibold" style={{ color: active ? "#C9A84C" : "#e6edf3" }}>{opt.label}</div>
-                    <div className="text-[10px] mt-0.5" style={{ color: "#8b949e" }}>{opt.desc}</div>
-                  </button>
-                );
-              })}
-            </div>
-
-            {/* Picture for Cover Page */}
-            <p className="text-[11px] font-semibold uppercase tracking-widest mb-1.5" style={{ color: layoutPage2 ? "#C9A84C99" : "#8b949e" }}>
-              {layoutPage2 ? "Photo used in layout" : "Picture for Cover Page"}
-            </p>
+            <p className="text-xs font-semibold uppercase tracking-widest mb-2" style={{ color: "#8b949e" }}>Picture for Cover Page</p>
             {/* Horizontal scroll strip */}
             <div className="flex gap-2 overflow-x-auto pb-1" style={{ scrollbarWidth: "none" }}>
               {COVER_OPTIONS.map(opt => {
@@ -466,12 +438,7 @@ export default function CoverPagePickerModal({
           {/* ── PAGE 2: PRESENTATION + SCOPE ── */}
           <div>
             <p className="text-xs font-semibold uppercase tracking-widest mb-2" style={{ color: "#8b949e" }}>Page 2 — Presentation</p>
-            {layoutPage2 ? (
-              <div className="rounded-xl px-3 py-2.5 text-xs font-semibold" style={{ background: "#1e2a12", border: "1px solid #C9A84C44", color: "#C9A84C" }}>
-                ✓ Included automatically with {cover === "CONSTRUCTION" ? "Construction Page" : "Roofing Cover Page"}
-              </div>
-            ) : null}
-            <div className={`grid grid-cols-4 gap-2 mb-3${layoutPage2 ? " opacity-30 pointer-events-none mt-2" : ""}`}>
+            <div className="grid grid-cols-4 gap-2 mb-3">
               {PAGE2_OPTIONS.map(opt => {
                 const active = page2 === opt.type;
                 const isNone = opt.type === "NONE";
