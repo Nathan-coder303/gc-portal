@@ -392,7 +392,7 @@ function RoofIntroPage({ template, client }: Pick<TemplatePdfProps, "template" |
       <View style={{ height: 3, backgroundColor: GOLD }} />
 
       {/* Gold info bar */}
-      <View style={{ flexDirection: "row", backgroundColor: GOLD, paddingHorizontal: 28, paddingVertical: 16 }}>
+      <View style={{ flexDirection: "row", backgroundColor: GOLD, paddingHorizontal: 28, paddingVertical: 10 }}>
         <View style={{ flex: 1, justifyContent: "center" }}>
           {client?.name ? <Text style={{ fontSize: 16.5, fontFamily: "Helvetica-Bold", color: "#fff", marginBottom: 4 }}>{client.name}</Text> : null}
           {client?.address ? <Text style={{ fontSize: 10.5, color: "rgba(255,255,255,0.85)", marginBottom: 2 }}>{client.address}</Text> : null}
