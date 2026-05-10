@@ -57,7 +57,7 @@ function fmtDate(dateStr: string | null): string {
 
 const styles = StyleSheet.create({
   page: { fontFamily: "Helvetica", fontSize: 9, paddingTop: 22, paddingBottom: 54, paddingHorizontal: 40 },
-  header: { flexDirection: "row", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 12, paddingBottom: 8, borderBottomWidth: 2, borderBottomColor: GOLD },
+  header: { flexDirection: "row", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 12, paddingBottom: 8, paddingTop: 8, borderBottomWidth: 2, borderBottomColor: GOLD, borderTopWidth: 2, borderTopColor: GOLD },
 
   // Left column
   logo: { width: 76, height: 76, marginBottom: 4 },
@@ -1461,7 +1461,7 @@ function TemplatePdfDocument({ companyName, template, client, divisions, showTer
   );
 
   return (
-    <Document title={`${template.name} — Estimate`} author={companyName}>
+    <Document title={`${template.name} — Estimate`} author={companyName} hyphenationCallback={(word) => [word]}>
       {includeCoverPage && !includeAdditionPages && !includePermitPages && !includeRoofUpgradesPage && !includeRetailPages && <CoverPages template={template} client={client} clientCoverPhotoType={clientCoverPhotoType} clientCoverPhotoUrl={clientCoverPhotoUrl} clientCoverTitle={clientCoverTitle} />}
       {includeRoofUpgradesPage && <CoverPages template={template} client={client} clientCoverPhotoType={clientCoverPhotoType} clientCoverPhotoUrl={clientCoverPhotoUrl} clientCoverTitle={clientCoverTitle} />}
       {includeRoofUpgradesPage && <RoofIntroPage template={template} client={client} />}
