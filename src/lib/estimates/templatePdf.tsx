@@ -450,7 +450,20 @@ function AdditionPage1({ template, client, clientCoverPhotoType, clientCoverPhot
   const today = new Date().toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" });
   const clientCity = [client?.city, client?.state, client?.zip].filter(Boolean).join(", ");
   return (
-    <Page size="LETTER" style={{ fontFamily: "Helvetica", padding: 0 }}>
+    <Page size="LETTER" style={{ fontFamily: "Helvetica", padding: 0, paddingBottom: 36 }}>
+      {/* Fixed footer — prevents overflow to blank page 2 */}
+      <View fixed style={{ position: "absolute", bottom: 0, left: 0, right: 0, backgroundColor: DARK, paddingHorizontal: 24, paddingVertical: 9, flexDirection: "row", alignItems: "center", gap: 12 }}>
+        <Text style={{ fontSize: 8.5, color: GOLD, fontFamily: "Helvetica-Bold" }}>MIBH CONSTRUCTION</Text>
+        <Text style={{ fontSize: 7, color: "#94a3b8" }}>|</Text>
+        <Text style={{ fontSize: 8.5, color: "#94a3b8" }}>mike@mibhconstruction.com</Text>
+        <Text style={{ fontSize: 7, color: "#94a3b8" }}>|</Text>
+        <Text style={{ fontSize: 8.5, color: "#94a3b8" }}>Mike Baruh</Text>
+        <Text style={{ fontSize: 7, color: "#94a3b8" }}>|</Text>
+        <Text style={{ fontSize: 8.5, color: "#94a3b8" }}>(305) 746-7307</Text>
+        <View style={{ flex: 1 }} />
+        <Text style={{ fontSize: 8, color: "#94a3b8" }} render={({ pageNumber, totalPages }) => `Page ${pageNumber} of ${totalPages}`} />
+      </View>
+
       {/* Header */}
       <View style={{ flexDirection: "row", alignItems: "center", backgroundColor: DARK, paddingHorizontal: 24, paddingVertical: 10, gap: 14 }}>
         {/* eslint-disable-next-line jsx-a11y/alt-text */}
@@ -462,40 +475,40 @@ function AdditionPage1({ template, client, clientCoverPhotoType, clientCoverPhot
       </View>
       <View style={{ height: 3, backgroundColor: GOLD }} />
 
-      {/* Photo collage — equal padding on all 4 sides */}
-      <View style={{ paddingHorizontal: 18, paddingTop: 18, paddingBottom: 18 }}>
+      {/* Photo collage */}
+      <View style={{ paddingHorizontal: 18, paddingTop: 10, paddingBottom: 10 }}>
         {/* eslint-disable-next-line jsx-a11y/alt-text */}
-        <Image src={coverImgSrc} style={{ width: 576, height: 270, objectFit: "cover" }} />
+        <Image src={coverImgSrc} style={{ width: 576, height: 252, objectFit: "cover" }} />
       </View>
 
-      {/* Gold info rectangle */}
-      <View style={{ flexDirection: "row", backgroundColor: GOLD, paddingHorizontal: 28, paddingVertical: 22 }}>
-        {/* Left: client info — name prominent at top */}
+      {/* Gold info rectangle — compact */}
+      <View style={{ flexDirection: "row", backgroundColor: GOLD, paddingHorizontal: 28, paddingVertical: 12 }}>
+        {/* Left: client info */}
         <View style={{ flex: 1, justifyContent: "center" }}>
-          {client?.name ? <Text style={{ fontSize: 18, fontFamily: "Helvetica-Bold", color: "#fff", marginBottom: 6 }}>{client.name}</Text> : null}
-          {client?.address ? <Text style={{ fontSize: 10, color: "rgba(255,255,255,0.85)", marginBottom: 2 }}>{client.address}</Text> : null}
-          {clientCity ? <Text style={{ fontSize: 10, color: "rgba(255,255,255,0.85)", marginBottom: 2 }}>{clientCity}</Text> : null}
-          {client?.phone ? <Text style={{ fontSize: 10, color: "rgba(255,255,255,0.85)", marginBottom: 2 }}>{client.phone}</Text> : null}
-          {client?.email ? <Text style={{ fontSize: 10, color: "rgba(255,255,255,0.85)" }}>{client.email}</Text> : null}
+          {client?.name ? <Text style={{ fontSize: 14, fontFamily: "Helvetica-Bold", color: "#fff", marginBottom: 4 }}>{client.name}</Text> : null}
+          {client?.address ? <Text style={{ fontSize: 9, color: "rgba(255,255,255,0.85)", marginBottom: 2 }}>{client.address}</Text> : null}
+          {clientCity ? <Text style={{ fontSize: 9, color: "rgba(255,255,255,0.85)", marginBottom: 2 }}>{clientCity}</Text> : null}
+          {client?.phone ? <Text style={{ fontSize: 9, color: "rgba(255,255,255,0.85)", marginBottom: 2 }}>{client.phone}</Text> : null}
+          {client?.email ? <Text style={{ fontSize: 9, color: "rgba(255,255,255,0.85)" }}>{client.email}</Text> : null}
         </View>
-        <View style={{ width: 1, backgroundColor: "rgba(255,255,255,0.4)", marginVertical: 2, marginHorizontal: 24 }} />
-        {/* Right: estimate name + date — flex:1 prevents word hyphenation */}
+        <View style={{ width: 1, backgroundColor: "rgba(255,255,255,0.4)", marginVertical: 2, marginHorizontal: 20 }} />
+        {/* Right: estimate name + date */}
         <View style={{ flex: 1, justifyContent: "center" }}>
           {template.name ? (
-            <Text style={{ fontSize: 18, fontFamily: "Helvetica-Bold", color: "#fff", marginBottom: 8, lineHeight: 1.25 }}>{template.name}</Text>
+            <Text style={{ fontSize: 14, fontFamily: "Helvetica-Bold", color: "#fff", marginBottom: 5, lineHeight: 1.25 }}>{template.name}</Text>
           ) : null}
-          <Text style={{ fontSize: 11, color: "rgba(255,255,255,0.85)" }}>{today}</Text>
+          <Text style={{ fontSize: 9, color: "rgba(255,255,255,0.85)" }}>{today}</Text>
         </View>
       </View>
 
       {/* 20 Years + WHY CHOOSE */}
-      <View style={{ paddingHorizontal: 28, paddingTop: 20, paddingBottom: 14, flex: 1 }}>
-        <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "center", marginBottom: 16, gap: 12 }}>
+      <View style={{ paddingHorizontal: 28, paddingTop: 12, paddingBottom: 10, flex: 1 }}>
+        <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "center", marginBottom: 10, gap: 12 }}>
           <View style={{ flex: 1, height: 2, backgroundColor: GOLD }} />
-          <Text style={{ fontSize: 16, fontFamily: "Helvetica-Bold", color: DARK, letterSpacing: 1.5 }}>20 YEARS OF EXCELLENCE</Text>
+          <Text style={{ fontSize: 13, fontFamily: "Helvetica-Bold", color: DARK, letterSpacing: 1.5 }}>20 YEARS OF EXCELLENCE</Text>
           <View style={{ flex: 1, height: 2, backgroundColor: GOLD }} />
         </View>
-        <Text style={{ fontSize: 12, fontFamily: "Helvetica-Bold", color: DARK, marginBottom: 12, textTransform: "uppercase", letterSpacing: 0.5 }}>Why Choose Us</Text>
+        <Text style={{ fontSize: 10, fontFamily: "Helvetica-Bold", color: DARK, marginBottom: 8, textTransform: "uppercase", letterSpacing: 0.5 }}>Why Choose Us</Text>
         {[
           "Over 20 years of delivering high-quality workmanship across South Florida",
           "Licensed & insured (CGC1527069 | CCC1336817) and fully compliant with Florida Building Code (FBC 2023)",
@@ -508,25 +521,13 @@ function AdditionPage1({ template, client, clientCoverPhotoType, clientCoverPhot
           "Proven track record in both residential and high-end custom homes",
           "Strong, long-term relationships with trusted suppliers and manufacturers ensuring quality materials",
         ].map((item, i) => (
-          <View key={i} style={{ flexDirection: "row", alignItems: "flex-start", marginBottom: 6, gap: 8 }}>
-            <Text style={{ fontSize: 10, color: GOLD, fontFamily: "Helvetica-Bold" }}>•</Text>
-            <Text style={{ fontSize: 10, color: "#334155", flex: 1 }}>{item}</Text>
+          <View key={i} style={{ flexDirection: "row", alignItems: "flex-start", marginBottom: 4, gap: 8 }}>
+            <Text style={{ fontSize: 9.5, color: GOLD, fontFamily: "Helvetica-Bold" }}>•</Text>
+            <Text style={{ fontSize: 9.5, color: "#334155", flex: 1, lineHeight: 1.3 }}>{item}</Text>
           </View>
         ))}
       </View>
 
-      {/* Footer */}
-      <View style={{ backgroundColor: DARK, paddingHorizontal: 24, paddingVertical: 9, flexDirection: "row", alignItems: "center", gap: 12 }}>
-        <Text style={{ fontSize: 8.5, color: GOLD, fontFamily: "Helvetica-Bold" }}>MIBH CONSTRUCTION</Text>
-        <Text style={{ fontSize: 7, color: "#94a3b8" }}>|</Text>
-        <Text style={{ fontSize: 8.5, color: "#94a3b8" }}>mike@mibhconstruction.com</Text>
-        <Text style={{ fontSize: 7, color: "#94a3b8" }}>|</Text>
-        <Text style={{ fontSize: 8.5, color: "#94a3b8" }}>Mike Baruh</Text>
-        <Text style={{ fontSize: 7, color: "#94a3b8" }}>|</Text>
-        <Text style={{ fontSize: 8.5, color: "#94a3b8" }}>(305) 746-7307</Text>
-        <View style={{ flex: 1 }} />
-        <Text style={{ fontSize: 8, color: "#94a3b8" }} render={({ pageNumber, totalPages }) => `Page ${pageNumber} of ${totalPages}`} />
-      </View>
     </Page>
   );
 }
