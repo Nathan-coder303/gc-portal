@@ -406,19 +406,19 @@ function RoofIntroPage({ template, client }: Pick<TemplatePdfProps, "template" |
       </View>
 
       {/* Intro paragraphs */}
-      <View style={{ paddingHorizontal: 28, paddingTop: 18, paddingBottom: 14, flex: 1 }}>
-        <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "center", marginBottom: 18, gap: 12 }}>
+      <View style={{ paddingHorizontal: 28, paddingTop: 14, paddingBottom: 14, flex: 1 }}>
+        <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "center", marginBottom: 12, gap: 12 }}>
           <View style={{ flex: 1, height: 2, backgroundColor: GOLD }} />
           <Text style={{ fontSize: 13.5, fontFamily: "Helvetica-Bold", color: DARK, letterSpacing: 1 }}>SCOPE OF WORK — ROOFING</Text>
           <View style={{ flex: 1, height: 2, backgroundColor: GOLD }} />
         </View>
         {ROOF_INTRO_PARAS.map((para, i) => (
-          <Text key={i} style={{ fontSize: 10.5, color: "#334155", lineHeight: 1.75, marginBottom: 14 }}>{para}</Text>
+          <Text key={i} style={{ fontSize: 10, color: "#334155", lineHeight: 1.55, marginBottom: 9 }}>{para}</Text>
         ))}
       </View>
 
-      {/* Footer — fixed so it repeats on overflow pages */}
-      <View fixed style={{ position: "absolute", bottom: 0, left: 0, right: 0, backgroundColor: DARK, paddingHorizontal: 24, paddingVertical: 9, flexDirection: "row", alignItems: "center", gap: 12 }}>
+      {/* Footer */}
+      <View style={{ position: "absolute", bottom: 0, left: 0, right: 0, backgroundColor: DARK, paddingHorizontal: 24, paddingVertical: 9, flexDirection: "row", alignItems: "center", gap: 12 }}>
         <Text style={{ fontSize: 8.5, color: GOLD, fontFamily: "Helvetica-Bold" }}>MIBH CONSTRUCTION</Text>
         <Text style={{ fontSize: 7, color: "#94a3b8" }}>|</Text>
         <Text style={{ fontSize: 8.5, color: "#94a3b8" }}>mike@mibhconstruction.com</Text>
