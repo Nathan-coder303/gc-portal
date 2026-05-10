@@ -1,6 +1,8 @@
-import { Document, Page, Text, View, StyleSheet, renderToBuffer, Image } from "@react-pdf/renderer";
+import { Document, Page, Text, View, StyleSheet, renderToBuffer, Image, Font } from "@react-pdf/renderer";
 import React from "react";
 import path from "path";
+
+Font.registerHyphenationCallback((word) => [word]);
 
 const GOLD = "#C9A84C";
 const DARK = "#1e293b";
@@ -64,7 +66,7 @@ const styles = StyleSheet.create({
   companyInfo: { fontSize: 11, fontFamily: "Helvetica-Bold", color: DARK, marginTop: 2 },
 
   // Center column
-  centerSection: { width: "100%", alignItems: "center", paddingBottom: 6 },
+  centerSection: { alignSelf: "stretch", alignItems: "center", paddingBottom: 6 },
   centerBold: { fontSize: 15, fontFamily: "Helvetica-Bold", color: DARK, textAlign: "center", marginBottom: 4 },
 
   // Right column
@@ -1461,7 +1463,7 @@ function TemplatePdfDocument({ companyName, template, client, divisions, showTer
   );
 
   return (
-    <Document title={`${template.name} — Estimate`} author={companyName} hyphenationCallback={(word) => [word]}>
+    <Document title={`${template.name} — Estimate`} author={companyName}>
       {includeCoverPage && !includeAdditionPages && !includePermitPages && !includeRoofUpgradesPage && !includeRetailPages && <CoverPages template={template} client={client} clientCoverPhotoType={clientCoverPhotoType} clientCoverPhotoUrl={clientCoverPhotoUrl} clientCoverTitle={clientCoverTitle} />}
       {includeRoofUpgradesPage && <CoverPages template={template} client={client} clientCoverPhotoType={clientCoverPhotoType} clientCoverPhotoUrl={clientCoverPhotoUrl} clientCoverTitle={clientCoverTitle} />}
       {includeRoofUpgradesPage && <RoofIntroPage template={template} client={client} />}
