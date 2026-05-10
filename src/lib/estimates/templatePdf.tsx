@@ -817,7 +817,7 @@ function PermitDrawingsPage({ client }: Pick<TemplatePdfProps, "client">) {
         {/* Two-column sections — alignItems stretch makes both columns same height as the taller one */}
         <View style={{ flexDirection: "row", gap: 20, alignItems: "stretch" }}>
           <View style={{ flex: 1, justifyContent: "space-between" }}>
-            {PERMIT_SECTIONS.slice(0, 4).map((sec, si) => (
+            {PERMIT_SECTIONS.slice(0, 3).map((sec, si) => (
               <View key={si} style={{ marginBottom: 2 }}>
                 <Text style={{ fontSize: 10.5, fontFamily: "Helvetica-Bold", color: DARK, marginBottom: 3 }}>{sec.title}</Text>
                 <Text style={{ fontSize: 9.5, color: "#475569", lineHeight: 1.45 }}>{sec.body}</Text>
@@ -825,7 +825,7 @@ function PermitDrawingsPage({ client }: Pick<TemplatePdfProps, "client">) {
             ))}
           </View>
           <View style={{ flex: 1, justifyContent: "space-between" }}>
-            {PERMIT_SECTIONS.slice(4).map((sec, si) => (
+            {PERMIT_SECTIONS.slice(3).map((sec, si) => (
               <View key={si} style={{ marginBottom: 2 }}>
                 <Text style={{ fontSize: 10.5, fontFamily: "Helvetica-Bold", color: DARK, marginBottom: 3 }}>{sec.title}</Text>
                 <Text style={{ fontSize: 9.5, color: "#475569", lineHeight: 1.45 }}>{sec.body}</Text>
