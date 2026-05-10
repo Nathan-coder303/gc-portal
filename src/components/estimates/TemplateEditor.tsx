@@ -1673,7 +1673,7 @@ export default function TemplateEditor({
           {currentClient && template.type === "CLIENT_ESTIMATE" && (
             <a
               href={`/${template.companyId}/clients/${currentClient.id}`}
-              className="text-xs px-3 py-1.5 rounded-lg font-medium"
+              className="text-xs px-3 py-1.5 rounded-lg font-medium md:hidden"
               style={{ background: "#1e2736", border: "1px solid #30373f", color: "#8b949e" }}
             >
               ← {currentClient.name}
