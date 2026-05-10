@@ -1745,7 +1745,23 @@ export default function TemplateEditor({
               </div>
               <div>
                 <label className="block text-xs font-medium mb-1" style={{ color: "#8b949e" }}>Estimate #</label>
-                <input value={estimateNumber} onChange={(e) => setEstimateNumber(e.target.value)} placeholder="e.g. 001" className="w-full rounded-lg px-3 py-2 text-sm" style={inputStyleSm} />
+                <div className="flex gap-2">
+                  <input value={estimateNumber} onChange={(e) => setEstimateNumber(e.target.value)} placeholder="e.g. 001" className="flex-1 rounded-lg px-3 py-2 text-sm" style={inputStyleSm} />
+                  {!estimateNumber && (
+                    <button
+                      type="button"
+                      onClick={async () => {
+                        const res = await fetch(`/api/${template.companyId}/estimates/next-number`);
+                        const { next } = await res.json();
+                        setEstimateNumber(next);
+                      }}
+                      className="px-3 py-2 rounded-lg text-xs font-semibold shrink-0"
+                      style={{ background: "#C9A84C22", color: "#C9A84C", border: "1px solid #C9A84C44" }}
+                    >
+                      Auto
+                    </button>
+                  )}
+                </div>
               </div>
               <div>
                 <label className="block text-xs font-medium mb-1" style={{ color: "#8b949e" }}>Date</label>
@@ -1773,6 +1789,21 @@ export default function TemplateEditor({
                       className="text-sm w-20 px-1 focus:outline-none"
                       style={{ borderBottom: "1px dashed #30373f", background: "transparent", color: "#e6edf3" }}
                     />
+                    {!estimateNumber && (
+                      <button
+                        type="button"
+                        onClick={async () => {
+                          const res = await fetch(`/api/${template.companyId}/estimates/next-number`);
+                          const { next } = await res.json();
+                          setEstimateNumber(next);
+                          setTimeout(saveEstimateMeta, 50);
+                        }}
+                        className="text-[10px] px-1.5 py-0.5 rounded"
+                        style={{ background: "#C9A84C22", color: "#C9A84C", border: "1px solid #C9A84C44" }}
+                      >
+                        Auto
+                      </button>
+                    )}
                   </div>
                   <div className="flex items-center gap-2">
                     <span className="text-xs font-medium shrink-0" style={{ color: "#8b949e" }}>Date</span>
