@@ -412,9 +412,11 @@ function RoofIntroPage({ template, client }: Pick<TemplatePdfProps, "template" |
           <Text style={{ fontSize: 13.5, fontFamily: "Helvetica-Bold", color: DARK, letterSpacing: 1 }}>SCOPE OF WORK — ROOFING</Text>
           <View style={{ flex: 1, height: 2, backgroundColor: GOLD }} />
         </View>
-        {ROOF_INTRO_PARAS.map((para, i) => (
-          <Text key={i} style={{ fontSize: 10, color: "#334155", lineHeight: 1.55, marginBottom: 9 }}>{para}</Text>
-        ))}
+        <View style={{ flex: 1, justifyContent: "space-between" }}>
+          {ROOF_INTRO_PARAS.map((para, i) => (
+            <Text key={i} style={{ fontSize: 10.5, color: "#334155", lineHeight: 1.55 }}>{para}</Text>
+          ))}
+        </View>
       </View>
 
       {/* Footer */}
