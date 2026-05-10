@@ -449,76 +449,11 @@ export default function CoverPagePickerModal({
                     style={{ border: `2px solid ${active ? (isNone ? "#f85149" : "#C9A84C") : "#30373f"}`, background: active ? (isNone ? "#2d1b1b" : "#1e2a12") : "#1e2736", outline: "none" }}>
                     <div className="text-xl mb-1">{opt.icon}</div>
                     <div className="text-xs font-semibold" style={{ color: active ? (isNone ? "#f87171" : "#C9A84C") : "#e6edf3" }}>{opt.label}</div>
-                    <div className="text-[10px] mt-0.5" style={{ color: "#8b949e" }}>{opt.desc}</div>
                   </button>
                 );
               })}
             </div>
 
-            {/* Scope of Work — editable text page, shown when presentation is selected */}
-            {!noPresentation && companyId && (
-              <div className="rounded-xl p-3" style={{ background: "#0d1117", border: "1px solid #21262d" }}>
-                <div className="flex items-center justify-between mb-2">
-                  <span className="text-xs font-semibold uppercase tracking-widest" style={{ color: "#8b949e" }}>Custom Text Page</span>
-                  {scopeOfWorkId && selectedScope && (
-                    <button onClick={() => openEditScope(selectedScope)} className="text-[10px] px-2 py-0.5 rounded" style={{ color: "#C9A84C", border: "1px solid #C9A84C44" }}>
-                      Edit
-                    </button>
-                  )}
-                </div>
-                <select
-                  value={scopeOfWorkId ?? ""}
-                  onChange={e => {
-                    const v = e.target.value;
-                    if (v === "__add__") { openAddScope(); }
-                    else { setScopeOfWorkId(v || null); setShowAddScope(false); }
-                  }}
-                  className="w-full rounded-lg px-3 py-2 text-sm"
-                  style={{ background: "#161b22", border: `1px solid ${scopeOfWorkId ? "#C9A84C66" : "#30373f"}`, color: "#e6edf3", outline: "none" }}
-                >
-                  <option value="">None — no extra text page</option>
-                  {scopes.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
-                  <option value="__add__">+ Create new…</option>
-                </select>
-                {selectedScope && (
-                  <div className="mt-2 text-[10px] px-2 py-1 rounded" style={{ background: "#161b22", color: "#8b949e" }}>
-                    <span className="font-semibold" style={{ color: "#C9A84C" }}>{selectedScope.title}</span>
-                    <span className="ml-1.5">{selectedScope.body.slice(0, 100)}…</span>
-                  </div>
-                )}
-
-                {showAddScope && (
-                  <div className="mt-3 space-y-2">
-                    <div className="text-xs font-semibold" style={{ color: "#C9A84C" }}>{editingScope ? "Edit scope" : "New scope"}</div>
-                    <input value={scopeForm.name} onChange={e => setScopeForm(f => ({ ...f, name: e.target.value }))}
-                      placeholder="Short name (e.g. Outdoor Renovations)"
-                      className="w-full rounded-lg px-3 py-2 text-sm"
-                      style={{ background: "#161b22", border: "1px solid #30373f", color: "#e6edf3", outline: "none" }} />
-                    <input value={scopeForm.title} onChange={e => setScopeForm(f => ({ ...f, title: e.target.value }))}
-                      placeholder="PDF heading (e.g. PERMIT & DESIGN SCOPE OF WORK)"
-                      className="w-full rounded-lg px-3 py-2 text-sm"
-                      style={{ background: "#161b22", border: "1px solid #30373f", color: "#e6edf3", outline: "none" }} />
-                    <textarea value={scopeForm.body} onChange={e => setScopeForm(f => ({ ...f, body: e.target.value }))}
-                      placeholder={"Intro paragraph...\n\n1. Section Title\nSection body text..."}
-                      rows={8}
-                      className="w-full rounded-lg px-3 py-2 text-sm font-mono"
-                      style={{ background: "#161b22", border: "1px solid #30373f", color: "#e6edf3", outline: "none", resize: "vertical" }} />
-                    <div className="flex gap-2">
-                      <button onClick={handleSaveScope}
-                        disabled={savingScope || !scopeForm.name.trim() || !scopeForm.title.trim() || !scopeForm.body.trim()}
-                        className="flex-1 rounded-xl py-2 text-sm font-semibold disabled:opacity-50"
-                        style={{ background: "#C9A84C", color: "#0d1117" }}>
-                        {savingScope ? "Saving…" : "Save"}
-                      </button>
-                      <button onClick={() => { setShowAddScope(false); setEditingScope(null); }}
-                        className="px-4 py-2 rounded-xl text-sm" style={{ border: "1px solid #30373f", color: "#8b949e" }}>
-                        Cancel
-                      </button>
-                    </div>
-                  </div>
-                )}
-              </div>
-            )}
           </div>
 
           {/* ── INSERT FILE ── */}
