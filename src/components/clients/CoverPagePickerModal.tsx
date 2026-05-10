@@ -9,13 +9,14 @@ export const COVER_OPTIONS = [
 ] as const;
 
 export type CoverType = (typeof COVER_OPTIONS)[number]["type"] | "CUSTOM" | "NONE";
-export type Page2Type = "ROOF" | "ADDITION" | "RETAIL" | "NONE";
+export type Page2Type = "ROOF" | "ADDITION" | "PERMIT" | "RETAIL" | "NONE";
 
 const PAGE2_OPTIONS: { type: Page2Type; label: string; desc: string; icon: string }[] = [
-  { type: "ADDITION", label: "Construction Page",   desc: "Pages 1 & 2 — WHY CHOOSE US + scope", icon: "🏗️" },
-  { type: "ROOF",     label: "Roofing Cover Page",  desc: "Pages 1 & 2 — cover + roofing intro",  icon: "🏠" },
-  { type: "RETAIL",   label: "Retail",              desc: "Retail buildout & scope",               icon: "🏪" },
-  { type: "NONE",     label: "None",                desc: "Skip presentation",                     icon: "⊘" },
+  { type: "ADDITION", label: "Construction Page",              desc: "Pages 1 & 2 — WHY CHOOSE US + scope",        icon: "🏗️" },
+  { type: "PERMIT",   label: "Preparation of Permit Drawings", desc: "Pages 1 & 2 — WHY CHOOSE US + permit scope", icon: "📐" },
+  { type: "ROOF",     label: "Roofing Cover Page",             desc: "Pages 1 & 2 — cover + roofing intro",        icon: "🏠" },
+  { type: "RETAIL",   label: "Retail",                         desc: "Retail buildout & scope",                    icon: "🏪" },
+  { type: "NONE",     label: "None",                           desc: "Skip presentation",                          icon: "⊘" },
 ];
 
 export type PdfOptions = {

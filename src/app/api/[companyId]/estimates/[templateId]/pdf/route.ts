@@ -141,6 +141,7 @@ export async function GET(
     }),
     includeRoofUpgradesPage: page2Param ? page2Param === "ROOF" : (template.name.toLowerCase().includes("roof") && !template.name.toLowerCase().includes("retail")),
     includeAdditionPages: page2Param ? page2Param === "ADDITION" : template.name.toLowerCase().includes("addition"),
+    includePermitPages: page2Param ? page2Param === "PERMIT" : false,
     includeRetailPages: page2Param ? page2Param === "RETAIL" : template.name.toLowerCase().includes("retail"),
     includeCoverPage: cover,
     includeDivisionSummary,

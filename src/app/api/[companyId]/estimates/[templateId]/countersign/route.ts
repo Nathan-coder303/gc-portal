@@ -117,6 +117,7 @@ export async function POST(
     contractorSignedAt: counterSignedAt,
     includeRoofUpgradesPage: template.name.toLowerCase().includes("roof"),
     includeAdditionPages: template.name.toLowerCase().includes("addition"),
+    includePermitPages: false,
     includeCoverPage: true,
     insulationType: template.insulationType ?? "ISO",
   });

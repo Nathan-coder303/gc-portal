@@ -194,6 +194,7 @@ export async function POST(
       > | null) ?? null,
     includeRoofUpgradesPage: page2 ? page2 === "ROOF" : (template.name.toLowerCase().includes("roof") && !template.name.toLowerCase().includes("retail")),
     includeAdditionPages: page2 ? page2 === "ADDITION" : template.name.toLowerCase().includes("addition"),
+    includePermitPages: page2 ? page2 === "PERMIT" : false,
     includeRetailPages: page2 ? page2 === "RETAIL" : template.name.toLowerCase().includes("retail"),
     includeCoverPage: coverType !== "NONE",
     insulationType: template.insulationType ?? "ISO",

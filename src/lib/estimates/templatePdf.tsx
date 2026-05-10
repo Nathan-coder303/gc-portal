@@ -164,6 +164,7 @@ type TemplatePdfProps = {
   includeRoofUpgradesPage?: boolean;
   includeCoverPage?: boolean;
   includeAdditionPages?: boolean;
+  includePermitPages?: boolean;
   includeRetailPages?: boolean;
   includeDivisionSummary?: boolean;
   insulationType?: string | null;
@@ -378,7 +379,7 @@ function RoofIntroPage({ template, client }: Pick<TemplatePdfProps, "template" |
   const today = new Date().toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" });
   const clientCity = [client?.city, client?.state, client?.zip].filter(Boolean).join(", ");
   return (
-    <Page size="LETTER" style={{ fontFamily: "Helvetica", padding: 0 }}>
+    <Page size="LETTER" style={{ fontFamily: "Helvetica", padding: 0, paddingBottom: 48 }}>
       {/* Header */}
       <View style={{ flexDirection: "row", alignItems: "center", backgroundColor: DARK, paddingHorizontal: 24, paddingVertical: 10, gap: 14 }}>
         {/* eslint-disable-next-line jsx-a11y/alt-text */}
@@ -393,31 +394,31 @@ function RoofIntroPage({ template, client }: Pick<TemplatePdfProps, "template" |
       {/* Gold info bar */}
       <View style={{ flexDirection: "row", backgroundColor: GOLD, paddingHorizontal: 28, paddingVertical: 16 }}>
         <View style={{ flex: 1, justifyContent: "center" }}>
-          {client?.name ? <Text style={{ fontSize: 16, fontFamily: "Helvetica-Bold", color: "#fff", marginBottom: 4 }}>{client.name}</Text> : null}
-          {client?.address ? <Text style={{ fontSize: 10, color: "rgba(255,255,255,0.85)", marginBottom: 2 }}>{client.address}</Text> : null}
-          {clientCity ? <Text style={{ fontSize: 10, color: "rgba(255,255,255,0.85)" }}>{clientCity}</Text> : null}
+          {client?.name ? <Text style={{ fontSize: 17, fontFamily: "Helvetica-Bold", color: "#fff", marginBottom: 4 }}>{client.name}</Text> : null}
+          {client?.address ? <Text style={{ fontSize: 11, color: "rgba(255,255,255,0.85)", marginBottom: 2 }}>{client.address}</Text> : null}
+          {clientCity ? <Text style={{ fontSize: 11, color: "rgba(255,255,255,0.85)" }}>{clientCity}</Text> : null}
         </View>
         <View style={{ width: 1, backgroundColor: "rgba(255,255,255,0.4)", marginVertical: 2, marginHorizontal: 24 }} />
         <View style={{ flex: 1, justifyContent: "center" }}>
-          {template.name ? <Text style={{ fontSize: 16, fontFamily: "Helvetica-Bold", color: "#fff", marginBottom: 6, lineHeight: 1.25 }}>{template.name}</Text> : null}
-          <Text style={{ fontSize: 10, color: "rgba(255,255,255,0.85)" }}>{today}</Text>
+          {template.name ? <Text style={{ fontSize: 17, fontFamily: "Helvetica-Bold", color: "#fff", marginBottom: 6, lineHeight: 1.25 }}>{template.name}</Text> : null}
+          <Text style={{ fontSize: 11, color: "rgba(255,255,255,0.85)" }}>{today}</Text>
         </View>
       </View>
 
       {/* Intro paragraphs */}
       <View style={{ paddingHorizontal: 28, paddingTop: 18, paddingBottom: 14, flex: 1 }}>
-        <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "center", marginBottom: 14, gap: 12 }}>
+        <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "center", marginBottom: 18, gap: 12 }}>
           <View style={{ flex: 1, height: 2, backgroundColor: GOLD }} />
-          <Text style={{ fontSize: 13, fontFamily: "Helvetica-Bold", color: DARK, letterSpacing: 1 }}>SCOPE OF WORK — ROOFING</Text>
+          <Text style={{ fontSize: 14, fontFamily: "Helvetica-Bold", color: DARK, letterSpacing: 1 }}>SCOPE OF WORK — ROOFING</Text>
           <View style={{ flex: 1, height: 2, backgroundColor: GOLD }} />
         </View>
         {ROOF_INTRO_PARAS.map((para, i) => (
-          <Text key={i} style={{ fontSize: 10, color: "#334155", lineHeight: 1.6, marginBottom: 8 }}>{para}</Text>
+          <Text key={i} style={{ fontSize: 11, color: "#334155", lineHeight: 1.75, marginBottom: 14 }}>{para}</Text>
         ))}
       </View>
 
       {/* Footer */}
-      <View style={{ backgroundColor: DARK, paddingHorizontal: 24, paddingVertical: 9, flexDirection: "row", alignItems: "center", gap: 12 }}>
+      <View style={{ position: "absolute", bottom: 0, left: 0, right: 0, backgroundColor: DARK, paddingHorizontal: 24, paddingVertical: 9, flexDirection: "row", alignItems: "center", gap: 12 }}>
         <Text style={{ fontSize: 8.5, color: GOLD, fontFamily: "Helvetica-Bold" }}>MIBH CONSTRUCTION</Text>
         <Text style={{ fontSize: 7, color: "#94a3b8" }}>|</Text>
         <Text style={{ fontSize: 8.5, color: "#94a3b8" }}>mike@mibhconstruction.com</Text>
@@ -485,30 +486,30 @@ function AdditionPage1({ template, client, clientCoverPhotoType, clientCoverPhot
       <View style={{ flexDirection: "row", backgroundColor: GOLD, paddingHorizontal: 28, paddingVertical: 12 }}>
         {/* Left: client info */}
         <View style={{ flex: 1, justifyContent: "center" }}>
-          {client?.name ? <Text style={{ fontSize: 14, fontFamily: "Helvetica-Bold", color: "#fff", marginBottom: 4 }}>{client.name}</Text> : null}
-          {client?.address ? <Text style={{ fontSize: 9, color: "rgba(255,255,255,0.85)", marginBottom: 2 }}>{client.address}</Text> : null}
-          {clientCity ? <Text style={{ fontSize: 9, color: "rgba(255,255,255,0.85)", marginBottom: 2 }}>{clientCity}</Text> : null}
-          {client?.phone ? <Text style={{ fontSize: 9, color: "rgba(255,255,255,0.85)", marginBottom: 2 }}>{client.phone}</Text> : null}
-          {client?.email ? <Text style={{ fontSize: 9, color: "rgba(255,255,255,0.85)" }}>{client.email}</Text> : null}
+          {client?.name ? <Text style={{ fontSize: 14.5, fontFamily: "Helvetica-Bold", color: "#fff", marginBottom: 4 }}>{client.name}</Text> : null}
+          {client?.address ? <Text style={{ fontSize: 9.5, color: "rgba(255,255,255,0.85)", marginBottom: 2 }}>{client.address}</Text> : null}
+          {clientCity ? <Text style={{ fontSize: 9.5, color: "rgba(255,255,255,0.85)", marginBottom: 2 }}>{clientCity}</Text> : null}
+          {client?.phone ? <Text style={{ fontSize: 9.5, color: "rgba(255,255,255,0.85)", marginBottom: 2 }}>{client.phone}</Text> : null}
+          {client?.email ? <Text style={{ fontSize: 9.5, color: "rgba(255,255,255,0.85)" }}>{client.email}</Text> : null}
         </View>
         <View style={{ width: 1, backgroundColor: "rgba(255,255,255,0.4)", marginVertical: 2, marginHorizontal: 20 }} />
         {/* Right: estimate name + date */}
         <View style={{ flex: 1, justifyContent: "center" }}>
           {template.name ? (
-            <Text style={{ fontSize: 14, fontFamily: "Helvetica-Bold", color: "#fff", marginBottom: 5, lineHeight: 1.25 }}>{template.name}</Text>
+            <Text style={{ fontSize: 14.5, fontFamily: "Helvetica-Bold", color: "#fff", marginBottom: 5, lineHeight: 1.25 }}>{template.name}</Text>
           ) : null}
-          <Text style={{ fontSize: 9, color: "rgba(255,255,255,0.85)" }}>{today}</Text>
+          <Text style={{ fontSize: 9.5, color: "rgba(255,255,255,0.85)" }}>{today}</Text>
         </View>
       </View>
 
       {/* 20 Years + WHY CHOOSE */}
-      <View style={{ paddingHorizontal: 28, paddingTop: 12, paddingBottom: 10, flex: 1 }}>
-        <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "center", marginBottom: 10, gap: 12 }}>
+      <View style={{ paddingHorizontal: 28, paddingTop: 16, paddingBottom: 10, flex: 1 }}>
+        <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "center", marginBottom: 14, gap: 12 }}>
           <View style={{ flex: 1, height: 2, backgroundColor: GOLD }} />
-          <Text style={{ fontSize: 13, fontFamily: "Helvetica-Bold", color: DARK, letterSpacing: 1.5 }}>20 YEARS OF EXCELLENCE</Text>
+          <Text style={{ fontSize: 13.5, fontFamily: "Helvetica-Bold", color: DARK, letterSpacing: 1.5 }}>20 YEARS OF EXCELLENCE</Text>
           <View style={{ flex: 1, height: 2, backgroundColor: GOLD }} />
         </View>
-        <Text style={{ fontSize: 10, fontFamily: "Helvetica-Bold", color: DARK, marginBottom: 8, textTransform: "uppercase", letterSpacing: 0.5 }}>Why Choose Us</Text>
+        <Text style={{ fontSize: 10.5, fontFamily: "Helvetica-Bold", color: DARK, marginBottom: 10, textTransform: "uppercase", letterSpacing: 0.5 }}>Why Choose Us</Text>
         {[
           "Over 20 years of delivering high-quality workmanship across South Florida",
           "Licensed & insured (CGC1527069 | CCC1336817) and fully compliant with Florida Building Code (FBC 2023)",
@@ -521,9 +522,9 @@ function AdditionPage1({ template, client, clientCoverPhotoType, clientCoverPhot
           "Proven track record in both residential and high-end custom homes",
           "Strong, long-term relationships with trusted suppliers and manufacturers ensuring quality materials",
         ].map((item, i) => (
-          <View key={i} style={{ flexDirection: "row", alignItems: "flex-start", marginBottom: 4, gap: 8 }}>
-            <Text style={{ fontSize: 9.5, color: GOLD, fontFamily: "Helvetica-Bold" }}>•</Text>
-            <Text style={{ fontSize: 9.5, color: "#334155", flex: 1, lineHeight: 1.3 }}>{item}</Text>
+          <View key={i} style={{ flexDirection: "row", alignItems: "flex-start", marginBottom: 7, gap: 8 }}>
+            <Text style={{ fontSize: 10, color: GOLD, fontFamily: "Helvetica-Bold" }}>•</Text>
+            <Text style={{ fontSize: 10, color: "#334155", flex: 1, lineHeight: 1.35 }}>{item}</Text>
           </View>
         ))}
       </View>
@@ -697,6 +698,140 @@ function AdditionPage2({ client }: Pick<TemplatePdfProps, "client">) {
                 ))}
               </View>
             ))}
+          </View>
+        </View>
+      </View>
+
+    </Page>
+  );
+}
+
+// ─── Permit & Design Scope of Work Page ──────────────────────────────────────
+function PermitDrawingsPage({ client }: Pick<TemplatePdfProps, "client">) {
+  const logoPath = path.join(process.cwd(), "public", "logo.png");
+  const PERMIT_SECTIONS: { title: string; body: string }[] = [
+    {
+      title: "1. Pergola",
+      body: "The proposed pergola shall be shown within the architectural permit set. Final fabrication details, engineering, product approvals, and shop drawings, if required, shall be provided by the pergola manufacturer/vendor.",
+    },
+    {
+      title: "2. Outdoor Kitchen",
+      body: "The outdoor kitchen location and general layout shall be shown on the architectural plans for coordination and permit review purposes. Specialty shop drawings, engineering, and permit applications related to the outdoor kitchen components, if required, shall be provided and submitted separately by the applicable contractor/vendor.",
+    },
+    {
+      title: "3. Pool Modifications",
+      body: "The architectural permit set shall include the proposed modification to the existing pool to incorporate a beach lounge / sun shelf feature, including the general layout and related coordination details required for permit submittal.",
+    },
+    {
+      title: "4. Railings",
+      body: "The proposed railings shall be shown as part of the architectural permit drawings, including applicable locations and general construction details required for permit review. Final shop drawings, engineering calculations, fabrication details, and product approvals, if required, shall be provided by the railing manufacturer and/or specialty contractor.",
+    },
+    {
+      title: "5. Pavers",
+      body: "The paver layout shall be included within the architectural permit set for coordination purposes.",
+    },
+    {
+      title: "6. Landscaping",
+      body: "Landscape permitting, including preparation and submission of any required landscape plans, shall be performed and pulled separately by the landscape contractor.",
+    },
+    {
+      title: "7. Irrigation",
+      body: "Irrigation design, permitting, and associated specialty permits shall be provided and pulled separately by the irrigation subcontractor.",
+    },
+  ];
+  const WHAT_ITEMS = [
+    "Room Additions",
+    "Second Story Additions",
+    "Master Suite Expansions",
+    "Garage Conversions & Additions",
+    "Kitchen & Living Space Expansions",
+    "Structural Modifications & Open Layouts",
+    "Custom Outdoor Living Space",
+  ];
+  const clientName = client?.name ?? "";
+  return (
+    <Page size="LETTER" style={{ fontFamily: "Helvetica", padding: 0, paddingBottom: 36 }}>
+      {/* Footer pinned to bottom */}
+      <View fixed style={{ position: "absolute", bottom: 0, left: 0, right: 0, backgroundColor: DARK, paddingHorizontal: 24, paddingVertical: 9, flexDirection: "row", alignItems: "center", gap: 12 }}>
+        <Text style={{ fontSize: 8.5, color: GOLD, fontFamily: "Helvetica-Bold" }}>MIBH CONSTRUCTION</Text>
+        <Text style={{ fontSize: 7, color: "#94a3b8" }}>|</Text>
+        <Text style={{ fontSize: 8.5, color: "#94a3b8" }}>mike@mibhconstruction.com</Text>
+        <Text style={{ fontSize: 7, color: "#94a3b8" }}>|</Text>
+        <Text style={{ fontSize: 8.5, color: "#94a3b8" }}>Mike Baruh</Text>
+        <Text style={{ fontSize: 7, color: "#94a3b8" }}>|</Text>
+        <Text style={{ fontSize: 8.5, color: "#94a3b8" }}>(305) 746-7307</Text>
+        <View style={{ flex: 1 }} />
+        <Text style={{ fontSize: 8, color: "#94a3b8" }} render={({ pageNumber, totalPages }) => `Page ${pageNumber} of ${totalPages}`} />
+      </View>
+      {/* Header */}
+      <View style={{ flexDirection: "row", alignItems: "center", backgroundColor: DARK, paddingHorizontal: 24, paddingVertical: 10, gap: 14 }}>
+        {/* eslint-disable-next-line jsx-a11y/alt-text */}
+        <Image src={logoPath} style={{ width: 52, height: 52 }} />
+        <View style={{ flex: 1 }}>
+          <Text style={{ fontSize: 20, fontFamily: "Helvetica-Bold", color: GOLD, letterSpacing: 2 }}>MIBH CONSTRUCTION</Text>
+          <Text style={{ fontSize: 8, color: "#94a3b8", marginTop: 2 }}>Licensed &amp; Insured  |  CGC1527069  |  CCC1336817  |  2950 N 28 Terr, Hollywood, FL  |  (305) 746-7307</Text>
+        </View>
+        {clientName ? <Text style={{ fontSize: 10, color: "#94a3b8", textAlign: "right" }}>{clientName}</Text> : null}
+      </View>
+      <View style={{ height: 3, backgroundColor: GOLD }} />
+
+      {/* Main content */}
+      <View style={{ paddingHorizontal: 28, paddingTop: 14, paddingBottom: 8 }}>
+
+        {/* WHAT WE BUILD + OUR APPROACH side by side */}
+        <View style={{ flexDirection: "row", gap: 20, marginBottom: 12 }}>
+          <View style={{ flex: 1 }}>
+            <Text style={{ fontSize: 14, fontFamily: "Helvetica-Bold", color: DARK, letterSpacing: 0.5, marginBottom: 8 }}>WHAT WE BUILD</Text>
+            {WHAT_ITEMS.map((item, i) => (
+              <View key={i} style={{ flexDirection: "row", alignItems: "flex-start", marginBottom: 5, gap: 8 }}>
+                <Text style={{ fontSize: 12, color: GOLD, fontFamily: "Helvetica-Bold" }}>•</Text>
+                <Text style={{ fontSize: 12, color: "#334155", flex: 1 }}>{item}</Text>
+              </View>
+            ))}
+          </View>
+          <View style={{ width: 2, backgroundColor: GOLD, marginVertical: 2 }} />
+          <View style={{ flex: 1, paddingLeft: 6 }}>
+            <Text style={{ fontSize: 14, fontFamily: "Helvetica-Bold", color: DARK, letterSpacing: 0.5, marginBottom: 8 }}>OUR APPROACH</Text>
+            <Text style={{ fontSize: 12, color: "#334155", lineHeight: 1.6 }}>
+              We handle your project from concept to completion — including planning, engineering, permitting, and construction — ensuring a seamless process with one accountable team. You get a single point of contact, no subcontractor confusion, and full transparency from day one.
+            </Text>
+          </View>
+        </View>
+
+        {/* Scope of Work title */}
+        <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "center", marginBottom: 8, gap: 12 }}>
+          <View style={{ flex: 1, height: 1, backgroundColor: GOLD }} />
+          <Text style={{ fontSize: 15, fontFamily: "Helvetica-Bold", color: DARK, letterSpacing: 1 }}>PERMIT &amp; DESIGN SCOPE OF WORK</Text>
+          <View style={{ flex: 1, height: 1, backgroundColor: GOLD }} />
+        </View>
+
+        {/* Intro */}
+        <Text style={{ fontSize: 10, color: "#334155", lineHeight: 1.5, marginBottom: 10 }}>
+          Preparation of architectural permit drawings and related site plan revisions for the proposed outdoor improvements at the Schwartz Residence project located at 3161 NE 165th St, North Miami Beach, FL. The scope is intended to document the applicable work for permit submittal and coordination with the required specialty contractors and vendors.
+        </Text>
+
+        {/* Two-column sections */}
+        <View style={{ flexDirection: "row", gap: 20 }}>
+          <View style={{ flex: 1 }}>
+            {PERMIT_SECTIONS.slice(0, 4).map((sec, si) => (
+              <View key={si} style={{ marginTop: si === 0 ? 0 : 9, marginBottom: 2 }}>
+                <Text style={{ fontSize: 10.5, fontFamily: "Helvetica-Bold", color: DARK, marginBottom: 3 }}>{sec.title}</Text>
+                <Text style={{ fontSize: 9.5, color: "#475569", lineHeight: 1.45 }}>{sec.body}</Text>
+              </View>
+            ))}
+          </View>
+          <View style={{ flex: 1 }}>
+            {PERMIT_SECTIONS.slice(4).map((sec, si) => (
+              <View key={si} style={{ marginTop: si === 0 ? 0 : 9, marginBottom: 2 }}>
+                <Text style={{ fontSize: 10.5, fontFamily: "Helvetica-Bold", color: DARK, marginBottom: 3 }}>{sec.title}</Text>
+                <Text style={{ fontSize: 9.5, color: "#475569", lineHeight: 1.45 }}>{sec.body}</Text>
+              </View>
+            ))}
+            <View style={{ marginTop: 12 }}>
+              <Text style={{ fontSize: 9.5, color: "#475569", lineHeight: 1.45 }}>
+                <Text style={{ fontFamily: "Helvetica-Bold" }}>Exclusions: </Text>Surveys, permit expediter services, and any work, engineering, specialty permitting, product approvals, or shop drawings not specifically listed above are excluded unless otherwise noted in writing.
+              </Text>
+            </View>
           </View>
         </View>
       </View>
@@ -1166,7 +1301,7 @@ function ScopeOfWorkPage({ title, body, client }: { title: string; body: string;
   );
 }
 
-function TemplatePdfDocument({ companyName, template, client, divisions, showTerms, termsContent, paymentSchedule, gcFeePercent, summaryGroups, clientSignatureData, clientSignedByName, clientSignedAt, contractorSignatureData, contractorSignedAt, includeRoofUpgradesPage, includeCoverPage, includeAdditionPages, includeRetailPages, includeDivisionSummary, insertPageOffset, insulationType, clientCoverPhotoType, clientCoverPhotoUrl, clientCoverTitle, forcedBreakCsiPrefixes = [], scopeOfWork }: TemplatePdfProps) {
+function TemplatePdfDocument({ companyName, template, client, divisions, showTerms, termsContent, paymentSchedule, gcFeePercent, summaryGroups, clientSignatureData, clientSignedByName, clientSignedAt, contractorSignatureData, contractorSignedAt, includeRoofUpgradesPage, includeCoverPage, includeAdditionPages, includePermitPages, includeRetailPages, includeDivisionSummary, insertPageOffset, insulationType, clientCoverPhotoType, clientCoverPhotoUrl, clientCoverTitle, forcedBreakCsiPrefixes = [], scopeOfWork }: TemplatePdfProps) {
   const grouped = groupDivisions(divisions);
 
   // Compute raw totals per group label (or null for ungrouped)
@@ -1321,11 +1456,13 @@ function TemplatePdfDocument({ companyName, template, client, divisions, showTer
 
   return (
     <Document title={`${template.name} — Estimate`} author={companyName}>
-      {includeCoverPage && !includeAdditionPages && !includeRoofUpgradesPage && !includeRetailPages && <CoverPages template={template} client={client} clientCoverPhotoType={clientCoverPhotoType} clientCoverPhotoUrl={clientCoverPhotoUrl} clientCoverTitle={clientCoverTitle} />}
+      {includeCoverPage && !includeAdditionPages && !includePermitPages && !includeRoofUpgradesPage && !includeRetailPages && <CoverPages template={template} client={client} clientCoverPhotoType={clientCoverPhotoType} clientCoverPhotoUrl={clientCoverPhotoUrl} clientCoverTitle={clientCoverTitle} />}
       {includeRoofUpgradesPage && <CoverPages template={template} client={client} clientCoverPhotoType={clientCoverPhotoType} clientCoverPhotoUrl={clientCoverPhotoUrl} clientCoverTitle={clientCoverTitle} />}
       {includeRoofUpgradesPage && <RoofIntroPage template={template} client={client} />}
       {includeAdditionPages && <AdditionPage1 template={template} client={client} clientCoverPhotoType={clientCoverPhotoType} clientCoverPhotoUrl={clientCoverPhotoUrl} />}
       {includeAdditionPages && <AdditionPage2 client={client} />}
+      {includePermitPages && <AdditionPage1 template={template} client={client} clientCoverPhotoType={clientCoverPhotoType} clientCoverPhotoUrl={clientCoverPhotoUrl} />}
+      {includePermitPages && <PermitDrawingsPage client={client} />}
       {includeRetailPages && <RetailPage1 template={template} client={client} clientCoverPhotoType={clientCoverPhotoType} clientCoverPhotoUrl={clientCoverPhotoUrl} clientCoverTitle={clientCoverTitle} />}
       {includeRetailPages && <RetailPage2 client={client} />}
       {scopeOfWork && <ScopeOfWorkPage title={scopeOfWork.title} body={scopeOfWork.body} client={client} />}
@@ -1402,9 +1539,10 @@ function TemplatePdfDocument({ companyName, template, client, divisions, showTer
 
           // Count pre-content pages (pages before the main estimate <Page>)
           let prePages = 0;
-          if (includeCoverPage && !includeAdditionPages && !includeRoofUpgradesPage && !includeRetailPages) prePages++;
+          if (includeCoverPage && !includeAdditionPages && !includePermitPages && !includeRoofUpgradesPage && !includeRetailPages) prePages++;
           if (includeRoofUpgradesPage) prePages += 2; // CoverPages + RoofIntroPage
           if (includeAdditionPages) prePages += 2;
+          if (includePermitPages) prePages += 2;
           if (includeRetailPages) prePages += 2;
           if (scopeOfWork) prePages++;
           if (includeDivisionSummary && !includeRoofUpgradesPage) prePages++;
