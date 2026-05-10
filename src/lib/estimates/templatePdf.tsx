@@ -59,7 +59,7 @@ function fmtDate(dateStr: string | null): string {
 
 const styles = StyleSheet.create({
   page: { fontFamily: "Helvetica", fontSize: 9, paddingTop: 22, paddingBottom: 54, paddingHorizontal: 40 },
-  header: { flexDirection: "column", marginBottom: 12, paddingBottom: 8, paddingTop: 8, borderBottomWidth: 2, borderBottomColor: GOLD, borderTopWidth: 2, borderTopColor: GOLD },
+  header: { flexDirection: "column", marginBottom: 12, paddingBottom: 8, borderBottomWidth: 2, borderBottomColor: GOLD },
 
   // Left column
   logo: { width: 76, height: 76, marginBottom: 4 },
