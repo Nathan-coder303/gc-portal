@@ -92,6 +92,7 @@ export default function CoverPagePickerModal({
   const [cover, setCover] = useState<CoverType>(defaultCover);
   const [page2, setPage2] = useState<Page2Type>(initialPage2 === "NONE" ? "ROOF" : initialPage2);
   const [includeInsert, setIncludeInsert] = useState(true);
+  const [includeDivisionSummary, setIncludeDivisionSummary] = useState(false);
   const [forcedBreakCsiPrefixes, setForcedBreakCsiPrefixes] = useState<string[]>([]);
 
 
@@ -194,7 +195,7 @@ export default function CoverPagePickerModal({
     coverBlobUrl: cover === "CUSTOM" ? selectedBlobUrl : null,
     page2,
     includeInsert,
-    includeDivisionSummary: false,
+    includeDivisionSummary,
     forcedBreakCsiPrefixes,
     noPresentation,
     scopeOfWorkId: null,
@@ -409,6 +410,22 @@ export default function CoverPagePickerModal({
               </div>
             </div>
           )}
+
+          {/* ── DIVISION SUMMARY ── */}
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-widest mb-2" style={{ color: "#8b949e" }}>Include Division Summary Page?</p>
+            <div className="grid grid-cols-2 gap-2">
+              {[{ v: true, icon: "📊", label: "Yes", desc: "Add a summary page with division totals" }, { v: false, icon: "⊘", label: "No", desc: "Skip summary page" }].map(o => (
+                <button key={String(o.v)} onClick={() => setIncludeDivisionSummary(o.v)}
+                  className="rounded-xl p-3 text-left transition-all"
+                  style={{ border: `2px solid ${includeDivisionSummary === o.v ? "#C9A84C" : "#30373f"}`, background: includeDivisionSummary === o.v ? "#1e2a12" : "#1e2736", outline: "none" }}>
+                  <div className="text-2xl mb-1">{o.icon}</div>
+                  <div className="text-xs font-semibold" style={{ color: includeDivisionSummary === o.v ? "#C9A84C" : "#e6edf3" }}>{o.label}</div>
+                  <div className="text-[10px] mt-0.5" style={{ color: "#8b949e" }}>{o.desc}</div>
+                </button>
+              ))}
+            </div>
+          </div>
 
           {/* ── FORCE PAGE BREAK ── */}
           <div>
