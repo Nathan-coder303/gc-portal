@@ -59,7 +59,7 @@ function fmtDate(dateStr: string | null): string {
 
 const styles = StyleSheet.create({
   page: { fontFamily: "Helvetica", fontSize: 9, paddingTop: 22, paddingBottom: 54, paddingHorizontal: 40 },
-  header: { flexDirection: "column", marginBottom: 12, paddingBottom: 8, borderBottomWidth: 2, borderBottomColor: GOLD },
+  header: { flexDirection: "column", marginBottom: 12, paddingTop: 10, paddingBottom: 8, borderBottomWidth: 2, borderBottomColor: GOLD },
 
   // Left column
   logo: { width: 76, height: 76, marginBottom: 4 },
@@ -1512,8 +1512,8 @@ function TemplatePdfDocument({ companyName, template, client, divisions, showTer
               <Text style={styles.companyInfo}>CGC1527069 | CCC1336817</Text>
             </View>
 
-            {/* Right: Client */}
-            <View style={{ alignItems: "flex-end" }}>
+            {/* Right: Client — marginTop 80 aligns with address lines (below 76px logo + 4px gap) */}
+            <View style={{ alignItems: "flex-end", marginTop: 80 }}>
               {client ? (
                 <>
                   <Text style={styles.clientName}>{client.name}</Text>
