@@ -175,6 +175,7 @@ type TemplatePdfProps = {
   clientCoverTitle?: string | null;
   insertPageOffset?: number;
   forcedBreakCsiPrefixes?: string[];
+  forcedBreakTerms?: boolean;
   scopeOfWork?: { title: string; body: string } | null;
 };
 
@@ -1309,7 +1310,7 @@ function ScopeOfWorkPage({ title, body, client }: { title: string; body: string;
   );
 }
 
-function TemplatePdfDocument({ companyName, template, client, divisions, showTerms, termsContent, paymentSchedule, gcFeePercent, summaryGroups, clientSignatureData, clientSignedByName, clientSignedAt, contractorSignatureData, contractorSignedAt, includeRoofUpgradesPage, includeCoverPage, includeAdditionPages, includePermitPages, includeRetailPages, includeDivisionSummary, insertPageOffset, insulationType, clientCoverPhotoType, clientCoverPhotoUrl, clientCoverTitle, forcedBreakCsiPrefixes = [], scopeOfWork }: TemplatePdfProps) {
+function TemplatePdfDocument({ companyName, template, client, divisions, showTerms, termsContent, paymentSchedule, gcFeePercent, summaryGroups, clientSignatureData, clientSignedByName, clientSignedAt, contractorSignatureData, contractorSignedAt, includeRoofUpgradesPage, includeCoverPage, includeAdditionPages, includePermitPages, includeRetailPages, includeDivisionSummary, insertPageOffset, insulationType, clientCoverPhotoType, clientCoverPhotoUrl, clientCoverTitle, forcedBreakCsiPrefixes = [], forcedBreakTerms = false, scopeOfWork }: TemplatePdfProps) {
   const grouped = groupDivisions(divisions);
 
   // Compute raw totals per group label (or null for ungrouped)
@@ -1400,7 +1401,7 @@ function TemplatePdfDocument({ companyName, template, client, divisions, showTer
       {/* T&C */}
       {showTerms && !!termsContent && (
         <>
-          <View style={styles.sectionDivider} />
+          <View break={forcedBreakTerms} style={styles.sectionDivider} />
           <Text style={styles.sectionTitle}>Terms &amp; Conditions</Text>
           {termsContent
             ? termsContent.split(/\r?\n\r?\n|\r?\n(?=\d+[\.\)]?\s)/).map(p => p.trim()).filter(Boolean).map((para, i) => (

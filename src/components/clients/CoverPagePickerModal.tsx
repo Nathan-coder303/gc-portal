@@ -26,6 +26,7 @@ export type PdfOptions = {
   includeInsert: boolean;
   includeDivisionSummary: boolean;
   forcedBreakCsiPrefixes: string[];
+  forcedBreakTerms: boolean;
   noPresentation: boolean;
   scopeOfWorkId?: string | null;
 };
@@ -94,6 +95,7 @@ export default function CoverPagePickerModal({
   const [includeInsert, setIncludeInsert] = useState(true);
   const [includeDivisionSummary, setIncludeDivisionSummary] = useState(false);
   const [forcedBreakCsiPrefixes, setForcedBreakCsiPrefixes] = useState<string[]>([]);
+  const [forcedBreakTerms, setForcedBreakTerms] = useState(false);
 
 
   // Custom cover gallery
@@ -197,6 +199,7 @@ export default function CoverPagePickerModal({
     includeInsert,
     includeDivisionSummary,
     forcedBreakCsiPrefixes,
+    forcedBreakTerms,
     noPresentation,
     scopeOfWorkId: null,
   };
@@ -429,7 +432,7 @@ export default function CoverPagePickerModal({
 
           {/* ── FORCE PAGE BREAK ── */}
           <div>
-            <p className="text-xs font-semibold uppercase tracking-widest mb-2" style={{ color: "#8b949e" }}>Force New Page Before Division</p>
+            <p className="text-xs font-semibold uppercase tracking-widest mb-2" style={{ color: "#8b949e" }}>Force New Page Before</p>
             <div className="flex flex-wrap gap-2">
               {["02","03","04","05","06","07","08","09","10","11","12","13","14","21","22","23","26","27","28","31","32","33"].map(prefix => {
                 const on = forcedBreakCsiPrefixes.includes(prefix);
@@ -442,6 +445,12 @@ export default function CoverPagePickerModal({
                   </button>
                 );
               })}
+              <button
+                onClick={() => setForcedBreakTerms(prev => !prev)}
+                className="px-3 py-1 rounded-lg text-xs font-bold transition-all"
+                style={{ background: forcedBreakTerms ? "#C9A84C" : "#1e2736", color: forcedBreakTerms ? "#0d1117" : "#8b949e", border: `1px solid ${forcedBreakTerms ? "#C9A84C" : "#30373f"}` }}>
+                T&amp;C
+              </button>
             </div>
           </div>
 

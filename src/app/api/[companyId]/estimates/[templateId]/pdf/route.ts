@@ -49,6 +49,7 @@ export async function GET(
   const isPreview = req.nextUrl.searchParams.get("preview") === "1";
   const includeDivisionSummary = req.nextUrl.searchParams.get("divSummary") === "1";
   const forcedBreakCsiPrefixes = (req.nextUrl.searchParams.get("forcedBreakCsi") ?? "").split(",").map(s => s.trim()).filter(Boolean);
+  const forcedBreakTerms = req.nextUrl.searchParams.get("forcedBreakTerms") === "1";
 
   const includeInsert = req.nextUrl.searchParams.get("includeInsert") !== "0";
   const noPresentation = req.nextUrl.searchParams.get("noPresent") === "1";
@@ -155,6 +156,7 @@ export async function GET(
     ),
     clientCoverTitle: template.client?.coverTitle ?? null,
     forcedBreakCsiPrefixes,
+    forcedBreakTerms,
     scopeOfWork: scopeOfWork ?? null,
   });
   let finalBuffer = buffer;
