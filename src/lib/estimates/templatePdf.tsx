@@ -782,10 +782,10 @@ function PermitDrawingsPage({ client }: Pick<TemplatePdfProps, "client">) {
       <View style={{ height: 3, backgroundColor: GOLD }} />
 
       {/* Main content */}
-      <View style={{ paddingHorizontal: 28, paddingTop: 14, paddingBottom: 8, flex: 1 }}>
+      <View style={{ paddingHorizontal: 28, paddingTop: 10, paddingBottom: 6, flex: 1 }}>
 
         {/* WHAT WE BUILD + OUR APPROACH side by side */}
-        <View style={{ flexDirection: "row", gap: 20, marginBottom: 12 }}>
+        <View style={{ flexDirection: "row", gap: 20, marginBottom: 8 }}>
           <View style={{ flex: 1 }}>
             <Text style={{ fontSize: 14, fontFamily: "Helvetica-Bold", color: DARK, letterSpacing: 0.5, marginBottom: 8 }}>WHAT WE BUILD</Text>
             {WHAT_ITEMS.map((item, i) => (
@@ -805,14 +805,14 @@ function PermitDrawingsPage({ client }: Pick<TemplatePdfProps, "client">) {
         </View>
 
         {/* Scope of Work title */}
-        <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "center", marginBottom: 8, gap: 12 }}>
+        <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "center", marginBottom: 6, gap: 12 }}>
           <View style={{ flex: 1, height: 1, backgroundColor: GOLD }} />
           <Text style={{ fontSize: 15, fontFamily: "Helvetica-Bold", color: DARK, letterSpacing: 1 }}>PERMIT &amp; DESIGN SCOPE OF WORK</Text>
           <View style={{ flex: 1, height: 1, backgroundColor: GOLD }} />
         </View>
 
         {/* Intro */}
-        <Text style={{ fontSize: 11, color: "#334155", lineHeight: 1.5, marginBottom: 10 }}>
+        <Text style={{ fontSize: 11, color: "#334155", lineHeight: 1.5, marginBottom: 6 }}>
           Preparation of architectural permit drawings and related site plan revisions for the proposed outdoor improvements at the Schwartz Residence project located at 3161 NE 165th St, North Miami Beach, FL. The scope is intended to document the applicable work for permit submittal and coordination with the required specialty contractors and vendors.
         </Text>
 
