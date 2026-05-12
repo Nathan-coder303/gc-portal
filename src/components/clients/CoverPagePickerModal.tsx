@@ -117,7 +117,15 @@ export default function CoverPagePickerModal({
 
   // Custom cover gallery
   const [customCovers, setCustomCovers] = useState<CustomCover[]>([]);
-  const [selectedBlobUrl, setSelectedBlobUrl] = useState<string | null>(null);
+  const [selectedBlobUrl, setSelectedBlobUrl] = useState<string | null>(() => {
+    if (companyId) {
+      try {
+        const saved = JSON.parse(localStorage.getItem(`gc-pdf-opts-${companyId}`) ?? "null");
+        if (saved?.selectedBlobUrl) return saved.selectedBlobUrl as string;
+      } catch {}
+    }
+    return null;
+  });
   const [uploading, setUploading] = useState(false);
   const [uploadError, setUploadError] = useState<string | null>(null);
   const [dragOver, setDragOver] = useState(false);
@@ -133,9 +141,9 @@ export default function CoverPagePickerModal({
   useEffect(() => {
     if (!companyId) return;
     try {
-      localStorage.setItem(`gc-pdf-opts-${companyId}`, JSON.stringify({ coverType: cover, page2 }));
+      localStorage.setItem(`gc-pdf-opts-${companyId}`, JSON.stringify({ coverType: cover, page2, selectedBlobUrl }));
     } catch {}
-  }, [cover, page2, companyId]);
+  }, [cover, page2, selectedBlobUrl, companyId]);
 
   function getCoverName(c: CustomCover): string {
     return coverNames[c.blobUrl] ?? formatCoverName(c.filename);
@@ -157,7 +165,12 @@ export default function CoverPagePickerModal({
       .then(data => {
         const covers: CustomCover[] = data.covers ?? [];
         setCustomCovers(covers);
-        if (customCoverUrl && covers.length > 0) setSelectedBlobUrl(covers[0].blobUrl);
+        // Only auto-select first cover if no saved selection exists
+        setSelectedBlobUrl(prev => {
+          if (prev) return prev; // keep saved selection
+          if (customCoverUrl && covers.length > 0) return covers[0].blobUrl;
+          return null;
+        });
       }).catch(() => {});
   }, [companyId, customCoverUrl]);
 
