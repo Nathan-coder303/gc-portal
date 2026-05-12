@@ -1,5 +1,5 @@
 "use client";
-import { useState, useEffect, useCallback, useRef } from "react";
+import { useState, useEffect, useCallback } from "react";
 
 export const COVER_OPTIONS = [
   { type: "FLAT_ROOFS",    label: "Flat Roofs",    img: "/flat-roofs-cover.jpg",      desc: "Flat / low-slope roofing" },
@@ -89,14 +89,31 @@ export default function CoverPagePickerModal({
   onSendEmail?: (opts: PdfOptions) => void;
   onClose: () => void;
 }) {
-  const defaultCover: CoverType = initialCoverType ?? (isCommercial ? "ADDITIONS" : "FLAT_ROOFS");
-  const [cover, setCover] = useState<CoverType>(defaultCover);
-  const [page2, setPage2] = useState<Page2Type>(initialPage2 === "NONE" ? "ROOF" : initialPage2);
+  // Read saved opts synchronously so cover/page2 are correct from the very first render.
+  // This prevents the race where the save effect fires before the async load resolves,
+  // causing the client-specific initialCoverType to overwrite the company-wide saved value.
+  const [cover, setCover] = useState<CoverType>(() => {
+    if (companyId) {
+      try {
+        const saved = JSON.parse(localStorage.getItem(`gc-pdf-opts-${companyId}`) ?? "null");
+        if (saved?.coverType) return saved.coverType as CoverType;
+      } catch {}
+    }
+    return initialCoverType ?? (isCommercial ? "ADDITIONS" : "FLAT_ROOFS");
+  });
+  const [page2, setPage2] = useState<Page2Type>(() => {
+    if (companyId) {
+      try {
+        const saved = JSON.parse(localStorage.getItem(`gc-pdf-opts-${companyId}`) ?? "null");
+        if (saved?.page2) return saved.page2 as Page2Type;
+      } catch {}
+    }
+    return initialPage2 === "NONE" ? "ROOF" : initialPage2;
+  });
   const [includeInsert, setIncludeInsert] = useState(true);
   const [includeDivisionSummary, setIncludeDivisionSummary] = useState(false);
   const [forcedBreakCsiPrefixes, setForcedBreakCsiPrefixes] = useState<string[]>([]);
   const [forcedBreakTerms, setForcedBreakTerms] = useState(false);
-
 
   // Custom cover gallery
   const [customCovers, setCustomCovers] = useState<CustomCover[]>([]);
@@ -106,39 +123,19 @@ export default function CoverPagePickerModal({
   const [dragOver, setDragOver] = useState(false);
 
   // Editable cover names (localStorage)
-  const [coverNames, setCoverNames] = useState<Record<string, string>>({});
+  const [coverNames, setCoverNames] = useState<Record<string, string>>(() => {
+    try { return JSON.parse(localStorage.getItem("gc-cover-names") ?? "{}"); } catch { return {}; }
+  });
   const [editingCoverUrl, setEditingCoverUrl] = useState<string | null>(null);
   const [editingCoverName, setEditingCoverName] = useState("");
 
-  // Track whether saved opts have been loaded (prevent overwriting before load)
-  const savedOptsLoaded = useRef(false);
-
-  // Load saved PDF options + cover names from localStorage on mount
+  // Save PDF options to localStorage whenever they change
   useEffect(() => {
+    if (!companyId) return;
     try {
-      const savedNames = JSON.parse(localStorage.getItem("gc-cover-names") ?? "{}");
-      setCoverNames(savedNames);
+      localStorage.setItem(`gc-pdf-opts-${companyId}`, JSON.stringify({ coverType: cover, page2 }));
     } catch {}
-    if (!companyId) { savedOptsLoaded.current = true; return; }
-    try {
-      const saved = JSON.parse(localStorage.getItem(`gc-pdf-opts-${companyId}`) ?? "null");
-      if (saved) {
-        if (saved.coverType) setCover(saved.coverType as CoverType);
-        if (saved.page2) setPage2(saved.page2 as Page2Type);
-        if ("selectedBlobUrl" in saved) setSelectedBlobUrl(saved.selectedBlobUrl ?? null);
-      }
-    } catch {}
-    savedOptsLoaded.current = true;
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  // Save PDF options to localStorage whenever they change (after initial load)
-  useEffect(() => {
-    if (!savedOptsLoaded.current || !companyId) return;
-    try {
-      localStorage.setItem(`gc-pdf-opts-${companyId}`, JSON.stringify({ coverType: cover, page2, selectedBlobUrl }));
-    } catch {}
-  }, [cover, page2, selectedBlobUrl, companyId]);
+  }, [cover, page2, companyId]);
 
   function getCoverName(c: CustomCover): string {
     return coverNames[c.blobUrl] ?? formatCoverName(c.filename);
