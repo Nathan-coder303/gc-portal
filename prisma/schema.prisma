@@ -83,6 +83,7 @@ model Company {
   payApps           PayApp[]
   googleRefreshToken String?
   scopesOfWork      ScopeOfWork[]
+  coverNames        Json?          // { [blobUrl]: string }
 }
 
 model ScopeOfWork {

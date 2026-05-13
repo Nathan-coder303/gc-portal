@@ -130,10 +130,8 @@ export default function CoverPagePickerModal({
   const [uploadError, setUploadError] = useState<string | null>(null);
   const [dragOver, setDragOver] = useState(false);
 
-  // Editable cover names (localStorage)
-  const [coverNames, setCoverNames] = useState<Record<string, string>>(() => {
-    try { return JSON.parse(localStorage.getItem("gc-cover-names") ?? "{}"); } catch { return {}; }
-  });
+  // Editable cover names (DB-backed)
+  const [coverNames, setCoverNames] = useState<Record<string, string>>({});
   const [editingCoverUrl, setEditingCoverUrl] = useState<string | null>(null);
   const [editingCoverName, setEditingCoverName] = useState("");
 
@@ -150,12 +148,15 @@ export default function CoverPagePickerModal({
   }
 
   function saveCoverName(blobUrl: string, name: string) {
-    const trimmed = name.trim();
-    setCoverNames(prev => {
-      const updated = { ...prev, [blobUrl]: trimmed || formatCoverName(customCovers.find(c => c.blobUrl === blobUrl)?.filename ?? "") };
-      try { localStorage.setItem("gc-cover-names", JSON.stringify(updated)); } catch {}
-      return updated;
-    });
+    const trimmed = name.trim() || formatCoverName(customCovers.find(c => c.blobUrl === blobUrl)?.filename ?? "");
+    setCoverNames(prev => ({ ...prev, [blobUrl]: trimmed }));
+    if (companyId) {
+      fetch(`/api/${companyId}/covers`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ blobUrl, name: trimmed }),
+      }).catch(() => {});
+    }
   }
 
   useEffect(() => {
@@ -165,9 +166,10 @@ export default function CoverPagePickerModal({
       .then(data => {
         const covers: CustomCover[] = data.covers ?? [];
         setCustomCovers(covers);
+        if (data.coverNames) setCoverNames(data.coverNames);
         // Only auto-select first cover if no saved selection exists
         setSelectedBlobUrl(prev => {
-          if (prev) return prev; // keep saved selection
+          if (prev) return prev;
           if (customCoverUrl && covers.length > 0) return covers[0].blobUrl;
           return null;
         });

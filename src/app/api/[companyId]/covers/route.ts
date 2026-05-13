@@ -12,12 +12,16 @@ export async function GET(
   const session = await auth();
   if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-  const clients = await prisma.client.findMany({
-    where: { companyId: params.companyId },
-    select: { id: true, coverPhotoUrl: true, coverPhotoType: true },
-  });
+  const [clients, company] = await Promise.all([
+    prisma.client.findMany({
+      where: { companyId: params.companyId },
+      select: { id: true, coverPhotoUrl: true, coverPhotoType: true },
+    }),
+    prisma.company.findUnique({ where: { id: params.companyId }, select: { coverNames: true } }),
+  ]);
 
   const clientIdSet = new Set(clients.map((c) => c.id));
+  const coverNames = (company?.coverNames ?? {}) as Record<string, string>;
 
   try {
     const { blobs } = await list({
@@ -55,10 +59,9 @@ export async function GET(
       }
     }
 
-    return NextResponse.json({ covers });
+    return NextResponse.json({ covers, coverNames });
   } catch (err) {
     console.error("Failed to list company covers:", err);
-    // Fallback: return whatever is stored in the DB
     const fallback = clients
       .filter((c) => c.coverPhotoType === "CUSTOM" && c.coverPhotoUrl)
       .map((c) => ({
@@ -66,8 +69,27 @@ export async function GET(
         proxyUrl: `/api/${params.companyId}/cover-proxy?b=${encodeURIComponent(c.coverPhotoUrl!)}`,
         filename: "cover",
       }));
-    return NextResponse.json({ covers: fallback });
+    return NextResponse.json({ covers: fallback, coverNames });
   }
+}
+
+// PATCH { blobUrl, name } — save a cover display name to the DB
+export async function PATCH(
+  req: NextRequest,
+  { params }: { params: { companyId: string } }
+) {
+  const session = await auth();
+  if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
+  const { blobUrl, name } = await req.json() as { blobUrl: string; name: string };
+  if (!blobUrl) return NextResponse.json({ error: "Missing blobUrl" }, { status: 400 });
+
+  const company = await prisma.company.findUnique({ where: { id: params.companyId }, select: { coverNames: true } });
+  const existing = (company?.coverNames ?? {}) as Record<string, string>;
+  const updated = { ...existing, [blobUrl]: name };
+
+  await prisma.company.update({ where: { id: params.companyId }, data: { coverNames: updated } });
+  return NextResponse.json({ success: true });
 }
 
 // DELETE ?b=encodedBlobUrl — remove a cover blob
