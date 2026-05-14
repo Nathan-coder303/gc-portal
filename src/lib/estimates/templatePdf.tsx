@@ -1744,7 +1744,15 @@ function TemplatePdfDocument({ companyName, template, client, divisions, showTer
         });
         })()}
 
-        {/* Totals block — all kept together so ESTIMATE TOTAL never lands alone on a new page */}
+        {/* Change order notes — below items, above totals */}
+        {changeOrderNotes ? (
+          <View style={{ marginTop: 10, paddingHorizontal: 8, paddingVertical: 6, borderTopWidth: 1, borderTopColor: "#e2e8f0" }}>
+            <Text style={{ fontSize: 8.5, color: "#475569", fontFamily: "Helvetica-Bold", marginBottom: 2 }}>Notes</Text>
+            <Text style={{ fontSize: 8.5, color: "#1e293b" }}>{changeOrderNotes}</Text>
+          </View>
+        ) : null}
+
+        {/* Totals block — all kept together so TOTAL never lands alone on a new page */}
         <View wrap={false}>
           {hasAllowances && (
             <View style={[styles.grandTotalBar, { marginTop: 6, backgroundColor: "#2d2410" }]}>
@@ -1769,18 +1777,10 @@ function TemplatePdfDocument({ companyName, template, client, divisions, showTer
           )}
 
           <View style={[styles.grandTotalBar, { marginTop: gcFeeAmount > 0 ? 4 : (allowancesTotal > 0 ? 4 : 6) }]}>
-            <Text style={styles.grandTotalLabel}>ESTIMATE TOTAL</Text>
+            <Text style={styles.grandTotalLabel}>{hideEstimateLabel ? "TOTAL" : "ESTIMATE TOTAL"}</Text>
             <Text style={GRAND_TOTAL_VALUE_STYLE}>${fmt(grandTotalWithGc)}</Text>
           </View>
         </View>
-
-        {/* Change order notes */}
-        {changeOrderNotes ? (
-          <View style={{ marginTop: 10, paddingHorizontal: 8, paddingVertical: 6, borderTopWidth: 1, borderTopColor: "#e2e8f0" }}>
-            <Text style={{ fontSize: 8.5, color: "#475569", fontFamily: "Helvetica-Bold", marginBottom: 2 }}>Notes</Text>
-            <Text style={{ fontSize: 8.5, color: "#1e293b" }}>{changeOrderNotes}</Text>
-          </View>
-        ) : null}
 
         {/* Payment terms + signature: inline when no extra page */}
         {!includeRoofUpgradesPage && paymentTermsSignatureBlock}
