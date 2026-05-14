@@ -1,5 +1,5 @@
 import { Document, Page, Text, View, StyleSheet, renderToBuffer, Image, Font } from "@react-pdf/renderer";
-import React from "react";
+import React, { createContext, useContext } from "react";
 import path from "path";
 
 Font.registerHyphenationCallback((word) => [word]);
@@ -42,8 +42,8 @@ function getBranding(partial?: Partial<CompanyBranding> | null): CompanyBranding
   };
 }
 
-const BrandingContext = React.createContext<CompanyBranding>(MIBH_DEFAULTS);
-const useBranding = () => React.useContext(BrandingContext);
+const BrandingContext = createContext<CompanyBranding>(MIBH_DEFAULTS);
+const useBranding = () => useContext(BrandingContext);
 
 const GOLD = "#C9A84C";
 const DARK = "#1e293b";
