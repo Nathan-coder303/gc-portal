@@ -92,11 +92,13 @@ export async function GET(
       logoSrc: companyLogoDataUrl || undefined,
     },
     template: {
-      name: changeOrder.orderNumber ? `Change Order ${changeOrder.orderNumber}` : "Change Order",
-      description: changeOrder.title,
-      estimateNumber: changeOrder.orderNumber ?? null,
+      name: changeOrder.orderNumber ? `Change Order ${changeOrder.orderNumber}` : changeOrder.title,
+      description: null,
+      estimateNumber: null,
       estimateDate: changeOrder.createdAt.toISOString().split("T")[0],
     },
+    hideEstimateLabel: true,
+    changeOrderNotes: changeOrder.notes ?? null,
     client: changeOrder.client
       ? {
           name: changeOrder.client.name,

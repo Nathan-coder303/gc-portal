@@ -221,6 +221,8 @@ type TemplatePdfProps = {
   forcedBreakTerms?: boolean;
   scopeOfWork?: { title: string; body: string } | null;
   branding?: Partial<CompanyBranding> | null;
+  hideEstimateLabel?: boolean;
+  changeOrderNotes?: string | null;
 };
 
 function ItemTableHeader({ showLineNum }: { showLineNum?: boolean }) {
@@ -1357,7 +1359,7 @@ function ScopeOfWorkPage({ title, body, client }: { title: string; body: string;
   );
 }
 
-function TemplatePdfDocument({ companyName, template, client, divisions, showTerms, termsContent, paymentSchedule, gcFeePercent, summaryGroups, clientSignatureData, clientSignedByName, clientSignedAt, contractorSignatureData, contractorSignedAt, includeRoofUpgradesPage, includeCoverPage, includeAdditionPages, includePermitPages, includeRetailPages, includeDivisionSummary, insertPageOffset, insulationType, clientCoverPhotoType, clientCoverPhotoUrl, clientCoverTitle, forcedBreakCsiPrefixes = [], forcedBreakTerms = false, scopeOfWork }: TemplatePdfProps) {
+function TemplatePdfDocument({ companyName, template, client, divisions, showTerms, termsContent, paymentSchedule, gcFeePercent, summaryGroups, clientSignatureData, clientSignedByName, clientSignedAt, contractorSignatureData, contractorSignedAt, includeRoofUpgradesPage, includeCoverPage, includeAdditionPages, includePermitPages, includeRetailPages, includeDivisionSummary, insertPageOffset, insulationType, clientCoverPhotoType, clientCoverPhotoUrl, clientCoverTitle, forcedBreakCsiPrefixes = [], forcedBreakTerms = false, scopeOfWork, hideEstimateLabel = false, changeOrderNotes }: TemplatePdfProps) {
   const branding = useBranding();
   const grouped = groupDivisions(divisions);
 
@@ -1547,7 +1549,7 @@ function TemplatePdfDocument({ companyName, template, client, divisions, showTer
             <Text style={styles.centerBold}>Scope of Work:</Text>
             <Text style={styles.centerBold}>{template.name}</Text>
             {dateDisplay ? <Text style={styles.centerBold}>{dateDisplay}</Text> : null}
-            <Text style={styles.centerBold}>{template.estimateNumber ? `Estimate #${template.estimateNumber}` : "ESTIMATE"}</Text>
+            {!hideEstimateLabel && <Text style={styles.centerBold}>{template.estimateNumber ? `Estimate #${template.estimateNumber}` : "ESTIMATE"}</Text>}
           </View>
 
           {/* Bottom row: Logo + company left, client right */}
@@ -1771,6 +1773,14 @@ function TemplatePdfDocument({ companyName, template, client, divisions, showTer
             <Text style={GRAND_TOTAL_VALUE_STYLE}>${fmt(grandTotalWithGc)}</Text>
           </View>
         </View>
+
+        {/* Change order notes */}
+        {changeOrderNotes ? (
+          <View style={{ marginTop: 10, paddingHorizontal: 8, paddingVertical: 6, borderTopWidth: 1, borderTopColor: "#e2e8f0" }}>
+            <Text style={{ fontSize: 8.5, color: "#475569", fontFamily: "Helvetica-Bold", marginBottom: 2 }}>Notes</Text>
+            <Text style={{ fontSize: 8.5, color: "#1e293b" }}>{changeOrderNotes}</Text>
+          </View>
+        ) : null}
 
         {/* Payment terms + signature: inline when no extra page */}
         {!includeRoofUpgradesPage && paymentTermsSignatureBlock}
