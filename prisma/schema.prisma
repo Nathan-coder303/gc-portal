@@ -84,6 +84,14 @@ model Company {
   googleRefreshToken String?
   scopesOfWork      ScopeOfWork[]
   coverNames        Json?          // { [blobUrl]: string }
+  address           String?
+  phone             String?
+  email             String?
+  licenses          String?
+  tagline           String?
+  logoUrl           String?
+  website           String?
+  contactName       String?
 }
 
 model ScopeOfWork {

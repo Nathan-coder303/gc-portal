@@ -16,6 +16,21 @@ const DEFAULT_PAYMENT_SCHEDULE = [
   { payment: "Completion", trigger: "Final inspection / punchlist", pct: 10 },
 ];
 
+async function resolvePrivateCoverUrl(blobUrl: string | null): Promise<string | null> {
+  if (!blobUrl) return null;
+  try {
+    const res = await fetch(blobUrl, {
+      headers: { Authorization: `Bearer ${process.env.BLOB_READ_WRITE_TOKEN}` },
+    });
+    if (!res.ok) return null;
+    const ab = await res.arrayBuffer();
+    const mt = res.headers.get("content-type") ?? "image/jpeg";
+    return `data:${mt};base64,${Buffer.from(ab).toString("base64")}`;
+  } catch {
+    return null;
+  }
+}
+
 function getOAuthClient() {
   const oauth2Client = new google.auth.OAuth2(
     process.env.GOOGLE_CLIENT_ID,
@@ -93,8 +108,22 @@ export async function POST(
     })),
   }));
 
+  const co = template.company;
+  const companyLogoDataUrl = co?.logoUrl ? await resolvePrivateCoverUrl(co.logoUrl) : null;
+
   const buffer = await renderTemplatePdf({
-    companyName: template.company?.name ?? "MIBH Construction",
+    companyName: co?.name ?? "MIBH Construction",
+    branding: co ? {
+      name: co.name || undefined,
+      address: co.address || undefined,
+      phone: co.phone || undefined,
+      email: co.email || undefined,
+      licenses: co.licenses || undefined,
+      tagline: co.tagline || undefined,
+      website: co.website || undefined,
+      contactName: co.contactName || undefined,
+      logoSrc: companyLogoDataUrl || undefined,
+    } : null,
     template: {
       name: template.name,
       description: template.description,

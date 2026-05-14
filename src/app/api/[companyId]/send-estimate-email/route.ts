@@ -161,8 +161,21 @@ export async function POST(
     })),
   }));
 
+  const companyLogoDataUrl = company.logoUrl ? await resolvePrivateCoverUrl(company.logoUrl) : null;
+
   const buffer = await renderTemplatePdf({
     companyName: company.name,
+    branding: {
+      name: company.name || undefined,
+      address: company.address || undefined,
+      phone: company.phone || undefined,
+      email: company.email || undefined,
+      licenses: company.licenses || undefined,
+      tagline: company.tagline || undefined,
+      website: company.website || undefined,
+      contactName: company.contactName || undefined,
+      logoSrc: companyLogoDataUrl || undefined,
+    },
     template: {
       name: template.name,
       description: template.description,

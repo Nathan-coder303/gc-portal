@@ -4,6 +4,47 @@ import path from "path";
 
 Font.registerHyphenationCallback((word) => [word]);
 
+export type CompanyBranding = {
+  name: string;
+  address: string;
+  phone: string;
+  email: string;
+  licenses: string;
+  tagline: string;
+  website: string;
+  contactName: string;
+  logoSrc: string; // local file path or base64 data URL
+};
+
+const MIBH_DEFAULTS: CompanyBranding = {
+  name: "MIBH Construction",
+  address: "2950 N 28 Terr, Hollywood, FL 33020",
+  phone: "(305) 746-7307",
+  email: "mike@mibhconstruction.com",
+  licenses: "CGC1527069 | CCC1336817",
+  tagline: "20 YEARS OF EXCELLENCE",
+  website: "mibhconstruction.com",
+  contactName: "Mike Baruh",
+  logoSrc: path.join(process.cwd(), "public", "logo.png"),
+};
+
+function getBranding(partial?: Partial<CompanyBranding> | null): CompanyBranding {
+  return {
+    name: partial?.name || MIBH_DEFAULTS.name,
+    address: partial?.address || MIBH_DEFAULTS.address,
+    phone: partial?.phone || MIBH_DEFAULTS.phone,
+    email: partial?.email || MIBH_DEFAULTS.email,
+    licenses: partial?.licenses || MIBH_DEFAULTS.licenses,
+    tagline: partial?.tagline || MIBH_DEFAULTS.tagline,
+    website: partial?.website || MIBH_DEFAULTS.website,
+    contactName: partial?.contactName || MIBH_DEFAULTS.contactName,
+    logoSrc: partial?.logoSrc || MIBH_DEFAULTS.logoSrc,
+  };
+}
+
+const BrandingContext = React.createContext<CompanyBranding>(MIBH_DEFAULTS);
+const useBranding = () => React.useContext(BrandingContext);
+
 const GOLD = "#C9A84C";
 const DARK = "#1e293b";
 
@@ -177,6 +218,7 @@ type TemplatePdfProps = {
   forcedBreakCsiPrefixes?: string[];
   forcedBreakTerms?: boolean;
   scopeOfWork?: { title: string; body: string } | null;
+  branding?: Partial<CompanyBranding> | null;
 };
 
 function ItemTableHeader({ showLineNum }: { showLineNum?: boolean }) {
@@ -231,7 +273,7 @@ function ItemRow({ item, index, lineNum }: { item: Item; index: number; lineNum?
 
 // ─── Presentation Cover Page (single page) ────────────────────────────────────
 function CoverPages({ template, client, clientCoverPhotoType, clientCoverPhotoUrl, clientCoverTitle }: Pick<TemplatePdfProps, "template" | "client" | "clientCoverPhotoType" | "clientCoverPhotoUrl" | "clientCoverTitle">) {
-  const logoPath = path.join(process.cwd(), "public", "logo.png");
+  const { logoSrc: logoPath, name: companyDisplayName, address: companyAddress, phone: companyPhone, email: companyEmail, licenses: companyLicenses, tagline: companyTagline, contactName: companyContactName } = useBranding();
   const templateNameLower = template.name?.toLowerCase() ?? "";
   const isKitchenLaundry = templateNameLower.includes("kitchen") || templateNameLower.includes("laundry");
 
@@ -263,8 +305,8 @@ function CoverPages({ template, client, clientCoverPhotoType, clientCoverPhotoUr
         {/* eslint-disable-next-line jsx-a11y/alt-text */}
         <Image src={logoPath} style={{ width: 52, height: 52 }} />
         <View>
-          <Text style={{ fontSize: 20, fontFamily: "Helvetica-Bold", color: GOLD, letterSpacing: 2 }}>MIBH CONSTRUCTION</Text>
-          <Text style={{ fontSize: 8, color: "#94a3b8", marginTop: 2 }}>Licensed &amp; Insured  |  CGC1527069  |  CCC1336817  |  2950 N 28 Terr, Hollywood, FL  |  (305) 746-7307</Text>
+          <Text style={{ fontSize: 20, fontFamily: "Helvetica-Bold", color: GOLD, letterSpacing: 2 }}>{companyDisplayName.toUpperCase()}</Text>
+          <Text style={{ fontSize: 8, color: "#94a3b8", marginTop: 2 }}>Licensed &amp; Insured  |  {companyLicenses}  |  {companyAddress}  |  {companyPhone}</Text>
         </View>
       </View>
       <View style={{ height: 3, backgroundColor: GOLD }} />
@@ -302,12 +344,12 @@ function CoverPages({ template, client, clientCoverPhotoType, clientCoverPhotoUr
       <View style={{ paddingHorizontal: 28, paddingTop: 20, paddingBottom: 14, flex: 1 }}>
         <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "center", marginBottom: 16, gap: 12 }}>
           <View style={{ flex: 1, height: 2, backgroundColor: GOLD }} />
-          <Text style={{ fontSize: 16, fontFamily: "Helvetica-Bold", color: DARK, letterSpacing: 1.5 }}>20 YEARS OF EXCELLENCE</Text>
+          <Text style={{ fontSize: 16, fontFamily: "Helvetica-Bold", color: DARK, letterSpacing: 1.5 }}>{companyTagline.toUpperCase()}</Text>
           <View style={{ flex: 1, height: 2, backgroundColor: GOLD }} />
         </View>
         <Text style={{ fontSize: 12, fontFamily: "Helvetica-Bold", color: DARK, marginBottom: 12, textTransform: "uppercase", letterSpacing: 0.5 }}>Why Choose Us</Text>
         {[
-          "Licensed & Insured — CGC1527069 | CCC1336817",
+          `Licensed & Insured — ${companyLicenses}`,
           "Miami-Dade Approved Materials & NOA Certified",
           "Florida Building Code 2023 Compliant",
           "Expert Teams for All Roofing Systems: Shingle, Tile, Metal, TPO, Flat",
@@ -324,13 +366,13 @@ function CoverPages({ template, client, clientCoverPhotoType, clientCoverPhotoUr
 
       {/* Footer */}
       <View style={{ backgroundColor: DARK, paddingHorizontal: 24, paddingVertical: 9, flexDirection: "row", alignItems: "center", gap: 12 }}>
-        <Text style={{ fontSize: 8.5, color: GOLD, fontFamily: "Helvetica-Bold" }}>MIBH CONSTRUCTION</Text>
+        <Text style={{ fontSize: 8.5, color: GOLD, fontFamily: "Helvetica-Bold" }}>{companyDisplayName.toUpperCase()}</Text>
         <Text style={{ fontSize: 7, color: "#94a3b8" }}>|</Text>
-        <Text style={{ fontSize: 8.5, color: "#94a3b8" }}>mike@mibhconstruction.com</Text>
+        <Text style={{ fontSize: 8.5, color: "#94a3b8" }}>{companyEmail}</Text>
         <Text style={{ fontSize: 7, color: "#94a3b8" }}>|</Text>
-        <Text style={{ fontSize: 8.5, color: "#94a3b8" }}>Mike Baruh</Text>
+        <Text style={{ fontSize: 8.5, color: "#94a3b8" }}>{companyContactName}</Text>
         <Text style={{ fontSize: 7, color: "#94a3b8" }}>|</Text>
-        <Text style={{ fontSize: 8.5, color: "#94a3b8" }}>(305) 746-7307</Text>
+        <Text style={{ fontSize: 8.5, color: "#94a3b8" }}>{companyPhone}</Text>
         <View style={{ flex: 1 }} />
         <Text style={{ fontSize: 8, color: "#94a3b8" }} render={({ pageNumber, totalPages }) => `Page ${pageNumber} of ${totalPages}`} />
       </View>
@@ -366,19 +408,22 @@ function applyInsulationFilter(name: string, insulationType: string | null | und
 }
 
 // ─── Roof Introduction Page ────────────────────────────────────────────────────
-const ROOF_INTRO_PARAS = [
-  "We appreciate your consideration and look forward to delivering the high-quality workmanship and customer service MIBH Construction is known for in South Florida. This proposal outlines the manpower, materials, equipment, and installation standards required to complete your roofing project in full compliance with Florida Building Code (FBC 2023), Miami-Dade standards, and manufacturer specifications.",
-  "1. MIBH Construction will handle the full permit application process by preparing all required documents, including permit forms, Notice of Commencement (if needed), product approvals/Miami-Dade NOAs, roof plans, scope of work, and all contractor credentials. Once the permit package is complete, we will submit it to the appropriate Building Department, pay or coordinate permitting fees, respond to any city comments or requested revisions, and track the application until full approval is issued.",
-  "2. Manpower Provided — MIBH Construction will supply: Certified roofing technicians · Project manager/supervisor · Safety-compliant crew (OSHA trained) · Cleanup team for daily and final site maintenance. Our team is experienced in commercial and residential roofing systems, including shingle, tile, metal, TPO, hot mop, and modified bitumen.",
-  "3. Equipment Provided — We will provide all required equipment, including: Tear-off machinery & power tools · Dump trailer or roll-off dumpster · Ladders, lifts, scaffolding (as needed) · Full safety gear and fall protection systems. All equipment is maintained to ensure safe, efficient operations.",
-  "4. Materials & Installation Standards — MIBH Construction uses only approved, high-quality roofing materials installed following: FBC 2023 and local code requirements · Miami-Dade NOA specifications · Manufacturer-approved installation practices · South Florida high-wind performance requirements. This ensures durability, waterproofing integrity, and warranty eligibility.",
-  "5. Tarps and coverings for landscaping & AC units. Clear job-site organization and debris control. OSHA fall-protection procedures. Daily cleanup and end-of-project magnetic sweep.",
-  "6. Remove all debris and materials. Conduct a full walkthrough. Prepare for city/county inspections. Provide warranty documentation as applicable.",
-  "We appreciate your consideration and look forward to working with you. Please reach out with any questions or adjustments you would like added to this proposal.",
-];
+function getRoofIntroParagraphs(co: string) {
+  return [
+    `We appreciate your consideration and look forward to delivering the high-quality workmanship and customer service ${co} is known for in South Florida. This proposal outlines the manpower, materials, equipment, and installation standards required to complete your roofing project in full compliance with Florida Building Code (FBC 2023), Miami-Dade standards, and manufacturer specifications.`,
+    `1. ${co} will handle the full permit application process by preparing all required documents, including permit forms, Notice of Commencement (if needed), product approvals/Miami-Dade NOAs, roof plans, scope of work, and all contractor credentials. Once the permit package is complete, we will submit it to the appropriate Building Department, pay or coordinate permitting fees, respond to any city comments or requested revisions, and track the application until full approval is issued.`,
+    `2. Manpower Provided — ${co} will supply: Certified roofing technicians · Project manager/supervisor · Safety-compliant crew (OSHA trained) · Cleanup team for daily and final site maintenance. Our team is experienced in commercial and residential roofing systems, including shingle, tile, metal, TPO, hot mop, and modified bitumen.`,
+    "3. Equipment Provided — We will provide all required equipment, including: Tear-off machinery & power tools · Dump trailer or roll-off dumpster · Ladders, lifts, scaffolding (as needed) · Full safety gear and fall protection systems. All equipment is maintained to ensure safe, efficient operations.",
+    `4. Materials & Installation Standards — ${co} uses only approved, high-quality roofing materials installed following: FBC 2023 and local code requirements · Miami-Dade NOA specifications · Manufacturer-approved installation practices · South Florida high-wind performance requirements. This ensures durability, waterproofing integrity, and warranty eligibility.`,
+    "5. Tarps and coverings for landscaping & AC units. Clear job-site organization and debris control. OSHA fall-protection procedures. Daily cleanup and end-of-project magnetic sweep.",
+    "6. Remove all debris and materials. Conduct a full walkthrough. Prepare for city/county inspections. Provide warranty documentation as applicable.",
+    "We appreciate your consideration and look forward to working with you. Please reach out with any questions or adjustments you would like added to this proposal.",
+  ];
+}
 
 function RoofIntroPage({ template, client }: Pick<TemplatePdfProps, "template" | "client">) {
-  const logoPath = path.join(process.cwd(), "public", "logo.png");
+  const { logoSrc: logoPath, name: companyDisplayName, address: companyAddress, phone: companyPhone, email: companyEmail, licenses: companyLicenses, tagline: companyTagline, contactName: companyContactName } = useBranding();
+  const ROOF_INTRO_PARAS = getRoofIntroParagraphs(companyDisplayName);
   const today = new Date().toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" });
   const clientCity = [client?.city, client?.state, client?.zip].filter(Boolean).join(", ");
   return (
@@ -388,8 +433,8 @@ function RoofIntroPage({ template, client }: Pick<TemplatePdfProps, "template" |
         {/* eslint-disable-next-line jsx-a11y/alt-text */}
         <Image src={logoPath} style={{ width: 52, height: 52 }} />
         <View>
-          <Text style={{ fontSize: 20, fontFamily: "Helvetica-Bold", color: GOLD, letterSpacing: 2 }}>MIBH CONSTRUCTION</Text>
-          <Text style={{ fontSize: 8, color: "#94a3b8", marginTop: 2 }}>Licensed &amp; Insured  |  CGC1527069  |  CCC1336817  |  2950 N 28 Terr, Hollywood, FL  |  (305) 746-7307</Text>
+          <Text style={{ fontSize: 20, fontFamily: "Helvetica-Bold", color: GOLD, letterSpacing: 2 }}>{companyDisplayName.toUpperCase()}</Text>
+          <Text style={{ fontSize: 8, color: "#94a3b8", marginTop: 2 }}>Licensed &amp; Insured  |  {companyLicenses}  |  {companyAddress}  |  {companyPhone}</Text>
         </View>
       </View>
       <View style={{ height: 3, backgroundColor: GOLD }} />
@@ -424,13 +469,13 @@ function RoofIntroPage({ template, client }: Pick<TemplatePdfProps, "template" |
 
       {/* Footer */}
       <View style={{ position: "absolute", bottom: 0, left: 0, right: 0, backgroundColor: DARK, paddingHorizontal: 24, paddingVertical: 9, flexDirection: "row", alignItems: "center", gap: 12 }}>
-        <Text style={{ fontSize: 8.5, color: GOLD, fontFamily: "Helvetica-Bold" }}>MIBH CONSTRUCTION</Text>
+        <Text style={{ fontSize: 8.5, color: GOLD, fontFamily: "Helvetica-Bold" }}>{companyDisplayName.toUpperCase()}</Text>
         <Text style={{ fontSize: 7, color: "#94a3b8" }}>|</Text>
-        <Text style={{ fontSize: 8.5, color: "#94a3b8" }}>mike@mibhconstruction.com</Text>
+        <Text style={{ fontSize: 8.5, color: "#94a3b8" }}>{companyEmail}</Text>
         <Text style={{ fontSize: 7, color: "#94a3b8" }}>|</Text>
-        <Text style={{ fontSize: 8.5, color: "#94a3b8" }}>Mike Baruh</Text>
+        <Text style={{ fontSize: 8.5, color: "#94a3b8" }}>{companyContactName}</Text>
         <Text style={{ fontSize: 7, color: "#94a3b8" }}>|</Text>
-        <Text style={{ fontSize: 8.5, color: "#94a3b8" }}>(305) 746-7307</Text>
+        <Text style={{ fontSize: 8.5, color: "#94a3b8" }}>{companyPhone}</Text>
         <View style={{ flex: 1 }} />
         <Text style={{ fontSize: 8, color: "#94a3b8" }} render={({ pageNumber, totalPages }) => `Page ${pageNumber} of ${totalPages}`} />
       </View>
@@ -440,7 +485,7 @@ function RoofIntroPage({ template, client }: Pick<TemplatePdfProps, "template" |
 
 // ─── Addition Marketing Page (Page 1) ─────────────────────────────────────────
 function AdditionPage1({ template, client, clientCoverPhotoType, clientCoverPhotoUrl }: Pick<TemplatePdfProps, "template" | "client" | "clientCoverPhotoType" | "clientCoverPhotoUrl">) {
-  const logoPath = path.join(process.cwd(), "public", "logo.png");
+  const { logoSrc: logoPath, name: companyDisplayName, address: companyAddress, phone: companyPhone, email: companyEmail, licenses: companyLicenses, tagline: companyTagline, contactName: companyContactName } = useBranding();
   let coverImgSrc: string;
   if (clientCoverPhotoType === "CUSTOM" && clientCoverPhotoUrl) {
     coverImgSrc = clientCoverPhotoUrl;
@@ -459,13 +504,13 @@ function AdditionPage1({ template, client, clientCoverPhotoType, clientCoverPhot
     <Page size="LETTER" style={{ fontFamily: "Helvetica", padding: 0, paddingBottom: 36 }}>
       {/* Fixed footer — prevents overflow to blank page 2 */}
       <View fixed style={{ position: "absolute", bottom: 0, left: 0, right: 0, backgroundColor: DARK, paddingHorizontal: 24, paddingVertical: 9, flexDirection: "row", alignItems: "center", gap: 12 }}>
-        <Text style={{ fontSize: 8.5, color: GOLD, fontFamily: "Helvetica-Bold" }}>MIBH CONSTRUCTION</Text>
+        <Text style={{ fontSize: 8.5, color: GOLD, fontFamily: "Helvetica-Bold" }}>{companyDisplayName.toUpperCase()}</Text>
         <Text style={{ fontSize: 7, color: "#94a3b8" }}>|</Text>
-        <Text style={{ fontSize: 8.5, color: "#94a3b8" }}>mike@mibhconstruction.com</Text>
+        <Text style={{ fontSize: 8.5, color: "#94a3b8" }}>{companyEmail}</Text>
         <Text style={{ fontSize: 7, color: "#94a3b8" }}>|</Text>
-        <Text style={{ fontSize: 8.5, color: "#94a3b8" }}>Mike Baruh</Text>
+        <Text style={{ fontSize: 8.5, color: "#94a3b8" }}>{companyContactName}</Text>
         <Text style={{ fontSize: 7, color: "#94a3b8" }}>|</Text>
-        <Text style={{ fontSize: 8.5, color: "#94a3b8" }}>(305) 746-7307</Text>
+        <Text style={{ fontSize: 8.5, color: "#94a3b8" }}>{companyPhone}</Text>
         <View style={{ flex: 1 }} />
         <Text style={{ fontSize: 8, color: "#94a3b8" }} render={({ pageNumber, totalPages }) => `Page ${pageNumber} of ${totalPages}`} />
       </View>
@@ -475,8 +520,8 @@ function AdditionPage1({ template, client, clientCoverPhotoType, clientCoverPhot
         {/* eslint-disable-next-line jsx-a11y/alt-text */}
         <Image src={logoPath} style={{ width: 52, height: 52 }} />
         <View>
-          <Text style={{ fontSize: 20, fontFamily: "Helvetica-Bold", color: GOLD, letterSpacing: 2 }}>MIBH CONSTRUCTION</Text>
-          <Text style={{ fontSize: 8, color: "#94a3b8", marginTop: 2 }}>Licensed &amp; Insured  |  CGC1527069  |  CCC1336817  |  2950 N 28 Terr, Hollywood, FL  |  (305) 746-7307</Text>
+          <Text style={{ fontSize: 20, fontFamily: "Helvetica-Bold", color: GOLD, letterSpacing: 2 }}>{companyDisplayName.toUpperCase()}</Text>
+          <Text style={{ fontSize: 8, color: "#94a3b8", marginTop: 2 }}>Licensed &amp; Insured  |  {companyLicenses}  |  {companyAddress}  |  {companyPhone}</Text>
         </View>
       </View>
       <View style={{ height: 3, backgroundColor: GOLD }} />
@@ -511,14 +556,14 @@ function AdditionPage1({ template, client, clientCoverPhotoType, clientCoverPhot
       <View style={{ paddingHorizontal: 28, paddingTop: 16, paddingBottom: 10, flex: 1 }}>
         <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "center", marginBottom: 14, gap: 12 }}>
           <View style={{ flex: 1, height: 2, backgroundColor: GOLD }} />
-          <Text style={{ fontSize: 13.5, fontFamily: "Helvetica-Bold", color: DARK, letterSpacing: 1.5 }}>20 YEARS OF EXCELLENCE</Text>
+          <Text style={{ fontSize: 13.5, fontFamily: "Helvetica-Bold", color: DARK, letterSpacing: 1.5 }}>{companyTagline.toUpperCase()}</Text>
           <View style={{ flex: 1, height: 2, backgroundColor: GOLD }} />
         </View>
         <Text style={{ fontSize: 10.5, fontFamily: "Helvetica-Bold", color: DARK, marginBottom: 10, textTransform: "uppercase", letterSpacing: 0.5 }}>Why Choose Us</Text>
         <View style={{ flex: 1, justifyContent: "space-between" }}>
           {[
             "Over 20 years of delivering high-quality workmanship across South Florida",
-            "Licensed & insured (CGC1527069 | CCC1336817) and fully compliant with Florida Building Code (FBC 2023)",
+            `Licensed & insured (${companyLicenses}) and fully compliant with Florida Building Code (FBC 2023)`,
             "Specialized expertise in additions, structural modifications, and custom home construction",
             "Turnkey service: design, engineering, permitting, and construction handled in-house",
             "Dedicated project manager from start to completion for clear communication and accountability",
@@ -542,7 +587,7 @@ function AdditionPage1({ template, client, clientCoverPhotoType, clientCoverPhot
 
 // ─── Addition Scope of Work Page (Page 2) ─────────────────────────────────────
 function AdditionPage2({ client }: Pick<TemplatePdfProps, "client">) {
-  const logoPath = path.join(process.cwd(), "public", "logo.png");
+  const { logoSrc: logoPath, name: companyDisplayName, address: companyAddress, phone: companyPhone, email: companyEmail, licenses: companyLicenses, tagline: companyTagline, contactName: companyContactName } = useBranding();
   const SECTIONS: { title: string; items: string[] }[] = [
     {
       title: "1. PERMITTING & PRE-CONSTRUCTION",
@@ -621,13 +666,13 @@ function AdditionPage2({ client }: Pick<TemplatePdfProps, "client">) {
     <Page size="LETTER" style={{ fontFamily: "Helvetica", padding: 0, paddingBottom: 36 }}>
       {/* Footer pinned to bottom */}
       <View fixed style={{ position: "absolute", bottom: 0, left: 0, right: 0, backgroundColor: DARK, paddingHorizontal: 24, paddingVertical: 9, flexDirection: "row", alignItems: "center", gap: 12 }}>
-        <Text style={{ fontSize: 8.5, color: GOLD, fontFamily: "Helvetica-Bold" }}>MIBH CONSTRUCTION</Text>
+        <Text style={{ fontSize: 8.5, color: GOLD, fontFamily: "Helvetica-Bold" }}>{companyDisplayName.toUpperCase()}</Text>
         <Text style={{ fontSize: 7, color: "#94a3b8" }}>|</Text>
-        <Text style={{ fontSize: 8.5, color: "#94a3b8" }}>mike@mibhconstruction.com</Text>
+        <Text style={{ fontSize: 8.5, color: "#94a3b8" }}>{companyEmail}</Text>
         <Text style={{ fontSize: 7, color: "#94a3b8" }}>|</Text>
-        <Text style={{ fontSize: 8.5, color: "#94a3b8" }}>Mike Baruh</Text>
+        <Text style={{ fontSize: 8.5, color: "#94a3b8" }}>{companyContactName}</Text>
         <Text style={{ fontSize: 7, color: "#94a3b8" }}>|</Text>
-        <Text style={{ fontSize: 8.5, color: "#94a3b8" }}>(305) 746-7307</Text>
+        <Text style={{ fontSize: 8.5, color: "#94a3b8" }}>{companyPhone}</Text>
         <View style={{ flex: 1 }} />
         <Text style={{ fontSize: 8, color: "#94a3b8" }} render={({ pageNumber, totalPages }) => `Page ${pageNumber} of ${totalPages}`} />
       </View>
@@ -636,8 +681,8 @@ function AdditionPage2({ client }: Pick<TemplatePdfProps, "client">) {
         {/* eslint-disable-next-line jsx-a11y/alt-text */}
         <Image src={logoPath} style={{ width: 52, height: 52 }} />
         <View style={{ flex: 1 }}>
-          <Text style={{ fontSize: 20, fontFamily: "Helvetica-Bold", color: GOLD, letterSpacing: 2 }}>MIBH CONSTRUCTION</Text>
-          <Text style={{ fontSize: 8, color: "#94a3b8", marginTop: 2 }}>Licensed &amp; Insured  |  CGC1527069  |  CCC1336817  |  2950 N 28 Terr, Hollywood, FL  |  (305) 746-7307</Text>
+          <Text style={{ fontSize: 20, fontFamily: "Helvetica-Bold", color: GOLD, letterSpacing: 2 }}>{companyDisplayName.toUpperCase()}</Text>
+          <Text style={{ fontSize: 8, color: "#94a3b8", marginTop: 2 }}>Licensed &amp; Insured  |  {companyLicenses}  |  {companyAddress}  |  {companyPhone}</Text>
         </View>
         {clientName ? <Text style={{ fontSize: 10, color: "#94a3b8", textAlign: "right" }}>{clientName}</Text> : null}
       </View>
@@ -675,7 +720,7 @@ function AdditionPage2({ client }: Pick<TemplatePdfProps, "client">) {
 
         {/* Intro */}
         <Text style={{ fontSize: 11, color: "#334155", lineHeight: 1.55, marginBottom: 10 }}>
-          We appreciate the opportunity to provide this proposal. MIBH Construction will deliver all labor, materials, equipment, and supervision required to complete your addition in full compliance with Florida Building Code (FBC 2023), local municipal requirements, and approved engineering plans.
+          We appreciate the opportunity to provide this proposal. {companyDisplayName} will deliver all labor, materials, equipment, and supervision required to complete your addition in full compliance with Florida Building Code (FBC 2023), local municipal requirements, and approved engineering plans.
         </Text>
 
         {/* Two-column sections */}
@@ -715,7 +760,7 @@ function AdditionPage2({ client }: Pick<TemplatePdfProps, "client">) {
 
 // ─── Permit & Design Scope of Work Page ──────────────────────────────────────
 function PermitDrawingsPage({ client }: Pick<TemplatePdfProps, "client">) {
-  const logoPath = path.join(process.cwd(), "public", "logo.png");
+  const { logoSrc: logoPath, name: companyDisplayName, address: companyAddress, phone: companyPhone, email: companyEmail, licenses: companyLicenses, tagline: companyTagline, contactName: companyContactName } = useBranding();
   const PERMIT_SECTIONS: { title: string; body: string }[] = [
     {
       title: "1. Pergola",
@@ -760,13 +805,13 @@ function PermitDrawingsPage({ client }: Pick<TemplatePdfProps, "client">) {
     <Page size="LETTER" style={{ fontFamily: "Helvetica", padding: 0, paddingBottom: 36 }}>
       {/* Footer pinned to bottom */}
       <View fixed style={{ position: "absolute", bottom: 0, left: 0, right: 0, backgroundColor: DARK, paddingHorizontal: 24, paddingVertical: 9, flexDirection: "row", alignItems: "center", gap: 12 }}>
-        <Text style={{ fontSize: 8.5, color: GOLD, fontFamily: "Helvetica-Bold" }}>MIBH CONSTRUCTION</Text>
+        <Text style={{ fontSize: 8.5, color: GOLD, fontFamily: "Helvetica-Bold" }}>{companyDisplayName.toUpperCase()}</Text>
         <Text style={{ fontSize: 7, color: "#94a3b8" }}>|</Text>
-        <Text style={{ fontSize: 8.5, color: "#94a3b8" }}>mike@mibhconstruction.com</Text>
+        <Text style={{ fontSize: 8.5, color: "#94a3b8" }}>{companyEmail}</Text>
         <Text style={{ fontSize: 7, color: "#94a3b8" }}>|</Text>
-        <Text style={{ fontSize: 8.5, color: "#94a3b8" }}>Mike Baruh</Text>
+        <Text style={{ fontSize: 8.5, color: "#94a3b8" }}>{companyContactName}</Text>
         <Text style={{ fontSize: 7, color: "#94a3b8" }}>|</Text>
-        <Text style={{ fontSize: 8.5, color: "#94a3b8" }}>(305) 746-7307</Text>
+        <Text style={{ fontSize: 8.5, color: "#94a3b8" }}>{companyPhone}</Text>
         <View style={{ flex: 1 }} />
         <Text style={{ fontSize: 8, color: "#94a3b8" }} render={({ pageNumber, totalPages }) => `Page ${pageNumber} of ${totalPages}`} />
       </View>
@@ -775,8 +820,8 @@ function PermitDrawingsPage({ client }: Pick<TemplatePdfProps, "client">) {
         {/* eslint-disable-next-line jsx-a11y/alt-text */}
         <Image src={logoPath} style={{ width: 52, height: 52 }} />
         <View style={{ flex: 1 }}>
-          <Text style={{ fontSize: 20, fontFamily: "Helvetica-Bold", color: GOLD, letterSpacing: 2 }}>MIBH CONSTRUCTION</Text>
-          <Text style={{ fontSize: 8, color: "#94a3b8", marginTop: 2 }}>Licensed &amp; Insured  |  CGC1527069  |  CCC1336817  |  2950 N 28 Terr, Hollywood, FL  |  (305) 746-7307</Text>
+          <Text style={{ fontSize: 20, fontFamily: "Helvetica-Bold", color: GOLD, letterSpacing: 2 }}>{companyDisplayName.toUpperCase()}</Text>
+          <Text style={{ fontSize: 8, color: "#94a3b8", marginTop: 2 }}>Licensed &amp; Insured  |  {companyLicenses}  |  {companyAddress}  |  {companyPhone}</Text>
         </View>
         {clientName ? <Text style={{ fontSize: 10, color: "#94a3b8", textAlign: "right" }}>{clientName}</Text> : null}
       </View>
@@ -851,7 +896,7 @@ function PermitDrawingsPage({ client }: Pick<TemplatePdfProps, "client">) {
 
 // ─── Retail Page 1: Cover + WHY CHOOSE US ────────────────────────────────────
 function RetailPage1({ template, client, clientCoverPhotoType, clientCoverPhotoUrl, clientCoverTitle }: Pick<TemplatePdfProps, "template" | "client" | "clientCoverPhotoType" | "clientCoverPhotoUrl" | "clientCoverTitle">) {
-  const logoPath = path.join(process.cwd(), "public", "logo.png");
+  const { logoSrc: logoPath, name: companyDisplayName, address: companyAddress, phone: companyPhone, email: companyEmail, licenses: companyLicenses, tagline: companyTagline, contactName: companyContactName } = useBranding();
   let coverImgSrc: string;
   if (clientCoverPhotoType === "CUSTOM" && clientCoverPhotoUrl) {
     coverImgSrc = clientCoverPhotoUrl;
@@ -871,7 +916,7 @@ function RetailPage1({ template, client, clientCoverPhotoType, clientCoverPhotoU
     "Proven Retail Buildout Expertise — Extensive experience delivering high-quality retail spaces designed for functionality, customer flow, and brand impact",
     "Trusted by Recognized Brands — Kids Story (Eden Prairie, MN) · City Fashion (Margaritaville, Orlando, FL) · Fridababy (Miami, FL)",
     "Over 20 Years of Construction Excellence — Consistent track record of high-quality workmanship across South Florida and beyond",
-    "Licensed, Insured & Code-Compliant — CGC1527069, fully compliant with Florida Building Code (FBC 2023)",
+    `Licensed, Insured & Code-Compliant — ${companyLicenses}, fully compliant with Florida Building Code (FBC 2023)`,
     "Turnkey Retail Solutions — From concept to completion: design coordination, engineering, permitting, and construction under one roof",
     "Brand-Focused Execution — We translate your brand identity into a physical space that enhances customer experience and drives sales",
     "Dedicated Project Management — Single point of contact ensuring timelines, budgets, and quality standards are maintained from start to finish",
@@ -885,13 +930,13 @@ function RetailPage1({ template, client, clientCoverPhotoType, clientCoverPhotoU
     <Page size="LETTER" style={{ fontFamily: "Helvetica", padding: 0, paddingBottom: 36 }}>
       {/* Fixed footer — prevents overflow to blank page 2 */}
       <View fixed style={{ position: "absolute", bottom: 0, left: 0, right: 0, backgroundColor: DARK, paddingHorizontal: 24, paddingVertical: 9, flexDirection: "row", alignItems: "center", gap: 12 }}>
-        <Text style={{ fontSize: 8.5, color: GOLD, fontFamily: "Helvetica-Bold" }}>MIBH CONSTRUCTION</Text>
+        <Text style={{ fontSize: 8.5, color: GOLD, fontFamily: "Helvetica-Bold" }}>{companyDisplayName.toUpperCase()}</Text>
         <Text style={{ fontSize: 7, color: "#94a3b8" }}>|</Text>
-        <Text style={{ fontSize: 8.5, color: "#94a3b8" }}>mike@mibhconstruction.com</Text>
+        <Text style={{ fontSize: 8.5, color: "#94a3b8" }}>{companyEmail}</Text>
         <Text style={{ fontSize: 7, color: "#94a3b8" }}>|</Text>
-        <Text style={{ fontSize: 8.5, color: "#94a3b8" }}>Mike Baruh</Text>
+        <Text style={{ fontSize: 8.5, color: "#94a3b8" }}>{companyContactName}</Text>
         <Text style={{ fontSize: 7, color: "#94a3b8" }}>|</Text>
-        <Text style={{ fontSize: 8.5, color: "#94a3b8" }}>(305) 746-7307</Text>
+        <Text style={{ fontSize: 8.5, color: "#94a3b8" }}>{companyPhone}</Text>
         <View style={{ flex: 1 }} />
         <Text style={{ fontSize: 8, color: "#94a3b8" }} render={({ pageNumber, totalPages }) => `Page ${pageNumber} of ${totalPages}`} />
       </View>
@@ -901,8 +946,8 @@ function RetailPage1({ template, client, clientCoverPhotoType, clientCoverPhotoU
         {/* eslint-disable-next-line jsx-a11y/alt-text */}
         <Image src={logoPath} style={{ width: 52, height: 52 }} />
         <View>
-          <Text style={{ fontSize: 20, fontFamily: "Helvetica-Bold", color: GOLD, letterSpacing: 2 }}>MIBH CONSTRUCTION</Text>
-          <Text style={{ fontSize: 8, color: "#94a3b8", marginTop: 2 }}>Licensed &amp; Insured  |  CGC1527069  |  CCC1336817  |  2950 N 28 Terr, Hollywood, FL  |  (305) 746-7307</Text>
+          <Text style={{ fontSize: 20, fontFamily: "Helvetica-Bold", color: GOLD, letterSpacing: 2 }}>{companyDisplayName.toUpperCase()}</Text>
+          <Text style={{ fontSize: 8, color: "#94a3b8", marginTop: 2 }}>Licensed &amp; Insured  |  {companyLicenses}  |  {companyAddress}  |  {companyPhone}</Text>
         </View>
       </View>
       <View style={{ height: 3, backgroundColor: GOLD }} />
@@ -950,7 +995,7 @@ function RetailPage1({ template, client, clientCoverPhotoType, clientCoverPhotoU
 
 // ─── Retail Page 2: WHAT WE BUILD + OUR APPROACH + SCOPE OF WORK ─────────────
 function RetailPage2({ client }: Pick<TemplatePdfProps, "client">) {
-  const logoPath = path.join(process.cwd(), "public", "logo.png");
+  const { logoSrc: logoPath, name: companyDisplayName, address: companyAddress, phone: companyPhone, email: companyEmail, licenses: companyLicenses, tagline: companyTagline, contactName: companyContactName } = useBranding();
   const WHAT_ITEMS = [
     "Retail Store Buildouts",
     "Tenant Improvements (TI)",
@@ -1032,13 +1077,13 @@ function RetailPage2({ client }: Pick<TemplatePdfProps, "client">) {
     <Page size="LETTER" style={{ fontFamily: "Helvetica", padding: 0, paddingBottom: 36 }}>
       {/* Fixed footer */}
       <View fixed style={{ position: "absolute", bottom: 0, left: 0, right: 0, backgroundColor: DARK, paddingHorizontal: 24, paddingVertical: 9, flexDirection: "row", alignItems: "center", gap: 12 }}>
-        <Text style={{ fontSize: 8.5, color: GOLD, fontFamily: "Helvetica-Bold" }}>MIBH CONSTRUCTION</Text>
+        <Text style={{ fontSize: 8.5, color: GOLD, fontFamily: "Helvetica-Bold" }}>{companyDisplayName.toUpperCase()}</Text>
         <Text style={{ fontSize: 7, color: "#94a3b8" }}>|</Text>
-        <Text style={{ fontSize: 8.5, color: "#94a3b8" }}>mike@mibhconstruction.com</Text>
+        <Text style={{ fontSize: 8.5, color: "#94a3b8" }}>{companyEmail}</Text>
         <Text style={{ fontSize: 7, color: "#94a3b8" }}>|</Text>
-        <Text style={{ fontSize: 8.5, color: "#94a3b8" }}>Mike Baruh</Text>
+        <Text style={{ fontSize: 8.5, color: "#94a3b8" }}>{companyContactName}</Text>
         <Text style={{ fontSize: 7, color: "#94a3b8" }}>|</Text>
-        <Text style={{ fontSize: 8.5, color: "#94a3b8" }}>(305) 746-7307</Text>
+        <Text style={{ fontSize: 8.5, color: "#94a3b8" }}>{companyPhone}</Text>
         <View style={{ flex: 1 }} />
         <Text style={{ fontSize: 8, color: "#94a3b8" }} render={({ pageNumber, totalPages }) => `Page ${pageNumber} of ${totalPages}`} />
       </View>
@@ -1047,8 +1092,8 @@ function RetailPage2({ client }: Pick<TemplatePdfProps, "client">) {
         {/* eslint-disable-next-line jsx-a11y/alt-text */}
         <Image src={logoPath} style={{ width: 52, height: 52 }} />
         <View style={{ flex: 1 }}>
-          <Text style={{ fontSize: 20, fontFamily: "Helvetica-Bold", color: GOLD, letterSpacing: 2 }}>MIBH CONSTRUCTION</Text>
-          <Text style={{ fontSize: 8, color: "#94a3b8", marginTop: 2 }}>Licensed &amp; Insured  |  CGC1527069  |  CCC1336817  |  2950 N 28 Terr, Hollywood, FL  |  (305) 746-7307</Text>
+          <Text style={{ fontSize: 20, fontFamily: "Helvetica-Bold", color: GOLD, letterSpacing: 2 }}>{companyDisplayName.toUpperCase()}</Text>
+          <Text style={{ fontSize: 8, color: "#94a3b8", marginTop: 2 }}>Licensed &amp; Insured  |  {companyLicenses}  |  {companyAddress}  |  {companyPhone}</Text>
         </View>
         {clientName ? <Text style={{ fontSize: 10, color: "#94a3b8", textAlign: "right" }}>{clientName}</Text> : null}
       </View>
@@ -1084,7 +1129,7 @@ function RetailPage2({ client }: Pick<TemplatePdfProps, "client">) {
 
         {/* Intro */}
         <Text style={{ fontSize: 11, color: "#334155", lineHeight: 1.5, marginBottom: 6, textAlign: "justify" }}>
-          We appreciate the opportunity to provide this proposal. MIBH Construction will deliver all labor, materials, equipment, and supervision required to complete your retail buildout in full compliance with Florida Building Code (FBC 2023), local municipal requirements, landlord criteria, and approved plans.
+          We appreciate the opportunity to provide this proposal. {companyDisplayName} will deliver all labor, materials, equipment, and supervision required to complete your retail buildout in full compliance with Florida Building Code (FBC 2023), local municipal requirements, landlord criteria, and approved plans.
         </Text>
 
         {/* Two-column sections */}
@@ -1123,7 +1168,7 @@ function RetailPage2({ client }: Pick<TemplatePdfProps, "client">) {
 
 // ─── Division Summary Page ────────────────────────────────────────────────────
 function DivisionSummaryPage({ template, client, divisions, gcFeePercent }: Pick<TemplatePdfProps, "template" | "client" | "divisions" | "gcFeePercent">) {
-  const logoPath = path.join(process.cwd(), "public", "logo.png");
+  const { logoSrc: logoPath, name: companyDisplayName, address: companyAddress, phone: companyPhone, email: companyEmail, licenses: companyLicenses, tagline: companyTagline, contactName: companyContactName } = useBranding();
 
   // Compute division totals (only divisions with items having a total)
   const divTotals: { name: string; total: number }[] = [];
@@ -1164,7 +1209,7 @@ function DivisionSummaryPage({ template, client, divisions, gcFeePercent }: Pick
         <Image src={logoPath} style={{ width: 48, height: 48 }} />
         <View style={{ flex: 1 }}>
           <Text style={{ fontSize: 18, fontFamily: "Helvetica-Bold", color: GOLD, letterSpacing: 2 }}>MIBH CONSTRUCTION</Text>
-          <Text style={{ fontSize: 8, color: "#94a3b8", marginTop: 2 }}>Licensed &amp; Insured  |  CGC1527069  |  CCC1336817  |  (305) 746-7307</Text>
+          <Text style={{ fontSize: 8, color: "#94a3b8", marginTop: 2 }}>Licensed &amp; Insured  |  {companyLicenses}  |  {companyPhone}</Text>
         </View>
         {client ? <Text style={{ fontSize: 10, color: "#94a3b8", textAlign: "right" }}>{client.name}</Text> : null}
       </View>
@@ -1237,13 +1282,13 @@ function DivisionSummaryPage({ template, client, divisions, gcFeePercent }: Pick
 
       {/* Footer */}
       <View style={{ backgroundColor: DARK, paddingHorizontal: 24, paddingVertical: 9, flexDirection: "row", alignItems: "center", gap: 12 }}>
-        <Text style={{ fontSize: 8.5, color: GOLD, fontFamily: "Helvetica-Bold" }}>MIBH CONSTRUCTION</Text>
+        <Text style={{ fontSize: 8.5, color: GOLD, fontFamily: "Helvetica-Bold" }}>{companyDisplayName.toUpperCase()}</Text>
         <Text style={{ fontSize: 7, color: "#94a3b8" }}>|</Text>
-        <Text style={{ fontSize: 8.5, color: "#94a3b8" }}>mike@mibhconstruction.com</Text>
+        <Text style={{ fontSize: 8.5, color: "#94a3b8" }}>{companyEmail}</Text>
         <Text style={{ fontSize: 7, color: "#94a3b8" }}>|</Text>
-        <Text style={{ fontSize: 8.5, color: "#94a3b8" }}>Mike Baruh</Text>
+        <Text style={{ fontSize: 8.5, color: "#94a3b8" }}>{companyContactName}</Text>
         <Text style={{ fontSize: 7, color: "#94a3b8" }}>|</Text>
-        <Text style={{ fontSize: 8.5, color: "#94a3b8" }}>(305) 746-7307</Text>
+        <Text style={{ fontSize: 8.5, color: "#94a3b8" }}>{companyPhone}</Text>
         <View style={{ flex: 1 }} />
         <Text style={{ fontSize: 8, color: "#94a3b8" }} render={({ pageNumber, totalPages }) => `Page ${pageNumber} of ${totalPages}`} />
       </View>
@@ -1252,20 +1297,20 @@ function DivisionSummaryPage({ template, client, divisions, gcFeePercent }: Pick
 }
 
 function ScopeOfWorkPage({ title, body, client }: { title: string; body: string; client?: TemplatePdfProps["client"] }) {
-  const logoPath = path.join(process.cwd(), "public", "logo.png");
+  const { logoSrc: logoPath, name: companyDisplayName, address: companyAddress, phone: companyPhone, email: companyEmail, licenses: companyLicenses, tagline: companyTagline, contactName: companyContactName } = useBranding();
   const blocks = body.split(/\n\n+/).map(b => b.trim()).filter(Boolean);
   const clientName = client?.name ?? "";
   return (
     <Page size="LETTER" style={{ fontFamily: "Helvetica", padding: 0, paddingBottom: 96 }}>
       {/* Footer pinned to bottom */}
       <View fixed style={{ position: "absolute", bottom: 0, left: 0, right: 0, backgroundColor: DARK, paddingHorizontal: 24, paddingVertical: 9, flexDirection: "row", alignItems: "center", gap: 12 }}>
-        <Text style={{ fontSize: 8.5, color: GOLD, fontFamily: "Helvetica-Bold" }}>MIBH CONSTRUCTION</Text>
+        <Text style={{ fontSize: 8.5, color: GOLD, fontFamily: "Helvetica-Bold" }}>{companyDisplayName.toUpperCase()}</Text>
         <Text style={{ fontSize: 7, color: "#94a3b8" }}>|</Text>
-        <Text style={{ fontSize: 8.5, color: "#94a3b8" }}>mike@mibhconstruction.com</Text>
+        <Text style={{ fontSize: 8.5, color: "#94a3b8" }}>{companyEmail}</Text>
         <Text style={{ fontSize: 7, color: "#94a3b8" }}>|</Text>
-        <Text style={{ fontSize: 8.5, color: "#94a3b8" }}>Mike Baruh</Text>
+        <Text style={{ fontSize: 8.5, color: "#94a3b8" }}>{companyContactName}</Text>
         <Text style={{ fontSize: 7, color: "#94a3b8" }}>|</Text>
-        <Text style={{ fontSize: 8.5, color: "#94a3b8" }}>(305) 746-7307</Text>
+        <Text style={{ fontSize: 8.5, color: "#94a3b8" }}>{companyPhone}</Text>
         <View style={{ flex: 1 }} />
         <Text style={{ fontSize: 8, color: "#94a3b8" }} render={({ pageNumber, totalPages }) => `Page ${pageNumber} of ${totalPages}`} />
       </View>
@@ -1274,8 +1319,8 @@ function ScopeOfWorkPage({ title, body, client }: { title: string; body: string;
         {/* eslint-disable-next-line jsx-a11y/alt-text */}
         <Image src={logoPath} style={{ width: 52, height: 52 }} />
         <View style={{ flex: 1 }}>
-          <Text style={{ fontSize: 20, fontFamily: "Helvetica-Bold", color: GOLD, letterSpacing: 2 }}>MIBH CONSTRUCTION</Text>
-          <Text style={{ fontSize: 8, color: "#94a3b8", marginTop: 2 }}>Licensed &amp; Insured  |  CGC1527069  |  CCC1336817  |  2950 N 28 Terr, Hollywood, FL  |  (305) 746-7307</Text>
+          <Text style={{ fontSize: 20, fontFamily: "Helvetica-Bold", color: GOLD, letterSpacing: 2 }}>{companyDisplayName.toUpperCase()}</Text>
+          <Text style={{ fontSize: 8, color: "#94a3b8", marginTop: 2 }}>Licensed &amp; Insured  |  {companyLicenses}  |  {companyAddress}  |  {companyPhone}</Text>
         </View>
         {clientName ? <Text style={{ fontSize: 10, color: "#94a3b8", textAlign: "right" }}>{clientName}</Text> : null}
       </View>
@@ -1310,7 +1355,8 @@ function ScopeOfWorkPage({ title, body, client }: { title: string; body: string;
   );
 }
 
-function TemplatePdfDocument({ companyName, template, client, divisions, showTerms, termsContent, paymentSchedule, gcFeePercent, summaryGroups, clientSignatureData, clientSignedByName, clientSignedAt, contractorSignatureData, contractorSignedAt, includeRoofUpgradesPage, includeCoverPage, includeAdditionPages, includePermitPages, includeRetailPages, includeDivisionSummary, insertPageOffset, insulationType, clientCoverPhotoType, clientCoverPhotoUrl, clientCoverTitle, forcedBreakCsiPrefixes = [], forcedBreakTerms = false, scopeOfWork }: TemplatePdfProps) {
+function TemplatePdfDocument({ companyName, template, client, divisions, showTerms, termsContent, paymentSchedule, gcFeePercent, summaryGroups, clientSignatureData, clientSignedByName, clientSignedAt, contractorSignatureData, contractorSignedAt, includeRoofUpgradesPage, includeCoverPage, includeAdditionPages, includePermitPages, includeRetailPages, includeDivisionSummary, insertPageOffset, insulationType, clientCoverPhotoType, clientCoverPhotoUrl, clientCoverTitle, forcedBreakCsiPrefixes = [], forcedBreakTerms = false, scopeOfWork, branding: brandingProp }: TemplatePdfProps) {
+  const branding = getBranding(brandingProp);
   const grouped = groupDivisions(divisions);
 
   // Compute raw totals per group label (or null for ungrouped)
@@ -1449,7 +1495,7 @@ function TemplatePdfDocument({ companyName, template, client, divisions, showTer
             <Text style={styles.sigLineLabel}>Signature</Text>
             <View style={{ height: 4 }} />
             <View style={styles.sigLine} />
-            <Text style={styles.sigPrefilled}>Mike Baruh</Text>
+            <Text style={styles.sigPrefilled}>{branding.contactName}</Text>
             <Text style={styles.sigLineLabel}>Name (Print)</Text>
             <View style={{ height: 4 }} />
             <View style={styles.sigLine} />
@@ -1464,6 +1510,7 @@ function TemplatePdfDocument({ companyName, template, client, divisions, showTer
   );
 
   return (
+    <BrandingContext.Provider value={branding}>
     <Document title={`${template.name} — Estimate`} author={companyName}>
       {includeCoverPage && !includeAdditionPages && !includePermitPages && !includeRoofUpgradesPage && !includeRetailPages && <CoverPages template={template} client={client} clientCoverPhotoType={clientCoverPhotoType} clientCoverPhotoUrl={clientCoverPhotoUrl} clientCoverTitle={clientCoverTitle} />}
       {includeRoofUpgradesPage && <CoverPages template={template} client={client} clientCoverPhotoType={clientCoverPhotoType} clientCoverPhotoUrl={clientCoverPhotoUrl} clientCoverTitle={clientCoverTitle} />}
@@ -1481,13 +1528,13 @@ function TemplatePdfDocument({ companyName, template, client, divisions, showTer
       <Page size="LETTER" style={styles.page}>
         {/* Fixed footer — renders on every page */}
         <View fixed style={{ position: "absolute", bottom: 0, left: 0, right: 0, backgroundColor: DARK, paddingHorizontal: 24, paddingVertical: 9, flexDirection: "row", alignItems: "center", gap: 12 }}>
-          <Text style={{ fontSize: 8.5, color: GOLD, fontFamily: "Helvetica-Bold" }}>MIBH CONSTRUCTION</Text>
+          <Text style={{ fontSize: 8.5, color: GOLD, fontFamily: "Helvetica-Bold" }}>{branding.name.toUpperCase()}</Text>
           <Text style={{ fontSize: 7, color: "#94a3b8" }}>|</Text>
-          <Text style={{ fontSize: 8.5, color: "#94a3b8" }}>mike@mibhconstruction.com</Text>
+          <Text style={{ fontSize: 8.5, color: "#94a3b8" }}>{branding.email}</Text>
           <Text style={{ fontSize: 7, color: "#94a3b8" }}>|</Text>
-          <Text style={{ fontSize: 8.5, color: "#94a3b8" }}>Mike Baruh</Text>
+          <Text style={{ fontSize: 8.5, color: "#94a3b8" }}>{branding.contactName}</Text>
           <Text style={{ fontSize: 7, color: "#94a3b8" }}>|</Text>
-          <Text style={{ fontSize: 8.5, color: "#94a3b8" }}>(305) 746-7307</Text>
+          <Text style={{ fontSize: 8.5, color: "#94a3b8" }}>{branding.phone}</Text>
           <View style={{ flex: 1 }} />
           <Text style={{ fontSize: 8, color: "#94a3b8" }} render={({ pageNumber, totalPages }) => `Page ${pageNumber} of ${totalPages}`} />
         </View>
@@ -1507,10 +1554,10 @@ function TemplatePdfDocument({ companyName, template, client, divisions, showTer
             {/* Left: Logo + company info */}
             <View>
               {/* eslint-disable-next-line jsx-a11y/alt-text */}
-              <Image style={styles.logo} src={path.join(process.cwd(), "public", "logo.png")} />
-              <Text style={styles.companyInfo}>2950 N 28 Terr, Hollywood, FL 33020</Text>
-              <Text style={styles.companyInfo}>Tel: 305-746-7307</Text>
-              <Text style={styles.companyInfo}>CGC1527069 | CCC1336817</Text>
+              <Image style={styles.logo} src={branding.logoSrc} />
+              <Text style={styles.companyInfo}>{branding.address}</Text>
+              <Text style={styles.companyInfo}>Tel: {branding.phone}</Text>
+              <Text style={styles.companyInfo}>{branding.licenses}</Text>
             </View>
 
             {/* Right: Client — marginTop 80 aligns with address lines (below 76px logo + 4px gap) */}
@@ -1742,13 +1789,13 @@ function TemplatePdfDocument({ companyName, template, client, divisions, showTer
         <Page size="LETTER" style={[styles.page, { paddingTop: 14, paddingBottom: 96 }]}>
           {/* Fixed footer */}
           <View fixed style={{ position: "absolute", bottom: 0, left: 0, right: 0, backgroundColor: DARK, paddingHorizontal: 24, paddingVertical: 9, flexDirection: "row", alignItems: "center", gap: 12 }}>
-            <Text style={{ fontSize: 8.5, color: GOLD, fontFamily: "Helvetica-Bold" }}>MIBH CONSTRUCTION</Text>
+            <Text style={{ fontSize: 8.5, color: GOLD, fontFamily: "Helvetica-Bold" }}>{branding.name.toUpperCase()}</Text>
             <Text style={{ fontSize: 7, color: "#94a3b8" }}>|</Text>
-            <Text style={{ fontSize: 8.5, color: "#94a3b8" }}>mike@mibhconstruction.com</Text>
+            <Text style={{ fontSize: 8.5, color: "#94a3b8" }}>{branding.email}</Text>
             <Text style={{ fontSize: 7, color: "#94a3b8" }}>|</Text>
-            <Text style={{ fontSize: 8.5, color: "#94a3b8" }}>Mike Baruh</Text>
+            <Text style={{ fontSize: 8.5, color: "#94a3b8" }}>{branding.contactName}</Text>
             <Text style={{ fontSize: 7, color: "#94a3b8" }}>|</Text>
-            <Text style={{ fontSize: 8.5, color: "#94a3b8" }}>(305) 746-7307</Text>
+            <Text style={{ fontSize: 8.5, color: "#94a3b8" }}>{branding.phone}</Text>
             <View style={{ flex: 1 }} />
             <Text style={{ fontSize: 8, color: "#94a3b8" }} render={({ pageNumber, totalPages }) => `Page ${pageNumber} of ${totalPages}`} />
           </View>
@@ -1756,6 +1803,7 @@ function TemplatePdfDocument({ companyName, template, client, divisions, showTer
         </Page>
       )}
     </Document>
+    </BrandingContext.Provider>
   );
 }
 

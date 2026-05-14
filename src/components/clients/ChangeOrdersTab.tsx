@@ -4,6 +4,8 @@ import { useState, useTransition } from "react";
 import { STANDARD_TEMPLATE_DIVISIONS } from "@/lib/standardTemplateData";
 import SendChangeOrderEmailButton from "@/components/clients/SendChangeOrderEmailButton";
 
+const CSI_PREFIXES = ["02","03","04","05","06","07","08","09","10","11","12","13","14","21","22","23","26","27","28","31","32","33"];
+
 const GOLD = "#C9A84C";
 const inputStyle = { background: "#0d1117", border: "1px solid #30373f", color: "#e6edf3" };
 
@@ -135,20 +137,52 @@ function ItemRow({
       className="rounded-lg p-3 mb-2"
       style={{ background: index % 2 === 0 ? "#0d1117" : "#10161e", border: "1px solid #21262d" }}
     >
-      <div className="flex items-start gap-2 mb-2">
-        <div className="flex-1 min-w-0">
-          <div className="text-xs mb-0.5" style={{ color: "#8b949e" }}>{item.csiCode} · {item.divisionName}</div>
-          <input
-            value={item.name}
-            onChange={e => onChange(index, "name", e.target.value)}
-            className="w-full rounded px-2 py-1 text-sm"
+      <div className="grid grid-cols-[1fr_120px] gap-2 mb-2">
+        <div>
+          <label className="block text-xs mb-0.5" style={{ color: "#8b949e" }}>Division</label>
+          <select
+            value={STANDARD_TEMPLATE_DIVISIONS.find(d => d.name === item.divisionName)?.csiCode ?? ""}
+            onChange={e => {
+              const div = STANDARD_TEMPLATE_DIVISIONS.find(d => d.csiCode === e.target.value);
+              if (div) {
+                onChange(index, "divisionName", div.name);
+                if (!item.csiCode) onChange(index, "csiCode", div.csiCode);
+              } else {
+                onChange(index, "divisionName", "Custom");
+                onChange(index, "csiCode", "");
+              }
+            }}
+            className="w-full rounded px-2 py-1 text-xs"
             style={inputStyle}
-            placeholder="Item name"
+          >
+            <option value="">Custom</option>
+            {STANDARD_TEMPLATE_DIVISIONS.map(d => (
+              <option key={d.csiCode} value={d.csiCode}>{d.csiCode} · {d.name}</option>
+            ))}
+          </select>
+        </div>
+        <div>
+          <label className="block text-xs mb-0.5" style={{ color: "#8b949e" }}>CSI Code</label>
+          <input
+            value={item.csiCode}
+            onChange={e => onChange(index, "csiCode", e.target.value)}
+            className="w-full rounded px-2 py-1 text-xs"
+            style={inputStyle}
+            placeholder="e.g. 07 51 00"
           />
         </div>
+      </div>
+      <div className="flex items-start gap-2 mb-2">
+        <input
+          value={item.name}
+          onChange={e => onChange(index, "name", e.target.value)}
+          className="flex-1 rounded px-2 py-1 text-sm"
+          style={inputStyle}
+          placeholder="Item name"
+        />
         <button
           onClick={() => onDelete(index)}
-          className="mt-5 w-7 h-7 rounded flex items-center justify-center shrink-0"
+          className="w-7 h-7 rounded flex items-center justify-center shrink-0"
           style={{ background: "#f8514922", color: "#f85149", border: "1px solid #f8514933" }}
         >
           ×
@@ -423,6 +457,117 @@ function ChangeOrderEditor({
   );
 }
 
+// ── PDF options modal ────────────────────────────────────────────────────────
+
+function ChangeOrderPdfModal({
+  companyId,
+  clientId,
+  changeOrderId,
+  orderNumber,
+  orderTitle,
+  clientName,
+  onClose,
+}: {
+  companyId: string;
+  clientId: string;
+  changeOrderId: string;
+  orderNumber: string | null;
+  orderTitle: string;
+  clientName: string;
+  onClose: () => void;
+}) {
+  const [includeDivisionSummary, setIncludeDivisionSummary] = useState(false);
+  const [forcedBreakCsiPrefixes, setForcedBreakCsiPrefixes] = useState<string[]>([]);
+
+  function buildUrl(preview: boolean) {
+    const p = new URLSearchParams();
+    if (includeDivisionSummary) p.set("divSummary", "1");
+    if (forcedBreakCsiPrefixes.length) p.set("forcedBreakCsi", forcedBreakCsiPrefixes.join(","));
+    if (preview) p.set("preview", "1");
+    const qs = p.toString();
+    return `/api/${companyId}/clients/${clientId}/change-orders/${changeOrderId}/pdf${qs ? `?${qs}` : ""}`;
+  }
+
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-start justify-center p-4 overflow-y-auto"
+      style={{ background: "rgba(0,0,0,0.7)" }}
+      onClick={e => { if (e.target === e.currentTarget) onClose(); }}
+    >
+      <div
+        className="w-full max-w-md rounded-2xl p-6 mt-16 mb-8 space-y-5"
+        style={{ background: "#161b22", border: "1px solid #30373f" }}
+      >
+        <div className="flex items-center justify-between">
+          <div>
+            <h2 className="text-base font-bold" style={{ color: "#e6edf3" }}>PDF Options</h2>
+            <p className="text-xs mt-0.5" style={{ color: "#8b949e" }}>
+              {orderNumber ? `CO ${orderNumber} — ` : ""}{orderTitle} · {clientName}
+            </p>
+          </div>
+          <button onClick={onClose} className="text-xl" style={{ color: "#8b949e" }}>✕</button>
+        </div>
+
+        {/* Division summary */}
+        <div>
+          <p className="text-xs font-semibold uppercase tracking-widest mb-2" style={{ color: "#8b949e" }}>Include Division Summary Page?</p>
+          <div className="grid grid-cols-2 gap-2">
+            {[{ v: true, icon: "📊", label: "Yes", desc: "Add a summary with division totals" }, { v: false, icon: "⊘", label: "No", desc: "Skip summary page" }].map(o => (
+              <button key={String(o.v)} onClick={() => setIncludeDivisionSummary(o.v)}
+                className="rounded-xl p-3 text-left transition-all"
+                style={{ border: `2px solid ${includeDivisionSummary === o.v ? GOLD : "#30373f"}`, background: includeDivisionSummary === o.v ? "#1e2a12" : "#1e2736", outline: "none" }}>
+                <div className="text-2xl mb-1">{o.icon}</div>
+                <div className="text-xs font-semibold" style={{ color: includeDivisionSummary === o.v ? GOLD : "#e6edf3" }}>{o.label}</div>
+                <div className="text-[10px] mt-0.5" style={{ color: "#8b949e" }}>{o.desc}</div>
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* Force page breaks */}
+        <div>
+          <p className="text-xs font-semibold uppercase tracking-widest mb-2" style={{ color: "#8b949e" }}>Force New Page Before</p>
+          <div className="flex flex-wrap gap-2">
+            {CSI_PREFIXES.map(prefix => {
+              const on = forcedBreakCsiPrefixes.includes(prefix);
+              return (
+                <button key={prefix}
+                  onClick={() => setForcedBreakCsiPrefixes(prev => on ? prev.filter(p => p !== prefix) : [...prev, prefix])}
+                  className="px-3 py-1 rounded-lg text-xs font-bold transition-all"
+                  style={{ background: on ? GOLD : "#1e2736", color: on ? "#0d1117" : "#8b949e", border: `1px solid ${on ? GOLD : "#30373f"}` }}>
+                  Div {prefix}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* Actions */}
+        <div className="flex gap-2 pt-1">
+          <a
+            href={buildUrl(true)}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex-1 text-center py-2.5 rounded-xl text-sm font-semibold"
+            style={{ background: "#1e2736", border: "1px solid #30373f", color: "#e6edf3" }}
+          >
+            Preview
+          </a>
+          <a
+            href={buildUrl(false)}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex-1 text-center py-2.5 rounded-xl text-sm font-bold"
+            style={{ background: GOLD, color: "#0d1117" }}
+          >
+            ↓ Download PDF
+          </a>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ── Main tab component ───────────────────────────────────────────────────────
 
 export default function ChangeOrdersTab({
@@ -446,6 +591,7 @@ export default function ChangeOrdersTab({
 }) {
   const [orders, setOrders] = useState<ChangeOrder[]>(initialOrders);
   const [editing, setEditing] = useState<ChangeOrder | null | "new">(null);
+  const [pdfOrder, setPdfOrder] = useState<ChangeOrder | null>(null);
   const [isPending, startTransition] = useTransition();
 
   function handleSaved(order: ChangeOrder) {
@@ -551,17 +697,14 @@ export default function ChangeOrdersTab({
                   </div>
 
                   <div className="flex items-center gap-2 shrink-0 flex-wrap">
-                    {/* PDF download */}
-                    <a
-                      href={`/api/${companyId}/clients/${clientId}/change-orders/${order.id}/pdf`}
-                      target="_blank"
-                      rel="noopener noreferrer"
+                    {/* PDF options */}
+                    <button
+                      onClick={() => setPdfOrder(order)}
                       className="text-xs px-2 py-1 rounded-lg font-medium"
                       style={{ background: "#1a2436", border: "1px solid #30373f", color: "#8b949e" }}
-                      title="Download PDF"
                     >
                       ↓ PDF
-                    </a>
+                    </button>
                     {/* Email send */}
                     <SendChangeOrderEmailButton
                       changeOrderId={order.id}
@@ -648,6 +791,19 @@ export default function ChangeOrdersTab({
           initial={editing === "new" ? null : editing}
           onSave={handleSaved}
           onClose={() => setEditing(null)}
+        />
+      )}
+
+      {/* PDF options modal */}
+      {pdfOrder && (
+        <ChangeOrderPdfModal
+          companyId={companyId}
+          clientId={clientId}
+          changeOrderId={pdfOrder.id}
+          orderNumber={pdfOrder.orderNumber}
+          orderTitle={pdfOrder.title}
+          clientName={clientName}
+          onClose={() => setPdfOrder(null)}
         />
       )}
     </div>

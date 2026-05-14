@@ -36,6 +36,21 @@ function resolveItems(items: { id: string; csiCode: string | null; divisionName:
   return Array.from(divMap.values());
 }
 
+async function resolvePrivateCoverUrl(blobUrl: string | null): Promise<string | null> {
+  if (!blobUrl) return null;
+  try {
+    const res = await fetch(blobUrl, {
+      headers: { Authorization: `Bearer ${process.env.BLOB_READ_WRITE_TOKEN}` },
+    });
+    if (!res.ok) return null;
+    const ab = await res.arrayBuffer();
+    const mt = res.headers.get("content-type") ?? "image/jpeg";
+    return `data:${mt};base64,${Buffer.from(ab).toString("base64")}`;
+  } catch {
+    return null;
+  }
+}
+
 export async function GET(
   req: NextRequest,
   { params }: { params: { companyId: string; clientId: string; changeOrderId: string } }
@@ -43,10 +58,9 @@ export async function GET(
   const session = await auth();
   if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-  const coverTypeParam = req.nextUrl.searchParams.get("coverType");
-  const cover = req.nextUrl.searchParams.get("cover") === "1" && coverTypeParam !== "NONE";
-  const page2Param = req.nextUrl.searchParams.get("page2");
   const isPreview = req.nextUrl.searchParams.get("preview") === "1";
+  const includeDivisionSummary = req.nextUrl.searchParams.get("divSummary") === "1";
+  const forcedBreakCsiPrefixes = (req.nextUrl.searchParams.get("forcedBreakCsi") ?? "").split(",").map(s => s.trim()).filter(Boolean);
 
   const [changeOrder, company] = await Promise.all([
     prisma.changeOrder.findFirst({
@@ -61,10 +75,22 @@ export async function GET(
 
   if (!changeOrder || !company) return NextResponse.json({ error: "Not found" }, { status: 404 });
 
+  const companyLogoDataUrl = company.logoUrl ? await resolvePrivateCoverUrl(company.logoUrl) : null;
   const divisions = resolveItems(changeOrder.items);
 
   const buffer = await renderTemplatePdf({
     companyName: company.name,
+    branding: {
+      name: company.name || undefined,
+      address: company.address || undefined,
+      phone: company.phone || undefined,
+      email: company.email || undefined,
+      licenses: company.licenses || undefined,
+      tagline: company.tagline || undefined,
+      website: company.website || undefined,
+      contactName: company.contactName || undefined,
+      logoSrc: companyLogoDataUrl || undefined,
+    },
     template: {
       name: changeOrder.orderNumber ? `Change Order ${changeOrder.orderNumber}` : "Change Order",
       description: changeOrder.title,
@@ -87,13 +113,15 @@ export async function GET(
     paymentSchedule: null,
     gcFeePercent: null,
     summaryGroups: null,
-    includeRoofUpgradesPage: page2Param === "ROOF",
-    includeAdditionPages: page2Param === "ADDITION",
-    includeRetailPages: page2Param === "RETAIL",
-    includeCoverPage: cover,
-    clientCoverPhotoType: coverTypeParam ?? changeOrder.client?.coverPhotoType ?? null,
+    includeRoofUpgradesPage: false,
+    includeAdditionPages: false,
+    includeRetailPages: false,
+    includeCoverPage: false,
+    includeDivisionSummary,
+    forcedBreakCsiPrefixes,
+    clientCoverPhotoType: null,
     clientCoverPhotoUrl: null,
-    clientCoverTitle: changeOrder.client?.coverTitle ?? null,
+    clientCoverTitle: null,
   });
 
   const clientSlug = changeOrder.client ? `-${changeOrder.client.name.replace(/[^a-z0-9]/gi, "-")}` : "";

@@ -123,8 +123,21 @@ export async function GET(
   const insertFileUrl = includeInsert ? (template.client?.files?.[0]?.fileUrl?.trim() || null) : null;
   const insertPageOffset = insertFileUrl ? 1 : 0;
 
+  const companyLogoDataUrl = company.logoUrl ? await resolvePrivateCoverUrl(company.logoUrl) : null;
+
   const buffer = await renderTemplatePdf({
     companyName: company.name,
+    branding: {
+      name: company.name || undefined,
+      address: company.address || undefined,
+      phone: company.phone || undefined,
+      email: company.email || undefined,
+      licenses: company.licenses || undefined,
+      tagline: company.tagline || undefined,
+      website: company.website || undefined,
+      contactName: company.contactName || undefined,
+      logoSrc: companyLogoDataUrl || undefined,
+    },
     template: { name: template.name, description: template.description, estimateNumber: template.estimateNumber, estimateDate: template.estimateDate, sqFt: template.sqFt ? Number(template.sqFt) : null, durationMonths: template.durationMonths ? Number(template.durationMonths) : null },
     client: template.client ? { name: template.client.name, address: template.client.address, city: template.client.city, state: template.client.state, zip: template.client.zip, phone: template.client.phone, email: template.client.email } : null,
     divisions,
