@@ -48,11 +48,10 @@ export default function CompanySettingsPage() {
 
   async function handleSave() {
     setSaving(true);
-    const { logoUrl: _logoUrl, ...rest } = form;
     await fetch(`/api/${companyId}/settings`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(rest),
+      body: JSON.stringify({ name: form.name, address: form.address, phone: form.phone, email: form.email, licenses: form.licenses, tagline: form.tagline, website: form.website, contactName: form.contactName }),
     });
     setSaving(false);
     setSaved(true);
