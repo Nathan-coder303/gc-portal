@@ -2,6 +2,7 @@
 
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { Prisma } from "@prisma/client";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { requirePermission } from "@/lib/auth/permissions";
@@ -755,18 +756,20 @@ export async function listClients() {
   return clients;
 }
 
-export async function upsertClient(data: { id?: string; name: string; address?: string; city?: string; state?: string; zip?: string; email?: string; phone?: string }) {
+export async function upsertClient(data: { id?: string; name: string; address?: string; city?: string; state?: string; zip?: string; emailList?: string[]; phone?: string }) {
   const session = await auth();
   if (!session) throw new Error("Unauthorized");
   requirePermission(session, "estimateTemplate:edit");
 
+  const cleanEmails = (data.emailList ?? []).map(e => e.trim()).filter(Boolean);
   const payload = {
     name: data.name.trim(),
     address: data.address?.trim() || null,
     city: data.city?.trim() || null,
     state: data.state?.trim() || null,
     zip: data.zip?.trim() || null,
-    email: data.email?.trim() || null,
+    email: cleanEmails[0] ?? null,
+    emailList: cleanEmails.length > 0 ? cleanEmails : Prisma.JsonNull,
     phone: data.phone?.trim() || null,
   };
 

@@ -1183,7 +1183,7 @@ function ClientSelector({
   function handleCreateNew() {
     if (!newName.trim()) return;
     startTransition(async () => {
-      const client = await upsertClient({ name: newName, address: newAddress, city: newCity, state: newState, zip: newZip, email: newEmail });
+      const client = await upsertClient({ name: newName, address: newAddress, city: newCity, state: newState, zip: newZip, emailList: newEmail ? [newEmail] : [] });
       await setTemplateClient(templateId, client.id);
       setDisplayClient({ id: client.id, name: client.name, address: client.address, city: client.city, state: client.state, zip: client.zip, email: client.email, phone: client.phone });
       setNewName(""); setNewAddress(""); setNewCity(""); setNewState(""); setNewZip(""); setNewEmail("");

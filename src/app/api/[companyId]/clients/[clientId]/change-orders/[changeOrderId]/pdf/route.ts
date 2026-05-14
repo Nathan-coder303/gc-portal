@@ -13,7 +13,7 @@ function resolveItems(items: { id: string; csiCode: string | null; divisionName:
     if (!divMap.has(it.divisionName)) {
       divMap.set(it.divisionName, {
         id: it.divisionName,
-        csiCode: it.csiCode ? it.csiCode.substring(0, 2) : null,
+        csiCode: it.csiCode ?? null,
         name: it.divisionName,
         groups: [],
         items: [],

@@ -145,12 +145,12 @@ export default function SendChangeOrderEmailButton({
               <div>
                 <label className="block text-xs font-medium mb-1" style={{ color: "#8b949e" }}>To</label>
                 <input
-                  type="email"
+                  type="text"
                   value={to}
                   onChange={e => setTo(e.target.value)}
                   className="w-full rounded-lg px-3 py-2 text-sm"
                   style={{ background: "#0d1117", border: "1px solid #30373f", color: "#e6edf3" }}
-                  placeholder="client@email.com"
+                  placeholder="client@email.com, another@email.com"
                 />
               </div>
               <div className="flex gap-2">

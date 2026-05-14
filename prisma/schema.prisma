@@ -168,6 +168,7 @@ model Client {
   state     String?
   zip       String?
   email     String?
+  emailList Json?             // string[] — all email addresses
   phone     String?
   createdAt DateTime          @default(now())
   updatedAt DateTime          @updatedAt
@@ -1065,6 +1066,7 @@ model SubContractor {
   contactName   String?
   address       String?
   email         String?
+  emailList     Json?    // string[] — all email addresses
   phone         String?
   licenseNumber String?
   isFavorite    Boolean  @default(false)

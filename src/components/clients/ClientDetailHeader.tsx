@@ -13,6 +13,7 @@ type Client = {
   state: string | null;
   zip: string | null;
   email: string | null;
+  emailList?: string[] | null;
   phone: string | null;
 };
 
@@ -53,19 +54,20 @@ export default function ClientDetailHeader({
   }, []);
   const [isPending, startTransition] = useTransition();
   const router = useRouter();
+  const initEmailList = client.emailList as string[] | null ?? (client.email ? [client.email] : [""]);
   const [form, setForm] = useState({
     name: client.name,
     address: client.address ?? "",
     city: client.city ?? "",
     state: client.state ?? "",
     zip: client.zip ?? "",
-    email: client.email ?? "",
     phone: client.phone ?? "",
   });
+  const [emailList, setEmailList] = useState<string[]>(initEmailList.length > 0 ? initEmailList : [""]);
 
   function save() {
     startTransition(async () => {
-      await upsertClient({ id: client.id, ...form });
+      await upsertClient({ id: client.id, ...form, emailList });
       setEditing(false);
       router.refresh();
     });
@@ -110,8 +112,16 @@ export default function ClientDetailHeader({
             </div>
           </div>
           <div>
-            <label className="block text-xs font-medium mb-1" style={{ color: "#8b949e" }}>Email</label>
-            <input type="email" value={form.email} onChange={e => setForm({ ...form, email: e.target.value })} className="rounded-lg px-3 py-2 text-sm" style={inputStyle} />
+            <div className="flex items-center justify-between mb-1">
+              <label className="text-xs font-medium" style={{ color: "#8b949e" }}>Email</label>
+              <button onClick={() => setEmailList(p => [...p, ""])} className="text-xs px-2 py-0.5 rounded" style={{ background: "#C9A84C22", color: "#C9A84C" }}>+ Add</button>
+            </div>
+            {emailList.map((em, i) => (
+              <div key={i} className="flex gap-1 mb-1">
+                <input value={em} onChange={e => setEmailList(p => p.map((x, j) => j === i ? e.target.value : x))} className="flex-1 rounded-lg px-3 py-2 text-sm" style={inputStyle} placeholder="email@example.com" />
+                {emailList.length > 1 && <button onClick={() => setEmailList(p => p.filter((_, j) => j !== i))} className="w-8 rounded-lg text-sm font-bold" style={{ background: "#f8514922", color: "#f85149", border: "1px solid #f8514933" }}>×</button>}
+              </div>
+            ))}
           </div>
           <div>
             <label className="block text-xs font-medium mb-1" style={{ color: "#8b949e" }}>Phone</label>
@@ -158,11 +168,9 @@ export default function ClientDetailHeader({
                       📞 {formatPhone(client.phone)}
                     </span>
                   )}
-                  {client.email && (
-                    <span className="text-sm" style={{ color: "#8b949e" }}>
-                      ✉ {client.email}
-                    </span>
-                  )}
+                  {((client.emailList as string[] | null) ?? (client.email ? [client.email] : [])).map((em, i) => (
+                    <span key={i} className="text-sm" style={{ color: "#8b949e" }}>✉ {em}</span>
+                  ))}
                 </div>
 
                 {/* Payment summary */}

@@ -63,6 +63,7 @@ export default async function ClientDetailPage({
   const canDelete = session.user.role === "ADMIN";
 
   const isCommercial = safeClient.isCommercial;
+  const clientEmailAll = (safeClient.emailList as string[] | null)?.filter(Boolean).join(", ") ?? safeClient.email ?? null;
 
   // Load sub bids for client-bid tab (legacy)
   let subBids: SubBidRow[] = [];
@@ -182,6 +183,7 @@ export default async function ClientDetailPage({
           state: safeClient.state ?? null,
           zip: safeClient.zip ?? null,
           email: safeClient.email ?? null,
+          emailList: safeClient.emailList as string[] | null,
           phone: safeClient.phone ?? null,
         }}
         estimateCount={safeClient.templates.length}
@@ -288,7 +290,7 @@ export default async function ClientDetailPage({
           companyId={params.companyId}
           clientId={params.clientId}
           clientName={safeClient.name}
-          clientEmail={safeClient.email}
+          clientEmail={clientEmailAll}
           clientAddress={safeClient.address ?? null}
           canEdit={canEdit}
           canDelete={canDelete}
@@ -332,7 +334,7 @@ export default async function ClientDetailPage({
           companyId={params.companyId}
           clientId={params.clientId}
           clientName={safeClient.name}
-          clientEmail={safeClient.email ?? null}
+          clientEmail={clientEmailAll}
           isCommercial={isCommercial}
           clientCoverPhotoType={safeClient.coverPhotoType ?? null}
           canEdit={canEdit}
@@ -364,7 +366,7 @@ export default async function ClientDetailPage({
           companyId={params.companyId}
           clientId={params.clientId}
           clientName={safeClient.name}
-          clientEmail={safeClient.email ?? null}
+          clientEmail={clientEmailAll}
           estimates={safeClient.templates.map((est) => ({
             id: est.id,
             name: est.name,
@@ -404,7 +406,7 @@ export default async function ClientDetailPage({
           clientId={params.clientId}
           clientName={safeClient.name}
           clientAddress={safeClient.address ?? null}
-          clientEmail={safeClient.email ?? null}
+          clientEmail={clientEmailAll}
         />
         <ClientNotesTab
           companyId={params.companyId}
@@ -435,7 +437,7 @@ export default async function ClientDetailPage({
           companyId={params.companyId}
           clientId={params.clientId}
           clientName={safeClient.name}
-          clientEmail={safeClient.email ?? null}
+          clientEmail={clientEmailAll}
         />
       )}
 
@@ -448,7 +450,7 @@ export default async function ClientDetailPage({
           companyId={params.companyId}
           clientId={params.clientId}
           clientName={safeClient.name}
-          clientEmail={safeClient.email ?? null}
+          clientEmail={clientEmailAll}
         />
       )}
 
@@ -456,7 +458,7 @@ export default async function ClientDetailPage({
         <ClientCommsTab
           companyId={params.companyId}
           clientId={params.clientId}
-          clientEmail={safeClient.email ?? null}
+          clientEmail={clientEmailAll}
           initialEmails={clientEmails.map(e => ({
             id: e.id,
             fromEmail: e.fromEmail,

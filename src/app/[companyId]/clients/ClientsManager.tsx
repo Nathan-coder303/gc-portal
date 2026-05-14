@@ -295,7 +295,7 @@ function FromLeadModal({ companyId, defaultStatus, onDone, onClose }: {
         city: selected.city ?? "",
         state: "",
         zip: "",
-        email: selected.email ?? "",
+        emailList: selected.email ? [selected.email] : [],
         phone: selected.phone ?? "",
       });
       if (defaultStatus !== "PROSPECT" && res?.id) {
@@ -388,12 +388,13 @@ function FromLeadModal({ companyId, defaultStatus, onDone, onClose }: {
 
 function AddClientForm({ onDone, defaultStatus }: { onDone: (newClient?: Client) => void; defaultStatus: string }) {
   const [isPending, startTransition] = useTransition();
-  const [form, setForm] = useState({ name: "", address: "", city: "", state: "FL", zip: "", email: "", phone: "" });
+  const [form, setForm] = useState({ name: "", address: "", city: "", state: "FL", zip: "", phone: "" });
+  const [emailList, setEmailList] = useState<string[]>([""]);
 
   function handleAdd() {
     if (!form.name.trim()) return;
     startTransition(async () => {
-      const created = await upsertClient({ ...form });
+      const created = await upsertClient({ ...form, emailList });
       onDone({
         id: created.id,
         name: created.name,
@@ -441,8 +442,16 @@ function AddClientForm({ onDone, defaultStatus }: { onDone: (newClient?: Client)
           </div>
         </div>
         <div>
-          <label className="block text-xs font-medium mb-1" style={{ color: "#8b949e" }}>Email</label>
-          <input type="email" value={form.email} onChange={e => setForm({...form, email: e.target.value})} className="rounded px-2 py-1.5 text-sm" style={inputStyle} placeholder="client@email.com" />
+          <div className="flex items-center justify-between mb-1">
+            <label className="text-xs font-medium" style={{ color: "#8b949e" }}>Email</label>
+            <button type="button" onClick={() => setEmailList(p => [...p, ""])} className="text-xs px-2 py-0.5 rounded" style={{ background: "#C9A84C22", color: "#C9A84C" }}>+ Add</button>
+          </div>
+          {emailList.map((em, i) => (
+            <div key={i} className="flex gap-1 mb-1">
+              <input value={em} onChange={e => setEmailList(p => p.map((x, j) => j === i ? e.target.value : x))} className="flex-1 rounded px-2 py-1.5 text-sm" style={inputStyle} placeholder="email@example.com" />
+              {emailList.length > 1 && <button type="button" onClick={() => setEmailList(p => p.filter((_, j) => j !== i))} className="w-7 rounded text-sm font-bold" style={{ background: "#f8514922", color: "#f85149", border: "1px solid #f8514933" }}>×</button>}
+            </div>
+          ))}
         </div>
         <div>
           <label className="block text-xs font-medium mb-1" style={{ color: "#8b949e" }}>Phone</label>

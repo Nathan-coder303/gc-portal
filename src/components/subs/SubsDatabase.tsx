@@ -9,6 +9,7 @@ type Sub = {
   contactName: string | null;
   address: string | null;
   email: string | null;
+  emailList?: string[] | null;
   phone: string | null;
   divisionCode: string;
   divisionName: string;
@@ -398,12 +399,13 @@ function SubModal({
   title, initial, suggestions = [], onSave, onClose,
 }: {
   title: string;
-  initial: { name: string; contactName: string; address: string; email: string; phone: string; divisionCode: string; divisionName: string; tags: string[]; extraDivs: { c: string; n: string }[]; src?: string | null; text?: string };
+  initial: { name: string; contactName: string; address: string; email: string; emailList: string[]; phone: string; divisionCode: string; divisionName: string; tags: string[]; extraDivs: { c: string; n: string }[]; src?: string | null; text?: string };
   suggestions?: string[];
   onSave: (data: typeof initial) => Promise<void>;
   onClose: () => void;
 }) {
   const [form, setForm] = useState(initial);
+  const [emailList, setEmailList] = useState<string[]>(initial.emailList.length > 0 ? initial.emailList : [""]);
   const [saving, setSaving] = useState(false);
 
   function handleDivChange(code: string) {
@@ -414,7 +416,7 @@ function SubModal({
   async function handleSave() {
     if (!form.name.trim()) return;
     setSaving(true);
-    try { await onSave(form); } finally { setSaving(false); }
+    try { await onSave({ ...form, emailList }); } finally { setSaving(false); }
   }
 
   return (
@@ -442,8 +444,16 @@ function SubModal({
             <input type="text" value={form.address} onChange={e => setForm(f => ({ ...f, address: e.target.value }))} style={INPUT} className="outline-none" placeholder="123 Main St, Miami, FL 33101" />
           </div>
           <div>
-            <label className="block text-xs mb-1" style={{ color: "#8b949e" }}>Email</label>
-            <input type="email" value={form.email} onChange={e => setForm(f => ({ ...f, email: e.target.value }))} style={INPUT} className="outline-none" placeholder="contact@abc.com" />
+            <div className="flex items-center justify-between mb-1">
+              <label className="text-xs" style={{ color: "#8b949e" }}>Email</label>
+              <button type="button" onClick={() => setEmailList(p => [...p, ""])} className="text-xs px-2 py-0.5 rounded" style={{ background: "#C9A84C22", color: "#C9A84C" }}>+ Add</button>
+            </div>
+            {emailList.map((em, i) => (
+              <div key={i} className="flex gap-1 mb-1">
+                <input type="text" value={em} onChange={e => setEmailList(p => p.map((x, j) => j === i ? e.target.value : x))} style={INPUT} className="outline-none flex-1" placeholder="contact@abc.com" />
+                {emailList.length > 1 && <button type="button" onClick={() => setEmailList(p => p.filter((_, j) => j !== i))} className="w-8 rounded text-sm font-bold" style={{ background: "#f8514922", color: "#f85149", border: "1px solid #f8514933" }}>×</button>}
+              </div>
+            ))}
           </div>
           <div>
             <label className="block text-xs mb-1" style={{ color: "#8b949e" }}>Phone</label>
@@ -1000,11 +1010,12 @@ export default function SubsDatabase({
 
   // ── CRUD ──────────────────────────────────────────────────────────────────
   async function handleSave(
-    form: { name: string; contactName: string; address: string; email: string; phone: string; divisionCode: string; divisionName: string; tags: string[]; extraDivs: { c: string; n: string }[]; src?: string | null; text?: string },
+    form: { name: string; contactName: string; address: string; email: string; emailList: string[]; phone: string; divisionCode: string; divisionName: string; tags: string[]; extraDivs: { c: string; n: string }[]; src?: string | null; text?: string },
     editId?: string
   ) {
     const notes = serializeNotes(form.tags, form.extraDivs, form.src, form.text?.trim() || undefined);
-    const body = { name: form.name, contactName: form.contactName || null, address: form.address || null, email: form.email || null, phone: form.phone || null, divisionCode: form.divisionCode, divisionName: form.divisionName, notes };
+    const cleanEmails = form.emailList.map(e => e.trim()).filter(Boolean);
+    const body = { name: form.name, contactName: form.contactName || null, address: form.address || null, email: cleanEmails[0] ?? form.email ?? null, emailList: cleanEmails.length > 0 ? cleanEmails : null, phone: form.phone || null, divisionCode: form.divisionCode, divisionName: form.divisionName, notes };
     if (editId) {
       const res = await fetch(`/api/${companyId}/subs/${editId}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
       if (!res.ok) { alert(`Failed to save sub: ${res.status}`); return; }
@@ -1171,8 +1182,8 @@ export default function SubsDatabase({
 
   const defaultDivision = ALL_DIVISIONS[0];
   const modalInitial = modal?.mode === "edit" && modal.sub
-    ? { name: modal.sub.name, contactName: modal.sub.contactName ?? "", address: modal.sub.address ?? "", email: modal.sub.email ?? "", phone: modal.sub.phone ?? "", divisionCode: modal.sub.divisionCode, divisionName: modal.sub.divisionName, tags: parseTags(modal.sub.notes), extraDivs: parseExtraDivs(modal.sub.notes), src: parseSrc(modal.sub.notes), text: parseText(modal.sub.notes) }
-    : { name: "", contactName: "", address: "", email: "", phone: "", divisionCode: modal?.prefillDiv?.code ?? defaultDivision.code, divisionName: modal?.prefillDiv?.name ?? defaultDivision.name, tags: [], extraDivs: [], src: null, text: "" };
+    ? { name: modal.sub.name, contactName: modal.sub.contactName ?? "", address: modal.sub.address ?? "", email: modal.sub.email ?? "", emailList: (modal.sub.emailList as string[] | null) ?? (modal.sub.email ? [modal.sub.email] : [""]), phone: modal.sub.phone ?? "", divisionCode: modal.sub.divisionCode, divisionName: modal.sub.divisionName, tags: parseTags(modal.sub.notes), extraDivs: parseExtraDivs(modal.sub.notes), src: parseSrc(modal.sub.notes), text: parseText(modal.sub.notes) }
+    : { name: "", contactName: "", address: "", email: "", emailList: [""], phone: "", divisionCode: modal?.prefillDiv?.code ?? defaultDivision.code, divisionName: modal?.prefillDiv?.name ?? defaultDivision.name, tags: [], extraDivs: [], src: null, text: "" };
 
   return (
     <div>
