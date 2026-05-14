@@ -422,7 +422,7 @@ function getRoofIntroParagraphs(co: string) {
 }
 
 function RoofIntroPage({ template, client }: Pick<TemplatePdfProps, "template" | "client">) {
-  const { logoSrc: logoPath, name: companyDisplayName, address: companyAddress, phone: companyPhone, email: companyEmail, licenses: companyLicenses, tagline: companyTagline, contactName: companyContactName } = useBranding();
+  const { logoSrc: logoPath, name: companyDisplayName, address: companyAddress, phone: companyPhone, email: companyEmail, licenses: companyLicenses, contactName: companyContactName } = useBranding();
   const ROOF_INTRO_PARAS = getRoofIntroParagraphs(companyDisplayName);
   const today = new Date().toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" });
   const clientCity = [client?.city, client?.state, client?.zip].filter(Boolean).join(", ");
@@ -587,7 +587,7 @@ function AdditionPage1({ template, client, clientCoverPhotoType, clientCoverPhot
 
 // ─── Addition Scope of Work Page (Page 2) ─────────────────────────────────────
 function AdditionPage2({ client }: Pick<TemplatePdfProps, "client">) {
-  const { logoSrc: logoPath, name: companyDisplayName, address: companyAddress, phone: companyPhone, email: companyEmail, licenses: companyLicenses, tagline: companyTagline, contactName: companyContactName } = useBranding();
+  const { logoSrc: logoPath, name: companyDisplayName, address: companyAddress, phone: companyPhone, email: companyEmail, licenses: companyLicenses, contactName: companyContactName } = useBranding();
   const SECTIONS: { title: string; items: string[] }[] = [
     {
       title: "1. PERMITTING & PRE-CONSTRUCTION",
@@ -760,7 +760,7 @@ function AdditionPage2({ client }: Pick<TemplatePdfProps, "client">) {
 
 // ─── Permit & Design Scope of Work Page ──────────────────────────────────────
 function PermitDrawingsPage({ client }: Pick<TemplatePdfProps, "client">) {
-  const { logoSrc: logoPath, name: companyDisplayName, address: companyAddress, phone: companyPhone, email: companyEmail, licenses: companyLicenses, tagline: companyTagline, contactName: companyContactName } = useBranding();
+  const { logoSrc: logoPath, name: companyDisplayName, address: companyAddress, phone: companyPhone, email: companyEmail, licenses: companyLicenses, contactName: companyContactName } = useBranding();
   const PERMIT_SECTIONS: { title: string; body: string }[] = [
     {
       title: "1. Pergola",
@@ -896,7 +896,7 @@ function PermitDrawingsPage({ client }: Pick<TemplatePdfProps, "client">) {
 
 // ─── Retail Page 1: Cover + WHY CHOOSE US ────────────────────────────────────
 function RetailPage1({ template, client, clientCoverPhotoType, clientCoverPhotoUrl, clientCoverTitle }: Pick<TemplatePdfProps, "template" | "client" | "clientCoverPhotoType" | "clientCoverPhotoUrl" | "clientCoverTitle">) {
-  const { logoSrc: logoPath, name: companyDisplayName, address: companyAddress, phone: companyPhone, email: companyEmail, licenses: companyLicenses, tagline: companyTagline, contactName: companyContactName } = useBranding();
+  const { logoSrc: logoPath, name: companyDisplayName, address: companyAddress, phone: companyPhone, email: companyEmail, licenses: companyLicenses, contactName: companyContactName } = useBranding();
   let coverImgSrc: string;
   if (clientCoverPhotoType === "CUSTOM" && clientCoverPhotoUrl) {
     coverImgSrc = clientCoverPhotoUrl;
@@ -995,7 +995,7 @@ function RetailPage1({ template, client, clientCoverPhotoType, clientCoverPhotoU
 
 // ─── Retail Page 2: WHAT WE BUILD + OUR APPROACH + SCOPE OF WORK ─────────────
 function RetailPage2({ client }: Pick<TemplatePdfProps, "client">) {
-  const { logoSrc: logoPath, name: companyDisplayName, address: companyAddress, phone: companyPhone, email: companyEmail, licenses: companyLicenses, tagline: companyTagline, contactName: companyContactName } = useBranding();
+  const { logoSrc: logoPath, name: companyDisplayName, address: companyAddress, phone: companyPhone, email: companyEmail, licenses: companyLicenses, contactName: companyContactName } = useBranding();
   const WHAT_ITEMS = [
     "Retail Store Buildouts",
     "Tenant Improvements (TI)",
@@ -1168,7 +1168,7 @@ function RetailPage2({ client }: Pick<TemplatePdfProps, "client">) {
 
 // ─── Division Summary Page ────────────────────────────────────────────────────
 function DivisionSummaryPage({ template, client, divisions, gcFeePercent }: Pick<TemplatePdfProps, "template" | "client" | "divisions" | "gcFeePercent">) {
-  const { logoSrc: logoPath, name: companyDisplayName, address: companyAddress, phone: companyPhone, email: companyEmail, licenses: companyLicenses, tagline: companyTagline, contactName: companyContactName } = useBranding();
+  const { logoSrc: logoPath, name: companyDisplayName, phone: companyPhone, email: companyEmail, licenses: companyLicenses, contactName: companyContactName } = useBranding();
 
   // Compute division totals (only divisions with items having a total)
   const divTotals: { name: string; total: number }[] = [];
@@ -1297,7 +1297,7 @@ function DivisionSummaryPage({ template, client, divisions, gcFeePercent }: Pick
 }
 
 function ScopeOfWorkPage({ title, body, client }: { title: string; body: string; client?: TemplatePdfProps["client"] }) {
-  const { logoSrc: logoPath, name: companyDisplayName, address: companyAddress, phone: companyPhone, email: companyEmail, licenses: companyLicenses, tagline: companyTagline, contactName: companyContactName } = useBranding();
+  const { logoSrc: logoPath, name: companyDisplayName, address: companyAddress, phone: companyPhone, email: companyEmail, licenses: companyLicenses, contactName: companyContactName } = useBranding();
   const blocks = body.split(/\n\n+/).map(b => b.trim()).filter(Boolean);
   const clientName = client?.name ?? "";
   return (
