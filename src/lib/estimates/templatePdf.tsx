@@ -1,5 +1,5 @@
 import { Document, Page, Text, View, StyleSheet, renderToBuffer, Image, Font } from "@react-pdf/renderer";
-import React, { createContext, useContext } from "react";
+import React from "react";
 import path from "path";
 
 Font.registerHyphenationCallback((word) => [word]);
@@ -42,8 +42,10 @@ function getBranding(partial?: Partial<CompanyBranding> | null): CompanyBranding
   };
 }
 
-const BrandingContext = createContext<CompanyBranding>(MIBH_DEFAULTS);
-const useBranding = () => useContext(BrandingContext);
+// Module-level variable — safe because each Vercel invocation is isolated
+// and react-pdf's render phase is synchronous within renderToBuffer.
+let _activeBranding: CompanyBranding = MIBH_DEFAULTS;
+const useBranding = () => _activeBranding;
 
 const GOLD = "#C9A84C";
 const DARK = "#1e293b";
@@ -1355,8 +1357,8 @@ function ScopeOfWorkPage({ title, body, client }: { title: string; body: string;
   );
 }
 
-function TemplatePdfDocument({ companyName, template, client, divisions, showTerms, termsContent, paymentSchedule, gcFeePercent, summaryGroups, clientSignatureData, clientSignedByName, clientSignedAt, contractorSignatureData, contractorSignedAt, includeRoofUpgradesPage, includeCoverPage, includeAdditionPages, includePermitPages, includeRetailPages, includeDivisionSummary, insertPageOffset, insulationType, clientCoverPhotoType, clientCoverPhotoUrl, clientCoverTitle, forcedBreakCsiPrefixes = [], forcedBreakTerms = false, scopeOfWork, branding: brandingProp }: TemplatePdfProps) {
-  const branding = getBranding(brandingProp);
+function TemplatePdfDocument({ companyName, template, client, divisions, showTerms, termsContent, paymentSchedule, gcFeePercent, summaryGroups, clientSignatureData, clientSignedByName, clientSignedAt, contractorSignatureData, contractorSignedAt, includeRoofUpgradesPage, includeCoverPage, includeAdditionPages, includePermitPages, includeRetailPages, includeDivisionSummary, insertPageOffset, insulationType, clientCoverPhotoType, clientCoverPhotoUrl, clientCoverTitle, forcedBreakCsiPrefixes = [], forcedBreakTerms = false, scopeOfWork }: TemplatePdfProps) {
+  const branding = useBranding();
   const grouped = groupDivisions(divisions);
 
   // Compute raw totals per group label (or null for ungrouped)
@@ -1510,7 +1512,6 @@ function TemplatePdfDocument({ companyName, template, client, divisions, showTer
   );
 
   return (
-    <BrandingContext.Provider value={branding}>
     <Document title={`${template.name} — Estimate`} author={companyName}>
       {includeCoverPage && !includeAdditionPages && !includePermitPages && !includeRoofUpgradesPage && !includeRetailPages && <CoverPages template={template} client={client} clientCoverPhotoType={clientCoverPhotoType} clientCoverPhotoUrl={clientCoverPhotoUrl} clientCoverTitle={clientCoverTitle} />}
       {includeRoofUpgradesPage && <CoverPages template={template} client={client} clientCoverPhotoType={clientCoverPhotoType} clientCoverPhotoUrl={clientCoverPhotoUrl} clientCoverTitle={clientCoverTitle} />}
@@ -1803,12 +1804,16 @@ function TemplatePdfDocument({ companyName, template, client, divisions, showTer
         </Page>
       )}
     </Document>
-    </BrandingContext.Provider>
   );
 }
 
 export async function renderTemplatePdf(props: TemplatePdfProps): Promise<Buffer> {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const buf = await renderToBuffer(React.createElement(TemplatePdfDocument, props) as any);
-  return Buffer.from(buf as unknown as Uint8Array);
+  _activeBranding = getBranding(props.branding);
+  try {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const buf = await renderToBuffer(React.createElement(TemplatePdfDocument, props) as any);
+    return Buffer.from(buf as unknown as Uint8Array);
+  } finally {
+    _activeBranding = MIBH_DEFAULTS;
+  }
 }
