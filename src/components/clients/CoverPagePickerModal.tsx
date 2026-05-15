@@ -95,7 +95,7 @@ export default function CoverPagePickerModal({
   const [cover, setCover] = useState<CoverType>(() => {
     if (companyId) {
       try {
-        const saved = JSON.parse(localStorage.getItem(`gc-pdf-opts-${companyId}`) ?? "null");
+        const saved = JSON.parse(localStorage.getItem(`gc-pdf-opts-${clientId ?? companyId}`) ?? "null");
         if (saved?.coverType) return saved.coverType as CoverType;
       } catch {}
     }
@@ -104,7 +104,7 @@ export default function CoverPagePickerModal({
   const [page2, setPage2] = useState<Page2Type>(() => {
     if (companyId) {
       try {
-        const saved = JSON.parse(localStorage.getItem(`gc-pdf-opts-${companyId}`) ?? "null");
+        const saved = JSON.parse(localStorage.getItem(`gc-pdf-opts-${clientId ?? companyId}`) ?? "null");
         if (saved?.page2) return saved.page2 as Page2Type;
       } catch {}
     }
@@ -120,7 +120,7 @@ export default function CoverPagePickerModal({
   const [selectedBlobUrl, setSelectedBlobUrl] = useState<string | null>(() => {
     if (companyId) {
       try {
-        const saved = JSON.parse(localStorage.getItem(`gc-pdf-opts-${companyId}`) ?? "null");
+        const saved = JSON.parse(localStorage.getItem(`gc-pdf-opts-${clientId ?? companyId}`) ?? "null");
         if (saved?.selectedBlobUrl) return saved.selectedBlobUrl as string;
       } catch {}
     }
@@ -139,9 +139,9 @@ export default function CoverPagePickerModal({
   useEffect(() => {
     if (!companyId) return;
     try {
-      localStorage.setItem(`gc-pdf-opts-${companyId}`, JSON.stringify({ coverType: cover, page2, selectedBlobUrl }));
+      localStorage.setItem(`gc-pdf-opts-${clientId ?? companyId}`, JSON.stringify({ coverType: cover, page2, selectedBlobUrl }));
     } catch {}
-  }, [cover, page2, selectedBlobUrl, companyId]);
+  }, [cover, page2, selectedBlobUrl, companyId, clientId]);
 
   function getCoverName(c: CustomCover): string {
     return coverNames[c.blobUrl] ?? formatCoverName(c.filename);
