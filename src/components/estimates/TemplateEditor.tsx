@@ -1819,6 +1819,27 @@ export default function TemplateEditor({
                     />
                   </div>
                 </div>
+                {/* Contractor selector */}
+                <div className="mt-3 flex items-center gap-2">
+                  <span className="text-xs" style={{ color: "#8b949e" }}>Contractor:</span>
+                  {([null, "Precision Construction"] as const).map((opt) => (
+                    <button
+                      key={opt ?? "mibh"}
+                      onClick={() => {
+                        setBrandingName(opt);
+                        startTransition(async () => { await updateTemplateBrandingName(template.id, opt); });
+                      }}
+                      className="text-xs px-3 py-1 rounded-lg font-semibold"
+                      style={{
+                        background: brandingName === opt ? "#C9A84C22" : "#1e2736",
+                        color: brandingName === opt ? "#C9A84C" : "#8b949e",
+                        border: `1px solid ${brandingName === opt ? "#C9A84C55" : "#30373f"}`,
+                      }}
+                    >
+                      {opt ?? "MIBH"}
+                    </button>
+                  ))}
+                </div>
                 {/* T&C toggle */}
                 <div className="mt-3 space-y-2">
                   <button
@@ -2043,28 +2064,6 @@ export default function TemplateEditor({
                               }}
                             >
                               {opt ?? "None"}
-                            </button>
-                          ))}
-                        </div>
-                      </label>
-                      <label className="flex items-center justify-between gap-3">
-                        <span className="text-xs" style={{ color: "#8b949e" }}>Contractor</span>
-                        <div className="flex gap-1">
-                          {([null, "Precision Construction"] as const).map((opt) => (
-                            <button
-                              key={opt ?? "mibh"}
-                              onClick={() => {
-                                setBrandingName(opt);
-                                startTransition(async () => { await updateTemplateBrandingName(template.id, opt); });
-                              }}
-                              className="text-xs px-2 py-0.5 rounded-full font-semibold"
-                              style={{
-                                background: brandingName === opt ? "#0d2318" : "#1e2736",
-                                color: brandingName === opt ? "#22c55e" : "#8b949e",
-                                border: `1px solid ${brandingName === opt ? "#22c55e" : "#30373f"}`,
-                              }}
-                            >
-                              {opt ?? "MIBH"}
                             </button>
                           ))}
                         </div>

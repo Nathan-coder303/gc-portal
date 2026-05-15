@@ -28,17 +28,30 @@ const MIBH_DEFAULTS: CompanyBranding = {
   logoSrc: path.join(process.cwd(), "public", "logo.png"),
 };
 
+const PRECISION_DEFAULTS: CompanyBranding = {
+  name: "Precision Construction",
+  address: "TBD, Hollywood, FL",
+  phone: "(954) 383-8382",
+  email: "mike@mibhconstruction.com",
+  licenses: "CGC1516546",
+  tagline: "20 YEARS OF EXCELLENCE",
+  website: "mibhconstruction.com",
+  contactName: "Mike Baruh",
+  logoSrc: path.join(process.cwd(), "public", "logo.png"),
+};
+
 function getBranding(partial?: Partial<CompanyBranding> | null): CompanyBranding {
+  const base = partial?.name === "Precision Construction" ? PRECISION_DEFAULTS : MIBH_DEFAULTS;
   return {
-    name: partial?.name || MIBH_DEFAULTS.name,
-    address: partial?.address || MIBH_DEFAULTS.address,
-    phone: partial?.phone || MIBH_DEFAULTS.phone,
-    email: partial?.email || MIBH_DEFAULTS.email,
-    licenses: partial?.licenses || MIBH_DEFAULTS.licenses,
-    tagline: partial?.tagline || MIBH_DEFAULTS.tagline,
-    website: partial?.website || MIBH_DEFAULTS.website,
-    contactName: partial?.contactName || MIBH_DEFAULTS.contactName,
-    logoSrc: partial?.logoSrc || MIBH_DEFAULTS.logoSrc,
+    name: partial?.name || base.name,
+    address: partial?.address || base.address,
+    phone: partial?.phone || base.phone,
+    email: partial?.email || base.email,
+    licenses: partial?.licenses || base.licenses,
+    tagline: partial?.tagline || base.tagline,
+    website: partial?.website || base.website,
+    contactName: partial?.contactName || base.contactName,
+    logoSrc: partial?.logoSrc || base.logoSrc,
   };
 }
 
@@ -707,37 +720,37 @@ function AdditionPage2({ client }: Pick<TemplatePdfProps, "client">) {
       <View style={{ height: 3, backgroundColor: GOLD }} />
 
       {/* Main content */}
-      <View style={{ paddingHorizontal: 28, paddingTop: 14, paddingBottom: 8 }}>
+      <View style={{ paddingHorizontal: 28, paddingTop: 10, paddingBottom: 6 }}>
 
         {/* WHAT WE BUILD + OUR APPROACH side by side */}
-        <View style={{ flexDirection: "row", gap: 20, marginBottom: 12 }}>
+        <View style={{ flexDirection: "row", gap: 20, marginBottom: 8 }}>
           <View style={{ flex: 1 }}>
-            <Text style={{ fontSize: 14, fontFamily: "Helvetica-Bold", color: DARK, letterSpacing: 0.5, marginBottom: 8 }}>WHAT WE BUILD</Text>
+            <Text style={{ fontSize: 13, fontFamily: "Helvetica-Bold", color: DARK, letterSpacing: 0.5, marginBottom: 6 }}>WHAT WE BUILD</Text>
             {WHAT_ITEMS.map((item, i) => (
-              <View key={i} style={{ flexDirection: "row", alignItems: "flex-start", marginBottom: 5, gap: 8 }}>
-                <Text style={{ fontSize: 12, color: GOLD, fontFamily: "Helvetica-Bold" }}>•</Text>
-                <Text style={{ fontSize: 12, color: "#334155", flex: 1 }}>{item}</Text>
+              <View key={i} style={{ flexDirection: "row", alignItems: "flex-start", marginBottom: 4, gap: 8 }}>
+                <Text style={{ fontSize: 11, color: GOLD, fontFamily: "Helvetica-Bold" }}>•</Text>
+                <Text style={{ fontSize: 11, color: "#334155", flex: 1 }}>{item}</Text>
               </View>
             ))}
           </View>
           <View style={{ width: 2, backgroundColor: GOLD, marginVertical: 2 }} />
           <View style={{ flex: 1, paddingLeft: 6 }}>
-            <Text style={{ fontSize: 14, fontFamily: "Helvetica-Bold", color: DARK, letterSpacing: 0.5, marginBottom: 8 }}>OUR APPROACH</Text>
-            <Text style={{ fontSize: 12, color: "#334155", lineHeight: 1.6 }}>
+            <Text style={{ fontSize: 13, fontFamily: "Helvetica-Bold", color: DARK, letterSpacing: 0.5, marginBottom: 6 }}>OUR APPROACH</Text>
+            <Text style={{ fontSize: 11, color: "#334155", lineHeight: 1.5 }}>
               We handle your project from concept to completion — including planning, engineering, permitting, and construction — ensuring a seamless process with one accountable team. You get a single point of contact, no subcontractor confusion, and full transparency from day one.
             </Text>
           </View>
         </View>
 
         {/* Scope of Work title */}
-        <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "center", marginBottom: 8, gap: 12 }}>
+        <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "center", marginBottom: 6, gap: 12 }}>
           <View style={{ flex: 1, height: 1, backgroundColor: GOLD }} />
-          <Text style={{ fontSize: 15, fontFamily: "Helvetica-Bold", color: DARK, letterSpacing: 1 }}>SCOPE OF WORK</Text>
+          <Text style={{ fontSize: 14, fontFamily: "Helvetica-Bold", color: DARK, letterSpacing: 1 }}>SCOPE OF WORK</Text>
           <View style={{ flex: 1, height: 1, backgroundColor: GOLD }} />
         </View>
 
         {/* Intro */}
-        <Text style={{ fontSize: 11, color: "#334155", lineHeight: 1.55, marginBottom: 10 }}>
+        <Text style={{ fontSize: 10.5, color: "#334155", lineHeight: 1.5, marginBottom: 8 }}>
           We appreciate the opportunity to provide this proposal. {companyDisplayName} will deliver all labor, materials, equipment, and supervision required to complete your addition in full compliance with Florida Building Code (FBC 2023), local municipal requirements, and approved engineering plans.
         </Text>
 
@@ -745,12 +758,12 @@ function AdditionPage2({ client }: Pick<TemplatePdfProps, "client">) {
         <View style={{ flexDirection: "row", gap: 20 }}>
           <View style={{ flex: 1 }}>
             {SECTIONS.slice(0, 3).map((sec, si) => (
-              <View key={si} style={{ marginTop: si === 0 ? 0 : 12, marginBottom: 4 }}>
-                <Text style={{ fontSize: 11, fontFamily: "Helvetica-Bold", color: DARK, marginBottom: 5, textTransform: "uppercase" }}>{sec.title}</Text>
+              <View key={si} style={{ marginTop: si === 0 ? 0 : 9, marginBottom: 2 }}>
+                <Text style={{ fontSize: 10.5, fontFamily: "Helvetica-Bold", color: DARK, marginBottom: 3, textTransform: "uppercase" }}>{sec.title}</Text>
                 {sec.items.map((item, ii) => (
-                  <View key={ii} style={{ flexDirection: "row", alignItems: "flex-start", marginBottom: 3, gap: 7 }}>
-                    <Text style={{ fontSize: 11, color: GOLD, fontFamily: "Helvetica-Bold" }}>•</Text>
-                    <Text style={{ fontSize: 11, color: "#475569", flex: 1 }}>{item}</Text>
+                  <View key={ii} style={{ flexDirection: "row", alignItems: "flex-start", marginBottom: 2, gap: 7 }}>
+                    <Text style={{ fontSize: 10.5, color: GOLD, fontFamily: "Helvetica-Bold" }}>•</Text>
+                    <Text style={{ fontSize: 10.5, color: "#475569", flex: 1 }}>{item}</Text>
                   </View>
                 ))}
               </View>
@@ -758,12 +771,12 @@ function AdditionPage2({ client }: Pick<TemplatePdfProps, "client">) {
           </View>
           <View style={{ flex: 1 }}>
             {SECTIONS.slice(3).map((sec, si) => (
-              <View key={si} style={{ marginTop: si === 0 ? 0 : 12, marginBottom: 4 }}>
-                <Text style={{ fontSize: 11, fontFamily: "Helvetica-Bold", color: DARK, marginBottom: 5, textTransform: "uppercase" }}>{sec.title}</Text>
+              <View key={si} style={{ marginTop: si === 0 ? 0 : 9, marginBottom: 2 }}>
+                <Text style={{ fontSize: 10.5, fontFamily: "Helvetica-Bold", color: DARK, marginBottom: 3, textTransform: "uppercase" }}>{sec.title}</Text>
                 {sec.items.map((item, ii) => (
-                  <View key={ii} style={{ flexDirection: "row", alignItems: "flex-start", marginBottom: 3, gap: 7 }}>
-                    <Text style={{ fontSize: 11, color: GOLD, fontFamily: "Helvetica-Bold" }}>•</Text>
-                    <Text style={{ fontSize: 11, color: "#475569", flex: 1 }}>{item}</Text>
+                  <View key={ii} style={{ flexDirection: "row", alignItems: "flex-start", marginBottom: 2, gap: 7 }}>
+                    <Text style={{ fontSize: 10.5, color: GOLD, fontFamily: "Helvetica-Bold" }}>•</Text>
+                    <Text style={{ fontSize: 10.5, color: "#475569", flex: 1 }}>{item}</Text>
                   </View>
                 ))}
               </View>
