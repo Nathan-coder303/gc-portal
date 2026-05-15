@@ -110,11 +110,11 @@ const styles = StyleSheet.create({
   header: { flexDirection: "column", marginBottom: 12, paddingTop: 10, paddingBottom: 8, borderBottomWidth: 2, borderBottomColor: GOLD },
 
   // Left column
-  logo: { width: 76, height: 76, marginBottom: 4 },
+  logo: { width: 152, height: 152, marginBottom: 4 },
   companyInfo: { fontSize: 11, fontFamily: "Helvetica-Bold", color: DARK, marginTop: 2 },
 
   // Center column
-  centerSection: { alignSelf: "stretch", alignItems: "center", paddingBottom: 6 },
+  centerSection: { alignSelf: "stretch", alignItems: "center", paddingBottom: 2 },
   centerBold: { fontSize: 15, fontFamily: "Helvetica-Bold", color: DARK, textAlign: "center", marginBottom: 4 },
 
   // Right column
@@ -321,7 +321,7 @@ function CoverPages({ template, client, clientCoverPhotoType, clientCoverPhotoUr
       {/* Header */}
       <View style={{ flexDirection: "row", alignItems: "center", backgroundColor: DARK, paddingHorizontal: 24, paddingVertical: 10, gap: 14 }}>
         {/* eslint-disable-next-line jsx-a11y/alt-text */}
-        <Image src={logoPath} style={{ width: 52, height: 52 }} />
+        <Image src={logoPath} style={{ width: 104, height: 104 }} />
         <View>
           <Text style={{ fontSize: 20, fontFamily: "Helvetica-Bold", color: GOLD, letterSpacing: 2 }}>{companyDisplayName.toUpperCase()}</Text>
           <Text style={{ fontSize: 8, color: "#94a3b8", marginTop: 2 }}>Licensed &amp; Insured  |  {companyLicenses}  |  {companyAddress}  |  {companyPhone}</Text>
@@ -449,7 +449,7 @@ function RoofIntroPage({ template, client }: Pick<TemplatePdfProps, "template" |
       {/* Header */}
       <View style={{ flexDirection: "row", alignItems: "center", backgroundColor: DARK, paddingHorizontal: 24, paddingVertical: 10, gap: 14 }}>
         {/* eslint-disable-next-line jsx-a11y/alt-text */}
-        <Image src={logoPath} style={{ width: 52, height: 52 }} />
+        <Image src={logoPath} style={{ width: 104, height: 104 }} />
         <View>
           <Text style={{ fontSize: 20, fontFamily: "Helvetica-Bold", color: GOLD, letterSpacing: 2 }}>{companyDisplayName.toUpperCase()}</Text>
           <Text style={{ fontSize: 8, color: "#94a3b8", marginTop: 2 }}>Licensed &amp; Insured  |  {companyLicenses}  |  {companyAddress}  |  {companyPhone}</Text>
@@ -536,7 +536,7 @@ function AdditionPage1({ template, client, clientCoverPhotoType, clientCoverPhot
       {/* Header */}
       <View style={{ flexDirection: "row", alignItems: "center", backgroundColor: DARK, paddingHorizontal: 24, paddingVertical: 10, gap: 14 }}>
         {/* eslint-disable-next-line jsx-a11y/alt-text */}
-        <Image src={logoPath} style={{ width: 52, height: 52 }} />
+        <Image src={logoPath} style={{ width: 104, height: 104 }} />
         <View>
           <Text style={{ fontSize: 20, fontFamily: "Helvetica-Bold", color: GOLD, letterSpacing: 2 }}>{companyDisplayName.toUpperCase()}</Text>
           <Text style={{ fontSize: 8, color: "#94a3b8", marginTop: 2 }}>Licensed &amp; Insured  |  {companyLicenses}  |  {companyAddress}  |  {companyPhone}</Text>
@@ -697,7 +697,7 @@ function AdditionPage2({ client }: Pick<TemplatePdfProps, "client">) {
       {/* Header */}
       <View style={{ flexDirection: "row", alignItems: "center", backgroundColor: DARK, paddingHorizontal: 24, paddingVertical: 10, gap: 14 }}>
         {/* eslint-disable-next-line jsx-a11y/alt-text */}
-        <Image src={logoPath} style={{ width: 52, height: 52 }} />
+        <Image src={logoPath} style={{ width: 104, height: 104 }} />
         <View style={{ flex: 1 }}>
           <Text style={{ fontSize: 20, fontFamily: "Helvetica-Bold", color: GOLD, letterSpacing: 2 }}>{companyDisplayName.toUpperCase()}</Text>
           <Text style={{ fontSize: 8, color: "#94a3b8", marginTop: 2 }}>Licensed &amp; Insured  |  {companyLicenses}  |  {companyAddress}  |  {companyPhone}</Text>
@@ -836,7 +836,7 @@ function PermitDrawingsPage({ client }: Pick<TemplatePdfProps, "client">) {
       {/* Header */}
       <View style={{ flexDirection: "row", alignItems: "center", backgroundColor: DARK, paddingHorizontal: 24, paddingVertical: 10, gap: 14 }}>
         {/* eslint-disable-next-line jsx-a11y/alt-text */}
-        <Image src={logoPath} style={{ width: 52, height: 52 }} />
+        <Image src={logoPath} style={{ width: 104, height: 104 }} />
         <View style={{ flex: 1 }}>
           <Text style={{ fontSize: 20, fontFamily: "Helvetica-Bold", color: GOLD, letterSpacing: 2 }}>{companyDisplayName.toUpperCase()}</Text>
           <Text style={{ fontSize: 8, color: "#94a3b8", marginTop: 2 }}>Licensed &amp; Insured  |  {companyLicenses}  |  {companyAddress}  |  {companyPhone}</Text>
@@ -962,7 +962,7 @@ function RetailPage1({ template, client, clientCoverPhotoType, clientCoverPhotoU
       {/* Header */}
       <View style={{ flexDirection: "row", alignItems: "center", backgroundColor: DARK, paddingHorizontal: 24, paddingVertical: 10, gap: 14 }}>
         {/* eslint-disable-next-line jsx-a11y/alt-text */}
-        <Image src={logoPath} style={{ width: 52, height: 52 }} />
+        <Image src={logoPath} style={{ width: 104, height: 104 }} />
         <View>
           <Text style={{ fontSize: 20, fontFamily: "Helvetica-Bold", color: GOLD, letterSpacing: 2 }}>{companyDisplayName.toUpperCase()}</Text>
           <Text style={{ fontSize: 8, color: "#94a3b8", marginTop: 2 }}>Licensed &amp; Insured  |  {companyLicenses}  |  {companyAddress}  |  {companyPhone}</Text>
@@ -1108,7 +1108,7 @@ function RetailPage2({ client }: Pick<TemplatePdfProps, "client">) {
       {/* Header */}
       <View style={{ flexDirection: "row", alignItems: "center", backgroundColor: DARK, paddingHorizontal: 24, paddingVertical: 10, gap: 14 }}>
         {/* eslint-disable-next-line jsx-a11y/alt-text */}
-        <Image src={logoPath} style={{ width: 52, height: 52 }} />
+        <Image src={logoPath} style={{ width: 104, height: 104 }} />
         <View style={{ flex: 1 }}>
           <Text style={{ fontSize: 20, fontFamily: "Helvetica-Bold", color: GOLD, letterSpacing: 2 }}>{companyDisplayName.toUpperCase()}</Text>
           <Text style={{ fontSize: 8, color: "#94a3b8", marginTop: 2 }}>Licensed &amp; Insured  |  {companyLicenses}  |  {companyAddress}  |  {companyPhone}</Text>
@@ -1335,7 +1335,7 @@ function ScopeOfWorkPage({ title, body, client }: { title: string; body: string;
       {/* Header */}
       <View style={{ flexDirection: "row", alignItems: "center", backgroundColor: DARK, paddingHorizontal: 24, paddingVertical: 10, gap: 14 }}>
         {/* eslint-disable-next-line jsx-a11y/alt-text */}
-        <Image src={logoPath} style={{ width: 52, height: 52 }} />
+        <Image src={logoPath} style={{ width: 104, height: 104 }} />
         <View style={{ flex: 1 }}>
           <Text style={{ fontSize: 20, fontFamily: "Helvetica-Bold", color: GOLD, letterSpacing: 2 }}>{companyDisplayName.toUpperCase()}</Text>
           <Text style={{ fontSize: 8, color: "#94a3b8", marginTop: 2 }}>Licensed &amp; Insured  |  {companyLicenses}  |  {companyAddress}  |  {companyPhone}</Text>
@@ -1565,8 +1565,8 @@ function TemplatePdfDocument({ companyName, template, client, divisions, showTer
             {dateDisplay ? <Text style={styles.centerBold}>{dateDisplay}</Text> : null}
             {_progressPct != null ? (
               <>
-                <Text style={styles.centerBold}>Progress Invoice {_progressInvoiceNumber ?? ""}</Text>
-                <Text style={styles.centerBold}>{_progressPct}% Progress Payment</Text>
+                <Text style={[styles.centerBold, { color: GOLD }]}>Progress Invoice {_progressInvoiceNumber ?? ""}</Text>
+                <Text style={[styles.centerBold, { color: GOLD }]}>{_progressPct}% Progress Payment</Text>
               </>
             ) : (
               !hideEstimateLabel && <Text style={styles.centerBold}>{template.estimateNumber ? `Estimate #${template.estimateNumber}` : "ESTIMATE"}</Text>
@@ -1574,7 +1574,7 @@ function TemplatePdfDocument({ companyName, template, client, divisions, showTer
           </View>
 
           {/* Bottom row: Logo + company left, client right */}
-          <View style={{ flexDirection: "row", justifyContent: "space-between", marginTop: 10 }}>
+          <View style={{ flexDirection: "row", justifyContent: "space-between", marginTop: 4 }}>
             {/* Left: Logo + company info */}
             <View>
               {/* eslint-disable-next-line jsx-a11y/alt-text */}
@@ -1584,8 +1584,8 @@ function TemplatePdfDocument({ companyName, template, client, divisions, showTer
               <Text style={styles.companyInfo}>{branding.licenses}</Text>
             </View>
 
-            {/* Right: Client — marginTop 80 aligns with address lines (below 76px logo + 4px gap) */}
-            <View style={{ alignItems: "flex-end", marginTop: 80 }}>
+            {/* Right: Client — marginTop 156 aligns with address lines (below 152px logo + 4px gap) */}
+            <View style={{ alignItems: "flex-end", marginTop: 156 }}>
               {client ? (
                 <>
                   <Text style={styles.clientName}>{client.name}</Text>
