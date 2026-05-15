@@ -128,7 +128,7 @@ export async function GET(
   const buffer = await renderTemplatePdf({
     companyName: company.name,
     branding: {
-      name: company.name || undefined,
+      name: template.brandingName || company.name || undefined,
       address: company.address || undefined,
       phone: company.phone || undefined,
       email: company.email || undefined,

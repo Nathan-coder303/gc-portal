@@ -743,6 +743,7 @@ model EstimateTemplate {
   internalProfitOverride Decimal?                   @db.Decimal(12, 2) // Manual lump-sum internal profit (overrides auto markup sum)
   insulationType         String?                    @default("ISO")
   combinationType        String?
+  brandingName           String?
   divisions       EstimateTemplateDivision[]
   estimates   ProjectEstimate[]
   invoices    Invoice[]

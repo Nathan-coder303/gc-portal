@@ -1111,6 +1111,15 @@ export async function updateTemplateCombinationType(templateId: string, value: s
   return { success: true };
 }
 
+export async function updateTemplateBrandingName(templateId: string, value: string | null) {
+  const session = await auth();
+  if (!session) throw new Error("Unauthorized");
+  requirePermission(session, "estimateTemplate:edit");
+  await prisma.estimateTemplate.update({ where: { id: templateId }, data: { brandingName: value, updatedBy: session.user.id } });
+  revalidatePath(`/${session.user.companyId}/estimates`);
+  return { success: true };
+}
+
 // ─── Summary Group overrides ───────────────────────────────────────────────────
 
 export type SummaryGroupData = { qty: number | null; unit: string | null; unitCost: number | null; markupPct: number | null; manualTotal: number | null };
