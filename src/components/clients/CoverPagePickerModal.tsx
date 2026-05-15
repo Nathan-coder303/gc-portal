@@ -111,9 +111,33 @@ export default function CoverPagePickerModal({
     return initialPage2 === "NONE" ? "ROOF" : initialPage2;
   });
   const [includeInsert, setIncludeInsert] = useState(true);
-  const [includeDivisionSummary, setIncludeDivisionSummary] = useState(false);
-  const [forcedBreakCsiPrefixes, setForcedBreakCsiPrefixes] = useState<string[]>([]);
-  const [forcedBreakTerms, setForcedBreakTerms] = useState(false);
+  const [includeDivisionSummary, setIncludeDivisionSummary] = useState(() => {
+    if (companyId) {
+      try {
+        const saved = JSON.parse(localStorage.getItem(`gc-pdf-opts-${clientId ?? companyId}`) ?? "null");
+        if (saved?.includeDivisionSummary != null) return saved.includeDivisionSummary as boolean;
+      } catch {}
+    }
+    return false;
+  });
+  const [forcedBreakCsiPrefixes, setForcedBreakCsiPrefixes] = useState<string[]>(() => {
+    if (companyId) {
+      try {
+        const saved = JSON.parse(localStorage.getItem(`gc-pdf-opts-${clientId ?? companyId}`) ?? "null");
+        if (Array.isArray(saved?.forcedBreakCsiPrefixes)) return saved.forcedBreakCsiPrefixes as string[];
+      } catch {}
+    }
+    return [];
+  });
+  const [forcedBreakTerms, setForcedBreakTerms] = useState(() => {
+    if (companyId) {
+      try {
+        const saved = JSON.parse(localStorage.getItem(`gc-pdf-opts-${clientId ?? companyId}`) ?? "null");
+        if (saved?.forcedBreakTerms != null) return saved.forcedBreakTerms as boolean;
+      } catch {}
+    }
+    return false;
+  });
 
   // Custom cover gallery
   const [customCovers, setCustomCovers] = useState<CustomCover[]>([]);
@@ -139,9 +163,9 @@ export default function CoverPagePickerModal({
   useEffect(() => {
     if (!companyId) return;
     try {
-      localStorage.setItem(`gc-pdf-opts-${clientId ?? companyId}`, JSON.stringify({ coverType: cover, page2, selectedBlobUrl }));
+      localStorage.setItem(`gc-pdf-opts-${clientId ?? companyId}`, JSON.stringify({ coverType: cover, page2, selectedBlobUrl, includeDivisionSummary, forcedBreakCsiPrefixes, forcedBreakTerms }));
     } catch {}
-  }, [cover, page2, selectedBlobUrl, companyId, clientId]);
+  }, [cover, page2, selectedBlobUrl, includeDivisionSummary, forcedBreakCsiPrefixes, forcedBreakTerms, companyId, clientId]);
 
   function getCoverName(c: CustomCover): string {
     return coverNames[c.blobUrl] ?? formatCoverName(c.filename);
