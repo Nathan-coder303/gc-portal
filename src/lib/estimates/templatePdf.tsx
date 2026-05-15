@@ -1560,19 +1560,16 @@ function TemplatePdfDocument({ companyName, template, client, divisions, showTer
         <View style={styles.header}>
           {/* Top: Scope of Work centered across full width */}
           <View style={styles.centerSection}>
+            <Text style={styles.centerBold}>Scope of Work:</Text>
+            <Text style={styles.centerBold}>{template.name}</Text>
+            {dateDisplay ? <Text style={styles.centerBold}>{dateDisplay}</Text> : null}
             {_progressPct != null ? (
               <>
-                <Text style={[styles.centerBold, { color: GOLD, fontSize: 12 }]}>Progress Invoice {_progressInvoiceNumber ?? ""}</Text>
+                <Text style={[styles.centerBold, { color: GOLD }]}>Progress Invoice {_progressInvoiceNumber ?? ""}</Text>
                 <Text style={[styles.centerBold, { fontSize: 9 }]}>{_progressPct}% Progress Payment</Text>
-                {dateDisplay ? <Text style={styles.centerBold}>{dateDisplay}</Text> : null}
               </>
             ) : (
-              <>
-                <Text style={styles.centerBold}>Scope of Work:</Text>
-                <Text style={styles.centerBold}>{template.name}</Text>
-                {dateDisplay ? <Text style={styles.centerBold}>{dateDisplay}</Text> : null}
-                {!hideEstimateLabel && <Text style={styles.centerBold}>{template.estimateNumber ? `Estimate #${template.estimateNumber}` : "ESTIMATE"}</Text>}
-              </>
+              !hideEstimateLabel && <Text style={styles.centerBold}>{template.estimateNumber ? `Estimate #${template.estimateNumber}` : "ESTIMATE"}</Text>
             )}
           </View>
 
