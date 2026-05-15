@@ -47,6 +47,10 @@ function getBranding(partial?: Partial<CompanyBranding> | null): CompanyBranding
 let _activeBranding: CompanyBranding = MIBH_DEFAULTS;
 const useBranding = () => _activeBranding;
 
+let _progressPct: number | null = null;
+let _progressPhase: string | null = null;
+const useProgressPayment = () => ({ pct: _progressPct, phase: _progressPhase });
+
 const GOLD = "#C9A84C";
 const DARK = "#1e293b";
 
@@ -223,9 +227,12 @@ type TemplatePdfProps = {
   branding?: Partial<CompanyBranding> | null;
   hideEstimateLabel?: boolean;
   changeOrderNotes?: string | null;
+  progressPaymentPct?: number | null;
+  progressPaymentPhase?: string | null;
 };
 
 function ItemTableHeader({ showLineNum }: { showLineNum?: boolean }) {
+  const { pct, phase } = useProgressPayment();
   return (
     <View style={styles.tableHeader}>
       {showLineNum && <Text style={[styles.headerText, styles.colLineNum]}>#</Text>}
@@ -234,6 +241,7 @@ function ItemTableHeader({ showLineNum }: { showLineNum?: boolean }) {
       <Text style={[styles.headerText, styles.colQty]}>Qty</Text>
       <Text style={[styles.headerText, styles.colUnit]}>Unit</Text>
       <Text style={[styles.headerText, styles.colTotal]}>Total</Text>
+      {pct != null && <Text style={[styles.headerText, { width: 70, textAlign: "right", color: GOLD }]}>{phase ? `${phase} ${pct}%` : `Prog. ${pct}%`}</Text>}
     </View>
   );
 }
@@ -243,6 +251,8 @@ function ItemRow({ item, index, lineNum }: { item: Item; index: number; lineNum?
   const total = calcTotal(item.defaultQty, item.defaultUnitCost, item.defaultMarkupPct);
   const rowStyle = index % 2 === 0 ? styles.tableRow : styles.tableRowAlt;
   const detailColor = isExcluded ? "#dc2626" : item.detail === "Allowances" ? "#d97706" : "#334155";
+  const { pct } = useProgressPayment();
+  const progressAmt = pct != null && total > 0 && !isExcluded ? total * pct / 100 : null;
   return (
     <View wrap={false} minPresenceAhead={25} style={{ borderBottomWidth: 1, borderBottomColor: "#f1f5f9", backgroundColor: index % 2 === 0 ? undefined : "#fafafa" }}>
       <View style={[rowStyle, { borderBottomWidth: 0 }]}>
@@ -259,12 +269,14 @@ function ItemRow({ item, index, lineNum }: { item: Item; index: number; lineNum?
             <Text style={[styles.cellMuted, styles.colQty]}>—</Text>
             <Text style={[styles.cellMuted, styles.colUnit]}>{item.unit ?? ""}</Text>
             <Text style={[styles.cellMuted, styles.colTotal]}>$0.00</Text>
+            {pct != null && <Text style={[styles.cellMuted, { width: 70, textAlign: "right" }]}>—</Text>}
           </>
         ) : (
           <>
             <Text style={[styles.cellMuted, styles.colQty]}>{item.defaultQty ?? "—"}</Text>
             <Text style={[styles.cellMuted, styles.colUnit]}>{item.unit ?? ""}</Text>
             <Text style={[styles.cellBold, styles.colTotal]}>{total > 0 ? `$${fmt(total)}` : "—"}</Text>
+            {pct != null && <Text style={[styles.cellBold, { width: 70, textAlign: "right", color: GOLD }]}>{progressAmt ? `$${fmt(progressAmt)}` : "—"}</Text>}
           </>
         )}
       </View>
@@ -1550,6 +1562,7 @@ function TemplatePdfDocument({ companyName, template, client, divisions, showTer
             <Text style={styles.centerBold}>{template.name}</Text>
             {dateDisplay ? <Text style={styles.centerBold}>{dateDisplay}</Text> : null}
             {!hideEstimateLabel && <Text style={styles.centerBold}>{template.estimateNumber ? `Estimate #${template.estimateNumber}` : "ESTIMATE"}</Text>}
+            {_progressPct != null && <Text style={[styles.centerBold, { color: GOLD }]}>PROGRESS INVOICE · {_progressPhase ? `${_progressPhase} · ` : ""}{_progressPct}% DUE</Text>}
           </View>
 
           {/* Bottom row: Logo + company left, client right */}
@@ -1780,6 +1793,17 @@ function TemplatePdfDocument({ companyName, template, client, divisions, showTer
             <Text style={styles.grandTotalLabel}>{hideEstimateLabel ? "TOTAL" : "ESTIMATE TOTAL"}</Text>
             <Text style={GRAND_TOTAL_VALUE_STYLE}>${fmt(grandTotalWithGc)}</Text>
           </View>
+
+          {_progressPct != null && (
+            <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", backgroundColor: GOLD, paddingHorizontal: 10, paddingVertical: 8, marginTop: 4, borderRadius: 3 }}>
+              <Text style={{ fontSize: 11, fontFamily: "Helvetica-Bold", color: "#0d1117" }}>
+                PROGRESS PAYMENT{_progressPhase ? ` · ${_progressPhase.toUpperCase()}` : ""} · {_progressPct}%
+              </Text>
+              <Text style={{ fontSize: 15, fontFamily: "Helvetica-Bold", color: "#0d1117" }}>
+                ${fmt(grandTotalWithGc * _progressPct / 100)}
+              </Text>
+            </View>
+          )}
         </View>
 
         {/* Payment terms + signature: inline when no extra page */}
@@ -1819,11 +1843,15 @@ function TemplatePdfDocument({ companyName, template, client, divisions, showTer
 
 export async function renderTemplatePdf(props: TemplatePdfProps): Promise<Buffer> {
   _activeBranding = getBranding(props.branding);
+  _progressPct = props.progressPaymentPct ?? null;
+  _progressPhase = props.progressPaymentPhase ?? null;
   try {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const buf = await renderToBuffer(React.createElement(TemplatePdfDocument, props) as any);
     return Buffer.from(buf as unknown as Uint8Array);
   } finally {
     _activeBranding = MIBH_DEFAULTS;
+    _progressPct = null;
+    _progressPhase = null;
   }
 }

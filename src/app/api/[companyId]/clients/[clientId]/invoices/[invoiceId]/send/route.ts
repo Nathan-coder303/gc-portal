@@ -8,13 +8,6 @@ import { renderTemplatePdf } from "@/lib/estimates/templatePdf";
 export const runtime = "nodejs";
 export const maxDuration = 30;
 
-const DEFAULT_PAYMENT_SCHEDULE = [
-  { payment: "Deposit", trigger: "Contract signing – permits, engineering, scheduling", pct: 25 },
-  { payment: "Structure Start", trigger: "Foundation completed / framing start", pct: 25 },
-  { payment: "Dry-In", trigger: "Framing, roof, windows installed", pct: 20 },
-  { payment: "Rough-Ins", trigger: "Electrical, plumbing, HVAC rough inspections passed", pct: 20 },
-  { payment: "Completion", trigger: "Final inspection / punchlist", pct: 10 },
-];
 
 function getOAuthClient() {
   const oauth2Client = new google.auth.OAuth2(
@@ -127,6 +120,16 @@ export async function POST(
 
   const estimatePdf = await renderTemplatePdf({
     companyName: company.name,
+    branding: {
+      name: company.name || undefined,
+      address: company.address || undefined,
+      phone: company.phone || undefined,
+      email: company.email || undefined,
+      licenses: company.licenses || undefined,
+      tagline: company.tagline || undefined,
+      website: company.website || undefined,
+      contactName: company.contactName || undefined,
+    },
     template: {
       name: invoice.estimate.name,
       description: invoice.estimate.description,
@@ -144,12 +147,9 @@ export async function POST(
     },
     divisions,
     showTerms: false,
-    paymentSchedule:
-      (invoice.estimate.paymentSchedule as { payment: string; trigger: string; pct: number }[] | null) ??
-      DEFAULT_PAYMENT_SCHEDULE,
+    paymentSchedule: null,
     gcFeePercent: invoice.estimate.gcFeePercent ? Number(invoice.estimate.gcFeePercent) : null,
-    summaryGroups:
-      (invoice.estimate.summaryGroups as Record<string, { qty: number | null; unit: string | null; unitCost: number | null; markupPct: number | null; manualTotal: number | null }> | null) ?? null,
+    summaryGroups: null,
     includeCoverPage: false,
     includeRoofUpgradesPage: false,
     includeAdditionPages: false,
@@ -158,13 +158,13 @@ export async function POST(
     clientCoverPhotoType: null,
     clientCoverPhotoUrl: null,
     clientCoverTitle: null,
+    progressPaymentPct: Number(invoice.pct),
+    progressPaymentPhase: invoice.phase,
   });
 
   const clientSlug = invoice.client.name.replace(/[^a-z0-9]/gi, "-");
-  const estimateSlug = invoice.estimate.estimateNumber
-    ? `Estimate-${invoice.estimate.estimateNumber}`
-    : invoice.estimate.name.replace(/[^a-z0-9]/gi, "-");
-  const pdfFilename = `${estimateSlug}-${clientSlug}.pdf`;
+  const phaseSlug = invoice.phase.replace(/[^a-z0-9]/gi, "-");
+  const pdfFilename = `Invoice-${invoice.invoiceNumber}-${phaseSlug}-${invoice.pct}pct-${clientSlug}.pdf`;
   const pdfBase64 = estimatePdf.toString("base64");
 
   // Build MIME: multipart/mixed wrapping (HTML body + PDF attachment)
