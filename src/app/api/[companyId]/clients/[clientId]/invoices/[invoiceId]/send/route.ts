@@ -160,6 +160,7 @@ export async function POST(
     clientCoverTitle: null,
     progressPaymentPct: Number(invoice.pct),
     progressPaymentPhase: invoice.phase,
+    progressInvoiceNumber: invoice.invoiceNumber,
   });
 
   const clientSlug = invoice.client.name.replace(/[^a-z0-9]/gi, "-");

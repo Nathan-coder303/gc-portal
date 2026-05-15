@@ -49,6 +49,7 @@ const useBranding = () => _activeBranding;
 
 let _progressPct: number | null = null;
 let _progressPhase: string | null = null;
+let _progressInvoiceNumber: string | null = null;
 const useProgressPayment = () => ({ pct: _progressPct, phase: _progressPhase });
 
 const GOLD = "#C9A84C";
@@ -229,10 +230,11 @@ type TemplatePdfProps = {
   changeOrderNotes?: string | null;
   progressPaymentPct?: number | null;
   progressPaymentPhase?: string | null;
+  progressInvoiceNumber?: string | null;
 };
 
 function ItemTableHeader({ showLineNum }: { showLineNum?: boolean }) {
-  const { pct, phase } = useProgressPayment();
+  const { pct } = useProgressPayment();
   return (
     <View style={styles.tableHeader}>
       {showLineNum && <Text style={[styles.headerText, styles.colLineNum]}>#</Text>}
@@ -241,7 +243,7 @@ function ItemTableHeader({ showLineNum }: { showLineNum?: boolean }) {
       <Text style={[styles.headerText, styles.colQty]}>Qty</Text>
       <Text style={[styles.headerText, styles.colUnit]}>Unit</Text>
       <Text style={[styles.headerText, styles.colTotal]}>Total</Text>
-      {pct != null && <Text style={[styles.headerText, { width: 70, textAlign: "right", color: GOLD }]}>{phase ? `${phase} ${pct}%` : `Prog. ${pct}%`}</Text>}
+      {pct != null && <Text style={[styles.headerText, { width: 70, textAlign: "right", color: GOLD }]}>{pct}%</Text>}
     </View>
   );
 }
@@ -1558,11 +1560,20 @@ function TemplatePdfDocument({ companyName, template, client, divisions, showTer
         <View style={styles.header}>
           {/* Top: Scope of Work centered across full width */}
           <View style={styles.centerSection}>
-            <Text style={styles.centerBold}>Scope of Work:</Text>
-            <Text style={styles.centerBold}>{template.name}</Text>
-            {dateDisplay ? <Text style={styles.centerBold}>{dateDisplay}</Text> : null}
-            {!hideEstimateLabel && <Text style={styles.centerBold}>{template.estimateNumber ? `Estimate #${template.estimateNumber}` : "ESTIMATE"}</Text>}
-            {_progressPct != null && <Text style={[styles.centerBold, { color: GOLD }]}>PROGRESS INVOICE · {_progressPhase ? `${_progressPhase} · ` : ""}{_progressPct}% DUE</Text>}
+            {_progressPct != null ? (
+              <>
+                <Text style={[styles.centerBold, { color: GOLD, fontSize: 12 }]}>Progress Invoice {_progressInvoiceNumber ?? ""}</Text>
+                <Text style={[styles.centerBold, { fontSize: 9 }]}>{_progressPct}% Progress Payment</Text>
+                {dateDisplay ? <Text style={styles.centerBold}>{dateDisplay}</Text> : null}
+              </>
+            ) : (
+              <>
+                <Text style={styles.centerBold}>Scope of Work:</Text>
+                <Text style={styles.centerBold}>{template.name}</Text>
+                {dateDisplay ? <Text style={styles.centerBold}>{dateDisplay}</Text> : null}
+                {!hideEstimateLabel && <Text style={styles.centerBold}>{template.estimateNumber ? `Estimate #${template.estimateNumber}` : "ESTIMATE"}</Text>}
+              </>
+            )}
           </View>
 
           {/* Bottom row: Logo + company left, client right */}
@@ -1789,15 +1800,17 @@ function TemplatePdfDocument({ companyName, template, client, divisions, showTer
             </>
           )}
 
-          <View style={[styles.grandTotalBar, { marginTop: gcFeeAmount > 0 ? 4 : (allowancesTotal > 0 ? 4 : 6) }]}>
-            <Text style={styles.grandTotalLabel}>{hideEstimateLabel ? "TOTAL" : "ESTIMATE TOTAL"}</Text>
-            <Text style={GRAND_TOTAL_VALUE_STYLE}>${fmt(grandTotalWithGc)}</Text>
-          </View>
+          {_progressPct == null && (
+            <View style={[styles.grandTotalBar, { marginTop: gcFeeAmount > 0 ? 4 : (allowancesTotal > 0 ? 4 : 6) }]}>
+              <Text style={styles.grandTotalLabel}>{hideEstimateLabel ? "TOTAL" : "ESTIMATE TOTAL"}</Text>
+              <Text style={GRAND_TOTAL_VALUE_STYLE}>${fmt(grandTotalWithGc)}</Text>
+            </View>
+          )}
 
           {_progressPct != null && (
-            <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", backgroundColor: GOLD, paddingHorizontal: 10, paddingVertical: 8, marginTop: 4, borderRadius: 3 }}>
+            <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", backgroundColor: GOLD, paddingHorizontal: 10, paddingVertical: 8, marginTop: gcFeeAmount > 0 ? 4 : (allowancesTotal > 0 ? 4 : 6), borderRadius: 3 }}>
               <Text style={{ fontSize: 11, fontFamily: "Helvetica-Bold", color: "#0d1117" }}>
-                PROGRESS PAYMENT{_progressPhase ? ` · ${_progressPhase.toUpperCase()}` : ""} · {_progressPct}%
+                PROGRESS PAYMENT · {_progressPct}%
               </Text>
               <Text style={{ fontSize: 15, fontFamily: "Helvetica-Bold", color: "#0d1117" }}>
                 ${fmt(grandTotalWithGc * _progressPct / 100)}
@@ -1845,6 +1858,7 @@ export async function renderTemplatePdf(props: TemplatePdfProps): Promise<Buffer
   _activeBranding = getBranding(props.branding);
   _progressPct = props.progressPaymentPct ?? null;
   _progressPhase = props.progressPaymentPhase ?? null;
+  _progressInvoiceNumber = props.progressInvoiceNumber ?? null;
   try {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const buf = await renderToBuffer(React.createElement(TemplatePdfDocument, props) as any);
@@ -1853,5 +1867,6 @@ export async function renderTemplatePdf(props: TemplatePdfProps): Promise<Buffer
     _activeBranding = MIBH_DEFAULTS;
     _progressPct = null;
     _progressPhase = null;
+    _progressInvoiceNumber = null;
   }
 }
