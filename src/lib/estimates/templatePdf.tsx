@@ -1565,8 +1565,8 @@ function TemplatePdfDocument({ companyName, template, client, divisions, showTer
             {dateDisplay ? <Text style={styles.centerBold}>{dateDisplay}</Text> : null}
             {_progressPct != null ? (
               <>
-                <Text style={[styles.centerBold, { color: GOLD }]}>Progress Invoice {_progressInvoiceNumber ?? ""}</Text>
-                <Text style={[styles.centerBold, { fontSize: 9 }]}>{_progressPct}% Progress Payment</Text>
+                <Text style={styles.centerBold}>Progress Invoice {_progressInvoiceNumber ?? ""}</Text>
+                <Text style={styles.centerBold}>{_progressPct}% Progress Payment</Text>
               </>
             ) : (
               !hideEstimateLabel && <Text style={styles.centerBold}>{template.estimateNumber ? `Estimate #${template.estimateNumber}` : "ESTIMATE"}</Text>
