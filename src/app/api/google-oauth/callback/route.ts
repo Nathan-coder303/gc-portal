@@ -36,16 +36,25 @@ export async function GET(req: NextRequest) {
       }, { status: 400 });
     }
 
-    await prisma.company.update({
+    const updated = await prisma.company.updateMany({
       where: { id: companyId },
       data: { googleRefreshToken: refreshToken },
     });
+
+    if (updated.count === 0) {
+      // Try raw SQL as fallback
+      await prisma.$executeRawUnsafe(
+        `UPDATE "Company" SET "googleRefreshToken" = $1 WHERE id = $2`,
+        refreshToken,
+        companyId,
+      );
+    }
 
     // Redirect back to subs page with success notice
     const base = req.url.split("/api/")[0];
     return NextResponse.redirect(`${base}/${companyId}/subs?gmail=connected`);
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
-    return NextResponse.json({ error: `Failed to exchange code: ${msg}` }, { status: 500 });
+    return NextResponse.json({ error: `Failed to exchange code: \ncompanyId received: "${companyId}"\n${msg}` }, { status: 500 });
   }
 }
