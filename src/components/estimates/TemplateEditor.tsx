@@ -2,7 +2,7 @@
 
 import { useState, useTransition, useRef, useCallback, createContext, useContext, useEffect, useReducer } from "react";
 import { useRouter } from "next/navigation";
-import { TrashIcon, PencilIcon, SaveIcon, CopyIcon, FilePlusIcon, DownloadIcon, StackedDocsIcon, DocPlusIcon, ClipboardChartIcon, PdfMailIcon } from "@/components/ui/icons";
+import { TrashIcon, PencilIcon, SaveIcon, StackedDocsIcon, DocPlusIcon, ClipboardChartIcon, PdfMailIcon } from "@/components/ui/icons";
 import CoverPagePickerModal, { PdfOptions, CoverType } from "@/components/clients/CoverPagePickerModal";
 import { lookupItemCsiCode, formatCsiCode, DIVISIONS } from "@/lib/divisions";
 import { DndContext, DragOverlay, useDroppable, useDraggable, closestCenter, PointerSensor, TouchSensor, useSensor, useSensors } from "@dnd-kit/core";
