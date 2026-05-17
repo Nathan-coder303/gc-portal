@@ -36,8 +36,8 @@ async function resolvePrivateCoverUrl(blobUrl: string | null): Promise<string | 
 export async function POST(req: NextRequest) {
   const { templateId, secret } = await req.json() as { templateId: string; secret: string };
 
-  if (secret !== process.env.ADMIN_SECRET) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  if (secret?.trim() !== process.env.ADMIN_SECRET?.trim()) {
+    return NextResponse.json({ error: "Unauthorized", hint: `secret_len=${secret?.length} env_len=${process.env.ADMIN_SECRET?.length}` }, { status: 401 });
   }
 
   const template = await prisma.estimateTemplate.findUnique({
