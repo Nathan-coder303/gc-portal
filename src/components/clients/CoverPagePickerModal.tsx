@@ -294,7 +294,7 @@ export default function CoverPagePickerModal({
               style={{ background: "#C9A84C", color: "#0d1117" }}
             >
               <DownloadArrowIcon size={22} />
-              <span className="text-[11px] font-bold leading-tight text-center">Download PDF</span>
+              <span className="text-[11px] font-bold leading-tight text-center">{confirmLabel}</span>
             </button>
             {onSendEmail && (
               <button
