@@ -2,16 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import crypto from "crypto";
 import { google } from "googleapis";
-
-function getOAuthClient() {
-  const oauth2Client = new google.auth.OAuth2(
-    process.env.GOOGLE_CLIENT_ID,
-    process.env.GOOGLE_CLIENT_SECRET,
-    "urn:ietf:wg:oauth:2.0:oob"
-  );
-  oauth2Client.setCredentials({ refresh_token: process.env.GOOGLE_REFRESH_TOKEN });
-  return oauth2Client;
-}
+import { getGmailOAuth } from "@/lib/gmail";
 
 export const runtime = "nodejs";
 
@@ -72,7 +63,7 @@ export async function PATCH(req: NextRequest) {
 
   // Send notification email to Mike
   try {
-    const oauth2Client = getOAuthClient();
+    const oauth2Client = await getGmailOAuth(template.companyId);
     const gmail = google.gmail({ version: "v1", auth: oauth2Client });
     const profile = await gmail.users.getProfile({ userId: "me" });
     const fromEmail = profile.data.emailAddress ?? "me";
@@ -85,21 +76,18 @@ export async function PATCH(req: NextRequest) {
       ? `Estimate #${template.estimateNumber} — ${template.name}`
       : template.name;
     const clientLabel = template.client?.name ?? "Unknown client";
-    const portalUrl = `https://portal.mibhconstruction.com/${template.companyId}/clients`;
-
     const countersignUrl = `https://portal.mibhconstruction.com/countersign/${token}`;
-    const notifSubject = `✍️ Action Required: Countersign estimate for ${clientLabel}`;
+
+    const estimateRef = template.estimateNumber ? `Estimate #${template.estimateNumber}` : `"${template.name}"`;
+    const notifSubject = `${clientLabel} has signed your ${estimateRef} — please countersign now`;
     const notifBody = [
       `${clientLabel} has signed the estimate. Your countersignature is required.`,
       ``,
       `Estimate: ${estimateLabel}`,
-      `Client: ${clientLabel}`,
       `Signed by: ${signedByName}`,
       `Signed at: ${signedTime}`,
       ``,
-      `👉 Click here to countersign: ${countersignUrl}`,
-      ``,
-      `View in portal: ${portalUrl}`,
+      `👉 Countersign here: ${countersignUrl}`,
     ].join("\n");
 
     const encodedSubject = `=?UTF-8?B?${Buffer.from(notifSubject).toString("base64")}?=`;
