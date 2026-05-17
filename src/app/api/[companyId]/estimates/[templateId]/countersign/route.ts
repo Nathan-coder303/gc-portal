@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { google } from "googleapis";
+import { getGmailOAuth } from "@/lib/gmail";
 import { renderTemplatePdf } from "@/lib/estimates/templatePdf";
 import { insertClientPageIntoEstimate } from "@/lib/estimates/insertClientPage";
 
@@ -31,15 +32,6 @@ async function resolvePrivateCoverUrl(blobUrl: string | null): Promise<string | 
   }
 }
 
-function getOAuthClient() {
-  const oauth2Client = new google.auth.OAuth2(
-    process.env.GOOGLE_CLIENT_ID,
-    process.env.GOOGLE_CLIENT_SECRET,
-    "urn:ietf:wg:oauth:2.0:oob"
-  );
-  oauth2Client.setCredentials({ refresh_token: process.env.GOOGLE_REFRESH_TOKEN });
-  return oauth2Client;
-}
 
 export async function POST(
   req: NextRequest,
@@ -162,7 +154,7 @@ export async function POST(
 
   // Email to both parties
   try {
-    const oauth2Client = getOAuthClient();
+    const oauth2Client = await getGmailOAuth(params.companyId);
     const gmail = google.gmail({ version: "v1", auth: oauth2Client });
     const profile = await gmail.users.getProfile({ userId: "me" });
     const fromEmail = profile.data.emailAddress ?? "me";
