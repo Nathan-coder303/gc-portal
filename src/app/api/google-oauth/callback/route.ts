@@ -50,9 +50,8 @@ export async function GET(req: NextRequest) {
       );
     }
 
-    // Redirect back to subs page with success notice
     const base = req.url.split("/api/")[0];
-    return NextResponse.redirect(`${base}/${companyId}/subs?gmail=connected`);
+    return NextResponse.redirect(`${base}/${companyId}/clients?gmail=connected`);
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
     return NextResponse.json({ error: `Failed to exchange code: \ncompanyId received: "${companyId}"\n${msg}` }, { status: 500 });
