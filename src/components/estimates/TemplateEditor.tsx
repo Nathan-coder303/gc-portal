@@ -2,7 +2,7 @@
 
 import { useState, useTransition, useRef, useCallback, createContext, useContext, useEffect, useReducer } from "react";
 import { useRouter } from "next/navigation";
-import { TrashIcon, PencilIcon, SaveIcon } from "@/components/ui/icons";
+import { TrashIcon, PencilIcon, SaveIcon, CopyIcon, FilePlusIcon, DownloadIcon } from "@/components/ui/icons";
 import CoverPagePickerModal, { PdfOptions, CoverType } from "@/components/clients/CoverPagePickerModal";
 import { lookupItemCsiCode, formatCsiCode, DIVISIONS } from "@/lib/divisions";
 import { DndContext, DragOverlay, useDroppable, useDraggable, closestCenter, PointerSensor, TouchSensor, useSensor, useSensors } from "@dnd-kit/core";
@@ -2113,16 +2113,11 @@ export default function TemplateEditor({
                     setTemplateSaved(true);
                     setTimeout(() => setTemplateSaved(false), 2500);
                   }}
-                  className="text-left rounded-2xl p-3 sm:p-5 transition-all"
-                  style={{ background: "#1a1508", border: `2px solid ${templateSaved ? "#22c55e" : "#C9A84C"}` }}
+                  className="flex items-center justify-center gap-2 rounded-xl px-3 py-3 transition-all"
+                  style={{ background: "#1a1508", border: `1.5px solid ${templateSaved ? "#22c55e" : "#C9A84C"}`, color: templateSaved ? "#22c55e" : "#C9A84C" }}
                 >
-                  <div className="text-2xl mb-1 sm:mb-2">{templateSaved ? "✅" : "💾"}</div>
-                  <div className="text-xs sm:text-sm font-bold sm:mb-1" style={{ color: templateSaved ? "#22c55e" : "#C9A84C" }}>
-                    {templateSaved ? "Saved!" : "Save Template"}
-                  </div>
-                  <div className="hidden sm:block text-xs leading-relaxed" style={{ color: "#8b949e" }}>
-                    {templateSaved ? "All changes saved" : "Save all open edits"}
-                  </div>
+                  <SaveIcon size={15} />
+                  <span className="text-xs font-semibold">{templateSaved ? "Saved" : "Save"}</span>
                 </button>
               )}
 
@@ -2130,12 +2125,11 @@ export default function TemplateEditor({
               {canEdit && (
                 <button
                   onClick={() => setSaveAsNew(v => !v)}
-                  className="text-left rounded-2xl p-3 sm:p-5 transition-all"
-                  style={{ background: "#1a1508", border: `2px solid ${saveAsNew ? "#60a5fa" : "#C9A84C"}` }}
+                  className="flex items-center justify-center gap-2 rounded-xl px-3 py-3 transition-all"
+                  style={{ background: "#1a1508", border: `1.5px solid ${saveAsNew ? "#60a5fa" : "#C9A84C"}`, color: saveAsNew ? "#60a5fa" : "#C9A84C" }}
                 >
-                  <div className="text-2xl mb-1 sm:mb-2">📄</div>
-                  <div className="text-xs sm:text-sm font-bold sm:mb-1" style={{ color: saveAsNew ? "#60a5fa" : "#C9A84C" }}>Save as New</div>
-                  <div className="hidden sm:block text-xs leading-relaxed" style={{ color: "#8b949e" }}>Fork with a different name</div>
+                  <CopyIcon size={15} />
+                  <span className="text-xs font-semibold">Fork</span>
                 </button>
               )}
 
@@ -2143,27 +2137,21 @@ export default function TemplateEditor({
               <button
                 disabled={!canEdit || !currentClient || isPending || savedToClient || template.type !== "TEMPLATE"}
                 onClick={canEdit && currentClient && !savedToClient ? handleSaveToClient : undefined}
-                className="text-left rounded-2xl p-3 sm:p-5 transition-all disabled:opacity-40"
-                style={{ background: "#1a1508", border: `2px solid ${savedToClient ? "#22c55e" : "#C9A84C"}` }}
+                className="flex items-center justify-center gap-2 rounded-xl px-3 py-3 transition-all disabled:opacity-40"
+                style={{ background: "#1a1508", border: `1.5px solid ${savedToClient ? "#22c55e" : "#C9A84C"}`, color: savedToClient ? "#22c55e" : "#C9A84C" }}
               >
-                <div className="text-2xl mb-1 sm:mb-2">{savedToClient ? "✅" : "📋"}</div>
-                <div className="text-xs sm:text-sm font-bold sm:mb-1" style={{ color: savedToClient ? "#22c55e" : "#C9A84C" }}>
-                  {savedToClient ? "✓ Created" : isPending ? "Creating…" : "Create Estimate"}
-                </div>
-                <div className="hidden sm:block text-xs leading-relaxed" style={{ color: "#8b949e" }}>
-                  {savedToClient ? `Saved for ${currentClient?.name}` : currentClient ? `Copy for ${currentClient.name}` : "Assign a client first"}
-                </div>
+                <FilePlusIcon size={15} />
+                <span className="text-xs font-semibold">{savedToClient ? "Created" : isPending ? "Creating…" : "Create"}</span>
               </button>
 
               {/* PDF / Send */}
               <button
                 onClick={() => { setEmailResult(null); setPdfStep("cover"); }}
-                className="text-left rounded-2xl p-3 sm:p-5 transition-all"
-                style={{ background: "#1a1508", border: "2px solid #C9A84C" }}
+                className="flex items-center justify-center gap-2 rounded-xl px-3 py-3 transition-all"
+                style={{ background: "#1a1508", border: "1.5px solid #C9A84C", color: "#C9A84C" }}
               >
-                <div className="text-2xl mb-1 sm:mb-2">📊</div>
-                <div className="text-xs sm:text-sm font-bold sm:mb-1" style={{ color: "#C9A84C" }}>↓ PDF / ✉ Send</div>
-                <div className="hidden sm:block text-xs leading-relaxed" style={{ color: "#8b949e" }}>Download or email with cover &amp; options</div>
+                <DownloadIcon size={15} />
+                <span className="text-xs font-semibold">PDF</span>
               </button>
             </div>
 
