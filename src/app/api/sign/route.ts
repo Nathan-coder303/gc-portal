@@ -141,6 +141,6 @@ export async function GET(req: NextRequest) {
     alreadySigned: !!template.signedAt,
     signedAt: template.signedAt?.toISOString() ?? null,
     signedByName: template.signedByName ?? null,
-    pdfUrl: `/api/${template.companyId}/estimates/${template.id}/pdf`,
+    pdfUrl: `/api/sign/pdf?token=${token}`,
   });
 }
