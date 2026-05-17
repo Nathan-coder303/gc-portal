@@ -291,7 +291,7 @@ export async function POST(
   } catch (err) {
     console.error("Gmail send error:", err);
     if (String(err).includes("invalid_grant")) {
-      return NextResponse.json({ error: "gmail_auth_expired" }, { status: 401 });
+      return NextResponse.json({ error: "gmail_auth_expired", detail: String(err) }, { status: 401 });
     }
     return NextResponse.json({ error: "Failed to send email", detail: String(err) }, { status: 500 });
   }
@@ -377,7 +377,7 @@ export async function POST(
     console.error("send-estimate-email unhandled error:", err);
     const msg = String(err);
     if (msg.includes("invalid_grant")) {
-      return NextResponse.json({ error: "gmail_auth_expired" }, { status: 401 });
+      return NextResponse.json({ error: "gmail_auth_expired", detail: msg }, { status: 401 });
     }
     return NextResponse.json({ error: "Internal error", detail: msg }, { status: 500 });
   }
