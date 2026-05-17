@@ -1398,6 +1398,7 @@ export default function TemplateEditor({
   const [durationMonths, setDurationMonths] = useState<number | "">(template.durationMonths ?? "");
   useEffect(() => { setSqFt(template.sqFt ?? ""); }, [template.sqFt]);
   useEffect(() => { setDurationMonths(template.durationMonths ?? ""); }, [template.durationMonths]);
+  useEffect(() => { setEmailTo(currentClient?.email ?? ""); }, [currentClient?.id]);
   const isRoofTemplate = template.name.toLowerCase().includes("roof");
   const [hasSkylights, setHasSkylights] = useState<boolean>(template.hasSkylights ?? true);
   const [hasRoofDrains, setHasRoofDrains] = useState<boolean>(template.hasRoofDrains ?? true);
