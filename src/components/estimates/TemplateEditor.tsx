@@ -1551,7 +1551,7 @@ export default function TemplateEditor({
   }
 
   function buildPdfUrl(opts: PdfOptions, preview = false) {
-    const base = `/api/${template.companyId}/estimates/${template.id}/pdf?cover=${opts.coverType !== "NONE" ? 1 : 0}&coverType=${opts.coverType}&page2=${opts.page2}&includeInsert=${opts.includeInsert ? 1 : 0}&divSummary=${opts.includeDivisionSummary ? 1 : 0}&forcedBreakCsi=${opts.forcedBreakCsiPrefixes.join(",")}&forcedBreakTerms=${opts.forcedBreakTerms ? 1 : 0}${opts.noPresentation ? "&noPresent=1" : ""}${opts.scopeOfWorkId ? `&scopeId=${opts.scopeOfWorkId}` : ""}${preview ? "&preview=1" : ""}`;
+    const base = `/api/${template.companyId}/estimates/${template.id}/pdf?cover=${opts.coverType !== "NONE" ? 1 : 0}&coverType=${opts.coverType}&page2=${opts.page2}&includeInsert=${opts.includeInsert ? 1 : 0}&divSummary=${opts.includeDivisionSummary ? 1 : 0}&forcedBreakCsi=${opts.forcedBreakCsiPrefixes.join(",")}&forcedBreakTerms=${opts.forcedBreakTerms ? 1 : 0}${opts.noPresentation ? "&noPresent=1" : ""}${opts.scopeOfWorkId ? `&scopeId=${opts.scopeOfWorkId}` : ""}${opts.scopeTitle ? `&scopeTitle=${encodeURIComponent(opts.scopeTitle)}` : ""}${preview ? "&preview=1" : ""}`;
     if (opts.coverType === "CUSTOM" && opts.coverBlobUrl) return `${base}&coverBlobUrl=${encodeURIComponent(opts.coverBlobUrl)}`;
     return base;
   }

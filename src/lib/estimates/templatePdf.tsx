@@ -238,6 +238,7 @@ type TemplatePdfProps = {
   forcedBreakCsiPrefixes?: string[];
   forcedBreakTerms?: boolean;
   scopeOfWork?: { title: string; body: string } | null;
+  scopeTitle?: string | null;
   branding?: Partial<CompanyBranding> | null;
   hideEstimateLabel?: boolean;
   changeOrderNotes?: string | null;
@@ -1386,7 +1387,7 @@ function ScopeOfWorkPage({ title, body, client }: { title: string; body: string;
   );
 }
 
-function TemplatePdfDocument({ companyName, template, client, divisions, showTerms, termsContent, paymentSchedule, gcFeePercent, summaryGroups, clientSignatureData, clientSignedByName, clientSignedAt, contractorSignatureData, contractorSignedAt, includeRoofUpgradesPage, includeCoverPage, includeAdditionPages, includePermitPages, includeRetailPages, includeDivisionSummary, insertPageOffset, insulationType, clientCoverPhotoType, clientCoverPhotoUrl, clientCoverTitle, forcedBreakCsiPrefixes = [], forcedBreakTerms = false, scopeOfWork, hideEstimateLabel = false, changeOrderNotes }: TemplatePdfProps) {
+function TemplatePdfDocument({ companyName, template, client, divisions, showTerms, termsContent, paymentSchedule, gcFeePercent, summaryGroups, clientSignatureData, clientSignedByName, clientSignedAt, contractorSignatureData, contractorSignedAt, includeRoofUpgradesPage, includeCoverPage, includeAdditionPages, includePermitPages, includeRetailPages, includeDivisionSummary, insertPageOffset, insulationType, clientCoverPhotoType, clientCoverPhotoUrl, clientCoverTitle, forcedBreakCsiPrefixes = [], forcedBreakTerms = false, scopeOfWork, scopeTitle, hideEstimateLabel = false, changeOrderNotes }: TemplatePdfProps) {
   const branding = useBranding();
   const grouped = groupDivisions(divisions);
 
@@ -1573,7 +1574,7 @@ function TemplatePdfDocument({ companyName, template, client, divisions, showTer
           {/* Top: Scope of Work centered across full width */}
           <View style={styles.centerSection}>
             <Text style={styles.centerBold}>Scope of Work:</Text>
-            <Text style={styles.centerBold}>{template.name}</Text>
+            <Text style={styles.centerBold}>{scopeTitle || template.name}</Text>
             {dateDisplay ? <Text style={styles.centerBold}>{dateDisplay}</Text> : null}
             {_progressPct != null ? (
               <>

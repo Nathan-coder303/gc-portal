@@ -29,6 +29,7 @@ export type PdfOptions = {
   forcedBreakTerms: boolean;
   noPresentation: boolean;
   scopeOfWorkId?: string | null;
+  scopeTitle?: string | null;
 };
 
 type CustomCover = { blobUrl: string; proxyUrl: string; filename: string };
@@ -138,6 +139,15 @@ export default function CoverPagePickerModal({
     }
     return false;
   });
+  const [scopeTitle, setScopeTitle] = useState<string>(() => {
+    if (companyId) {
+      try {
+        const saved = JSON.parse(localStorage.getItem(`gc-pdf-opts-${clientId ?? companyId}`) ?? "null");
+        if (saved?.scopeTitle) return saved.scopeTitle as string;
+      } catch {}
+    }
+    return "";
+  });
 
   // Custom cover gallery
   const [customCovers, setCustomCovers] = useState<CustomCover[]>([]);
@@ -163,9 +173,9 @@ export default function CoverPagePickerModal({
   useEffect(() => {
     if (!companyId) return;
     try {
-      localStorage.setItem(`gc-pdf-opts-${clientId ?? companyId}`, JSON.stringify({ coverType: cover, page2, selectedBlobUrl, includeDivisionSummary, forcedBreakCsiPrefixes, forcedBreakTerms }));
+      localStorage.setItem(`gc-pdf-opts-${clientId ?? companyId}`, JSON.stringify({ coverType: cover, page2, selectedBlobUrl, includeDivisionSummary, forcedBreakCsiPrefixes, forcedBreakTerms, scopeTitle }));
     } catch {}
-  }, [cover, page2, selectedBlobUrl, includeDivisionSummary, forcedBreakCsiPrefixes, forcedBreakTerms, companyId, clientId]);
+  }, [cover, page2, selectedBlobUrl, includeDivisionSummary, forcedBreakCsiPrefixes, forcedBreakTerms, scopeTitle, companyId, clientId]);
 
   function getCoverName(c: CustomCover): string {
     return coverNames[c.blobUrl] ?? formatCoverName(c.filename);
@@ -238,6 +248,7 @@ export default function CoverPagePickerModal({
     forcedBreakTerms,
     noPresentation,
     scopeOfWorkId: null,
+    scopeTitle: scopeTitle.trim() || null,
   };
 
   return (
@@ -295,6 +306,19 @@ export default function CoverPagePickerModal({
 
         {/* Scrollable body */}
         <div className="overflow-y-auto px-6 py-5 space-y-6">
+
+          {/* ── SCOPE TITLE ── */}
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-widest mb-2" style={{ color: "#8b949e" }}>Scope of Work Title</p>
+            <input
+              type="text"
+              value={scopeTitle}
+              onChange={e => setScopeTitle(e.target.value)}
+              placeholder="Default: estimate name"
+              className="w-full rounded-lg px-3 py-2 text-sm"
+              style={{ background: "#0d1117", border: "1px solid #30373f", color: "#e6edf3" }}
+            />
+          </div>
 
           {/* ── PAGE 1: COVER ── */}
           <div>
