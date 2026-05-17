@@ -2235,8 +2235,9 @@ export default function TemplateEditor({
                         style={{ background: "#0d1117", border: "1px solid #30373f", color: "#e6edf3", resize: "vertical" }} />
                     </div>
                   </div>
-                  {emailResult && (
-                    emailResult.msg === "gmail_auth_expired" ? (
+                  {emailResult && (() => {
+                    const isAuthErr = emailResult.msg === "gmail_auth_expired" || emailResult.msg.toLowerCase().includes("invalid_grant") || emailResult.msg.toLowerCase().includes("auth_expired");
+                    return isAuthErr ? (
                       <div className="rounded-lg px-3 py-2" style={{ background: "#2d1b1b", border: "1px solid #f8514933" }}>
                         <p className="text-sm font-medium mb-2" style={{ color: "#f85149" }}>Gmail authorization has expired.</p>
                         <a
@@ -2251,9 +2252,22 @@ export default function TemplateEditor({
                         <p className="text-xs mt-2" style={{ color: "#8b949e" }}>Authorize in the new tab, then retry here.</p>
                       </div>
                     ) : (
-                      <p className="text-sm font-medium" style={{ color: emailResult.ok ? "#22c55e" : "#ef4444" }}>{emailResult.msg}</p>
-                    )
-                  )}
+                      <div className="rounded-lg px-3 py-2" style={{ background: "#2d1b1b", border: "1px solid #f8514933" }}>
+                        <p className="text-sm font-medium mb-1" style={{ color: emailResult.ok ? "#22c55e" : "#f85149" }}>{emailResult.msg}</p>
+                        {!emailResult.ok && (
+                          <a
+                            href={`/api/google-oauth?companyId=${template.companyId}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="inline-block text-xs font-semibold underline mt-1"
+                            style={{ color: "#8b949e" }}
+                          >
+                            Re-authorize Gmail if auth-related ↗
+                          </a>
+                        )}
+                      </div>
+                    );
+                  })()}
                   <div className="flex gap-3 pt-1">
                     <button
                       onClick={sendEmail}
