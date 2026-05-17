@@ -120,3 +120,62 @@ export function DownloadIcon({ size = 14 }: { size?: number }) {
     </svg>
   );
 }
+
+/** Stacked documents — Save Template */
+export function StackedDocsIcon({ size = 14 }: { size?: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+      <rect x="2" y="5" width="13" height="16" rx="1.5" />
+      <rect x="7" y="3" width="13" height="16" rx="1.5" fill="#1a1508" />
+      <rect x="7" y="3" width="13" height="16" rx="1.5" />
+      <line x1="10" y1="8" x2="17" y2="8" strokeWidth="1.2" />
+      <line x1="10" y1="11" x2="17" y2="11" strokeWidth="1.2" />
+      <line x1="10" y1="14" x2="14" y2="14" strokeWidth="1.2" />
+    </svg>
+  );
+}
+
+/** Document with plus — Save as New */
+export function DocPlusIcon({ size = 14 }: { size?: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M4 3h9l5 5v13a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1z" />
+      <polyline points="13 3 13 8 18 8" />
+      <line x1="12" y1="13" x2="12" y2="19" />
+      <line x1="9" y1="16" x2="15" y2="16" />
+    </svg>
+  );
+}
+
+/** Clipboard with bar chart — Create Estimate */
+export function ClipboardChartIcon({ size = 14 }: { size?: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M8 3H5a2 2 0 0 0-2 2v15a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V5a2 2 0 0 0-2-2h-3" />
+      <rect x="9" y="1" width="6" height="4" rx="1" />
+      <line x1="7" y1="19" x2="7" y2="14" strokeWidth="2" />
+      <line x1="12" y1="19" x2="12" y2="11" strokeWidth="2" />
+      <line x1="17" y1="19" x2="17" y2="8" strokeWidth="2" />
+      <polyline points="7 14 12 11 17 8" strokeWidth="1.2" />
+      <path d="M15 18 Q18 15 19.5 12" strokeWidth="1.2" />
+    </svg>
+  );
+}
+
+/** PDF document + envelope — PDF / Send */
+export function PdfMailIcon({ size = 14 }: { size?: number }) {
+  const w = Math.round(size * 1.5);
+  return (
+    <svg width={w} height={size} viewBox="0 0 36 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M1 2h7l4 4v14a1 1 0 0 1-1 1H2a1 1 0 0 1-1-1V3a1 1 0 0 1 1-1z" />
+      <polyline points="8 2 8 6 12 6" />
+      <line x1="3" y1="11" x2="10" y2="11" strokeWidth="1.2" />
+      <line x1="3" y1="14" x2="10" y2="14" strokeWidth="1.2" />
+      <line x1="3" y1="17" x2="7" y2="17" strokeWidth="1.2" />
+      <line x1="14" y1="12" x2="18" y2="12" />
+      <polyline points="16 10 18 12 16 14" />
+      <rect x="20" y="6" width="15" height="11" rx="1" />
+      <polyline points="20 7 27.5 13 35 7" />
+    </svg>
+  );
+}

@@ -2,7 +2,7 @@
 
 import { useState, useTransition, useRef, useCallback, createContext, useContext, useEffect, useReducer } from "react";
 import { useRouter } from "next/navigation";
-import { TrashIcon, PencilIcon, SaveIcon, CopyIcon, FilePlusIcon, DownloadIcon } from "@/components/ui/icons";
+import { TrashIcon, PencilIcon, SaveIcon, CopyIcon, FilePlusIcon, DownloadIcon, StackedDocsIcon, DocPlusIcon, ClipboardChartIcon, PdfMailIcon } from "@/components/ui/icons";
 import CoverPagePickerModal, { PdfOptions, CoverType } from "@/components/clients/CoverPagePickerModal";
 import { lookupItemCsiCode, formatCsiCode, DIVISIONS } from "@/lib/divisions";
 import { DndContext, DragOverlay, useDroppable, useDraggable, closestCenter, PointerSensor, TouchSensor, useSensor, useSensors } from "@dnd-kit/core";
@@ -2113,11 +2113,11 @@ export default function TemplateEditor({
                     setTemplateSaved(true);
                     setTimeout(() => setTemplateSaved(false), 2500);
                   }}
-                  className="flex items-center justify-center gap-2 rounded-xl px-3 py-3 transition-all"
+                  className="flex flex-col items-center justify-center gap-2 rounded-xl py-4 px-2 transition-all"
                   style={{ background: "#1a1508", border: `1.5px solid ${templateSaved ? "#22c55e" : "#C9A84C"}`, color: templateSaved ? "#22c55e" : "#C9A84C" }}
                 >
-                  <SaveIcon size={15} />
-                  <span className="text-xs font-semibold">{templateSaved ? "Saved" : "Save"}</span>
+                  <StackedDocsIcon size={30} />
+                  <span className="text-xs font-semibold">{templateSaved ? "Saved!" : "Save Template"}</span>
                 </button>
               )}
 
@@ -2125,11 +2125,11 @@ export default function TemplateEditor({
               {canEdit && (
                 <button
                   onClick={() => setSaveAsNew(v => !v)}
-                  className="flex items-center justify-center gap-2 rounded-xl px-3 py-3 transition-all"
+                  className="flex flex-col items-center justify-center gap-2 rounded-xl py-4 px-2 transition-all"
                   style={{ background: "#1a1508", border: `1.5px solid ${saveAsNew ? "#60a5fa" : "#C9A84C"}`, color: saveAsNew ? "#60a5fa" : "#C9A84C" }}
                 >
-                  <CopyIcon size={15} />
-                  <span className="text-xs font-semibold">Fork</span>
+                  <DocPlusIcon size={30} />
+                  <span className="text-xs font-semibold">Save as New</span>
                 </button>
               )}
 
@@ -2137,21 +2137,21 @@ export default function TemplateEditor({
               <button
                 disabled={!canEdit || !currentClient || isPending || savedToClient || template.type !== "TEMPLATE"}
                 onClick={canEdit && currentClient && !savedToClient ? handleSaveToClient : undefined}
-                className="flex items-center justify-center gap-2 rounded-xl px-3 py-3 transition-all disabled:opacity-40"
+                className="flex flex-col items-center justify-center gap-2 rounded-xl py-4 px-2 transition-all disabled:opacity-40"
                 style={{ background: "#1a1508", border: `1.5px solid ${savedToClient ? "#22c55e" : "#C9A84C"}`, color: savedToClient ? "#22c55e" : "#C9A84C" }}
               >
-                <FilePlusIcon size={15} />
-                <span className="text-xs font-semibold">{savedToClient ? "Created" : isPending ? "Creating…" : "Create"}</span>
+                <ClipboardChartIcon size={30} />
+                <span className="text-xs font-bold">{savedToClient ? "✓ Created" : isPending ? "Creating…" : "Create Estimate"}</span>
               </button>
 
               {/* PDF / Send */}
               <button
                 onClick={() => { setEmailResult(null); setPdfStep("cover"); }}
-                className="flex items-center justify-center gap-2 rounded-xl px-3 py-3 transition-all"
+                className="flex flex-col items-center justify-center gap-2 rounded-xl py-4 px-2 transition-all"
                 style={{ background: "#1a1508", border: "1.5px solid #C9A84C", color: "#C9A84C" }}
               >
-                <DownloadIcon size={15} />
-                <span className="text-xs font-semibold">PDF</span>
+                <PdfMailIcon size={30} />
+                <span className="text-xs font-semibold">PDF / Send</span>
               </button>
             </div>
 
