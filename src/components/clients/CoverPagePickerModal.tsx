@@ -1,5 +1,6 @@
 "use client";
 import { useState, useEffect, useCallback } from "react";
+import { EyeIcon, EnvelopeIcon, DownloadArrowIcon, CraneIcon, DraftingIcon, HouseIcon, StorefrontIcon, CircleSlashIcon } from "@/components/ui/icons";
 
 export const COVER_OPTIONS = [
   { type: "FLAT_ROOFS",    label: "Flat Roofs",    img: "/flat-roofs-cover.jpg",      desc: "Flat / low-slope roofing" },
@@ -11,13 +12,21 @@ export const COVER_OPTIONS = [
 export type CoverType = (typeof COVER_OPTIONS)[number]["type"] | "CUSTOM" | "NONE";
 export type Page2Type = "ROOF" | "ADDITION" | "PERMIT" | "RETAIL" | "NONE";
 
-const PAGE2_OPTIONS: { type: Page2Type; label: string; desc: string; icon: string }[] = [
-  { type: "ADDITION", label: "Construction Page",              desc: "Pages 1 & 2 — WHY CHOOSE US + scope",        icon: "🏗️" },
-  { type: "PERMIT",   label: "Preparation of Permit Drawings", desc: "Pages 1 & 2 — WHY CHOOSE US + permit scope", icon: "📐" },
-  { type: "ROOF",     label: "Roofing Cover Page",             desc: "Pages 1 & 2 — cover + roofing intro",        icon: "🏠" },
-  { type: "RETAIL",   label: "Retail",                         desc: "Retail buildout & scope",                    icon: "🏪" },
-  { type: "NONE",     label: "None",                           desc: "Skip presentation",                          icon: "⊘" },
+const PAGE2_OPTIONS: { type: Page2Type; label: string }[] = [
+  { type: "ADDITION", label: "Construction Page" },
+  { type: "PERMIT",   label: "Permit Drawings" },
+  { type: "ROOF",     label: "Roofing Cover" },
+  { type: "RETAIL",   label: "Retail" },
+  { type: "NONE",     label: "None" },
 ];
+
+function Page2Icon({ type, size = 28 }: { type: Page2Type; size?: number }) {
+  if (type === "ADDITION") return <CraneIcon size={size} />;
+  if (type === "PERMIT")   return <DraftingIcon size={size} />;
+  if (type === "ROOF")     return <HouseIcon size={size} />;
+  if (type === "RETAIL")   return <StorefrontIcon size={size} />;
+  return <CircleSlashIcon size={size} />;
+}
 
 export type PdfOptions = {
   coverType: CoverType;
@@ -261,7 +270,7 @@ export default function CoverPagePickerModal({
             <h2 className="text-base font-bold" style={{ color: "#e6edf3" }}>PDF Options</h2>
             <button onClick={onClose} style={{ color: "#8b949e" }} className="text-xl leading-none">×</button>
           </div>
-          <div className="flex gap-2">
+          <div className="grid gap-2" style={{ gridTemplateColumns: `repeat(${[showPreview && previewUrlBuilder, true, !!onSendEmail, true].filter(Boolean).length}, 1fr)` }}>
             {showPreview && previewUrlBuilder && (
               <button
                 type="button"
@@ -269,37 +278,40 @@ export default function CoverPagePickerModal({
                   e.stopPropagation();
                   const url = previewUrlBuilder!(opts);
                   const a = document.createElement("a");
-                  a.href = url;
-                  a.target = "_blank";
-                  a.rel = "noopener noreferrer";
-                  document.body.appendChild(a);
-                  a.click();
-                  document.body.removeChild(a);
+                  a.href = url; a.target = "_blank"; a.rel = "noopener noreferrer";
+                  document.body.appendChild(a); a.click(); document.body.removeChild(a);
                 }}
-                className="px-4 rounded-xl py-2 text-sm font-semibold inline-flex items-center"
+                className="flex flex-col items-center justify-center gap-1.5 rounded-xl py-3 px-1 overflow-hidden"
                 style={{ background: "#1e2736", border: "1px solid #C9A84C55", color: "#C9A84C" }}
               >
-                👁 Preview
+                <EyeIcon size={22} />
+                <span className="text-[11px] font-semibold leading-none">Preview</span>
               </button>
             )}
             <button
               onClick={() => onConfirm(opts)}
-              className="flex-1 rounded-xl py-2 text-sm font-bold"
+              className="flex flex-col items-center justify-center gap-1.5 rounded-xl py-3 px-1 overflow-hidden"
               style={{ background: "#C9A84C", color: "#0d1117" }}
             >
-              {confirmLabel}
+              <DownloadArrowIcon size={22} />
+              <span className="text-[11px] font-bold leading-tight text-center">Download PDF</span>
             </button>
             {onSendEmail && (
               <button
                 onClick={() => onSendEmail(opts)}
-                className="flex-1 rounded-xl py-2 text-sm font-bold"
+                className="flex flex-col items-center justify-center gap-1.5 rounded-xl py-3 px-1 overflow-hidden"
                 style={{ background: "#1a2436", border: "1px solid #C9A84C", color: "#C9A84C" }}
               >
-                ✉ Send
+                <EnvelopeIcon size={22} />
+                <span className="text-[11px] font-semibold leading-none">Send</span>
               </button>
             )}
-            <button onClick={onClose} className="px-4 rounded-xl py-2 text-sm font-medium" style={{ background: "#30373f", color: "#e6edf3" }}>
-              Cancel
+            <button
+              onClick={onClose}
+              className="flex flex-col items-center justify-center gap-1.5 rounded-xl py-3 px-1 overflow-hidden"
+              style={{ background: "#30373f", color: "#e6edf3" }}
+            >
+              <span className="text-[11px] font-medium">Cancel</span>
             </button>
           </div>
         </div>
@@ -439,16 +451,17 @@ export default function CoverPagePickerModal({
           {/* ── PAGE 2: PRESENTATION + SCOPE ── */}
           <div>
             <p className="text-xs font-semibold uppercase tracking-widest mb-2" style={{ color: "#8b949e" }}>Page 2 — Presentation</p>
-            <div className="grid grid-cols-4 gap-2 mb-3">
+            <div className="grid grid-cols-5 gap-2 mb-3">
               {PAGE2_OPTIONS.map(opt => {
                 const active = page2 === opt.type;
                 const isNone = opt.type === "NONE";
+                const color = active ? (isNone ? "#f87171" : "#C9A84C") : "#8b949e";
                 return (
                   <button key={opt.type} onClick={() => setPage2(opt.type)}
-                    className="rounded-xl p-2.5 text-left transition-all"
-                    style={{ border: `2px solid ${active ? (isNone ? "#f85149" : "#C9A84C") : "#30373f"}`, background: active ? (isNone ? "#2d1b1b" : "#1e2a12") : "#1e2736", outline: "none" }}>
-                    <div className="text-xl mb-1">{opt.icon}</div>
-                    <div className="text-xs font-semibold" style={{ color: active ? (isNone ? "#f87171" : "#C9A84C") : "#e6edf3" }}>{opt.label}</div>
+                    className="flex flex-col items-center justify-start gap-1.5 rounded-xl pt-3 pb-2 px-1 overflow-hidden transition-all"
+                    style={{ border: `1.5px solid ${active ? (isNone ? "#f85149" : "#C9A84C") : "#30373f"}`, background: active ? (isNone ? "#2d1b1b" : "#1e2a12") : "#1e2736", outline: "none", color }}>
+                    <Page2Icon type={opt.type} size={26} />
+                    <span className="text-[9px] font-semibold leading-tight text-center w-full" style={{ wordBreak: "break-word" }}>{opt.label}</span>
                   </button>
                 );
               })}

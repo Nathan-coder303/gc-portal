@@ -121,6 +121,106 @@ export function DownloadIcon({ size = 14 }: { size?: number }) {
   );
 }
 
+/** Eye — Preview */
+export function EyeIcon({ size = 14 }: { size?: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M2 12C4 7 8 4 12 4s8 3 10 8c-2 5-6 8-10 8S4 17 2 12z"/>
+      <circle cx="12" cy="12" r="3"/>
+    </svg>
+  );
+}
+
+/** Envelope — Send */
+export function EnvelopeIcon({ size = 14 }: { size?: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+      <rect x="2" y="5" width="20" height="14" rx="2"/>
+      <polyline points="2 5 12 13 22 5"/>
+    </svg>
+  );
+}
+
+/** Down arrow with base — Download */
+export function DownloadArrowIcon({ size = 14 }: { size?: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+      <line x1="12" y1="3" x2="12" y2="15"/>
+      <polyline points="7 10 12 15 17 10"/>
+      <line x1="4" y1="20" x2="20" y2="20"/>
+    </svg>
+  );
+}
+
+/** Tower crane — Construction Page */
+export function CraneIcon({ size = 14 }: { size?: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+      <line x1="8" y1="22" x2="8" y2="5"/>
+      <line x1="8" y1="5" x2="21" y2="5"/>
+      <line x1="8" y1="5" x2="3" y2="8"/>
+      <line x1="21" y1="5" x2="21" y2="13"/>
+      <path d="M19 15 Q21 17 23 15" strokeWidth="1.5"/>
+      <line x1="11" y1="5" x2="8" y2="11"/>
+      <line x1="17" y1="5" x2="8" y2="14"/>
+      <rect x="5" y="18" width="6" height="4" rx="1"/>
+    </svg>
+  );
+}
+
+/** Set square + ruler — Permit Drawings */
+export function DraftingIcon({ size = 14 }: { size?: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M4 20 L4 4 L17 20 Z"/>
+      <line x1="4" y1="8" x2="8" y2="8"/>
+      <line x1="4" y1="12" x2="11" y2="12"/>
+      <line x1="4" y1="16" x2="14" y2="16"/>
+      <rect x="18" y="2" width="3" height="18" rx="1.5"/>
+      <line x1="18" y1="6" x2="21" y2="6"/>
+      <line x1="18" y1="10" x2="21" y2="10"/>
+      <line x1="18" y1="14" x2="21" y2="14"/>
+    </svg>
+  );
+}
+
+/** House with chimney — Roofing Cover Page */
+export function HouseIcon({ size = 14 }: { size?: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M3 11 L12 3 L21 11 V21 H3 Z"/>
+      <path d="M9 21 V16 H15 V21"/>
+      <rect x="6" y="13" width="3" height="3" rx="0.5"/>
+      <rect x="15" y="13" width="3" height="3" rx="0.5"/>
+      <rect x="15" y="5" width="3" height="5"/>
+    </svg>
+  );
+}
+
+/** Storefront — Retail */
+export function StorefrontIcon({ size = 14 }: { size?: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+      <rect x="2" y="9" width="20" height="12" rx="1"/>
+      <path d="M2 9 Q12 5 22 9"/>
+      <rect x="9" y="15" width="6" height="6"/>
+      <rect x="3" y="2" width="18" height="6" rx="1"/>
+      <line x1="9" y1="2" x2="9" y2="8"/>
+      <line x1="15" y1="2" x2="15" y2="8"/>
+    </svg>
+  );
+}
+
+/** Circle with slash — None */
+export function CircleSlashIcon({ size = 14 }: { size?: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+      <circle cx="12" cy="12" r="9"/>
+      <line x1="5.5" y1="18.5" x2="18.5" y2="5.5"/>
+    </svg>
+  );
+}
+
 /** Stacked documents — Save Template */
 export function StackedDocsIcon({ size = 14 }: { size?: number }) {
   return (
