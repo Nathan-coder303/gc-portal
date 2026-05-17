@@ -1569,27 +1569,11 @@ function TemplatePdfDocument({ companyName, template, client, divisions, showTer
           <Text style={{ fontSize: 8, color: "#94a3b8" }} render={({ pageNumber, totalPages }) => `Page ${pageNumber} of ${totalPages}`} />
         </View>
 
-        {/* Header: scope full-width on top, addresses on bottom row */}
+        {/* Header: 3-column row — logo+company | scope title | client */}
         <View style={styles.header}>
-          {/* Top: Scope of Work centered across full width */}
-          <View style={styles.centerSection}>
-            <Text style={styles.centerBold}>Scope of Work:</Text>
-            <Text style={styles.centerBold}>{scopeTitle || template.name}</Text>
-            {dateDisplay ? <Text style={styles.centerBold}>{dateDisplay}</Text> : null}
-            {_progressPct != null ? (
-              <>
-                <Text style={[styles.centerBold, { color: GOLD }]}>Progress Invoice {_progressInvoiceNumber ?? ""}</Text>
-                <Text style={[styles.centerBold, { color: GOLD }]}>{_progressPct}% Progress Payment</Text>
-              </>
-            ) : (
-              !hideEstimateLabel && <Text style={styles.centerBold}>{template.estimateNumber ? `Estimate #${template.estimateNumber}` : "ESTIMATE"}</Text>
-            )}
-          </View>
-
-          {/* Bottom row: Logo + company left, client right */}
-          <View style={{ flexDirection: "row", justifyContent: "space-between", marginTop: 4 }}>
+          <View style={{ flexDirection: "row", alignItems: "stretch" }}>
             {/* Left: Logo + company info */}
-            <View>
+            <View style={{ flex: 1 }}>
               {/* eslint-disable-next-line jsx-a11y/alt-text */}
               <Image style={styles.logo} src={branding.logoSrc} />
               <Text style={styles.companyInfo}>{branding.address}</Text>
@@ -1597,8 +1581,23 @@ function TemplatePdfDocument({ companyName, template, client, divisions, showTer
               <Text style={styles.companyInfo}>{branding.licenses}</Text>
             </View>
 
-            {/* Right: Client — marginTop 156 aligns with address lines (below 152px logo + 4px gap) */}
-            <View style={{ alignItems: "flex-end", marginTop: 156 }}>
+            {/* Center: Scope of Work title */}
+            <View style={[styles.centerSection, { flex: 2 }]}>
+              <Text style={styles.centerBold}>Scope of Work:</Text>
+              <Text style={styles.centerBold}>{scopeTitle || template.name}</Text>
+              {dateDisplay ? <Text style={styles.centerBold}>{dateDisplay}</Text> : null}
+              {_progressPct != null ? (
+                <>
+                  <Text style={[styles.centerBold, { color: GOLD }]}>Progress Invoice {_progressInvoiceNumber ?? ""}</Text>
+                  <Text style={[styles.centerBold, { color: GOLD }]}>{_progressPct}% Progress Payment</Text>
+                </>
+              ) : (
+                !hideEstimateLabel && <Text style={styles.centerBold}>{template.estimateNumber ? `Estimate #${template.estimateNumber}` : "ESTIMATE"}</Text>
+              )}
+            </View>
+
+            {/* Right: Client info — bottom-aligned with company address lines */}
+            <View style={{ flex: 1, alignItems: "flex-end", justifyContent: "flex-end" }}>
               {client ? (
                 <>
                   <Text style={styles.clientName}>{client.name}</Text>
