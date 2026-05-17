@@ -1308,7 +1308,7 @@ export async function saveAsClientEstimate(sourceTemplateId: string, clientId: s
         updatedBy: session.user.id,
         // Copy financial & doc fields from source; assign fresh estimate number
         estimateNumber: nextNumber,
-        estimateDate: source.estimateDate,
+        estimateDate: new Date().toISOString().split("T")[0],
         gcFeePercent: source.gcFeePercent,
         paymentSchedule: source.paymentSchedule ?? undefined,
         summaryGroups: source.summaryGroups ?? undefined,
