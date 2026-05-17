@@ -2238,14 +2238,17 @@ export default function TemplateEditor({
                   {emailResult && (
                     emailResult.msg === "gmail_auth_expired" ? (
                       <div className="rounded-lg px-3 py-2" style={{ background: "#2d1b1b", border: "1px solid #f8514933" }}>
-                        <p className="text-sm font-medium mb-1" style={{ color: "#f85149" }}>Gmail authorization has expired.</p>
+                        <p className="text-sm font-medium mb-2" style={{ color: "#f85149" }}>Gmail authorization has expired.</p>
                         <a
                           href={`/api/google-oauth?companyId=${template.companyId}`}
-                          className="text-xs font-semibold underline"
-                          style={{ color: "#C9A84C" }}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="inline-block text-xs font-bold px-3 py-1.5 rounded-lg"
+                          style={{ background: "#C9A84C22", border: "1px solid #C9A84C55", color: "#C9A84C" }}
                         >
-                          Re-authorize Gmail →
+                          Re-authorize Gmail ↗
                         </a>
+                        <p className="text-xs mt-2" style={{ color: "#8b949e" }}>Authorize in the new tab, then retry here.</p>
                       </div>
                     ) : (
                       <p className="text-sm font-medium" style={{ color: emailResult.ok ? "#22c55e" : "#ef4444" }}>{emailResult.msg}</p>

@@ -290,6 +290,9 @@ export async function POST(
     });
   } catch (err) {
     console.error("Gmail send error:", err);
+    if (String(err).includes("invalid_grant")) {
+      return NextResponse.json({ error: "gmail_auth_expired" }, { status: 401 });
+    }
     return NextResponse.json({ error: "Failed to send email", detail: String(err) }, { status: 500 });
   }
 
