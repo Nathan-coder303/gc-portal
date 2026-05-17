@@ -334,7 +334,7 @@ function CoverPages({ template, client, clientCoverPhotoType, clientCoverPhotoUr
       {/* Header */}
       <View style={{ flexDirection: "row", alignItems: "center", backgroundColor: DARK, paddingHorizontal: 24, paddingVertical: 10, gap: 14 }}>
         {/* eslint-disable-next-line jsx-a11y/alt-text */}
-        <Image src={logoPath} style={{ width: 104, height: 104 }} />
+        <Image src={logoPath} style={{ width: 52, height: 52 }} />
         <View>
           <Text style={{ fontSize: 20, fontFamily: "Helvetica-Bold", color: GOLD, letterSpacing: 2 }}>{companyDisplayName.toUpperCase()}</Text>
           <Text style={{ fontSize: 8, color: "#94a3b8", marginTop: 2 }}>Licensed &amp; Insured  |  {companyLicenses}  |  {companyAddress}  |  {companyPhone}</Text>
@@ -462,7 +462,7 @@ function RoofIntroPage({ template, client }: Pick<TemplatePdfProps, "template" |
       {/* Header */}
       <View style={{ flexDirection: "row", alignItems: "center", backgroundColor: DARK, paddingHorizontal: 24, paddingVertical: 10, gap: 14 }}>
         {/* eslint-disable-next-line jsx-a11y/alt-text */}
-        <Image src={logoPath} style={{ width: 104, height: 104 }} />
+        <Image src={logoPath} style={{ width: 52, height: 52 }} />
         <View>
           <Text style={{ fontSize: 20, fontFamily: "Helvetica-Bold", color: GOLD, letterSpacing: 2 }}>{companyDisplayName.toUpperCase()}</Text>
           <Text style={{ fontSize: 8, color: "#94a3b8", marginTop: 2 }}>Licensed &amp; Insured  |  {companyLicenses}  |  {companyAddress}  |  {companyPhone}</Text>
@@ -549,7 +549,7 @@ function AdditionPage1({ template, client, clientCoverPhotoType, clientCoverPhot
       {/* Header */}
       <View style={{ flexDirection: "row", alignItems: "center", backgroundColor: DARK, paddingHorizontal: 24, paddingVertical: 10, gap: 14 }}>
         {/* eslint-disable-next-line jsx-a11y/alt-text */}
-        <Image src={logoPath} style={{ width: 104, height: 104 }} />
+        <Image src={logoPath} style={{ width: 52, height: 52 }} />
         <View>
           <Text style={{ fontSize: 20, fontFamily: "Helvetica-Bold", color: GOLD, letterSpacing: 2 }}>{companyDisplayName.toUpperCase()}</Text>
           <Text style={{ fontSize: 8, color: "#94a3b8", marginTop: 2 }}>Licensed &amp; Insured  |  {companyLicenses}  |  {companyAddress}  |  {companyPhone}</Text>
@@ -710,7 +710,7 @@ function AdditionPage2({ client }: Pick<TemplatePdfProps, "client">) {
       {/* Header */}
       <View style={{ flexDirection: "row", alignItems: "center", backgroundColor: DARK, paddingHorizontal: 24, paddingVertical: 10, gap: 14 }}>
         {/* eslint-disable-next-line jsx-a11y/alt-text */}
-        <Image src={logoPath} style={{ width: 104, height: 104 }} />
+        <Image src={logoPath} style={{ width: 52, height: 52 }} />
         <View style={{ flex: 1 }}>
           <Text style={{ fontSize: 20, fontFamily: "Helvetica-Bold", color: GOLD, letterSpacing: 2 }}>{companyDisplayName.toUpperCase()}</Text>
           <Text style={{ fontSize: 8, color: "#94a3b8", marginTop: 2 }}>Licensed &amp; Insured  |  {companyLicenses}  |  {companyAddress}  |  {companyPhone}</Text>
@@ -849,7 +849,7 @@ function PermitDrawingsPage({ client }: Pick<TemplatePdfProps, "client">) {
       {/* Header */}
       <View style={{ flexDirection: "row", alignItems: "center", backgroundColor: DARK, paddingHorizontal: 24, paddingVertical: 10, gap: 14 }}>
         {/* eslint-disable-next-line jsx-a11y/alt-text */}
-        <Image src={logoPath} style={{ width: 104, height: 104 }} />
+        <Image src={logoPath} style={{ width: 52, height: 52 }} />
         <View style={{ flex: 1 }}>
           <Text style={{ fontSize: 20, fontFamily: "Helvetica-Bold", color: GOLD, letterSpacing: 2 }}>{companyDisplayName.toUpperCase()}</Text>
           <Text style={{ fontSize: 8, color: "#94a3b8", marginTop: 2 }}>Licensed &amp; Insured  |  {companyLicenses}  |  {companyAddress}  |  {companyPhone}</Text>
@@ -975,7 +975,7 @@ function RetailPage1({ template, client, clientCoverPhotoType, clientCoverPhotoU
       {/* Header */}
       <View style={{ flexDirection: "row", alignItems: "center", backgroundColor: DARK, paddingHorizontal: 24, paddingVertical: 10, gap: 14 }}>
         {/* eslint-disable-next-line jsx-a11y/alt-text */}
-        <Image src={logoPath} style={{ width: 104, height: 104 }} />
+        <Image src={logoPath} style={{ width: 52, height: 52 }} />
         <View>
           <Text style={{ fontSize: 20, fontFamily: "Helvetica-Bold", color: GOLD, letterSpacing: 2 }}>{companyDisplayName.toUpperCase()}</Text>
           <Text style={{ fontSize: 8, color: "#94a3b8", marginTop: 2 }}>Licensed &amp; Insured  |  {companyLicenses}  |  {companyAddress}  |  {companyPhone}</Text>
@@ -1121,7 +1121,7 @@ function RetailPage2({ client }: Pick<TemplatePdfProps, "client">) {
       {/* Header */}
       <View style={{ flexDirection: "row", alignItems: "center", backgroundColor: DARK, paddingHorizontal: 24, paddingVertical: 10, gap: 14 }}>
         {/* eslint-disable-next-line jsx-a11y/alt-text */}
-        <Image src={logoPath} style={{ width: 104, height: 104 }} />
+        <Image src={logoPath} style={{ width: 52, height: 52 }} />
         <View style={{ flex: 1 }}>
           <Text style={{ fontSize: 20, fontFamily: "Helvetica-Bold", color: GOLD, letterSpacing: 2 }}>{companyDisplayName.toUpperCase()}</Text>
           <Text style={{ fontSize: 8, color: "#94a3b8", marginTop: 2 }}>Licensed &amp; Insured  |  {companyLicenses}  |  {companyAddress}  |  {companyPhone}</Text>
@@ -1348,7 +1348,7 @@ function ScopeOfWorkPage({ title, body, client }: { title: string; body: string;
       {/* Header */}
       <View style={{ flexDirection: "row", alignItems: "center", backgroundColor: DARK, paddingHorizontal: 24, paddingVertical: 10, gap: 14 }}>
         {/* eslint-disable-next-line jsx-a11y/alt-text */}
-        <Image src={logoPath} style={{ width: 104, height: 104 }} />
+        <Image src={logoPath} style={{ width: 52, height: 52 }} />
         <View style={{ flex: 1 }}>
           <Text style={{ fontSize: 20, fontFamily: "Helvetica-Bold", color: GOLD, letterSpacing: 2 }}>{companyDisplayName.toUpperCase()}</Text>
           <Text style={{ fontSize: 8, color: "#94a3b8", marginTop: 2 }}>Licensed &amp; Insured  |  {companyLicenses}  |  {companyAddress}  |  {companyPhone}</Text>
