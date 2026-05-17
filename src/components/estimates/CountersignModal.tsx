@@ -60,7 +60,7 @@ export default function CountersignModal({
       ctx.beginPath();
       ctx.moveTo(lastPos.current.x, lastPos.current.y);
       ctx.lineTo(pos.x, pos.y);
-      ctx.strokeStyle = "#e6edf3";
+      ctx.strokeStyle = "#0f172a";
       ctx.lineWidth = 2.5;
       ctx.lineCap = "round";
       ctx.lineJoin = "round";
@@ -155,7 +155,7 @@ export default function CountersignModal({
           </div>
           <div
             className="rounded-xl overflow-hidden"
-            style={{ border: "2px solid #30373f", background: "#0d1117", touchAction: "none" }}
+            style={{ border: "2px solid #30373f", background: "#ffffff", touchAction: "none" }}
           >
             <canvas
               ref={canvasRef}
