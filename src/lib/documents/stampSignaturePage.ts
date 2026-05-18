@@ -48,7 +48,7 @@ export async function stampSignaturePage(originalUrl: string, opts: StampOptions
   });
 
   const formatDate = (d: Date) =>
-    d.toLocaleString("en-US", { year: "numeric", month: "long", day: "numeric", hour: "numeric", minute: "2-digit", timeZoneName: "short" });
+    d.toLocaleString("en-US", { year: "numeric", month: "long", day: "numeric", hour: "numeric", minute: "2-digit", timeZone: "America/New_York", timeZoneName: "short" });
 
   // Helper: draw a signature block
   async function drawSigBlock(
@@ -97,28 +97,42 @@ export async function stampSignaturePage(originalUrl: string, opts: StampOptions
     }
   }
 
-  // CLIENT block (left)
-  await drawSigBlock(
-    "CLIENT SIGNATURE",
-    opts.clientSignatureData,
-    opts.clientSignedByName,
-    opts.clientSignedAt,
-    opts.clientAlreadySigned,
-    30, 700, 255,
-  );
+  const hasClientDigitalSig = !!opts.clientSignatureData;
 
-  // Vertical divider
-  page.drawLine({ start: { x: 306, y: 710 }, end: { x: 306, y: 580 }, thickness: 0.5, color: lightGray });
+  if (hasClientDigitalSig) {
+    // CLIENT block (left) — only when client signed digitally via link
+    await drawSigBlock(
+      "CLIENT SIGNATURE",
+      opts.clientSignatureData,
+      opts.clientSignedByName,
+      opts.clientSignedAt,
+      false,
+      30, 700, 255,
+    );
 
-  // CONTRACTOR block (right)
-  await drawSigBlock(
-    "CONTRACTOR SIGNATURE",
-    opts.contractorSignatureData,
-    opts.contractorName ?? "Mike Baruh",
-    opts.contractorSignedAt,
-    false,
-    327, 700, 255,
-  );
+    // Vertical divider
+    page.drawLine({ start: { x: 306, y: 710 }, end: { x: 306, y: 580 }, thickness: 0.5, color: lightGray });
+
+    // CONTRACTOR block (right)
+    await drawSigBlock(
+      "CONTRACTOR SIGNATURE",
+      opts.contractorSignatureData,
+      opts.contractorName ?? "Mike Baruh",
+      opts.contractorSignedAt,
+      false,
+      327, 700, 255,
+    );
+  } else {
+    // Client signed externally — show only contractor block, full width centered
+    await drawSigBlock(
+      "CONTRACTOR SIGNATURE",
+      opts.contractorSignatureData,
+      opts.contractorName ?? "Mike Baruh",
+      opts.contractorSignedAt,
+      false,
+      157, 700, 298,
+    );
+  }
 
   // Footer
   page.drawLine({ start: { x: 30, y: 555 }, end: { x: 582, y: 555 }, thickness: 0.5, color: lightGray });

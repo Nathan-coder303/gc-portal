@@ -1491,51 +1491,70 @@ function TemplatePdfDocument({ companyName, template, client, divisions, showTer
       <View style={styles.sigSection} wrap={false}>
         <View style={[styles.sectionDivider, { marginTop: 2 }]} />
         <Text style={[styles.sectionTitle, { marginBottom: 3, paddingTop: 4 }]}>Agreement &amp; Authorization</Text>
-        <Text style={{ fontSize: 8, color: "#475569", marginBottom: 3 }}>
+        <Text style={{ fontSize: 8, color: "#475569", marginBottom: 8 }}>
           By signing below, both parties agree to the scope of work, pricing, and terms described in this document.
         </Text>
-        <View style={styles.sigRow}>
-          {/* Customer */}
-          <View style={styles.sigBlock}>
-            <Text style={styles.sigPartyLabel}>Customer</Text>
-            {clientSignatureData
-              // eslint-disable-next-line jsx-a11y/alt-text
-              ? <Image src={clientSignatureData} style={{ height: 32, marginBottom: 3, objectFit: "contain", objectPositionX: 0 }} />
-              : <View style={[styles.sigLine, { marginBottom: 3, height: 32 }]} />}
-            <Text style={styles.sigLineLabel}>Signature</Text>
-            <View style={{ height: 4 }} />
-            <View style={styles.sigLine} />
-            {clientSignedByName
-              ? <Text style={styles.sigPrefilled}>{clientSignedByName}</Text>
-              : <View style={{ height: 8 }} />}
-            <Text style={styles.sigLineLabel}>Name (Print)</Text>
-            <View style={{ height: 4 }} />
-            <View style={styles.sigLine} />
-            {clientSignedAt
-              ? <Text style={styles.sigPrefilled}>{clientSignedAt.toLocaleString("en-US", { month: "long", day: "numeric", year: "numeric", hour: "numeric", minute: "2-digit", timeZoneName: "short" })}</Text>
-              : <View style={{ height: 8 }} />}
-            <Text style={styles.sigLineLabel}>Date &amp; Time</Text>
+
+        {contractorSignatureData ? (
+          // ── Executed: card design showing actual signatures ───────────────
+          <View style={{ flexDirection: "row", gap: 16, marginTop: 4 }}>
+            {clientSignatureData && (
+              <View style={{ flex: 1, borderWidth: 1, borderColor: "#e2e8f0", borderRadius: 4, padding: 10, backgroundColor: "#f8fafc" }}>
+                <Text style={{ fontSize: 7.5, fontFamily: "Helvetica-Bold", color: GOLD, marginBottom: 8, letterSpacing: 1 }}>CUSTOMER</Text>
+                {/* eslint-disable-next-line jsx-a11y/alt-text */}
+                <Image src={clientSignatureData} style={{ height: 34, marginBottom: 6, objectFit: "contain", objectPositionX: 0 }} />
+                <View style={{ borderBottomWidth: 0.5, borderBottomColor: "#e2e8f0", marginBottom: 6 }} />
+                {clientSignedByName && <Text style={{ fontSize: 8, color: DARK, fontFamily: "Helvetica-Bold", marginBottom: 3 }}>Name: {clientSignedByName}</Text>}
+                {clientSignedAt && <Text style={{ fontSize: 7.5, color: "#64748b" }}>Date &amp; Time: {clientSignedAt.toLocaleString("en-US", { month: "long", day: "numeric", year: "numeric", hour: "numeric", minute: "2-digit", timeZone: "America/New_York", timeZoneName: "short" })}</Text>}
+              </View>
+            )}
+            <View style={{ flex: 1, borderWidth: 1, borderColor: "#e2e8f0", borderRadius: 4, padding: 10, backgroundColor: "#f8fafc" }}>
+              <Text style={{ fontSize: 7.5, fontFamily: "Helvetica-Bold", color: GOLD, marginBottom: 8, letterSpacing: 1 }}>CONTRACTOR</Text>
+              {/* eslint-disable-next-line jsx-a11y/alt-text */}
+              <Image src={contractorSignatureData} style={{ height: 34, marginBottom: 6, objectFit: "contain", objectPositionX: 0 }} />
+              <View style={{ borderBottomWidth: 0.5, borderBottomColor: "#e2e8f0", marginBottom: 6 }} />
+              <Text style={{ fontSize: 8, color: DARK, fontFamily: "Helvetica-Bold", marginBottom: 3 }}>Name: {branding.contactName}</Text>
+              {contractorSignedAt && <Text style={{ fontSize: 7.5, color: "#64748b" }}>Date &amp; Time: {contractorSignedAt.toLocaleString("en-US", { month: "long", day: "numeric", year: "numeric", hour: "numeric", minute: "2-digit", timeZone: "America/New_York", timeZoneName: "short" })}</Text>}
+            </View>
           </View>
-          {/* Contractor */}
-          <View style={styles.sigBlock}>
-            <Text style={styles.sigPartyLabel}>Contractor</Text>
-            {contractorSignatureData
-              // eslint-disable-next-line jsx-a11y/alt-text
-              ? <Image src={contractorSignatureData} style={{ height: 32, marginBottom: 3, objectFit: "contain", objectPositionX: 0 }} />
-              : <View style={[styles.sigLine, { marginBottom: 3, height: 32 }]} />}
-            <Text style={styles.sigLineLabel}>Signature</Text>
-            <View style={{ height: 4 }} />
-            <View style={styles.sigLine} />
-            <Text style={styles.sigPrefilled}>{branding.contactName}</Text>
-            <Text style={styles.sigLineLabel}>Name (Print)</Text>
-            <View style={{ height: 4 }} />
-            <View style={styles.sigLine} />
-            {contractorSignedAt
-              ? <Text style={styles.sigPrefilled}>{contractorSignedAt.toLocaleString("en-US", { month: "long", day: "numeric", year: "numeric", hour: "numeric", minute: "2-digit", timeZoneName: "short" })}</Text>
-              : <View style={{ height: 8 }} />}
-            <Text style={styles.sigLineLabel}>Date &amp; Time</Text>
+        ) : (
+          // ── Blank form awaiting signatures ───────────────────────────────
+          <View style={styles.sigRow}>
+            <View style={styles.sigBlock}>
+              <Text style={styles.sigPartyLabel}>Customer</Text>
+              {clientSignatureData
+                // eslint-disable-next-line jsx-a11y/alt-text
+                ? <Image src={clientSignatureData} style={{ height: 32, marginBottom: 3, objectFit: "contain", objectPositionX: 0 }} />
+                : <View style={[styles.sigLine, { marginBottom: 3, height: 32 }]} />}
+              <Text style={styles.sigLineLabel}>Signature</Text>
+              <View style={{ height: 4 }} />
+              <View style={styles.sigLine} />
+              {clientSignedByName
+                ? <Text style={styles.sigPrefilled}>{clientSignedByName}</Text>
+                : <View style={{ height: 8 }} />}
+              <Text style={styles.sigLineLabel}>Name (Print)</Text>
+              <View style={{ height: 4 }} />
+              <View style={styles.sigLine} />
+              {clientSignedAt
+                ? <Text style={styles.sigPrefilled}>{clientSignedAt.toLocaleString("en-US", { month: "long", day: "numeric", year: "numeric", hour: "numeric", minute: "2-digit", timeZone: "America/New_York", timeZoneName: "short" })}</Text>
+                : <View style={{ height: 8 }} />}
+              <Text style={styles.sigLineLabel}>Date &amp; Time</Text>
+            </View>
+            <View style={styles.sigBlock}>
+              <Text style={styles.sigPartyLabel}>Contractor</Text>
+              <View style={[styles.sigLine, { marginBottom: 3, height: 32 }]} />
+              <Text style={styles.sigLineLabel}>Signature</Text>
+              <View style={{ height: 4 }} />
+              <View style={styles.sigLine} />
+              <Text style={styles.sigPrefilled}>{branding.contactName}</Text>
+              <Text style={styles.sigLineLabel}>Name (Print)</Text>
+              <View style={{ height: 4 }} />
+              <View style={styles.sigLine} />
+              <View style={{ height: 8 }} />
+              <Text style={styles.sigLineLabel}>Date &amp; Time</Text>
+            </View>
           </View>
-        </View>
+        )}
       </View>
     </>
   );
