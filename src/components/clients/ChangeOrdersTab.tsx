@@ -596,7 +596,18 @@ type ExecutedContract = {
   name: string;
   estimateNumber: string | null;
   counterSignedAt: string;
-  executedPdfUrl: string; // proxy URL
+  executedPdfUrl: string;
+};
+
+type ClientDoc = {
+  id: string;
+  name: string;
+  clientSignedAt: string | null;
+  clientSignedByName: string | null;
+  clientAlreadySigned: boolean;
+  counterSignedAt: string | null;
+  countersignedFileUrl: string | null;
+  originalFileUrl: string;
 };
 
 export default function ChangeOrdersTab({
@@ -608,6 +619,7 @@ export default function ChangeOrdersTab({
   clientCoverPhotoType,
   initialOrders,
   contracts,
+  initialClientDocs,
   canEdit,
 }: {
   companyId: string;
@@ -618,12 +630,136 @@ export default function ChangeOrdersTab({
   clientCoverPhotoType?: string | null;
   initialOrders: ChangeOrder[];
   contracts?: ExecutedContract[];
+  initialClientDocs?: ClientDoc[];
   canEdit: boolean;
 }) {
   const [orders, setOrders] = useState<ChangeOrder[]>(initialOrders);
   const [editing, setEditing] = useState<ChangeOrder | null | "new">(null);
   const [pdfOrder, setPdfOrder] = useState<ChangeOrder | null>(null);
   const [isPending, startTransition] = useTransition();
+
+  // ── Client-signed doc upload ──
+  const [clientDocs, setClientDocs] = useState<ClientDoc[]>(initialClientDocs ?? []);
+  const [uploading, setUploading] = useState(false);
+  const [uploadName, setUploadName] = useState("");
+  const [uploadError, setUploadError] = useState("");
+  const [showUpload, setShowUpload] = useState(false);
+  const fileRef = useRef<HTMLInputElement>(null);
+
+  // ── Countersign modal ──
+  const [countersigning, setCountersigning] = useState<string | null>(null); // docId
+  const [csSubmitting, setCsSubmitting] = useState(false);
+  const [csError, setCsError] = useState("");
+  const [csHasDrawn, setCsHasDrawn] = useState(false);
+  const [csDone, setCsDone] = useState<{ downloadUrl: string } | null>(null);
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const drawing = useRef(false);
+  const lastPos = useRef<{ x: number; y: number } | null>(null);
+
+  async function handleUploadDoc() {
+    const file = fileRef.current?.files?.[0];
+    if (!file || !uploadName.trim()) { setUploadError("Name and file are required."); return; }
+    setUploadError(""); setUploading(true);
+    try {
+      const fd = new FormData();
+      fd.append("file", file);
+      fd.append("name", uploadName.trim());
+      fd.append("clientAlreadySigned", "true");
+      const res = await fetch(`/api/${companyId}/clients/${clientId}/documents`, { method: "POST", body: fd });
+      const data = await res.json();
+      if (!res.ok) { setUploadError(data.error ?? "Upload failed"); return; }
+      setClientDocs(prev => [{
+        id: data.id,
+        name: data.name,
+        clientSignedAt: data.clientSignedAt,
+        clientSignedByName: data.clientSignedByName,
+        clientAlreadySigned: true,
+        counterSignedAt: null,
+        countersignedFileUrl: null,
+        originalFileUrl: `/api/${companyId}/clients/${clientId}/documents/${data.id}/file`,
+      }, ...prev]);
+      setUploadName(""); setShowUpload(false);
+      if (fileRef.current) fileRef.current.value = "";
+    } catch { setUploadError("Network error"); }
+    finally { setUploading(false); }
+  }
+
+  // Signature pad helpers
+  function getPos(e: MouseEvent | TouchEvent, canvas: HTMLCanvasElement) {
+    const rect = canvas.getBoundingClientRect();
+    const scaleX = canvas.width / rect.width;
+    const scaleY = canvas.height / rect.height;
+    if ("touches" in e) {
+      const t = e.touches[0];
+      return { x: (t.clientX - rect.left) * scaleX, y: (t.clientY - rect.top) * scaleY };
+    }
+    return { x: ((e as MouseEvent).clientX - rect.left) * scaleX, y: ((e as MouseEvent).clientY - rect.top) * scaleY };
+  }
+  function startDraw(e: React.MouseEvent | React.TouchEvent) {
+    const canvas = canvasRef.current; if (!canvas) return;
+    drawing.current = true;
+    lastPos.current = getPos(e.nativeEvent as MouseEvent | TouchEvent, canvas);
+    e.preventDefault();
+  }
+  function draw(e: React.MouseEvent | React.TouchEvent) {
+    if (!drawing.current) return;
+    const canvas = canvasRef.current; if (!canvas) return;
+    const ctx = canvas.getContext("2d"); if (!ctx) return;
+    const pos = getPos(e.nativeEvent as MouseEvent | TouchEvent, canvas);
+    if (lastPos.current) {
+      ctx.beginPath(); ctx.moveTo(lastPos.current.x, lastPos.current.y);
+      ctx.lineTo(pos.x, pos.y);
+      ctx.strokeStyle = "#0f172a"; ctx.lineWidth = 2.5; ctx.lineCap = "round"; ctx.lineJoin = "round";
+      ctx.stroke();
+    }
+    lastPos.current = pos; setCsHasDrawn(true); e.preventDefault();
+  }
+  function stopDraw() { drawing.current = false; lastPos.current = null; }
+  function clearCanvas() {
+    canvasRef.current?.getContext("2d")?.clearRect(0, 0, 600, 160);
+    setCsHasDrawn(false);
+  }
+
+  function openCountersign(docId: string) {
+    setCountersigning(docId); setCsError(""); setCsHasDrawn(false); setCsDone(null);
+    setTimeout(() => clearCanvas(), 50);
+  }
+
+  async function submitCountersign() {
+    const canvas = canvasRef.current;
+    if (!canvas || !csHasDrawn || !countersigning) return;
+    const signatureData = canvas.toDataURL("image/png");
+    setCsSubmitting(true); setCsError("");
+    try {
+      const res = await fetch(
+        `/api/${companyId}/clients/${clientId}/documents/${countersigning}/countersign`,
+        { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ signatureData }) }
+      );
+      const data = await res.json();
+      if (!res.ok) { setCsError(data.error ?? "Failed"); return; }
+      setCsDone({ downloadUrl: data.downloadUrl });
+      const now = new Date().toISOString();
+      setClientDocs(prev => prev.map(d =>
+        d.id === countersigning ? { ...d, counterSignedAt: now, countersignedFileUrl: data.downloadUrl } : d
+      ));
+    } catch { setCsError("Network error"); }
+    finally { setCsSubmitting(false); }
+  }
+
+  const pendingDocs = clientDocs.filter(d => !d.counterSignedAt);
+  const executedDocs = clientDocs.filter(d => !!d.counterSignedAt);
+  const allExecuted = [
+    ...(contracts ?? []),
+    ...executedDocs.map(d => ({
+      id: d.id,
+      name: d.name,
+      estimateNumber: null,
+      counterSignedAt: d.counterSignedAt!,
+      executedPdfUrl: d.countersignedFileUrl!,
+    })),
+  ].sort((a, b) => new Date(b.counterSignedAt).getTime() - new Date(a.counterSignedAt).getTime());
+
+  const signingDoc = countersigning ? clientDocs.find(d => d.id === countersigning) : null;
 
   function handleSaved(order: ChangeOrder) {
     setOrders(prev => {
@@ -662,16 +798,81 @@ export default function ChangeOrdersTab({
   return (
     <div className="space-y-8">
 
-      {/* ── Contracts section ── */}
+      {/* ── Pending countersign section ── */}
+      {pendingDocs.length > 0 && (
+        <div>
+          <h3 className="text-sm font-bold mb-3" style={{ color: "#e6edf3" }}>Awaiting Your Signature</h3>
+          <div className="space-y-2">
+            {pendingDocs.map(d => (
+              <div key={d.id} className="flex items-center justify-between gap-3 rounded-xl px-4 py-3"
+                style={{ background: "#1e2736", border: "1px solid #C9A84C44" }}>
+                <div className="min-w-0">
+                  <p className="text-sm font-semibold truncate" style={{ color: "#e6edf3" }}>{d.name}</p>
+                  <p className="text-xs mt-0.5" style={{ color: "#8b949e" }}>
+                    Client signed externally
+                    {d.clientSignedAt && <> · {new Date(d.clientSignedAt).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}</>}
+                  </p>
+                </div>
+                <div className="flex gap-2 shrink-0">
+                  <a href={d.originalFileUrl} target="_blank" rel="noopener noreferrer"
+                    className="text-xs font-semibold px-3 py-1.5 rounded-lg"
+                    style={{ background: "#21262d", color: "#8b949e", border: "1px solid #30373f" }}>
+                    View
+                  </a>
+                  <button onClick={() => openCountersign(d.id)}
+                    className="text-xs font-semibold px-3 py-1.5 rounded-lg"
+                    style={{ background: "#C9A84C22", color: "#C9A84C", border: "1px solid #C9A84C55" }}>
+                    ✍️ Countersign
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* ── Upload client-signed PDF ── */}
+      <div>
+        {!showUpload ? (
+          <button onClick={() => setShowUpload(true)}
+            className="w-full rounded-xl py-2.5 text-sm font-semibold border-dashed"
+            style={{ background: "transparent", border: "1.5px dashed #30373f", color: "#8b949e" }}>
+            + Upload client-signed contract
+          </button>
+        ) : (
+          <div className="rounded-xl p-4 space-y-3" style={{ background: "#1e2736", border: "1px solid #C9A84C44" }}>
+            <p className="text-sm font-semibold" style={{ color: "#e6edf3" }}>Upload client-signed contract</p>
+            <input value={uploadName} onChange={e => setUploadName(e.target.value)}
+              placeholder="Document name (e.g. Service Agreement)" className="w-full rounded-lg px-3 py-2 text-sm"
+              style={{ background: "#0d1117", border: "1px solid #30373f", color: "#e6edf3", outline: "none" }} />
+            <input ref={fileRef} type="file" accept="application/pdf,.pdf" className="w-full text-sm" style={{ color: "#8b949e" }} />
+            {uploadError && <p className="text-xs" style={{ color: "#ef4444" }}>{uploadError}</p>}
+            <div className="flex gap-2">
+              <button onClick={handleUploadDoc} disabled={uploading}
+                className="px-4 py-2 rounded-lg text-sm font-bold disabled:opacity-50"
+                style={{ background: "#C9A84C", color: "#fff" }}>
+                {uploading ? "Uploading…" : "Upload"}
+              </button>
+              <button onClick={() => { setShowUpload(false); setUploadError(""); setUploadName(""); }}
+                className="px-4 py-2 rounded-lg text-sm"
+                style={{ background: "#21262d", color: "#8b949e", border: "1px solid #30373f" }}>
+                Cancel
+              </button>
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* ── Executed Contracts section ── */}
       <div>
         <h3 className="text-sm font-bold mb-3" style={{ color: "#e6edf3" }}>Executed Contracts</h3>
-        {!contracts || contracts.length === 0 ? (
+        {allExecuted.length === 0 ? (
           <div className="rounded-xl p-6 text-center" style={{ background: "#1e2736", border: "1px solid #30373f" }}>
-            <p className="text-sm" style={{ color: "#8b949e" }}>No executed contracts yet — fully signed estimates will appear here automatically.</p>
+            <p className="text-sm" style={{ color: "#8b949e" }}>No executed contracts yet — fully signed estimates and uploaded contracts will appear here automatically.</p>
           </div>
         ) : (
           <div className="space-y-2">
-            {contracts.map(c => (
+            {allExecuted.map(c => (
               <div key={c.id} className="flex items-center justify-between gap-3 rounded-xl px-4 py-3"
                 style={{ background: "#1e2736", border: "1px solid #30373f" }}>
                 <div className="min-w-0">
@@ -692,6 +893,78 @@ export default function ChangeOrdersTab({
           </div>
         )}
       </div>
+
+      {/* ── Countersign modal ── */}
+      {countersigning && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4"
+          style={{ background: "rgba(0,0,0,0.75)" }}
+          onClick={() => !csSubmitting && !csDone && setCountersigning(null)}>
+          <div className="w-full max-w-lg rounded-2xl p-6 space-y-5"
+            style={{ background: "#161b22", border: "1px solid #C9A84C55" }}
+            onClick={e => e.stopPropagation()}>
+            <div className="flex items-start justify-between">
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-widest mb-1" style={{ color: "#C9A84C88" }}>Countersignature</p>
+                <p className="text-base font-bold" style={{ color: "#e6edf3" }}>{signingDoc?.name}</p>
+              </div>
+              {!csSubmitting && !csDone && (
+                <button onClick={() => setCountersigning(null)} className="text-xl leading-none" style={{ color: "#8b949e" }}>×</button>
+              )}
+            </div>
+            <div className="px-3 py-2 rounded-lg text-sm" style={{ background: "#0d2a1a", border: "1px solid #22c55e44", color: "#22c55e" }}>
+              ✓ Client signed externally (scan on file)
+            </div>
+            {csDone ? (
+              <div className="text-center space-y-4">
+                <div className="text-4xl">✅</div>
+                <p className="text-sm font-semibold" style={{ color: "#e6edf3" }}>Fully executed! PDF emailed to both parties.</p>
+                <div className="flex gap-3 justify-center">
+                  <a href={csDone.downloadUrl} target="_blank" rel="noopener noreferrer"
+                    className="text-sm font-bold px-4 py-2 rounded-lg"
+                    style={{ background: "#0d2a1a", color: "#22c55e", border: "1px solid #22c55e44" }}>
+                    ⬇ Download Executed PDF
+                  </a>
+                  <button onClick={() => setCountersigning(null)}
+                    className="text-sm px-4 py-2 rounded-lg"
+                    style={{ background: "#21262d", color: "#8b949e", border: "1px solid #30373f" }}>
+                    Close
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <>
+                <div>
+                  <div className="flex items-center justify-between mb-2">
+                    <label className="text-sm font-semibold" style={{ color: "#e6edf3" }}>Your Signature</label>
+                    <button onClick={clearCanvas} className="text-xs px-3 py-1 rounded-lg"
+                      style={{ background: "#21262d", color: "#8b949e", border: "1px solid #30373f" }}>Clear</button>
+                  </div>
+                  <div className="rounded-xl overflow-hidden" style={{ border: "2px solid #30373f", background: "#ffffff", touchAction: "none" }}>
+                    <canvas ref={canvasRef} width={600} height={160} className="w-full"
+                      style={{ cursor: "crosshair", display: "block" }}
+                      onMouseDown={startDraw} onMouseMove={draw} onMouseUp={stopDraw} onMouseLeave={stopDraw}
+                      onTouchStart={startDraw} onTouchMove={draw} onTouchEnd={stopDraw} />
+                  </div>
+                  {!csHasDrawn && <p className="text-xs mt-1.5 text-center" style={{ color: "#484f58" }}>Draw your signature above</p>}
+                </div>
+                {csError && <p className="text-sm" style={{ color: "#ef4444" }}>{csError}</p>}
+                <div className="flex gap-3">
+                  <button onClick={submitCountersign} disabled={csSubmitting || !csHasDrawn}
+                    className="flex-1 rounded-xl py-3 text-sm font-bold disabled:opacity-40"
+                    style={{ background: "#C9A84C", color: "#fff" }}>
+                    {csSubmitting ? "Processing…" : "Countersign & Email"}
+                  </button>
+                  <button onClick={() => setCountersigning(null)}
+                    className="px-4 rounded-xl text-sm"
+                    style={{ background: "#21262d", color: "#8b949e", border: "1px solid #30373f" }}>
+                    Cancel
+                  </button>
+                </div>
+              </>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* ── Change Orders section ── */}
       <div>
