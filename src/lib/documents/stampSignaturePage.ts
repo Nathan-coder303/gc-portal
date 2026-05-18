@@ -48,7 +48,7 @@ export async function stampSignaturePage(originalUrl: string, opts: StampOptions
   });
 
   const formatDate = (d: Date) =>
-    d.toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" });
+    d.toLocaleString("en-US", { year: "numeric", month: "long", day: "numeric", hour: "numeric", minute: "2-digit", timeZoneName: "short" });
 
   // Helper: draw a signature block
   async function drawSigBlock(
@@ -90,10 +90,10 @@ export async function stampSignaturePage(originalUrl: string, opts: StampOptions
       page.drawText(printedName, { x: x + 36, y: y - 96, size: 8, font: helvetica, color: dark });
     }
 
-    // Date
+    // Date & Time
     if (signedAt) {
-      page.drawText("Date:", { x, y: y - 109, size: 8, font: helveticaBold, color: dark });
-      page.drawText(formatDate(signedAt), { x: x + 32, y: y - 109, size: 8, font: helvetica, color: dark });
+      page.drawText("Date & Time:", { x, y: y - 109, size: 8, font: helveticaBold, color: dark });
+      page.drawText(formatDate(signedAt), { x: x + 62, y: y - 109, size: 8, font: helvetica, color: dark });
     }
   }
 

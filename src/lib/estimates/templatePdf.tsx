@@ -1512,9 +1512,9 @@ function TemplatePdfDocument({ companyName, template, client, divisions, showTer
             <View style={{ height: 4 }} />
             <View style={styles.sigLine} />
             {clientSignedAt
-              ? <Text style={styles.sigPrefilled}>{clientSignedAt.toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" })}</Text>
+              ? <Text style={styles.sigPrefilled}>{clientSignedAt.toLocaleString("en-US", { month: "long", day: "numeric", year: "numeric", hour: "numeric", minute: "2-digit", timeZoneName: "short" })}</Text>
               : <View style={{ height: 8 }} />}
-            <Text style={styles.sigLineLabel}>Date</Text>
+            <Text style={styles.sigLineLabel}>Date &amp; Time</Text>
           </View>
           {/* Contractor */}
           <View style={styles.sigBlock}>
@@ -1531,9 +1531,9 @@ function TemplatePdfDocument({ companyName, template, client, divisions, showTer
             <View style={{ height: 4 }} />
             <View style={styles.sigLine} />
             {contractorSignedAt
-              ? <Text style={styles.sigPrefilled}>{contractorSignedAt.toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" })}</Text>
+              ? <Text style={styles.sigPrefilled}>{contractorSignedAt.toLocaleString("en-US", { month: "long", day: "numeric", year: "numeric", hour: "numeric", minute: "2-digit", timeZoneName: "short" })}</Text>
               : <View style={{ height: 8 }} />}
-            <Text style={styles.sigLineLabel}>Date</Text>
+            <Text style={styles.sigLineLabel}>Date &amp; Time</Text>
           </View>
         </View>
       </View>
