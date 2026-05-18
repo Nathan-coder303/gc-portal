@@ -20,6 +20,7 @@ import NurturingEmailTab from "@/components/clients/NurturingEmailTab";
 import ChangeOrdersTab from "@/components/clients/ChangeOrdersTab";
 import ClientScheduleTab from "@/components/clients/ClientScheduleTab";
 import ClientCommsTab from "@/components/clients/ClientCommsTab";
+import ClientDocumentsTab from "@/components/clients/ClientDocumentsTab";
 import TodayTaskCard, { FollowUpItem } from "@/components/today/TodayTaskCard";
 
 export default async function ClientDetailPage({
@@ -119,6 +120,11 @@ export default async function ClientDetailPage({
   });
   const hasInsertFile = clientFiles.some(f => f.useInEstimate);
 
+  const clientDocuments = await prisma.clientDocument.findMany({
+    where: { clientId: params.clientId, companyId: params.companyId, archivedAt: null },
+    orderBy: { createdAt: "desc" },
+  });
+
   const clientNotes = await prisma.clientNote.findMany({
     where: { clientId: params.clientId, companyId: params.companyId },
     orderBy: { createdAt: "desc" },
@@ -160,6 +166,7 @@ export default async function ClientDetailPage({
     { key: "notes", label: `Notes${clientNotes.length > 0 ? ` (${clientNotes.length})` : ""}` },
     { key: "financials", label: "Financials" },
     { key: "portal", label: "Portal" },
+    { key: "documents", label: `Documents${clientDocuments.length > 0 ? ` (${clientDocuments.length})` : ""}` },
     { key: "files", label: `Files${clientFiles.length > 0 ? ` (${clientFiles.length})` : ""}` },
     { key: "nurturing", label: "Nurturing" },
     { key: "comms", label: `Comms${clientEmails.length > 0 ? ` (${clientEmails.length})` : ""}` },
@@ -470,6 +477,28 @@ export default async function ClientDetailPage({
             sentAt: e.sentAt.toISOString(),
             sentBy: e.sentBy,
             context: e.context,
+          }))}
+        />
+      )}
+
+      {activeTab === "documents" && (
+        <ClientDocumentsTab
+          companyId={params.companyId}
+          clientId={params.clientId}
+          initialDocs={clientDocuments.map(d => ({
+            id: d.id,
+            name: d.name,
+            description: d.description,
+            clientAlreadySigned: d.clientAlreadySigned,
+            clientSignedAt: d.clientSignedAt?.toISOString() ?? null,
+            clientSignedByName: d.clientSignedByName,
+            counterSignedAt: d.counterSignedAt?.toISOString() ?? null,
+            countersignedFileUrl: d.countersignedFileUrl
+              ? `/api/${params.companyId}/clients/${params.clientId}/documents/${d.id}/file?executed=1`
+              : null,
+            originalFileUrl: `/api/${params.companyId}/clients/${params.clientId}/documents/${d.id}/file`,
+            signatureToken: d.signatureToken,
+            createdAt: d.createdAt.toISOString(),
           }))}
         />
       )}

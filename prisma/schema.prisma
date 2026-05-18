@@ -181,6 +181,7 @@ model Client {
   templates      EstimateTemplate[]
   subBids        SubBid[]
   files          ClientFile[]
+  documents      ClientDocument[]
   notes          ClientNote[]
   leadNotes      Note[]
   followUps      FollowUp[]
@@ -302,6 +303,31 @@ model ClientFile {
   useInEstimate  Boolean  @default(false)
 
   @@index([clientId])
+}
+
+model ClientDocument {
+  id                   String    @id @default(cuid())
+  clientId             String
+  client               Client    @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  companyId            String
+  name                 String
+  description          String?
+  originalFileUrl      String
+  signatureToken       String?   @unique
+  clientAlreadySigned  Boolean   @default(false)
+  clientSignedAt       DateTime?
+  clientSignatureData  String?
+  clientSignedByName   String?
+  emailOpenedAt        DateTime?
+  counterSignedAt      DateTime?
+  counterSignatureData String?
+  countersignedFileUrl String?
+  createdAt            DateTime  @default(now())
+  createdBy            String?
+  archivedAt           DateTime?
+
+  @@index([clientId])
+  @@index([companyId])
 }
 
 model ClientNote {
