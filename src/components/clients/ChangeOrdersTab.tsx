@@ -597,6 +597,7 @@ type ExecutedContract = {
   estimateNumber: string | null;
   counterSignedAt: string;
   executedPdfUrl: string;
+  executedEmailSentAt?: string | null;
 };
 
 type ClientDoc = {
@@ -753,9 +754,10 @@ export default function ChangeOrdersTab({
     ...executedDocs.map(d => ({
       id: d.id,
       name: d.name,
-      estimateNumber: null,
+      estimateNumber: null as string | null,
       counterSignedAt: d.counterSignedAt!,
       executedPdfUrl: d.countersignedFileUrl!,
+      executedEmailSentAt: null as string | null,
     })),
   ].sort((a, b) => new Date(b.counterSignedAt).getTime() - new Date(a.counterSignedAt).getTime());
 
@@ -882,6 +884,15 @@ export default function ChangeOrdersTab({
                   <p className="text-xs mt-0.5" style={{ color: "#8b949e" }}>
                     Executed {new Date(c.counterSignedAt).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
                   </p>
+                  {c.executedEmailSentAt ? (
+                    <p className="text-xs mt-1 flex items-center gap-1" style={{ color: "#22c55e" }}>
+                      ✓ Emailed to client {new Date(c.executedEmailSentAt).toLocaleString("en-US", { month: "short", day: "numeric", year: "numeric", hour: "numeric", minute: "2-digit", timeZone: "America/New_York", timeZoneName: "short" })}
+                    </p>
+                  ) : (
+                    <p className="text-xs mt-1 flex items-center gap-1" style={{ color: "#f59e0b" }}>
+                      ⚠ Email not confirmed sent
+                    </p>
+                  )}
                 </div>
                 <a href={c.executedPdfUrl} target="_blank" rel="noopener noreferrer"
                   className="shrink-0 text-xs font-semibold px-3 py-1.5 rounded-lg"

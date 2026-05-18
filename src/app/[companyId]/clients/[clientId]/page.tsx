@@ -132,7 +132,7 @@ export default async function ClientDetailPage({
 
   const executedContracts = await prisma.estimateTemplate.findMany({
     where: { clientId: params.clientId, companyId: params.companyId, counterSignedAt: { not: null } },
-    select: { id: true, name: true, estimateNumber: true, counterSignedAt: true, executedPdfUrl: true },
+    select: { id: true, name: true, estimateNumber: true, counterSignedAt: true, executedPdfUrl: true, executedEmailSentAt: true },
     orderBy: { counterSignedAt: "desc" },
   });
 
@@ -379,6 +379,7 @@ export default async function ClientDetailPage({
               estimateNumber: c.estimateNumber,
               counterSignedAt: c.counterSignedAt!.toISOString(),
               executedPdfUrl: `/api/${params.companyId}/estimates/${c.id}/pdf?executed=1`,
+              executedEmailSentAt: c.executedEmailSentAt?.toISOString() ?? null,
             }))}
           initialClientDocs={clientDocuments.map(d => ({
             id: d.id,

@@ -274,6 +274,10 @@ export async function PATCH(req: NextRequest) {
       const raw = Buffer.from(mimeLines.join("\r\n")).toString("base64url");
       await gmail.users.messages.send({ userId: "me", requestBody: { raw } });
     }
+    await prisma.$executeRawUnsafe(
+      `UPDATE "EstimateTemplate" SET "executedEmailSentAt" = $1 WHERE id = $2`,
+      new Date(), template.id,
+    );
   } catch (err) {
     console.error("Countersign email failed:", err);
     // Non-fatal — signature was saved
