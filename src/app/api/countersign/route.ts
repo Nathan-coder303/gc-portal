@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { google } from "googleapis";
 import { getGmailOAuth } from "@/lib/gmail";
+import { put } from "@vercel/blob";
 import { renderTemplatePdf } from "@/lib/estimates/templatePdf";
 import { insertClientPageIntoEstimate } from "@/lib/estimates/insertClientPage";
 
@@ -196,6 +197,23 @@ export async function PATCH(req: NextRequest) {
       select: { fileUrl: true },
     });
     finalBuffer = await insertClientPageIntoEstimate(buffer, insertFile?.fileUrl);
+  }
+
+  // Upload executed PDF to Blob and save URL on the template
+  try {
+    const clientSlugBlob = template.client ? `-for-${template.client.name.replace(/[^a-z0-9]/gi, "-")}` : "";
+    const estimateSlugBlob = template.estimateNumber ? `estimate-${template.estimateNumber}` : template.id;
+    const blob = await put(
+      `executed/${template.companyId}/${estimateSlugBlob}${clientSlugBlob}-executed.pdf`,
+      finalBuffer,
+      { access: "private" }
+    );
+    await prisma.$executeRawUnsafe(
+      `UPDATE "EstimateTemplate" SET "executedPdfUrl" = $1 WHERE id = $2`,
+      blob.url, template.id
+    );
+  } catch (err) {
+    console.error("Failed to store executed PDF:", err);
   }
 
   // Email to both parties

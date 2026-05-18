@@ -41,6 +41,32 @@ export async function GET(
   if (!can(session.user.role, "estimate:read"))
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
+  // Serve the stored executed PDF directly if available
+  const serveExecuted = req.nextUrl.searchParams.get("executed") === "1";
+  if (serveExecuted) {
+    const et = await prisma.estimateTemplate.findFirst({
+      where: { id: params.templateId, companyId: params.companyId },
+      select: { executedPdfUrl: true, name: true, estimateNumber: true, client: { select: { name: true } } },
+    });
+    if (et?.executedPdfUrl) {
+      const blobRes = await fetch(et.executedPdfUrl, {
+        headers: { Authorization: `Bearer ${process.env.BLOB_READ_WRITE_TOKEN}` },
+      });
+      if (blobRes.ok) {
+        const bytes = await blobRes.arrayBuffer();
+        const clientSlug = et.client ? `-for-${et.client.name.replace(/[^a-z0-9]/gi, "-")}` : "";
+        const slug = et.estimateNumber ? `Estimate-${et.estimateNumber}` : et.name.replace(/[^a-z0-9]/gi, "-");
+        return new Response(bytes, {
+          headers: {
+            "Content-Type": "application/pdf",
+            "Content-Disposition": `inline; filename="${slug}${clientSlug}-executed.pdf"`,
+          },
+        });
+      }
+    }
+    return NextResponse.json({ error: "Executed PDF not found" }, { status: 404 });
+  }
+
   const countersigned = req.nextUrl.searchParams.get("countersigned") === "1";
   const coverTypeParam = req.nextUrl.searchParams.get("coverType");
   const cover = req.nextUrl.searchParams.get("cover") === "1" && coverTypeParam !== "NONE";

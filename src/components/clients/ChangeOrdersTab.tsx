@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useState, useTransition, useEffect, useRef } from "react";
 import { STANDARD_TEMPLATE_DIVISIONS } from "@/lib/standardTemplateData";
 import SendChangeOrderEmailButton from "@/components/clients/SendChangeOrderEmailButton";
 
@@ -478,6 +478,27 @@ function ChangeOrderPdfModal({
 }) {
   const [includeDivisionSummary, setIncludeDivisionSummary] = useState(false);
   const [forcedBreakCsiPrefixes, setForcedBreakCsiPrefixes] = useState<string[]>([]);
+  const initialized = useRef(false);
+
+  // Read from localStorage after mount (client-only, avoids SSR/closure issues)
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem(`co-pdf-opts-${clientId}`);
+      if (raw) {
+        const saved = JSON.parse(raw) as { divSummary: boolean; breaks: string[] };
+        setIncludeDivisionSummary(saved.divSummary ?? false);
+        setForcedBreakCsiPrefixes(saved.breaks ?? []);
+      }
+    } catch { /* ignore */ }
+    initialized.current = true;
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Write on change, but only after the read effect has run
+  useEffect(() => {
+    if (!initialized.current) return;
+    localStorage.setItem(`co-pdf-opts-${clientId}`, JSON.stringify({ divSummary: includeDivisionSummary, breaks: forcedBreakCsiPrefixes }));
+  }, [clientId, includeDivisionSummary, forcedBreakCsiPrefixes]);
 
   function buildUrl(preview: boolean) {
     const p = new URLSearchParams();
@@ -570,6 +591,14 @@ function ChangeOrderPdfModal({
 
 // ── Main tab component ───────────────────────────────────────────────────────
 
+type ExecutedContract = {
+  id: string;
+  name: string;
+  estimateNumber: string | null;
+  counterSignedAt: string;
+  executedPdfUrl: string; // proxy URL
+};
+
 export default function ChangeOrdersTab({
   companyId,
   clientId,
@@ -578,6 +607,7 @@ export default function ChangeOrdersTab({
   isCommercial,
   clientCoverPhotoType,
   initialOrders,
+  contracts,
   canEdit,
 }: {
   companyId: string;
@@ -587,6 +617,7 @@ export default function ChangeOrdersTab({
   isCommercial?: boolean;
   clientCoverPhotoType?: string | null;
   initialOrders: ChangeOrder[];
+  contracts?: ExecutedContract[];
   canEdit: boolean;
 }) {
   const [orders, setOrders] = useState<ChangeOrder[]>(initialOrders);
@@ -629,9 +660,42 @@ export default function ChangeOrdersTab({
   }
 
   return (
-    <div>
-      {/* Header */}
-      <div className="flex items-center justify-between mb-4">
+    <div className="space-y-8">
+
+      {/* ── Contracts section ── */}
+      <div>
+        <h3 className="text-sm font-bold mb-3" style={{ color: "#e6edf3" }}>Executed Contracts</h3>
+        {!contracts || contracts.length === 0 ? (
+          <div className="rounded-xl p-6 text-center" style={{ background: "#1e2736", border: "1px solid #30373f" }}>
+            <p className="text-sm" style={{ color: "#8b949e" }}>No executed contracts yet — fully signed estimates will appear here automatically.</p>
+          </div>
+        ) : (
+          <div className="space-y-2">
+            {contracts.map(c => (
+              <div key={c.id} className="flex items-center justify-between gap-3 rounded-xl px-4 py-3"
+                style={{ background: "#1e2736", border: "1px solid #30373f" }}>
+                <div className="min-w-0">
+                  <p className="text-sm font-semibold truncate" style={{ color: "#e6edf3" }}>
+                    {c.estimateNumber ? `Estimate #${c.estimateNumber} — ` : ""}{c.name}
+                  </p>
+                  <p className="text-xs mt-0.5" style={{ color: "#8b949e" }}>
+                    Executed {new Date(c.counterSignedAt).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
+                  </p>
+                </div>
+                <a href={c.executedPdfUrl} target="_blank" rel="noopener noreferrer"
+                  className="shrink-0 text-xs font-semibold px-3 py-1.5 rounded-lg"
+                  style={{ background: "#0d2a1a", color: "#22c55e", border: "1px solid #22c55e44" }}>
+                  ⬇ Download
+                </a>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* ── Change Orders section ── */}
+      <div>
+        <div className="flex items-center justify-between mb-4">
         <p className="text-sm" style={{ color: "#8b949e" }}>
           {orders.length} change order{orders.length !== 1 ? "s" : ""}
         </p>
@@ -782,6 +846,8 @@ export default function ChangeOrdersTab({
           })}
         </div>
       )}
+
+      </div>{/* end change orders section */}
 
       {/* Editor modal */}
       {editing !== null && (

@@ -765,6 +765,7 @@ model EstimateTemplate {
   emailOpenedAt          DateTime?
   counterSignatureData   String?
   counterSignedAt        DateTime?
+  executedPdfUrl         String?
   hasSkylights           Boolean                    @default(true)
   hasRoofDrains          Boolean                    @default(true)
   internalProfitOverride Decimal?                   @db.Decimal(12, 2) // Manual lump-sum internal profit (overrides auto markup sum)

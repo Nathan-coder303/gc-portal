@@ -19,18 +19,23 @@ export async function GET(req: NextRequest) {
       clientSignedAt: true,
       clientSignedByName: true,
       archivedAt: true,
-      client: { select: { name: true } },
-      company: { select: { name: true } },
+      clientId: true,
+      companyId: true,
     },
   });
 
   if (!doc || doc.archivedAt) return NextResponse.json({ error: "Not found" }, { status: 404 });
 
+  const [client, company] = await Promise.all([
+    prisma.client.findUnique({ where: { id: doc.clientId }, select: { name: true } }),
+    prisma.company.findUnique({ where: { id: doc.companyId }, select: { name: true } }),
+  ]);
+
   return NextResponse.json({
     name: doc.name,
     description: doc.description,
-    clientName: doc.client?.name ?? null,
-    companyName: doc.company?.name ?? null,
+    clientName: client?.name ?? null,
+    companyName: company?.name ?? null,
     alreadySigned: !!doc.clientSignedAt,
     signedAt: doc.clientSignedAt?.toISOString() ?? null,
     signedByName: doc.clientSignedByName ?? null,

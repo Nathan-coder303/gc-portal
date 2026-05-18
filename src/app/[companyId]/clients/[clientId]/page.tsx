@@ -130,6 +130,12 @@ export default async function ClientDetailPage({
     orderBy: { createdAt: "desc" },
   });
 
+  const executedContracts = await prisma.estimateTemplate.findMany({
+    where: { clientId: params.clientId, companyId: params.companyId, counterSignedAt: { not: null } },
+    select: { id: true, name: true, estimateNumber: true, counterSignedAt: true, executedPdfUrl: true },
+    orderBy: { counterSignedAt: "desc" },
+  });
+
   const [clientFollowUps, clientInvoices, changeOrders, clientScheduleTasks, clientEmails] = await Promise.all([
     prisma.followUp.findMany({
       where: { clientId: params.clientId, companyId: params.companyId },
@@ -161,7 +167,7 @@ export default async function ClientDetailPage({
     { key: "estimates", label: "Estimates" },
     { key: "tasks", label: `Tasks${followUpCount > 0 ? ` (${followUpCount})` : ""}` },
     { key: "schedule", label: `Schedule${clientScheduleTasks.length > 0 ? ` (${clientScheduleTasks.length})` : ""}` },
-    { key: "change-orders", label: `Change Orders${changeOrders.length > 0 ? ` (${changeOrders.length})` : ""}` },
+    { key: "change-orders", label: `Contracts & Change Orders${changeOrders.length > 0 ? ` (${changeOrders.length})` : ""}` },
     { key: "invoices", label: `Invoices${clientInvoices.length > 0 ? ` (${clientInvoices.length})` : ""}` },
     { key: "notes", label: `Notes${clientNotes.length > 0 ? ` (${clientNotes.length})` : ""}` },
     { key: "financials", label: "Financials" },
@@ -365,6 +371,15 @@ export default async function ClientDetailPage({
               sortOrder: it.sortOrder,
             })),
           }))}
+          contracts={executedContracts
+            .filter(c => c.counterSignedAt && c.executedPdfUrl)
+            .map(c => ({
+              id: c.id,
+              name: c.name,
+              estimateNumber: c.estimateNumber,
+              counterSignedAt: c.counterSignedAt!.toISOString(),
+              executedPdfUrl: `/api/${params.companyId}/estimates/${c.id}/pdf?executed=1`,
+            }))}
         />
       )}
 
