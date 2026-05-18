@@ -380,6 +380,18 @@ export default async function ClientDetailPage({
               counterSignedAt: c.counterSignedAt!.toISOString(),
               executedPdfUrl: `/api/${params.companyId}/estimates/${c.id}/pdf?executed=1`,
             }))}
+          initialClientDocs={clientDocuments.map(d => ({
+            id: d.id,
+            name: d.name,
+            clientAlreadySigned: d.clientAlreadySigned,
+            clientSignedAt: d.clientSignedAt?.toISOString() ?? null,
+            clientSignedByName: d.clientSignedByName ?? null,
+            counterSignedAt: d.counterSignedAt?.toISOString() ?? null,
+            countersignedFileUrl: d.countersignedFileUrl
+              ? `/api/${params.companyId}/clients/${params.clientId}/documents/${d.id}/file?executed=1`
+              : null,
+            originalFileUrl: `/api/${params.companyId}/clients/${params.clientId}/documents/${d.id}/file`,
+          }))}
         />
       )}
 
