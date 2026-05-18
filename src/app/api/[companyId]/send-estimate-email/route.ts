@@ -239,7 +239,15 @@ export async function POST(
     });
   }
   const signUrl = `https://portal.mibhconstruction.com/sign/${signToken}`;
+  const trackPixelUrl = `https://portal.mibhconstruction.com/api/track/open?token=${signToken}`;
   const fullEmailBody = `${emailBody}\n\n---\nSign your estimate here: ${signUrl}`;
+  const htmlBody = emailBody
+    .split("\n")
+    .map(l => l.trim() === "" ? "<br>" : `<p style="margin:0 0 8px">${l}</p>`)
+    .join("\n") +
+    `\n<br>\n<p style="margin:0 0 8px">---<br>` +
+    `<a href="${signUrl}" style="color:#C9A84C;font-weight:bold">Sign your estimate here</a></p>` +
+    `\n<img src="${trackPixelUrl}" width="1" height="1" alt="" style="display:none" />`;
 
   const oauth2Client = await getGmailOAuth(params.companyId);
   const gmail = google.gmail({ version: "v1", auth: oauth2Client });
@@ -248,7 +256,8 @@ export async function POST(
   const profile = await gmail.users.getProfile({ userId: "me" });
   const fromEmail = profile.data.emailAddress ?? "me";
 
-  const boundary = `----=_Part_${Date.now()}`;
+  const outerBoundary = `----=_Mixed_${Date.now()}`;
+  const altBoundary = `----=_Alt_${Date.now() + 1}`;
   const clientSlug = template.client ? `-for-${template.client.name.replace(/[^a-z0-9]/gi, "-")}` : "";
   const estimateSlug = template.estimateNumber ? `Estimate-${template.estimateNumber}` : template.name.replace(/[^a-z0-9]/gi, "-");
   const filename = `${estimateSlug}${clientSlug}.pdf`;
@@ -266,20 +275,32 @@ export async function POST(
     ...(bcc ? [`Bcc: ${bcc}`] : []),
     `Subject: ${encodedSubject}`,
     `MIME-Version: 1.0`,
-    `Content-Type: multipart/mixed; boundary="${boundary}"`,
+    `Content-Type: multipart/mixed; boundary="${outerBoundary}"`,
     ``,
-    `--${boundary}`,
+    `--${outerBoundary}`,
+    `Content-Type: multipart/alternative; boundary="${altBoundary}"`,
+    ``,
+    `--${altBoundary}`,
     `Content-Type: text/plain; charset=UTF-8`,
     ``,
     fullEmailBody,
     ``,
-    `--${boundary}`,
+    `--${altBoundary}`,
+    `Content-Type: text/html; charset=UTF-8`,
+    ``,
+    `<html><body style="font-family:sans-serif;font-size:14px;color:#1e293b">`,
+    htmlBody,
+    `</body></html>`,
+    ``,
+    `--${altBoundary}--`,
+    ``,
+    `--${outerBoundary}`,
     `Content-Type: application/pdf; name="${filename}"`,
     `Content-Transfer-Encoding: base64`,
     `Content-Disposition: attachment; filename="${filename}"`,
     ``,
     pdfBase64,
-    `--${boundary}--`,
+    `--${outerBoundary}--`,
   ];
   const raw = Buffer.from(mimeLines.join("\r\n")).toString("base64url");
 

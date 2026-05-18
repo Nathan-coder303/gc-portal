@@ -736,6 +736,7 @@ model EstimateTemplate {
   signedAt               DateTime?
   signedByName           String?
   lastSentAt             DateTime?
+  emailOpenedAt          DateTime?
   counterSignatureData   String?
   counterSignedAt        DateTime?
   hasSkylights           Boolean                    @default(true)
