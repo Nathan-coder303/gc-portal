@@ -108,6 +108,59 @@ function DatePickerInput({ value, onChange }: { value: string; onChange: (v: str
   );
 }
 
+// ─── Division Picker (multi-select chip dropdown) ─────────────────────────────
+function DivisionPicker({ value, onChange, bg = "#0d1117" }: { value: string; onChange: (v: string) => void; bg?: string }) {
+  const selected = value ? value.split(" | ").filter(Boolean) : [];
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    function handle(e: MouseEvent) {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+    }
+    if (open) document.addEventListener("mousedown", handle);
+    return () => document.removeEventListener("mousedown", handle);
+  }, [open]);
+
+  function toggle(val: string) {
+    const next = selected.includes(val) ? selected.filter(d => d !== val) : [...selected, val];
+    onChange(next.join(" | "));
+  }
+
+  return (
+    <div className="relative" ref={ref}>
+      {selected.length > 0 && (
+        <div className="flex flex-wrap gap-1 mb-1.5">
+          {selected.map(div => (
+            <span key={div} className="flex items-center gap-1 text-xs px-2 py-0.5 rounded-full" style={{ background: "#C9A84C22", color: "#C9A84C", border: "1px solid #C9A84C44" }}>
+              <span>{div.split(" · ")[0]?.slice(0, 2)} · {div.split(" · ").slice(1).join(" · ")}</span>
+              <button type="button" onClick={() => toggle(div)} className="leading-none" style={{ color: "#C9A84C99" }}>×</button>
+            </span>
+          ))}
+        </div>
+      )}
+      <button type="button" onClick={() => setOpen(o => !o)} className="w-full rounded-lg px-3 py-2 text-sm text-left flex items-center justify-between" style={{ background: bg, border: "1px solid #30373f", color: "#8b949e" }}>
+        <span>{selected.length === 0 ? "— Select Divisions —" : `${selected.length} division${selected.length > 1 ? "s" : ""} selected`}</span>
+        <span style={{ fontSize: 10 }}>{open ? "▲" : "▼"}</span>
+      </button>
+      {open && (
+        <div className="absolute z-50 mt-1 rounded-xl overflow-y-auto shadow-xl" style={{ background: "#161b22", border: "1px solid #30373f", maxHeight: 220, width: "100%" }}>
+          {STANDARD_TEMPLATE_DIVISIONS.map(d => {
+            const val = `${d.csiCode} · ${d.name}`;
+            const isSelected = selected.includes(val);
+            return (
+              <button key={d.csiCode} type="button" onClick={() => toggle(val)} className="w-full text-left px-3 py-2 text-sm flex items-center gap-2 transition-colors" style={{ color: isSelected ? "#C9A84C" : "#e6edf3", background: isSelected ? "#C9A84C11" : "transparent" }}>
+                <span className="w-4 text-center text-xs">{isSelected ? "✓" : ""}</span>
+                <span>{d.csiCode.slice(0, 2)} · {d.name}</span>
+              </button>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ─── Sub Card ─────────────────────────────────────────────────────────────────
 function SubCard({
   sub, companyId, clientId,
@@ -239,12 +292,7 @@ function SubCard({
           <div className="grid grid-cols-2 gap-3">
             <div>
               <label className="text-xs font-semibold mb-1 block" style={{ color: "#8b949e" }}>Division</label>
-              <select value={editDivision} onChange={e => setEditDivision(e.target.value)} className="w-full rounded-lg px-3 py-2 text-sm" style={{ background: "#161b22", border: "1px solid #30373f", color: editDivision ? "#e6edf3" : "#8b949e" }}>
-                <option value="">— Select Division —</option>
-                {STANDARD_TEMPLATE_DIVISIONS.map(d => (
-                  <option key={d.csiCode} value={`${d.csiCode} · ${d.name}`}>{d.csiCode.slice(0, 2)} · {d.name}</option>
-                ))}
-              </select>
+              <DivisionPicker value={editDivision} onChange={setEditDivision} bg="#161b22" />
             </div>
             <div>
               <label className="text-xs font-semibold mb-1 block" style={{ color: "#8b949e" }}>Trade / Role</label>
@@ -643,12 +691,7 @@ ${rows}
             <div className="grid grid-cols-2 gap-3">
               <div>
                 <label className="text-xs font-semibold mb-1 block" style={{ color: "#8b949e" }}>Division</label>
-                <select value={subDivision} onChange={e => setSubDivision(e.target.value)} className="w-full rounded-lg px-3 py-2 text-sm" style={{ background: "#0d1117", border: "1px solid #30373f", color: subDivision ? "#e6edf3" : "#8b949e" }}>
-                  <option value="">— Select Division —</option>
-                  {STANDARD_TEMPLATE_DIVISIONS.map(d => (
-                    <option key={d.csiCode} value={`${d.csiCode} · ${d.name}`}>{d.csiCode.slice(0, 2)} · {d.name}</option>
-                  ))}
-                </select>
+                <DivisionPicker value={subDivision} onChange={setSubDivision} />
               </div>
               <div>
                 <label className="text-xs font-semibold mb-1 block" style={{ color: "#8b949e" }}>Trade / Role</label>
