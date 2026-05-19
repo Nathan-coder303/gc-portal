@@ -215,8 +215,21 @@ model ClientSub {
   createdAt       DateTime       @default(now())
   updatedAt       DateTime       @updatedAt
   payments        SubPayment[]
+  scopeItems      SubScopeItem[]
   @@index([clientId])
   @@index([companyId])
+}
+
+model SubScopeItem {
+  id          String    @id @default(cuid())
+  companyId   String
+  clientSubId String
+  clientSub   ClientSub @relation(fields: [clientSubId], references: [id], onDelete: Cascade)
+  csiCode     String?
+  name        String
+  amount      Decimal   @default(0) @db.Decimal(14, 2)
+  createdAt   DateTime  @default(now())
+  @@index([clientSubId])
 }
 
 model SubPayment {

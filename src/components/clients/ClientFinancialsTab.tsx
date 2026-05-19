@@ -9,7 +9,8 @@ import {
 
 type SubContractor = { id: string; name: string; email: string | null; phone: string | null; divisionCode: string; divisionName: string };
 type SubPayment = { id: string; amount: number; method: string; paidAt: string; checkNumber: string | null; notes: string | null };
-type ClientSub = { id: string; subContractorId: string | null; subName: string; scope: string | null; division: string | null; contractAmount: number; notes: string | null; payments: SubPayment[] };
+type ScopeItem = { id: string; csiCode: string | null; name: string; amount: number };
+type ClientSub = { id: string; subContractorId: string | null; subName: string; scope: string | null; division: string | null; contractAmount: number; notes: string | null; payments: SubPayment[]; scopeItems: ScopeItem[] };
 type Supplier = { id: string; name: string };
 type MaterialPurchase = { id: string; supplierId: string; supplierName: string; amount: number; description: string | null; purchasedAt: string; notes: string | null };
 
@@ -162,6 +163,82 @@ function DivisionPicker({ value, onChange, bg = "#0d1117" }: { value: string; on
 }
 
 // ─── Sub Card ─────────────────────────────────────────────────────────────────
+function PayForm({ subId, companyId, clientId, payment, onSave, onCancel }: {
+  subId: string; companyId: string; clientId: string;
+  payment?: SubPayment;
+  onSave: (p: SubPayment) => void;
+  onCancel: () => void;
+}) {
+  const isEdit = !!payment;
+  const [amount, setAmount] = useState(payment ? String(Math.abs(payment.amount)) : "");
+  const [method, setMethod] = useState(payment?.method ?? "CHECK");
+  const [date, setDate] = useState(payment?.paidAt ?? today());
+  const [check, setCheck] = useState(payment?.checkNumber ?? "");
+  const [notes, setNotes] = useState(payment?.notes ?? "");
+  const [isCredit, setIsCredit] = useState(payment ? payment.amount < 0 : false);
+  const [saving, setSaving] = useState(false);
+
+  async function save() {
+    if (!amount || isNaN(Number(amount))) return;
+    setSaving(true);
+    try {
+      const raw = Number(amount);
+      const final = isCredit ? -Math.abs(raw) : Math.abs(raw);
+      if (isEdit) {
+        const res = await fetch(`/api/${companyId}/clients/${clientId}/financials/subs/${subId}/payments`, {
+          method: "PATCH", headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ paymentId: payment!.id, amount: final, method, paidAt: date, checkNumber: check || null, notes: notes || null }),
+        });
+        if (res.ok) onSave(await res.json());
+      } else {
+        const res = await fetch(`/api/${companyId}/clients/${clientId}/financials/subs/${subId}/payments`, {
+          method: "POST", headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ amount: final, method, paidAt: date, checkNumber: check || null, notes: notes || null }),
+        });
+        if (res.ok) onSave(await res.json());
+      }
+    } finally { setSaving(false); }
+  }
+
+  return (
+    <div className="rounded-xl p-4 space-y-3" style={{ background: "#0d1421", border: "1px solid #C9A84C33" }}>
+      <label className="flex items-center gap-2 cursor-pointer w-fit">
+        <div onClick={() => setIsCredit(c => !c)} className="w-9 h-5 rounded-full transition-colors relative" style={{ background: isCredit ? "#f85149" : "#30373f" }}>
+          <div className="absolute top-0.5 w-4 h-4 rounded-full bg-white transition-all" style={{ left: isCredit ? "18px" : "2px" }} />
+        </div>
+        <span className="text-xs font-semibold" style={{ color: isCredit ? "#f85149" : "#8b949e" }}>{isCredit ? "Credit from sub" : "Payment to sub"}</span>
+      </label>
+      <div className="grid grid-cols-2 gap-2">
+        <div>
+          <label className="text-xs font-semibold mb-1 block" style={{ color: "#8b949e" }}>Amount</label>
+          <input autoFocus={isEdit} value={amount} onChange={e => setAmount(e.target.value)} placeholder="0.00" className="w-full rounded-lg px-3 py-2 text-sm" style={{ background: "#0d1117", border: "1px solid #30373f", color: "#e6edf3" }} />
+        </div>
+        <div>
+          <label className="text-xs font-semibold mb-1 block" style={{ color: "#8b949e" }}>Method</label>
+          <select value={method} onChange={e => setMethod(e.target.value)} className="w-full rounded-lg px-3 py-2 text-sm" style={{ background: "#0d1117", border: "1px solid #30373f", color: "#e6edf3" }}>
+            <option value="CHECK">Check</option><option value="ZELLE">Zelle</option><option value="ACH">ACH</option><option value="CASH">Cash</option>
+          </select>
+        </div>
+        <div>
+          <label className="text-xs font-semibold mb-1 block" style={{ color: "#8b949e" }}>Date</label>
+          <DatePickerInput value={date} onChange={setDate} />
+        </div>
+        <div>
+          <label className="text-xs font-semibold mb-1 block" style={{ color: "#8b949e" }}>Check # (optional)</label>
+          <input value={check} onChange={e => setCheck(e.target.value)} placeholder="Check number" className="w-full rounded-lg px-3 py-2 text-sm" style={{ background: "#0d1117", border: "1px solid #30373f", color: "#e6edf3" }} />
+        </div>
+      </div>
+      <input value={notes} onChange={e => setNotes(e.target.value)} placeholder="Notes (optional)" className="w-full rounded-lg px-3 py-2 text-sm" style={{ background: "#0d1117", border: "1px solid #30373f", color: "#e6edf3" }} />
+      <div className="flex gap-2">
+        <button onClick={save} disabled={saving || !amount} className="flex-1 py-2 rounded-xl text-sm font-bold disabled:opacity-50" style={{ background: isCredit ? "#f85149" : "#22c55e", color: "#fff" }}>
+          {saving ? "Saving…" : isEdit ? "Save Changes" : isCredit ? "Log Credit" : "Add Payment"}
+        </button>
+        <button onClick={onCancel} className="px-4 py-2 rounded-xl text-sm" style={{ background: "#30373f", color: "#8b949e" }}>Cancel</button>
+      </div>
+    </div>
+  );
+}
+
 function SubCard({
   sub, companyId, clientId,
   onUpdate, onDelete,
@@ -170,73 +247,36 @@ function SubCard({
   onUpdate: (updated: ClientSub) => void;
   onDelete: (id: string) => void;
 }) {
+  const contractTotal = sub.scopeItems.length > 0
+    ? sub.scopeItems.reduce((s, i) => s + i.amount, 0)
+    : sub.contractAmount;
   const totalPaid = sub.payments.reduce((s, p) => s + p.amount, 0);
-  const balance = sub.contractAmount - totalPaid;
-  const pct = sub.contractAmount > 0 ? Math.min(totalPaid / sub.contractAmount * 100, 100) : 0;
+  const balance = contractTotal - totalPaid;
+  const pct = contractTotal > 0 ? Math.min(totalPaid / contractTotal * 100, 100) : 0;
 
-  const [showPayForm, setShowPayForm] = useState(false);
-  const [payAmount, setPayAmount] = useState("");
-  const [payMethod, setPayMethod] = useState("CHECK");
-  const [payDate, setPayDate] = useState(today());
-  const [payCheck, setPayCheck] = useState("");
-  const [payNotes, setPayNotes] = useState("");
-  const [isCredit, setIsCredit] = useState(false);
-  const [saving, setSaving] = useState(false);
-  const [editContract, setEditContract] = useState(false);
-  const [contractVal, setContractVal] = useState(String(sub.contractAmount));
   const [showEditInfo, setShowEditInfo] = useState(false);
   const [editDivision, setEditDivision] = useState(sub.division ?? "");
   const [editScope, setEditScope] = useState(sub.scope ?? "");
   const [savingInfo, setSavingInfo] = useState(false);
 
-  async function addPayment() {
-    if (!payAmount || isNaN(Number(payAmount))) return;
-    setSaving(true);
-    try {
-      const rawAmount = Number(payAmount);
-      const finalAmount = isCredit ? -Math.abs(rawAmount) : Math.abs(rawAmount);
-      const res = await fetch(`/api/${companyId}/clients/${clientId}/financials/subs/${sub.id}/payments`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ amount: finalAmount, method: payMethod, paidAt: payDate, checkNumber: payCheck || null, notes: payNotes || null }),
-      });
-      if (res.ok) {
-        const payment = await res.json();
-        onUpdate({ ...sub, payments: [...sub.payments, payment] });
-        setPayAmount(""); setPayCheck(""); setPayNotes(""); setIsCredit(false); setShowPayForm(false);
-      }
-    } finally { setSaving(false); }
-  }
+  const [showScopePicker, setShowScopePicker] = useState(false);
+  const [openPickerDivs, setOpenPickerDivs] = useState<Set<string>>(new Set());
+  const [editingItemId, setEditingItemId] = useState<string | null>(null);
+  const [editingItemAmt, setEditingItemAmt] = useState("");
 
-  async function deletePayment(paymentId: string) {
-    await fetch(`/api/${companyId}/clients/${clientId}/financials/subs/${sub.id}/payments?paymentId=${paymentId}`, { method: "DELETE" });
-    onUpdate({ ...sub, payments: sub.payments.filter(p => p.id !== paymentId) });
-  }
+  const [showPayForm, setShowPayForm] = useState(false);
+  const [editingPayId, setEditingPayId] = useState<string | null>(null);
 
-  async function saveContract() {
-    const val = Number(contractVal);
-    if (isNaN(val)) return;
-    await fetch(`/api/${companyId}/clients/${clientId}/financials/subs/${sub.id}`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ contractAmount: val }),
-    });
-    onUpdate({ ...sub, contractAmount: val });
-    setEditContract(false);
-  }
+  const addedCsiCodes = new Set(sub.scopeItems.map(i => i.csiCode).filter(Boolean));
 
   async function saveInfo() {
     setSavingInfo(true);
     try {
       const res = await fetch(`/api/${companyId}/clients/${clientId}/financials/subs/${sub.id}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
+        method: "PATCH", headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ scope: editScope.trim() || null, division: editDivision || null }),
       });
-      if (res.ok) {
-        onUpdate({ ...sub, scope: editScope.trim() || null, division: editDivision || null });
-        setShowEditInfo(false);
-      }
+      if (res.ok) { onUpdate({ ...sub, scope: editScope.trim() || null, division: editDivision || null }); setShowEditInfo(false); }
     } finally { setSavingInfo(false); }
   }
 
@@ -246,47 +286,69 @@ function SubCard({
     onDelete(sub.id);
   }
 
+  async function addScopeItems(items: { csiCode?: string; name: string; amount?: number }[]) {
+    const res = await fetch(`/api/${companyId}/clients/${clientId}/financials/subs/${sub.id}/scope`, {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ items }),
+    });
+    if (res.ok) {
+      const data = await res.json();
+      onUpdate({ ...sub, contractAmount: data.contractAmount, scopeItems: [...sub.scopeItems, ...data.items] });
+    }
+  }
+
+  async function saveScopeItemAmount(itemId: string, rawAmt: string) {
+    const amount = Number(rawAmt);
+    if (isNaN(amount)) return;
+    const res = await fetch(`/api/${companyId}/clients/${clientId}/financials/subs/${sub.id}/scope`, {
+      method: "PATCH", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ itemId, amount }),
+    });
+    if (res.ok) {
+      const data = await res.json();
+      onUpdate({ ...sub, contractAmount: data.contractAmount, scopeItems: sub.scopeItems.map(i => i.id === itemId ? { ...i, amount: data.amount } : i) });
+      setEditingItemId(null);
+    }
+  }
+
+  async function deleteScopeItem(itemId: string) {
+    const res = await fetch(`/api/${companyId}/clients/${clientId}/financials/subs/${sub.id}/scope?itemId=${itemId}`, { method: "DELETE" });
+    if (res.ok) {
+      const data = await res.json();
+      onUpdate({ ...sub, contractAmount: data.contractAmount, scopeItems: sub.scopeItems.filter(i => i.id !== itemId) });
+    }
+  }
+
+  async function deletePayment(paymentId: string) {
+    await fetch(`/api/${companyId}/clients/${clientId}/financials/subs/${sub.id}/payments?paymentId=${paymentId}`, { method: "DELETE" });
+    onUpdate({ ...sub, payments: sub.payments.filter(p => p.id !== paymentId) });
+  }
+
   return (
     <div className="rounded-2xl p-5 space-y-4" style={{ background: "#161b22", border: "1px solid #30373f" }}>
-      {/* Header */}
+
+      {/* Header row */}
       <div className="flex items-start justify-between gap-3">
-        <div>
+        <div className="flex-1 min-w-0">
           <div className="text-sm font-bold" style={{ color: "#e6edf3" }}>{sub.subName}</div>
-          <div className="flex items-center gap-2 mt-0.5">
+          <div className="flex items-center gap-2 mt-0.5 flex-wrap">
             <span className="text-xs" style={{ color: "#8b949e" }}>
-              {[sub.division, sub.scope].filter(Boolean).join(" · ") || "Subcontractor"}
+              {[sub.division?.split(" | ").map(d => d.slice(0, 2) + " · " + d.split(" · ").slice(1).join(" · ")).join(", "), sub.scope].filter(Boolean).join(" — ") || "Subcontractor"}
             </span>
-            <button onClick={() => { setEditDivision(sub.division ?? ""); setEditScope(sub.scope ?? ""); setShowEditInfo(v => !v); }} className="text-xs px-1.5 py-0.5 rounded" style={{ color: "#C9A84C", background: "#C9A84C11", border: "1px solid #C9A84C33" }}>
-              Edit
-            </button>
+            <button onClick={() => { setEditDivision(sub.division ?? ""); setEditScope(sub.scope ?? ""); setShowEditInfo(v => !v); }} className="text-xs px-1.5 py-0.5 rounded shrink-0" style={{ color: "#C9A84C", background: "#C9A84C11", border: "1px solid #C9A84C33" }}>Edit</button>
           </div>
         </div>
-        <div className="flex items-center gap-2">
-          {editContract ? (
-            <div className="flex items-center gap-1">
-              <input
-                autoFocus
-                value={contractVal}
-                onChange={e => setContractVal(e.target.value)}
-                onKeyDown={e => { if (e.key === "Enter") saveContract(); if (e.key === "Escape") setEditContract(false); }}
-                className="w-28 rounded-lg px-2 py-1 text-xs text-right"
-                style={{ background: "#0d1117", border: "1px solid #C9A84C", color: "#C9A84C" }}
-              />
-              <button onClick={saveContract} className="text-xs px-2 py-1 rounded-lg font-semibold" style={{ background: "#C9A84C", color: "#0d1117" }}>✓</button>
-              <button onClick={() => setEditContract(false)} className="text-xs px-2 py-1 rounded-lg" style={{ background: "#30373f", color: "#8b949e" }}>✕</button>
-            </div>
-          ) : (
-            <button onClick={() => { setContractVal(String(sub.contractAmount)); setEditContract(true); }} className="text-xs font-bold px-3 py-1 rounded-lg" style={{ background: "#1e2736", color: "#C9A84C", border: "1px solid #C9A84C33" }}>
-              Contract: ${fmt(sub.contractAmount)}
-            </button>
-          )}
+        <div className="flex items-center gap-2 shrink-0">
+          <div className="text-xs font-bold px-3 py-1 rounded-lg" style={{ background: "#1e2736", color: "#C9A84C", border: "1px solid #C9A84C33" }}>
+            Contract: ${fmt(contractTotal)}
+          </div>
           <button onClick={deleteSub} className="w-7 h-7 rounded flex items-center justify-center" style={{ background: "#f8514922", color: "#f85149", border: "1px solid #f8514933" }}>
             <TrashIcon size={13} />
           </button>
         </div>
       </div>
 
-      {/* Edit division / scope inline panel */}
+      {/* Edit info panel */}
       {showEditInfo && (
         <div className="rounded-xl p-3 space-y-3" style={{ background: "#0d1117", border: "1px solid #C9A84C33" }}>
           <div className="grid grid-cols-2 gap-3">
@@ -306,6 +368,103 @@ function SubCard({
         </div>
       )}
 
+      {/* Scope of work */}
+      <div className="space-y-2">
+        <div className="flex items-center justify-between">
+          <span className="text-xs font-semibold uppercase tracking-widest" style={{ color: "#8b949e" }}>Scope of Work</span>
+          <button onClick={() => setShowScopePicker(v => !v)} className="text-xs px-2.5 py-1 rounded-lg font-semibold" style={{ background: "#C9A84C22", color: "#C9A84C", border: "1px solid #C9A84C44" }}>
+            {showScopePicker ? "Close" : "+ Add Items"}
+          </button>
+        </div>
+
+        {/* Scope items list */}
+        {sub.scopeItems.length > 0 && (
+          <div className="space-y-1">
+            {sub.scopeItems.map(item => (
+              <div key={item.id} className="flex items-center gap-2 rounded-lg px-3 py-1.5" style={{ background: "#0d1117", border: "1px solid #21262d" }}>
+                <div className="flex-1 min-w-0">
+                  {item.csiCode && <span className="text-xs mr-1.5" style={{ color: "#8b949e" }}>{item.csiCode}</span>}
+                  <span className="text-xs" style={{ color: "#e6edf3" }}>{item.name}</span>
+                </div>
+                {editingItemId === item.id ? (
+                  <div className="flex items-center gap-1 shrink-0">
+                    <span className="text-xs" style={{ color: "#8b949e" }}>$</span>
+                    <input
+                      autoFocus
+                      value={editingItemAmt}
+                      onChange={e => setEditingItemAmt(e.target.value)}
+                      onKeyDown={e => { if (e.key === "Enter") saveScopeItemAmount(item.id, editingItemAmt); if (e.key === "Escape") setEditingItemId(null); }}
+                      className="w-24 rounded px-2 py-0.5 text-xs text-right"
+                      style={{ background: "#161b22", border: "1px solid #C9A84C", color: "#C9A84C" }}
+                    />
+                    <button onClick={() => saveScopeItemAmount(item.id, editingItemAmt)} className="text-xs px-1.5 py-0.5 rounded font-bold" style={{ background: "#C9A84C", color: "#0d1117" }}>✓</button>
+                    <button onClick={() => setEditingItemId(null)} className="text-xs px-1.5 py-0.5 rounded" style={{ background: "#30373f", color: "#8b949e" }}>✕</button>
+                  </div>
+                ) : (
+                  <div className="flex items-center gap-1.5 shrink-0">
+                    <button onClick={() => { setEditingItemId(item.id); setEditingItemAmt(String(item.amount)); }} className="text-xs font-bold px-2 py-0.5 rounded" style={{ color: "#C9A84C", background: "#C9A84C11" }}>${fmt(item.amount)}</button>
+                    <button onClick={() => deleteScopeItem(item.id)} className="w-5 h-5 rounded flex items-center justify-center" style={{ color: "#f85149" }}><TrashIcon size={10} /></button>
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+        )}
+
+        {sub.scopeItems.length === 0 && !showScopePicker && (
+          <p className="text-xs py-2 text-center" style={{ color: "#4d5566" }}>No scope items yet — click &ldquo;+ Add Items&rdquo;</p>
+        )}
+
+        {/* Scope picker panel */}
+        {showScopePicker && (
+          <div className="rounded-xl overflow-hidden" style={{ border: "1px solid #30373f" }}>
+            <div className="overflow-y-auto" style={{ maxHeight: 320, background: "#0d1117" }}>
+              {STANDARD_TEMPLATE_DIVISIONS.map(div => {
+                const isOpen = openPickerDivs.has(div.csiCode);
+                const allAdded = div.items.every(i => addedCsiCodes.has(i.csiCode));
+                return (
+                  <div key={div.csiCode}>
+                    <div className="flex items-center gap-2 px-3 py-2 sticky top-0" style={{ background: "#161b22", borderBottom: "1px solid #21262d" }}>
+                      <button onClick={() => setOpenPickerDivs(prev => { const n = new Set(prev); isOpen ? n.delete(div.csiCode) : n.add(div.csiCode); return n; })} className="flex items-center gap-2 flex-1 text-left">
+                        <span className="text-xs" style={{ color: "#8b949e" }}>{isOpen ? "▼" : "▶"}</span>
+                        <span className="text-xs font-semibold" style={{ color: "#e6edf3" }}>{div.csiCode.slice(0, 2)} · {div.name}</span>
+                      </button>
+                      {!allAdded && (
+                        <button
+                          onClick={() => addScopeItems(div.items.filter(i => !addedCsiCodes.has(i.csiCode)).map(i => ({ csiCode: i.csiCode, name: i.name, amount: 0 })))}
+                          className="text-xs px-2 py-0.5 rounded font-semibold shrink-0"
+                          style={{ background: "#C9A84C22", color: "#C9A84C", border: "1px solid #C9A84C33" }}
+                        >
+                          + Add All
+                        </button>
+                      )}
+                    </div>
+                    {isOpen && (
+                      <div>
+                        {div.items.map(item => {
+                          const added = addedCsiCodes.has(item.csiCode);
+                          return (
+                            <div key={item.csiCode} className="flex items-center gap-2 px-4 py-1.5" style={{ background: "#0d1117", borderBottom: "1px solid #21262d11" }}>
+                              <span className="text-xs w-16 shrink-0" style={{ color: "#4d5566" }}>{item.csiCode}</span>
+                              <span className="text-xs flex-1" style={{ color: added ? "#4d5566" : "#e6edf3" }}>{item.name}</span>
+                              {added ? (
+                                <span className="text-xs px-2 py-0.5 rounded" style={{ color: "#22c55e", background: "#22c55e11" }}>Added</span>
+                              ) : (
+                                <button onClick={() => addScopeItems([{ csiCode: item.csiCode, name: item.name, amount: 0 }])} className="text-xs px-2 py-0.5 rounded font-semibold shrink-0" style={{ background: "#C9A84C22", color: "#C9A84C", border: "1px solid #C9A84C33" }}>+ Add</button>
+                              )}
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
+      </div>
+
       {/* Balance bar */}
       <div className="space-y-1">
         <div className="flex justify-between text-xs" style={{ color: "#8b949e" }}>
@@ -317,25 +476,32 @@ function SubCard({
         </div>
       </div>
 
-      {/* Payment history */}
+      {/* Payments */}
       {sub.payments.length > 0 && (
         <div className="space-y-1">
           <div className="text-xs font-semibold uppercase tracking-widest mb-2" style={{ color: "#8b949e" }}>Payments</div>
           {sub.payments.map(p => {
-            const isCredit = p.amount < 0;
+            const isCr = p.amount < 0;
+            if (editingPayId === p.id) {
+              return (
+                <PayForm key={p.id} subId={sub.id} companyId={companyId} clientId={clientId} payment={p}
+                  onSave={updated => { onUpdate({ ...sub, payments: sub.payments.map(x => x.id === p.id ? updated : x) }); setEditingPayId(null); }}
+                  onCancel={() => setEditingPayId(null)} />
+              );
+            }
             return (
               <div key={p.id} className="flex items-center justify-between gap-2 rounded-xl px-3 py-2" style={{ background: "#0d1117", border: "1px solid #21262d" }}>
-                <div className="flex items-center gap-3 flex-1 min-w-0">
-                  {isCredit && <span className="text-xs font-bold px-2 py-0.5 rounded" style={{ background: "#f8514922", color: "#f85149", border: "1px solid #f8514933" }}>CR</span>}
-                  <span className="text-xs font-bold px-2 py-0.5 rounded" style={{ background: isCredit ? "#f8514922" : "#22c55e22", color: isCredit ? "#f85149" : "#22c55e", border: `1px solid ${isCredit ? "#f8514933" : "#22c55e33"}` }}>{METHOD_LABELS[p.method] ?? p.method}</span>
-                  <span className="text-xs font-bold" style={{ color: isCredit ? "#f85149" : "#22c55e" }}>{isCredit ? "-" : ""}${fmt(Math.abs(p.amount))}</span>
+                <div className="flex items-center gap-2 flex-1 min-w-0 flex-wrap">
+                  <span className="text-xs font-bold px-2 py-0.5 rounded" style={{ background: isCr ? "#f8514922" : "#22c55e22", color: isCr ? "#f85149" : "#22c55e", border: `1px solid ${isCr ? "#f8514933" : "#22c55e33"}` }}>{METHOD_LABELS[p.method] ?? p.method}</span>
+                  <span className="text-xs font-bold" style={{ color: isCr ? "#f85149" : "#22c55e" }}>{isCr ? "-" : ""}${fmt(Math.abs(p.amount))}</span>
                   <span className="text-xs" style={{ color: "#8b949e" }}>{new Date(p.paidAt + "T00:00:00").toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}</span>
                   {p.checkNumber && <span className="text-xs" style={{ color: "#8b949e" }}>#{p.checkNumber}</span>}
                   {p.notes && <span className="text-xs truncate" style={{ color: "#8b949e" }}>{p.notes}</span>}
                 </div>
-                <button onClick={() => deletePayment(p.id)} className="w-6 h-6 rounded flex items-center justify-center shrink-0" style={{ color: "#f85149" }}>
-                  <TrashIcon size={11} />
-                </button>
+                <div className="flex items-center gap-1 shrink-0">
+                  <button onClick={() => setEditingPayId(p.id)} className="text-xs px-2 py-0.5 rounded" style={{ color: "#C9A84C", background: "#C9A84C11" }}>Edit</button>
+                  <button onClick={() => deletePayment(p.id)} className="w-6 h-6 rounded flex items-center justify-center" style={{ color: "#f85149" }}><TrashIcon size={11} /></button>
+                </div>
               </div>
             );
           })}
@@ -344,56 +510,9 @@ function SubCard({
 
       {/* Add payment */}
       {showPayForm ? (
-        <div className="rounded-xl p-4 space-y-3" style={{ background: "#0d1421", border: "1px solid #C9A84C33" }}>
-          {/* Credit toggle */}
-          <label className="flex items-center gap-2 cursor-pointer w-fit">
-            <div
-              onClick={() => setIsCredit(c => !c)}
-              className="w-9 h-5 rounded-full transition-colors relative"
-              style={{ background: isCredit ? "#f85149" : "#30373f" }}
-            >
-              <div className="absolute top-0.5 w-4 h-4 rounded-full bg-white transition-all" style={{ left: isCredit ? "18px" : "2px" }} />
-            </div>
-            <span className="text-xs font-semibold" style={{ color: isCredit ? "#f85149" : "#8b949e" }}>
-              {isCredit ? "Credit from sub" : "Payment to sub"}
-            </span>
-          </label>
-          <div className="grid grid-cols-2 gap-2">
-            <div>
-              <label className="text-xs font-semibold mb-1 block" style={{ color: "#8b949e" }}>Amount</label>
-              <input value={payAmount} onChange={e => setPayAmount(e.target.value)} placeholder="0.00" className="w-full rounded-lg px-3 py-2 text-sm" style={{ background: "#0d1117", border: "1px solid #30373f", color: "#e6edf3" }} />
-            </div>
-            <div>
-              <label className="text-xs font-semibold mb-1 block" style={{ color: "#8b949e" }}>Method</label>
-              <select value={payMethod} onChange={e => setPayMethod(e.target.value)} className="w-full rounded-lg px-3 py-2 text-sm" style={{ background: "#0d1117", border: "1px solid #30373f", color: "#e6edf3" }}>
-                <option value="CHECK">Check</option>
-                <option value="ZELLE">Zelle</option>
-                <option value="ACH">ACH</option>
-                <option value="CASH">Cash</option>
-              </select>
-            </div>
-            <div>
-              <label className="text-xs font-semibold mb-1 block" style={{ color: "#8b949e" }}>Date</label>
-              <DatePickerInput value={payDate} onChange={setPayDate} />
-            </div>
-            <div>
-              <label className="text-xs font-semibold mb-1 block" style={{ color: "#8b949e" }}>Check # (optional)</label>
-              <input value={payCheck} onChange={e => setPayCheck(e.target.value)} placeholder="Check number" className="w-full rounded-lg px-3 py-2 text-sm" style={{ background: "#0d1117", border: "1px solid #30373f", color: "#e6edf3" }} />
-            </div>
-          </div>
-          <input value={payNotes} onChange={e => setPayNotes(e.target.value)} placeholder="Notes (optional)" className="w-full rounded-lg px-3 py-2 text-sm" style={{ background: "#0d1117", border: "1px solid #30373f", color: "#e6edf3" }} />
-          <div className="flex gap-2">
-            <button
-              onClick={addPayment}
-              disabled={saving || !payAmount}
-              className="flex-1 py-2 rounded-xl text-sm font-bold disabled:opacity-50"
-              style={{ background: isCredit ? "#f85149" : "#22c55e", color: "#fff" }}
-            >
-              {saving ? "Saving…" : isCredit ? "Log Credit" : "Add Payment"}
-            </button>
-            <button onClick={() => { setShowPayForm(false); setIsCredit(false); }} className="px-4 py-2 rounded-xl text-sm" style={{ background: "#30373f", color: "#8b949e" }}>Cancel</button>
-          </div>
-        </div>
+        <PayForm subId={sub.id} companyId={companyId} clientId={clientId}
+          onSave={p => { onUpdate({ ...sub, payments: [...sub.payments, p] }); setShowPayForm(false); }}
+          onCancel={() => setShowPayForm(false)} />
       ) : (
         <button onClick={() => setShowPayForm(true)} className="w-full py-2 rounded-xl text-sm font-semibold" style={{ background: "#22c55e22", color: "#22c55e", border: "1px solid #22c55e33" }}>
           + Add Payment
@@ -498,7 +617,6 @@ export default function ClientFinancialsTab({
   useEffect(() => { load(); }, [load]);
 
   async function addSub() {
-    if (!contractAmount || isNaN(Number(contractAmount))) return;
     setSavingSub(true);
     try {
       let subContractorId: string | null = null;
@@ -511,13 +629,13 @@ export default function ClientFinancialsTab({
       const res = await fetch(`/api/${companyId}/clients/${clientId}/financials/subs`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ subContractorId, subName, scope: subScope || null, division: subDivision || null, contractAmount: Number(contractAmount) }),
+        body: JSON.stringify({ subContractorId, subName, scope: subScope || null, division: subDivision || null }),
       });
       if (res.ok) {
         const newSub = await res.json();
         newSub.subName = newSub.subName ?? subName;
         setClientSubs(prev => [...prev, newSub]);
-        setContractAmount(""); setNewSubName(""); setSubScope(""); setSubDivision(""); setSelectedSubId("__new__"); setAddingSubForm(false);
+        setNewSubName(""); setSubScope(""); setSubDivision(""); setSelectedSubId("__new__"); setAddingSubForm(false);
       }
     } finally { setSavingSub(false); }
   }
@@ -561,7 +679,7 @@ export default function ClientFinancialsTab({
   }
 
   // Computed totals
-  const totalContracted = clientSubs.reduce((s, sub) => s + sub.contractAmount, 0);
+  const totalContracted = clientSubs.reduce((s, sub) => s + (sub.scopeItems.length > 0 ? sub.scopeItems.reduce((ss, i) => ss + i.amount, 0) : sub.contractAmount), 0);
   const totalLaborPaid = clientSubs.reduce((s, sub) => s + sub.payments.reduce((ps, p) => ps + p.amount, 0), 0);
   const totalLaborBalance = totalContracted - totalLaborPaid;
   const totalMaterials = materials.reduce((s, p) => s + p.amount, 0);
@@ -672,18 +790,12 @@ ${rows}
         {addingSubForm && (
           <div className="rounded-2xl p-5 space-y-3" style={{ background: "#0d1421", border: "1px solid #C9A84C44" }}>
             <div className="text-xs font-bold uppercase tracking-widest" style={{ color: "#C9A84C" }}>Add Subcontractor</div>
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <label className="text-xs font-semibold mb-1 block" style={{ color: "#8b949e" }}>Sub</label>
-                <select value={selectedSubId} onChange={e => setSelectedSubId(e.target.value)} className="w-full rounded-lg px-3 py-2 text-sm" style={{ background: "#0d1117", border: "1px solid #30373f", color: "#e6edf3" }}>
-                  <option value="__new__">+ New sub (type name below)</option>
-                  {allSubs.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
-                </select>
-              </div>
-              <div>
-                <label className="text-xs font-semibold mb-1 block" style={{ color: "#8b949e" }}>Contract Amount</label>
-                <input value={contractAmount} onChange={e => setContractAmount(e.target.value)} placeholder="0.00" className="w-full rounded-lg px-3 py-2 text-sm" style={{ background: "#0d1117", border: "1px solid #30373f", color: "#e6edf3" }} />
-              </div>
+            <div>
+              <label className="text-xs font-semibold mb-1 block" style={{ color: "#8b949e" }}>Sub</label>
+              <select value={selectedSubId} onChange={e => setSelectedSubId(e.target.value)} className="w-full rounded-lg px-3 py-2 text-sm" style={{ background: "#0d1117", border: "1px solid #30373f", color: "#e6edf3" }}>
+                <option value="__new__">+ New sub (type name below)</option>
+                {allSubs.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
+              </select>
             </div>
             {selectedSubId === "__new__" && (
               <input value={newSubName} onChange={e => setNewSubName(e.target.value)} placeholder="Sub name" className="w-full rounded-lg px-3 py-2 text-sm" style={{ background: "#0d1117", border: "1px solid #30373f", color: "#e6edf3" }} />
@@ -708,7 +820,7 @@ ${rows}
               </div>
             </div>
             <div className="flex gap-2">
-              <button onClick={addSub} disabled={savingSub || !contractAmount} className="flex-1 py-2 rounded-xl text-sm font-bold disabled:opacity-50" style={{ background: "#C9A84C", color: "#0d1117" }}>{savingSub ? "Saving…" : "Add Sub"}</button>
+              <button onClick={addSub} disabled={savingSub || (selectedSubId === "__new__" && !newSubName.trim())} className="flex-1 py-2 rounded-xl text-sm font-bold disabled:opacity-50" style={{ background: "#C9A84C", color: "#0d1117" }}>{savingSub ? "Saving…" : "Add Sub"}</button>
               <button onClick={() => { setAddingSubForm(false); setSubScope(""); setSubDivision(""); }} className="px-4 py-2 rounded-xl text-sm" style={{ background: "#30373f", color: "#8b949e" }}>Cancel</button>
             </div>
           </div>

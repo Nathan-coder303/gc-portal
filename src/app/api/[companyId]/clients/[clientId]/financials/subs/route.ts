@@ -14,6 +14,7 @@ export async function GET(_req: NextRequest, { params }: { params: { companyId: 
     include: {
       subContractor: { select: { id: true, name: true } },
       payments: { orderBy: { paidAt: "asc" } },
+      scopeItems: { orderBy: { createdAt: "asc" } },
     },
   });
 
@@ -33,6 +34,12 @@ export async function GET(_req: NextRequest, { params }: { params: { companyId: 
       paidAt: p.paidAt.toISOString().slice(0, 10),
       checkNumber: p.checkNumber,
       notes: p.notes,
+    })),
+    scopeItems: s.scopeItems.map(i => ({
+      id: i.id,
+      csiCode: i.csiCode,
+      name: i.name,
+      amount: Number(i.amount),
     })),
   })));
 }
@@ -95,5 +102,6 @@ export async function POST(req: NextRequest, { params }: { params: { companyId: 
     notes: sub.notes,
     createdAt: sub.createdAt.toISOString(),
     payments: [],
+    scopeItems: [],
   });
 }
