@@ -425,7 +425,7 @@ function SubCard({
                 return (
                   <div key={div.csiCode}>
                     <div className="flex items-center gap-2 px-3 py-2 sticky top-0" style={{ background: "#161b22", borderBottom: "1px solid #21262d" }}>
-                      <button onClick={() => setOpenPickerDivs(prev => { const n = new Set(prev); isOpen ? n.delete(div.csiCode) : n.add(div.csiCode); return n; })} className="flex items-center gap-2 flex-1 text-left">
+                      <button onClick={() => setOpenPickerDivs(prev => { const n = new Set(prev); if (isOpen) { n.delete(div.csiCode); } else { n.add(div.csiCode); } return n; })} className="flex items-center gap-2 flex-1 text-left">
                         <span className="text-xs" style={{ color: "#8b949e" }}>{isOpen ? "▼" : "▶"}</span>
                         <span className="text-xs font-semibold" style={{ color: "#e6edf3" }}>{div.csiCode.slice(0, 2)} · {div.name}</span>
                       </button>
@@ -579,7 +579,6 @@ export default function ClientFinancialsTab({
   const [newSubName, setNewSubName] = useState("");
   const [subScope, setSubScope] = useState("");
   const [subDivision, setSubDivision] = useState("");
-  const [contractAmount, setContractAmount] = useState("");
   const [addingSubForm, setAddingSubForm] = useState(false);
   const [savingSub, setSavingSub] = useState(false);
 
