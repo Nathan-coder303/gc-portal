@@ -22,6 +22,7 @@ export async function GET(_req: NextRequest, { params }: { params: { companyId: 
     subContractorId: s.subContractorId,
     subName: s.subName ?? s.subContractor?.name ?? "",
     scope: s.scope ?? null,
+    division: s.division ?? null,
     contractAmount: Number(s.contractAmount),
     notes: s.notes,
     createdAt: s.createdAt.toISOString(),
@@ -41,7 +42,34 @@ export async function POST(req: NextRequest, { params }: { params: { companyId: 
   if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const body = await req.json();
-  const { subContractorId, subName, scope, contractAmount, notes } = body;
+  const { subName, scope, division, contractAmount, notes } = body;
+  let { subContractorId } = body;
+
+  // Auto-create SubContractor in the global database when adding a new name
+  if (!subContractorId && subName) {
+    const divParts = typeof division === "string" ? division.split(" · ") : [];
+    const divCode = divParts[0]?.trim() || "00 00 00";
+    const divName = divParts.slice(1).join(" · ").trim() || "General";
+
+    const existing = await prisma.subContractor.findFirst({
+      where: { companyId: params.companyId, name: { equals: subName, mode: "insensitive" } },
+      select: { id: true },
+    });
+    if (existing) {
+      subContractorId = existing.id;
+    } else {
+      const newSub = await prisma.subContractor.create({
+        data: {
+          companyId: params.companyId,
+          name: subName,
+          divisionCode: divCode,
+          divisionName: divName,
+          source: "manual",
+        },
+      });
+      subContractorId = newSub.id;
+    }
+  }
 
   const sub = await prisma.clientSub.create({
     data: {
@@ -50,6 +78,7 @@ export async function POST(req: NextRequest, { params }: { params: { companyId: 
       subContractorId: subContractorId || null,
       subName: subName || null,
       scope: scope || null,
+      division: division || null,
       contractAmount: contractAmount ?? 0,
       notes: notes || null,
     },
@@ -61,6 +90,7 @@ export async function POST(req: NextRequest, { params }: { params: { companyId: 
     subContractorId: sub.subContractorId,
     subName: sub.subName,
     scope: sub.scope ?? null,
+    division: sub.division ?? null,
     contractAmount: Number(sub.contractAmount),
     notes: sub.notes,
     createdAt: sub.createdAt.toISOString(),

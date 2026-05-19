@@ -15,11 +15,17 @@ export async function PATCH(req: NextRequest, { params }: { params: { companyId:
       contractAmount: body.contractAmount ?? undefined,
       subContractorId: body.subContractorId ?? undefined,
       subName: body.subName ?? undefined,
+      scope: body.scope !== undefined ? (body.scope || null) : undefined,
+      division: body.division !== undefined ? (body.division || null) : undefined,
       notes: body.notes ?? undefined,
     },
   });
 
-  return NextResponse.json({ contractAmount: Number(updated.contractAmount) });
+  return NextResponse.json({
+    contractAmount: Number(updated.contractAmount),
+    scope: updated.scope ?? null,
+    division: updated.division ?? null,
+  });
 }
 
 export async function DELETE(_req: NextRequest, { params }: { params: { companyId: string; clientId: string; subId: string } }) {

@@ -209,6 +209,7 @@ model ClientSub {
   subContractor   SubContractor? @relation(fields: [subContractorId], references: [id], onDelete: SetNull)
   subName         String?
   scope           String?
+  division        String?
   contractAmount  Decimal        @default(0) @db.Decimal(14, 2)
   notes           String?
   createdAt       DateTime       @default(now())

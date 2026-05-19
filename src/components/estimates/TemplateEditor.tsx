@@ -593,7 +593,7 @@ function TemplateGroupSection({ group, divisionId, canEdit }: { group: Group; di
 
 function TemplateDivisionSection({ division, otherDivisions, canEdit, globalSaveSignal, templateId }: { division: Division; otherDivisions: Division[]; canEdit: boolean; globalSaveSignal?: number; templateId: string }) {
   const router = useRouter();
-  const [open, setOpen] = useState(() => typeof window !== "undefined" ? window.innerWidth >= 768 : true);
+  const [open, setOpen] = useState(false);
   const [isPending, startTransition] = useTransition();
   const [addingGroup, setAddingGroup] = useState(false);
   const [groupName, setGroupName] = useState("");

@@ -1,6 +1,7 @@
 "use client";
 import { useState, useEffect, useCallback, useRef, useMemo } from "react";
 import { TrashIcon } from "@/components/ui/icons";
+import { STANDARD_TEMPLATE_DIVISIONS } from "@/lib/standardTemplateData";
 import {
   format, startOfMonth, endOfMonth, startOfWeek, endOfWeek,
   addMonths, subMonths, isSameMonth, isToday, eachDayOfInterval,
@@ -8,7 +9,7 @@ import {
 
 type SubContractor = { id: string; name: string; email: string | null; phone: string | null; divisionCode: string; divisionName: string };
 type SubPayment = { id: string; amount: number; method: string; paidAt: string; checkNumber: string | null; notes: string | null };
-type ClientSub = { id: string; subContractorId: string | null; subName: string; scope: string | null; contractAmount: number; notes: string | null; payments: SubPayment[] };
+type ClientSub = { id: string; subContractorId: string | null; subName: string; scope: string | null; division: string | null; contractAmount: number; notes: string | null; payments: SubPayment[] };
 type Supplier = { id: string; name: string };
 type MaterialPurchase = { id: string; supplierId: string; supplierName: string; amount: number; description: string | null; purchasedAt: string; notes: string | null };
 
@@ -130,6 +131,10 @@ function SubCard({
   const [saving, setSaving] = useState(false);
   const [editContract, setEditContract] = useState(false);
   const [contractVal, setContractVal] = useState(String(sub.contractAmount));
+  const [showEditInfo, setShowEditInfo] = useState(false);
+  const [editDivision, setEditDivision] = useState(sub.division ?? "");
+  const [editScope, setEditScope] = useState(sub.scope ?? "");
+  const [savingInfo, setSavingInfo] = useState(false);
 
   async function addPayment() {
     if (!payAmount || isNaN(Number(payAmount))) return;
@@ -167,6 +172,21 @@ function SubCard({
     setEditContract(false);
   }
 
+  async function saveInfo() {
+    setSavingInfo(true);
+    try {
+      const res = await fetch(`/api/${companyId}/clients/${clientId}/financials/subs/${sub.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ scope: editScope.trim() || null, division: editDivision || null }),
+      });
+      if (res.ok) {
+        onUpdate({ ...sub, scope: editScope.trim() || null, division: editDivision || null });
+        setShowEditInfo(false);
+      }
+    } finally { setSavingInfo(false); }
+  }
+
   async function deleteSub() {
     if (!confirm(`Remove ${sub.subName}?`)) return;
     await fetch(`/api/${companyId}/clients/${clientId}/financials/subs/${sub.id}`, { method: "DELETE" });
@@ -179,8 +199,13 @@ function SubCard({
       <div className="flex items-start justify-between gap-3">
         <div>
           <div className="text-sm font-bold" style={{ color: "#e6edf3" }}>{sub.subName}</div>
-          <div className="text-xs mt-0.5" style={{ color: "#8b949e" }}>
-            {sub.scope ? sub.scope : "Subcontractor"}
+          <div className="flex items-center gap-2 mt-0.5">
+            <span className="text-xs" style={{ color: "#8b949e" }}>
+              {[sub.division, sub.scope].filter(Boolean).join(" · ") || "Subcontractor"}
+            </span>
+            <button onClick={() => { setEditDivision(sub.division ?? ""); setEditScope(sub.scope ?? ""); setShowEditInfo(v => !v); }} className="text-xs px-1.5 py-0.5 rounded" style={{ color: "#C9A84C", background: "#C9A84C11", border: "1px solid #C9A84C33" }}>
+              Edit
+            </button>
           </div>
         </div>
         <div className="flex items-center gap-2">
@@ -207,6 +232,31 @@ function SubCard({
           </button>
         </div>
       </div>
+
+      {/* Edit division / scope inline panel */}
+      {showEditInfo && (
+        <div className="rounded-xl p-3 space-y-3" style={{ background: "#0d1117", border: "1px solid #C9A84C33" }}>
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="text-xs font-semibold mb-1 block" style={{ color: "#8b949e" }}>Division</label>
+              <select value={editDivision} onChange={e => setEditDivision(e.target.value)} className="w-full rounded-lg px-3 py-2 text-sm" style={{ background: "#161b22", border: "1px solid #30373f", color: editDivision ? "#e6edf3" : "#8b949e" }}>
+                <option value="">— Select Division —</option>
+                {STANDARD_TEMPLATE_DIVISIONS.map(d => (
+                  <option key={d.csiCode} value={`${d.csiCode} · ${d.name}`}>{d.csiCode.slice(0, 2)} · {d.name}</option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label className="text-xs font-semibold mb-1 block" style={{ color: "#8b949e" }}>Trade / Role</label>
+              <input value={editScope} onChange={e => setEditScope(e.target.value)} placeholder="e.g. Electrician, Plumber" className="w-full rounded-lg px-3 py-2 text-sm" style={{ background: "#161b22", border: "1px solid #30373f", color: "#e6edf3" }} />
+            </div>
+          </div>
+          <div className="flex gap-2">
+            <button onClick={saveInfo} disabled={savingInfo} className="px-4 py-1.5 rounded-lg text-xs font-semibold disabled:opacity-50" style={{ background: "#C9A84C", color: "#0d1117" }}>{savingInfo ? "Saving…" : "Save"}</button>
+            <button onClick={() => setShowEditInfo(false)} className="px-4 py-1.5 rounded-lg text-xs" style={{ background: "#30373f", color: "#8b949e" }}>Cancel</button>
+          </div>
+        </div>
+      )}
 
       {/* Balance bar */}
       <div className="space-y-1">
@@ -361,6 +411,7 @@ export default function ClientFinancialsTab({
   const [selectedSubId, setSelectedSubId] = useState("__new__");
   const [newSubName, setNewSubName] = useState("");
   const [subScope, setSubScope] = useState("");
+  const [subDivision, setSubDivision] = useState("");
   const [contractAmount, setContractAmount] = useState("");
   const [addingSubForm, setAddingSubForm] = useState(false);
   const [savingSub, setSavingSub] = useState(false);
@@ -412,13 +463,13 @@ export default function ClientFinancialsTab({
       const res = await fetch(`/api/${companyId}/clients/${clientId}/financials/subs`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ subContractorId, subName, scope: subScope.trim() || null, contractAmount: Number(contractAmount) }),
+        body: JSON.stringify({ subContractorId, subName, scope: subScope || null, division: subDivision || null, contractAmount: Number(contractAmount) }),
       });
       if (res.ok) {
         const newSub = await res.json();
         newSub.subName = newSub.subName ?? subName;
         setClientSubs(prev => [...prev, newSub]);
-        setContractAmount(""); setNewSubName(""); setSubScope(""); setSelectedSubId("__new__"); setAddingSubForm(false);
+        setContractAmount(""); setNewSubName(""); setSubScope(""); setSubDivision(""); setSelectedSubId("__new__"); setAddingSubForm(false);
       }
     } finally { setSavingSub(false); }
   }
@@ -589,19 +640,33 @@ ${rows}
             {selectedSubId === "__new__" && (
               <input value={newSubName} onChange={e => setNewSubName(e.target.value)} placeholder="Sub name" className="w-full rounded-lg px-3 py-2 text-sm" style={{ background: "#0d1117", border: "1px solid #30373f", color: "#e6edf3" }} />
             )}
-            <div>
-              <label className="text-xs font-semibold mb-1 block" style={{ color: "#8b949e" }}>Scope / Role</label>
-              <input
-                value={subScope}
-                onChange={e => setSubScope(e.target.value)}
-                placeholder="e.g. Roofer, Permit Expediter, Electrician…"
-                className="w-full rounded-lg px-3 py-2 text-sm"
-                style={{ background: "#0d1117", border: "1px solid #30373f", color: "#e6edf3" }}
-              />
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="text-xs font-semibold mb-1 block" style={{ color: "#8b949e" }}>Division</label>
+                <select value={subDivision} onChange={e => setSubDivision(e.target.value)} className="w-full rounded-lg px-3 py-2 text-sm" style={{ background: "#0d1117", border: "1px solid #30373f", color: subDivision ? "#e6edf3" : "#8b949e" }}>
+                  <option value="">— Select Division —</option>
+                  {STANDARD_TEMPLATE_DIVISIONS.map(d => (
+                    <option key={d.csiCode} value={`${d.csiCode} · ${d.name}`}>{d.csiCode.slice(0, 2)} · {d.name}</option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label className="text-xs font-semibold mb-1 block" style={{ color: "#8b949e" }}>Trade / Role</label>
+                <select value={subScope} onChange={e => setSubScope(e.target.value)} className="w-full rounded-lg px-3 py-2 text-sm" style={{ background: "#0d1117", border: "1px solid #30373f", color: subScope ? "#e6edf3" : "#8b949e" }}>
+                  <option value="">— Select Trade —</option>
+                  {STANDARD_TEMPLATE_DIVISIONS.map(d => (
+                    <optgroup key={d.csiCode} label={`${d.csiCode.slice(0, 2)} · ${d.name}`}>
+                      {d.items.map(item => (
+                        <option key={item.csiCode} value={item.name}>{item.name}</option>
+                      ))}
+                    </optgroup>
+                  ))}
+                </select>
+              </div>
             </div>
             <div className="flex gap-2">
               <button onClick={addSub} disabled={savingSub || !contractAmount} className="flex-1 py-2 rounded-xl text-sm font-bold disabled:opacity-50" style={{ background: "#C9A84C", color: "#0d1117" }}>{savingSub ? "Saving…" : "Add Sub"}</button>
-              <button onClick={() => { setAddingSubForm(false); setSubScope(""); }} className="px-4 py-2 rounded-xl text-sm" style={{ background: "#30373f", color: "#8b949e" }}>Cancel</button>
+              <button onClick={() => { setAddingSubForm(false); setSubScope(""); setSubDivision(""); }} className="px-4 py-2 rounded-xl text-sm" style={{ background: "#30373f", color: "#8b949e" }}>Cancel</button>
             </div>
           </div>
         )}
