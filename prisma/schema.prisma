@@ -182,6 +182,7 @@ model Client {
   subBids        SubBid[]
   files          ClientFile[]
   documents      ClientDocument[]
+  lienReleases   LienRelease[]
   notes          ClientNote[]
   leadNotes      Note[]
   followUps      FollowUp[]
@@ -326,6 +327,29 @@ model ClientDocument {
   createdAt               DateTime  @default(now())
   createdBy            String?
   archivedAt           DateTime?
+
+  @@index([clientId])
+  @@index([companyId])
+}
+
+model LienRelease {
+  id               String    @id @default(cuid())
+  clientId         String
+  client           Client    @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  companyId        String
+  type             String    // "PARTIAL" | "FINAL"
+  subName          String    // lienor / subcontractor releasing the lien
+  recipientEmail   String?
+  amount           String?   // dollar consideration (stored as text)
+  throughDate      String?   // YYYY-MM-DD
+  legalDescription String
+  signatureToken   String?   @unique
+  signedAt         DateTime?
+  signatureData    String?
+  signedByName     String?
+  emailSentAt      DateTime?
+  createdAt        DateTime  @default(now())
+  archivedAt       DateTime?
 
   @@index([clientId])
   @@index([companyId])
