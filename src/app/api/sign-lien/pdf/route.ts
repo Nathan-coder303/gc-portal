@@ -1,8 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { renderToBuffer } from "@react-pdf/renderer";
-import { LienReleasePdfDocument } from "@/lib/lienRelease/lienReleasePdf";
-import React from "react";
+import { renderLienReleasePdf } from "@/lib/lienRelease/lienReleasePdf";
 
 export const runtime = "nodejs";
 export const maxDuration = 30;
@@ -23,8 +21,7 @@ export async function GET(req: NextRequest) {
     release.client.address, release.client.city, release.client.state, release.client.zip,
   ].filter(Boolean).join(", ");
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const buffer = await renderToBuffer(React.createElement(LienReleasePdfDocument, {
+  const buffer = await renderLienReleasePdf({
     type: release.type as "PARTIAL" | "FINAL",
     subName: release.subName,
     amount: release.amount,
@@ -36,7 +33,7 @@ export async function GET(req: NextRequest) {
     signatureData: release.signatureData,
     signedByName: release.signedByName,
     createdDate: release.createdAt.toISOString().slice(0, 10),
-  }) as any);
+  });
 
   return new Response(buffer as unknown as BodyInit, {
     headers: {

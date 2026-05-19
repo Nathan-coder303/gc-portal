@@ -52,8 +52,6 @@ export default function LienReleasesTab({
   const [sendName, setSendName] = useState("");
   const [sendingReq, setSendingReq] = useState(false);
 
-  // Preview
-  const [previewId, setPreviewId] = useState<string | null>(null);
 
   async function handleCreate() {
     if (!subName.trim() || !legalDescription.trim()) return;
@@ -178,7 +176,7 @@ export default function LienReleasesTab({
       {/* List */}
       {releases.length === 0 && !showForm ? (
         <div className="rounded-xl p-8 text-center" style={{ background: "#1e2736", border: "1px solid #30373f" }}>
-          <p className="text-sm" style={{ color: "#8b949e" }}>No lien releases yet. Click "+ New Release" to create one.</p>
+          <p className="text-sm" style={{ color: "#8b949e" }}>No lien releases yet. Click &ldquo;+ New Release&rdquo; to create one.</p>
         </div>
       ) : (
         <div className="space-y-3">

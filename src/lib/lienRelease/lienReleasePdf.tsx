@@ -1,4 +1,5 @@
-import { Document, Page, Text, View, Image, StyleSheet } from "@react-pdf/renderer";
+import { Document, Page, Text, View, Image, StyleSheet, renderToBuffer } from "@react-pdf/renderer";
+import React from "react";
 
 function fmtOrdinalDate(dateStr: string): string {
   const d = new Date(dateStr + "T12:00:00");
@@ -139,4 +140,9 @@ export function LienReleasePdfDocument(props: LienReleasePdfProps) {
       </Page>
     </Document>
   );
+}
+
+export async function renderLienReleasePdf(props: LienReleasePdfProps): Promise<Buffer> {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  return renderToBuffer(React.createElement(LienReleasePdfDocument, props) as any) as Promise<Buffer>;
 }
