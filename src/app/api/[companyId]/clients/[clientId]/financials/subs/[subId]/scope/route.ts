@@ -17,8 +17,8 @@ export async function POST(req: NextRequest, { params }: { params: { companyId: 
   if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const body = await req.json();
-  // body can be { items: [{csiCode, name, amount}] } or single {csiCode, name, amount}
-  const items: { csiCode?: string; name: string; amount?: number }[] = Array.isArray(body.items) ? body.items : [body];
+  // body can be { items: [{csiCode, name, amount, salePrice}] } or single item
+  const items: { csiCode?: string | null; name: string; amount?: number; salePrice?: number | null }[] = Array.isArray(body.items) ? body.items : [body];
 
   const created = await prisma.$transaction(
     items.map(item =>
@@ -29,6 +29,7 @@ export async function POST(req: NextRequest, { params }: { params: { companyId: 
           csiCode: item.csiCode || null,
           name: item.name,
           amount: item.amount ?? 0,
+          salePrice: item.salePrice ?? null,
         },
       })
     )
@@ -37,7 +38,7 @@ export async function POST(req: NextRequest, { params }: { params: { companyId: 
   const total = await syncContractAmount(params.subId);
 
   return NextResponse.json({
-    items: created.map(i => ({ id: i.id, csiCode: i.csiCode, name: i.name, amount: Number(i.amount) })),
+    items: created.map(i => ({ id: i.id, csiCode: i.csiCode, name: i.name, amount: Number(i.amount), salePrice: i.salePrice ? Number(i.salePrice) : null })),
     contractAmount: total,
   });
 }

@@ -11,20 +11,54 @@ export async function GET(
   const session = await auth();
   if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-  const items = await prisma.estimateTemplateItem.findMany({
+  // Get all non-archived divisions (with items) from active estimates for this client
+  const divisions = await prisma.estimateTemplateDivision.findMany({
     where: {
-      division: {
-        template: {
-          companyId: params.companyId,
-          clientId: params.clientId,
-          archivedAt: null,
+      archivedAt: null,
+      template: { companyId: params.companyId, clientId: params.clientId, archivedAt: null },
+    },
+    select: {
+      id: true,
+      name: true,
+      csiCode: true,
+      sortOrder: true,
+      items: {
+        where: { archivedAt: null },
+        select: {
+          id: true,
+          name: true,
+          csiCode: true,
+          defaultQty: true,
+          defaultUnitCost: true,
+          defaultMarkupPct: true,
         },
+        orderBy: { sortOrder: "asc" },
       },
     },
-    select: { name: true },
-    distinct: ["name"],
-    orderBy: { name: "asc" },
+    orderBy: { sortOrder: "asc" },
   });
 
-  return NextResponse.json(items.map((i) => i.name));
+  // Calculate sale price per item: qty * unitCost * (1 + markup/100)
+  const result = divisions
+    .filter(d => d.items.length > 0)
+    .map(d => ({
+      divisionId: d.id,
+      divisionName: d.name,
+      csiCode: d.csiCode,
+      items: d.items.map(i => {
+        const qty = Number(i.defaultQty ?? 0);
+        const cost = Number(i.defaultUnitCost ?? 0);
+        const markup = Number(i.defaultMarkupPct ?? 0);
+        const salePrice = qty * cost * (1 + markup / 100);
+        return {
+          id: i.id,
+          name: i.name,
+          csiCode: i.csiCode,
+          salePrice: Math.round(salePrice * 100) / 100,
+        };
+      }).filter(i => i.name),
+    }))
+    .filter(d => d.items.length > 0);
+
+  return NextResponse.json(result);
 }

@@ -40,6 +40,7 @@ export async function GET(_req: NextRequest, { params }: { params: { companyId: 
       csiCode: i.csiCode,
       name: i.name,
       amount: Number(i.amount),
+      salePrice: i.salePrice ? Number(i.salePrice) : null,
     })),
   })));
 }

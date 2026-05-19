@@ -227,6 +227,7 @@ model SubScopeItem {
   clientSub   ClientSub @relation(fields: [clientSubId], references: [id], onDelete: Cascade)
   csiCode     String?
   name        String
+  salePrice   Decimal?  @db.Decimal(14, 2)
   amount      Decimal   @default(0) @db.Decimal(14, 2)
   createdAt   DateTime  @default(now())
   @@index([clientSubId])

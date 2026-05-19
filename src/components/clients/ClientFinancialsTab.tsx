@@ -9,7 +9,9 @@ import {
 
 type SubContractor = { id: string; name: string; email: string | null; phone: string | null; divisionCode: string; divisionName: string };
 type SubPayment = { id: string; amount: number; method: string; paidAt: string; checkNumber: string | null; notes: string | null };
-type ScopeItem = { id: string; csiCode: string | null; name: string; amount: number };
+type ScopeItem = { id: string; csiCode: string | null; name: string; amount: number; salePrice: number | null };
+type EstimateLineItem = { id: string; name: string; csiCode: string | null; salePrice: number };
+type EstimateDivision = { divisionId: string; divisionName: string; csiCode: string | null; items: EstimateLineItem[] };
 type ClientSub = { id: string; subContractorId: string | null; subName: string; scope: string | null; division: string | null; contractAmount: number; notes: string | null; payments: SubPayment[]; scopeItems: ScopeItem[] };
 type Supplier = { id: string; name: string };
 type MaterialPurchase = { id: string; supplierId: string; supplierName: string; amount: number; description: string | null; purchasedAt: string; notes: string | null };
@@ -240,10 +242,11 @@ function PayForm({ subId, companyId, clientId, payment, onSave, onCancel }: {
 }
 
 function SubCard({
-  sub, companyId, clientId,
+  sub, companyId, clientId, estimateDivisions,
   onUpdate, onDelete,
 }: {
   sub: ClientSub; companyId: string; clientId: string;
+  estimateDivisions: EstimateDivision[];
   onUpdate: (updated: ClientSub) => void;
   onDelete: (id: string) => void;
 }) {
@@ -286,7 +289,7 @@ function SubCard({
     onDelete(sub.id);
   }
 
-  async function addScopeItems(items: { csiCode?: string; name: string; amount?: number }[]) {
+  async function addScopeItems(items: { csiCode?: string | null; name: string; amount?: number; salePrice?: number | null }[]) {
     const res = await fetch(`/api/${companyId}/clients/${clientId}/financials/subs/${sub.id}/scope`, {
       method: "POST", headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ items }),
@@ -377,37 +380,65 @@ function SubCard({
           </button>
         </div>
 
-        {/* Scope items list */}
+        {/* Scope items list with sale price + sub cost + profit */}
         {sub.scopeItems.length > 0 && (
-          <div className="space-y-1">
-            {sub.scopeItems.map(item => (
-              <div key={item.id} className="flex items-center gap-2 rounded-lg px-3 py-1.5" style={{ background: "#0d1117", border: "1px solid #21262d" }}>
-                <div className="flex-1 min-w-0">
-                  {item.csiCode && <span className="text-xs mr-1.5" style={{ color: "#8b949e" }}>{item.csiCode}</span>}
-                  <span className="text-xs" style={{ color: "#e6edf3" }}>{item.name}</span>
+          <div className="rounded-xl overflow-hidden" style={{ border: "1px solid #21262d" }}>
+            {/* Header row */}
+            <div className="grid px-3 py-1.5" style={{ gridTemplateColumns: "1fr 80px 80px 72px 28px", background: "#0d1117", borderBottom: "1px solid #21262d" }}>
+              <span className="text-xs" style={{ color: "#4d5566" }}>Item</span>
+              <span className="text-xs text-right" style={{ color: "#4d5566" }}>Sale</span>
+              <span className="text-xs text-right" style={{ color: "#4d5566" }}>Sub Cost</span>
+              <span className="text-xs text-right" style={{ color: "#4d5566" }}>Profit</span>
+              <span />
+            </div>
+            {sub.scopeItems.map(item => {
+              const profit = item.salePrice != null ? item.salePrice - item.amount : null;
+              return (
+                <div key={item.id} className="grid items-center px-3 py-2" style={{ gridTemplateColumns: "1fr 80px 80px 72px 28px", background: "#0d1117", borderBottom: "1px solid #21262d11" }}>
+                  <span className="text-xs truncate pr-2" style={{ color: "#e6edf3" }}>{item.name}</span>
+                  <span className="text-xs text-right" style={{ color: "#8b949e" }}>{item.salePrice != null ? `$${fmt(item.salePrice)}` : "—"}</span>
+                  {editingItemId === item.id ? (
+                    <div className="flex items-center gap-0.5 col-span-2">
+                      <span className="text-xs" style={{ color: "#8b949e" }}>$</span>
+                      <input
+                        autoFocus
+                        value={editingItemAmt}
+                        onChange={e => setEditingItemAmt(e.target.value)}
+                        onKeyDown={e => { if (e.key === "Enter") saveScopeItemAmount(item.id, editingItemAmt); if (e.key === "Escape") setEditingItemId(null); }}
+                        className="w-20 rounded px-1.5 py-0.5 text-xs text-right"
+                        style={{ background: "#161b22", border: "1px solid #C9A84C", color: "#C9A84C" }}
+                      />
+                      <button onClick={() => saveScopeItemAmount(item.id, editingItemAmt)} className="text-xs px-1.5 py-0.5 rounded font-bold ml-0.5" style={{ background: "#C9A84C", color: "#0d1117" }}>✓</button>
+                      <button onClick={() => setEditingItemId(null)} className="text-xs px-1.5 py-0.5 rounded" style={{ background: "#30373f", color: "#8b949e" }}>✕</button>
+                    </div>
+                  ) : (
+                    <>
+                      <button onClick={() => { setEditingItemId(item.id); setEditingItemAmt(String(item.amount)); }} className="text-xs text-right font-semibold px-1 py-0.5 rounded" style={{ color: "#C9A84C", background: "#C9A84C11" }}>${fmt(item.amount)}</button>
+                      <span className="text-xs text-right font-semibold" style={{ color: profit == null ? "#4d5566" : profit >= 0 ? "#22c55e" : "#f85149" }}>
+                        {profit != null ? `$${fmt(profit)}` : "—"}
+                      </span>
+                    </>
+                  )}
+                  <button onClick={() => deleteScopeItem(item.id)} className="w-5 h-5 rounded flex items-center justify-center ml-auto" style={{ color: "#f85149" }}><TrashIcon size={10} /></button>
                 </div>
-                {editingItemId === item.id ? (
-                  <div className="flex items-center gap-1 shrink-0">
-                    <span className="text-xs" style={{ color: "#8b949e" }}>$</span>
-                    <input
-                      autoFocus
-                      value={editingItemAmt}
-                      onChange={e => setEditingItemAmt(e.target.value)}
-                      onKeyDown={e => { if (e.key === "Enter") saveScopeItemAmount(item.id, editingItemAmt); if (e.key === "Escape") setEditingItemId(null); }}
-                      className="w-24 rounded px-2 py-0.5 text-xs text-right"
-                      style={{ background: "#161b22", border: "1px solid #C9A84C", color: "#C9A84C" }}
-                    />
-                    <button onClick={() => saveScopeItemAmount(item.id, editingItemAmt)} className="text-xs px-1.5 py-0.5 rounded font-bold" style={{ background: "#C9A84C", color: "#0d1117" }}>✓</button>
-                    <button onClick={() => setEditingItemId(null)} className="text-xs px-1.5 py-0.5 rounded" style={{ background: "#30373f", color: "#8b949e" }}>✕</button>
-                  </div>
-                ) : (
-                  <div className="flex items-center gap-1.5 shrink-0">
-                    <button onClick={() => { setEditingItemId(item.id); setEditingItemAmt(String(item.amount)); }} className="text-xs font-bold px-2 py-0.5 rounded" style={{ color: "#C9A84C", background: "#C9A84C11" }}>${fmt(item.amount)}</button>
-                    <button onClick={() => deleteScopeItem(item.id)} className="w-5 h-5 rounded flex items-center justify-center" style={{ color: "#f85149" }}><TrashIcon size={10} /></button>
-                  </div>
-                )}
-              </div>
-            ))}
+              );
+            })}
+            {/* Totals row */}
+            {(() => {
+              const totalSale = sub.scopeItems.filter(i => i.salePrice != null).reduce((s, i) => s + (i.salePrice ?? 0), 0);
+              const totalCost = sub.scopeItems.reduce((s, i) => s + i.amount, 0);
+              const totalProfit = totalSale - totalCost;
+              const hasSale = sub.scopeItems.some(i => i.salePrice != null);
+              return (
+                <div className="grid px-3 py-2" style={{ gridTemplateColumns: "1fr 80px 80px 72px 28px", background: "#161b22", borderTop: "1px solid #30373f" }}>
+                  <span className="text-xs font-bold" style={{ color: "#8b949e" }}>TOTAL</span>
+                  <span className="text-xs font-bold text-right" style={{ color: "#e6edf3" }}>{hasSale ? `$${fmt(totalSale)}` : "—"}</span>
+                  <span className="text-xs font-bold text-right" style={{ color: "#C9A84C" }}>${fmt(totalCost)}</span>
+                  <span className="text-xs font-bold text-right" style={{ color: hasSale ? (totalProfit >= 0 ? "#22c55e" : "#f85149") : "#4d5566" }}>{hasSale ? `$${fmt(totalProfit)}` : "—"}</span>
+                  <span />
+                </div>
+              );
+            })()}
           </div>
         )}
 
@@ -415,52 +446,57 @@ function SubCard({
           <p className="text-xs py-2 text-center" style={{ color: "#4d5566" }}>No scope items yet — click &ldquo;+ Add Items&rdquo;</p>
         )}
 
-        {/* Scope picker panel */}
+        {/* Estimate-based picker */}
         {showScopePicker && (
           <div className="rounded-xl overflow-hidden" style={{ border: "1px solid #30373f" }}>
-            <div className="overflow-y-auto" style={{ maxHeight: 320, background: "#0d1117" }}>
-              {STANDARD_TEMPLATE_DIVISIONS.map(div => {
-                const isOpen = openPickerDivs.has(div.csiCode);
-                const allAdded = div.items.every(i => addedCsiCodes.has(i.csiCode));
-                return (
-                  <div key={div.csiCode}>
-                    <div className="flex items-center gap-2 px-3 py-2 sticky top-0" style={{ background: "#161b22", borderBottom: "1px solid #21262d" }}>
-                      <button onClick={() => setOpenPickerDivs(prev => { const n = new Set(prev); if (isOpen) { n.delete(div.csiCode); } else { n.add(div.csiCode); } return n; })} className="flex items-center gap-2 flex-1 text-left">
-                        <span className="text-xs" style={{ color: "#8b949e" }}>{isOpen ? "▼" : "▶"}</span>
-                        <span className="text-xs font-semibold" style={{ color: "#e6edf3" }}>{div.csiCode.slice(0, 2)} · {div.name}</span>
-                      </button>
-                      {!allAdded && (
-                        <button
-                          onClick={() => addScopeItems(div.items.filter(i => !addedCsiCodes.has(i.csiCode)).map(i => ({ csiCode: i.csiCode, name: i.name, amount: 0 })))}
-                          className="text-xs px-2 py-0.5 rounded font-semibold shrink-0"
-                          style={{ background: "#C9A84C22", color: "#C9A84C", border: "1px solid #C9A84C33" }}
-                        >
-                          + Add All
+            {estimateDivisions.length === 0 ? (
+              <p className="text-xs text-center py-4" style={{ color: "#4d5566", background: "#0d1117" }}>No estimate items found for this client.</p>
+            ) : (
+              <div className="overflow-y-auto" style={{ maxHeight: 340, background: "#0d1117" }}>
+                {estimateDivisions.map(div => {
+                  const isOpen = openPickerDivs.has(div.divisionId);
+                  const addedNames = new Set(sub.scopeItems.map(i => i.name));
+                  const allAdded = div.items.every(i => addedNames.has(i.name));
+                  return (
+                    <div key={div.divisionId}>
+                      <div className="flex items-center gap-2 px-3 py-2 sticky top-0" style={{ background: "#161b22", borderBottom: "1px solid #21262d" }}>
+                        <button onClick={() => setOpenPickerDivs(prev => { const n = new Set(prev); if (isOpen) { n.delete(div.divisionId); } else { n.add(div.divisionId); } return n; })} className="flex items-center gap-2 flex-1 text-left">
+                          <span className="text-xs" style={{ color: "#8b949e" }}>{isOpen ? "▼" : "▶"}</span>
+                          <span className="text-xs font-semibold" style={{ color: "#e6edf3" }}>{div.divisionName}</span>
                         </button>
+                        {!allAdded && (
+                          <button
+                            onClick={() => addScopeItems(div.items.filter(i => !addedNames.has(i.name)).map(i => ({ csiCode: i.csiCode ?? undefined, name: i.name, salePrice: i.salePrice, amount: 0 })))}
+                            className="text-xs px-2 py-0.5 rounded font-semibold shrink-0"
+                            style={{ background: "#C9A84C22", color: "#C9A84C", border: "1px solid #C9A84C33" }}
+                          >
+                            + Add All
+                          </button>
+                        )}
+                      </div>
+                      {isOpen && (
+                        <div>
+                          {div.items.map(item => {
+                            const added = addedNames.has(item.name);
+                            return (
+                              <div key={item.id} className="flex items-center gap-2 px-4 py-1.5" style={{ background: "#0d1117", borderBottom: "1px solid #21262d22" }}>
+                                <span className="text-xs flex-1 truncate" style={{ color: added ? "#4d5566" : "#e6edf3" }}>{item.name}</span>
+                                <span className="text-xs shrink-0" style={{ color: "#8b949e" }}>${fmt(item.salePrice)}</span>
+                                {added ? (
+                                  <span className="text-xs px-2 py-0.5 rounded shrink-0" style={{ color: "#22c55e", background: "#22c55e11" }}>Added</span>
+                                ) : (
+                                  <button onClick={() => addScopeItems([{ csiCode: item.csiCode ?? undefined, name: item.name, salePrice: item.salePrice, amount: 0 }])} className="text-xs px-2 py-0.5 rounded font-semibold shrink-0" style={{ background: "#C9A84C22", color: "#C9A84C", border: "1px solid #C9A84C33" }}>+ Add</button>
+                                )}
+                              </div>
+                            );
+                          })}
+                        </div>
                       )}
                     </div>
-                    {isOpen && (
-                      <div>
-                        {div.items.map(item => {
-                          const added = addedCsiCodes.has(item.csiCode);
-                          return (
-                            <div key={item.csiCode} className="flex items-center gap-2 px-4 py-1.5" style={{ background: "#0d1117", borderBottom: "1px solid #21262d11" }}>
-                              <span className="text-xs w-16 shrink-0" style={{ color: "#4d5566" }}>{item.csiCode}</span>
-                              <span className="text-xs flex-1" style={{ color: added ? "#4d5566" : "#e6edf3" }}>{item.name}</span>
-                              {added ? (
-                                <span className="text-xs px-2 py-0.5 rounded" style={{ color: "#22c55e", background: "#22c55e11" }}>Added</span>
-                              ) : (
-                                <button onClick={() => addScopeItems([{ csiCode: item.csiCode, name: item.name, amount: 0 }])} className="text-xs px-2 py-0.5 rounded font-semibold shrink-0" style={{ background: "#C9A84C22", color: "#C9A84C", border: "1px solid #C9A84C33" }}>+ Add</button>
-                              )}
-                            </div>
-                          );
-                        })}
-                      </div>
-                    )}
-                  </div>
-                );
-              })}
-            </div>
+                  );
+                })}
+              </div>
+            )}
           </div>
         )}
       </div>
@@ -571,7 +607,7 @@ export default function ClientFinancialsTab({
   const [allSubs, setAllSubs] = useState<SubContractor[]>([]);
   const [suppliers, setSuppliers] = useState<Supplier[]>([]);
   const [materials, setMaterials] = useState<MaterialPurchase[]>([]);
-  const [estimateItems, setEstimateItems] = useState<string[]>([]);
+  const [estimateDivisions, setEstimateDivisions] = useState<EstimateDivision[]>([]);
   const [loading, setLoading] = useState(true);
 
   // Add sub form
@@ -609,7 +645,7 @@ export default function ClientFinancialsTab({
     setAllSubs(Array.isArray(allSubsList) ? allSubsList.sort((a: SubContractor, b: SubContractor) => a.name.localeCompare(b.name)) : []);
     setSuppliers(Array.isArray(suppliersList) ? suppliersList : []);
     setMaterials(Array.isArray(matsList) ? matsList : []);
-    setEstimateItems(Array.isArray(itemsList) ? itemsList : []);
+    setEstimateDivisions(Array.isArray(itemsList) ? itemsList : []);
     setLoading(false);
   }, [companyId, clientId]);
 
@@ -836,6 +872,7 @@ ${rows}
               sub={sub}
               companyId={companyId}
               clientId={clientId}
+              estimateDivisions={estimateDivisions}
               onUpdate={updated => setClientSubs(prev => prev.map(s => s.id === updated.id ? updated : s))}
               onDelete={id => setClientSubs(prev => prev.filter(s => s.id !== id))}
             />
@@ -897,8 +934,8 @@ ${rows}
                   style={{ background: "#0d1117", border: "1px solid #30373f", color: "#e6edf3" }}
                 >
                   <option value="__custom__">Custom…</option>
-                  {estimateItems.map(item => (
-                    <option key={item} value={item}>{item}</option>
+                  {estimateDivisions.flatMap(d => d.items).map(item => (
+                    <option key={item.id} value={item.name}>{item.name}</option>
                   ))}
                 </select>
               </div>
