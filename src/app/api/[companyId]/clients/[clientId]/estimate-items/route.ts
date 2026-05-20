@@ -11,8 +11,14 @@ export async function GET(
   const session = await auth();
   if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-  // Get the most recently updated non-archived template for this client
-  const latestTemplate = await prisma.estimateTemplate.findFirst({
+  // Prefer the approved (signed) estimate; fall back to most recently updated non-archived
+  const approvedTemplate = await prisma.estimateTemplate.findFirst({
+    where: { companyId: params.companyId, clientId: params.clientId, archivedAt: null, signedAt: { not: null } },
+    orderBy: { signedAt: "desc" },
+    select: { id: true },
+  });
+
+  const latestTemplate = approvedTemplate ?? await prisma.estimateTemplate.findFirst({
     where: { companyId: params.companyId, clientId: params.clientId, archivedAt: null },
     orderBy: { updatedAt: "desc" },
     select: { id: true },
