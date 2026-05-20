@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { computeFromPreviousMap } from "@/lib/invoiceLines";
 
 export const runtime = "nodejs";
 
@@ -21,21 +22,35 @@ export async function GET(
   });
   if (!invoice) return NextResponse.json({ error: "Not found" }, { status: 404 });
 
+  // Recompute fromPrevious dynamically so old invoices (without lines) are included
+  let lines = invoice.lines.map(l => ({
+    id: l.id,
+    estimateItemId: l.estimateItemId,
+    sortOrder: l.sortOrder,
+    itemNumber: l.itemNumber,
+    description: l.description,
+    scheduledValue: Number(l.scheduledValue),
+    fromPrevious: Number(l.fromPrevious),
+    pctThisInvoice: Number(l.pctThisInvoice),
+    thisInvoice: Number(l.thisInvoice),
+  }));
+
+  if (lines.length > 0) {
+    const schedMap = new Map(
+      lines.filter(l => l.estimateItemId).map(l => [l.estimateItemId!, l.scheduledValue])
+    );
+    const prevMap = await computeFromPreviousMap(invoice.estimateId, invoice.id, schedMap);
+    lines = lines.map(l => ({
+      ...l,
+      fromPrevious: l.estimateItemId ? (prevMap.get(l.estimateItemId) ?? 0) : 0,
+    }));
+  }
+
   return NextResponse.json({
     ...invoice,
     amount: Number(invoice.amount),
     pct: Number(invoice.pct),
-    lines: invoice.lines.map(l => ({
-      id: l.id,
-      estimateItemId: l.estimateItemId,
-      sortOrder: l.sortOrder,
-      itemNumber: l.itemNumber,
-      description: l.description,
-      scheduledValue: Number(l.scheduledValue),
-      fromPrevious: Number(l.fromPrevious),
-      pctThisInvoice: Number(l.pctThisInvoice),
-      thisInvoice: Number(l.thisInvoice),
-    })),
+    lines,
   });
 }
 

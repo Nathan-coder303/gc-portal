@@ -203,6 +203,16 @@ export default function ClientInvoicesTab({
   const [editLines, setEditLines] = useState<EditLine[]>([]);
   const [editLinesLoading, setEditLinesLoading] = useState(false);
   const [editApplyPct, setEditApplyPct] = useState("");
+  const [editDivNames, setEditDivNames] = useState<Record<string, string>>({});
+  const [expandedDivs, setExpandedDivs] = useState<Set<string>>(new Set());
+
+  function toggleDiv(code: string) {
+    setExpandedDivs(prev => {
+      const next = new Set(prev);
+      if (next.has(code)) next.delete(code); else next.add(code);
+      return next;
+    });
+  }
 
   function openEdit(inv: Invoice) {
     setEditingInvoice(inv);
@@ -213,11 +223,23 @@ export default function ClientInvoicesTab({
     setEditNotes(inv.notes ?? "");
     setEditLines([]);
     setEditApplyPct(inv.pct.toString());
+    setExpandedDivs(new Set()); // all collapsed on open
+    setEditDivNames({});
     setEditLinesLoading(true);
-    fetch(`/api/${companyId}/clients/${clientId}/invoices/${inv.id}`)
-      .then(r => r.json())
-      .then(data => { setEditLines(data.lines ?? []); })
-      .finally(() => setEditLinesLoading(false));
+    Promise.all([
+      fetch(`/api/${companyId}/clients/${clientId}/invoices/${inv.id}`).then(r => r.json()),
+      fetch(`/api/${companyId}/estimates/${inv.estimateId}/division-totals`).then(r => r.json()),
+    ]).then(([invData, divTotals]) => {
+      setEditLines(invData.lines ?? []);
+      if (Array.isArray(divTotals)) {
+        const nameMap: Record<string, string> = {};
+        (divTotals as { name: string; csiCode: string | null }[]).forEach((d, i) => {
+          const code = d.csiCode ? d.csiCode.slice(0, 2).padStart(2, "0") : String(i + 1).padStart(2, "0");
+          nameMap[code] = d.name;
+        });
+        setEditDivNames(nameMap);
+      }
+    }).finally(() => setEditLinesLoading(false));
   }
 
   function setEditLinePct(idx: number, pct: number) {
@@ -751,41 +773,76 @@ export default function ClientInvoicesTab({
                 <div style={{ color: "#8b949e", fontSize: 12, textAlign: "center", padding: 24 }}>Loading lines…</div>
               ) : editLines.length === 0 ? (
                 <div style={{ color: "#8b949e", fontSize: 12, textAlign: "center", padding: 24 }}>No lines found for this invoice.</div>
-              ) : (
-                <div style={{ overflowY: "auto", maxHeight: 380, border: "1px solid #30373f", borderRadius: 8 }}>
-                  <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 11 }}>
-                    <thead style={{ position: "sticky", top: 0, zIndex: 1 }}>
-                      <tr style={{ background: "#0d1117" }}>
-                        <th style={{ padding: "6px 6px", textAlign: "left", color: "#8b949e", fontWeight: 700, fontSize: 10, borderBottom: "1px solid #30373f", width: 56 }}>#</th>
-                        <th style={{ padding: "6px 6px", textAlign: "left", color: "#8b949e", fontWeight: 700, fontSize: 10, borderBottom: "1px solid #30373f" }}>DESCRIPTION</th>
-                        <th style={{ padding: "6px 6px", textAlign: "right", color: "#8b949e", fontWeight: 700, fontSize: 10, borderBottom: "1px solid #30373f", width: 88 }}>SCHEDULED</th>
-                        <th style={{ padding: "6px 6px", textAlign: "right", color: "#8b949e", fontWeight: 700, fontSize: 10, borderBottom: "1px solid #30373f", width: 80 }}>FROM PREV</th>
-                        <th style={{ padding: "6px 6px", textAlign: "right", color: GOLD, fontWeight: 700, fontSize: 10, borderBottom: "1px solid #30373f", width: 76 }}>% THIS INV</th>
-                        <th style={{ padding: "6px 6px", textAlign: "right", color: "#8b949e", fontWeight: 700, fontSize: 10, borderBottom: "1px solid #30373f", width: 90 }}>THIS INVOICE</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {editLines.map((line, idx) => (
-                        <tr key={idx} style={{ background: idx % 2 === 0 ? "transparent" : "#1a1f2b", borderBottom: "1px solid #21262d" }}>
-                          <td style={{ padding: "4px 6px", color: "#8b949e", fontSize: 10 }}>{line.itemNumber}</td>
-                          <td style={{ padding: "4px 6px", color: "#e6edf3" }}>{line.description}</td>
-                          <td style={{ padding: "4px 6px", textAlign: "right", color: "#8b949e" }}>${fmt(line.scheduledValue)}</td>
-                          <td style={{ padding: "4px 6px", textAlign: "right", color: "#8b949e" }}>{line.fromPrevious > 0 ? `$${fmt(line.fromPrevious)}` : "—"}</td>
-                          <td style={{ padding: "2px 2px", textAlign: "right" }}>
-                            <input
-                              type="number" min={0} max={100} step={0.5}
-                              value={line.pctThisInvoice}
-                              onChange={e => setEditLinePct(idx, parseFloat(e.target.value) || 0)}
-                              style={{ width: "100%", background: "transparent", border: "none", borderBottom: `1px solid ${GOLD}44`, outline: "none", color: GOLD, fontWeight: 700, fontSize: 11, textAlign: "right", padding: "2px 6px" }}
-                            />
-                          </td>
-                          <td style={{ padding: "4px 6px", textAlign: "right", color: line.thisInvoice > 0 ? GOLD : "#8b949e", fontWeight: 600 }}>${fmt(line.thisInvoice)}</td>
+              ) : (() => {
+                // Build division groups preserving order
+                const divOrder: string[] = [];
+                const divMap: Record<string, { line: EditLine; globalIdx: number }[]> = {};
+                editLines.forEach((line, globalIdx) => {
+                  const code = line.itemNumber.split(".")[0];
+                  if (!divMap[code]) { divMap[code] = []; divOrder.push(code); }
+                  divMap[code].push({ line, globalIdx });
+                });
+                return (
+                  <div style={{ overflowY: "auto", maxHeight: 400, border: "1px solid #30373f", borderRadius: 8 }}>
+                    <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 11 }}>
+                      <thead style={{ position: "sticky", top: 0, zIndex: 1 }}>
+                        <tr style={{ background: "#0d1117" }}>
+                          <th style={{ padding: "6px 6px", textAlign: "left", color: "#8b949e", fontWeight: 700, fontSize: 10, borderBottom: "1px solid #30373f", width: 60 }}>#</th>
+                          <th style={{ padding: "6px 6px", textAlign: "left", color: "#8b949e", fontWeight: 700, fontSize: 10, borderBottom: "1px solid #30373f" }}>DESCRIPTION</th>
+                          <th style={{ padding: "6px 6px", textAlign: "right", color: "#8b949e", fontWeight: 700, fontSize: 10, borderBottom: "1px solid #30373f", width: 88 }}>SCHEDULED</th>
+                          <th style={{ padding: "6px 6px", textAlign: "right", color: "#8b949e", fontWeight: 700, fontSize: 10, borderBottom: "1px solid #30373f", width: 80 }}>FROM PREV</th>
+                          <th style={{ padding: "6px 6px", textAlign: "right", color: GOLD, fontWeight: 700, fontSize: 10, borderBottom: "1px solid #30373f", width: 76 }}>% THIS INV</th>
+                          <th style={{ padding: "6px 6px", textAlign: "right", color: "#8b949e", fontWeight: 700, fontSize: 10, borderBottom: "1px solid #30373f", width: 90 }}>THIS INVOICE</th>
                         </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              )}
+                      </thead>
+                      <tbody>
+                        {divOrder.map(code => {
+                          const entries = divMap[code];
+                          const divName = editDivNames[code] ?? `Division ${code}`;
+                          const isExpanded = expandedDivs.has(code);
+                          const divScheduled = entries.reduce((s, e) => s + e.line.scheduledValue, 0);
+                          const divFromPrev = entries.reduce((s, e) => s + e.line.fromPrevious, 0);
+                          const divThisInv = entries.reduce((s, e) => s + e.line.thisInvoice, 0);
+                          return (
+                            <>
+                              {/* Division header row */}
+                              <tr key={`hdr-${code}`} onClick={() => toggleDiv(code)}
+                                style={{ background: "#21262d", cursor: "pointer", userSelect: "none", borderBottom: "1px solid #30373f" }}>
+                                <td style={{ padding: "7px 8px", fontWeight: 700, fontSize: 11, color: GOLD }}>
+                                  <span style={{ marginRight: 6, fontSize: 9 }}>{isExpanded ? "▾" : "▸"}</span>{code}
+                                </td>
+                                <td style={{ padding: "7px 6px", fontWeight: 700, fontSize: 11, color: "#e6edf3" }}>{divName}</td>
+                                <td style={{ padding: "7px 6px", textAlign: "right", fontWeight: 700, fontSize: 11, color: "#e6edf3" }}>${fmt(divScheduled)}</td>
+                                <td style={{ padding: "7px 6px", textAlign: "right", fontWeight: 600, fontSize: 11, color: "#8b949e" }}>{divFromPrev > 0 ? `$${fmt(divFromPrev)}` : "—"}</td>
+                                <td style={{ padding: "7px 6px", textAlign: "right", color: "#8b949e", fontSize: 10 }}>—</td>
+                                <td style={{ padding: "7px 6px", textAlign: "right", fontWeight: 700, fontSize: 11, color: GOLD }}>${fmt(divThisInv)}</td>
+                              </tr>
+                              {/* Item rows — only when expanded */}
+                              {isExpanded && entries.map(({ line, globalIdx }, i) => (
+                                <tr key={`item-${globalIdx}`} style={{ background: i % 2 === 0 ? "#161b22" : "#1a1f2b", borderBottom: "1px solid #21262d" }}>
+                                  <td style={{ padding: "4px 6px", color: "#8b949e", fontSize: 10, paddingLeft: 20 }}>{line.itemNumber}</td>
+                                  <td style={{ padding: "4px 6px", color: "#e6edf3" }}>{line.description}</td>
+                                  <td style={{ padding: "4px 6px", textAlign: "right", color: "#8b949e" }}>${fmt(line.scheduledValue)}</td>
+                                  <td style={{ padding: "4px 6px", textAlign: "right", color: "#8b949e" }}>{line.fromPrevious > 0 ? `$${fmt(line.fromPrevious)}` : "—"}</td>
+                                  <td style={{ padding: "2px 2px", textAlign: "right" }}>
+                                    <input
+                                      type="number" min={0} max={100} step={0.5}
+                                      value={line.pctThisInvoice}
+                                      onChange={e => setEditLinePct(globalIdx, parseFloat(e.target.value) || 0)}
+                                      style={{ width: "100%", background: "transparent", border: "none", borderBottom: `1px solid ${GOLD}44`, outline: "none", color: GOLD, fontWeight: 700, fontSize: 11, textAlign: "right", padding: "2px 6px" }}
+                                    />
+                                  </td>
+                                  <td style={{ padding: "4px 6px", textAlign: "right", color: line.thisInvoice > 0 ? GOLD : "#8b949e", fontWeight: 600 }}>${fmt(line.thisInvoice)}</td>
+                                </tr>
+                              ))}
+                            </>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+                );
+              })()}
 
               {editLines.length > 0 && (
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "8px 12px", marginTop: 8, background: "#0d1117", borderRadius: 6, border: "1px solid #30373f" }}>
