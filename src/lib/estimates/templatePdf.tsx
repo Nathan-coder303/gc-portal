@@ -167,7 +167,7 @@ const styles = StyleSheet.create({
   sectionTitle: { fontSize: 12, fontFamily: "Helvetica-Bold", color: DARK, marginBottom: 8, paddingTop: 12 },
 
   // T&C
-  termsText: { fontSize: 9.5, color: "#475569", lineHeight: 1.5 },
+  termsText: { fontSize: 9.5, color: "#475569", lineHeight: 1.6, textAlign: "justify" as const },
 
   // Payment schedule
   payTable: { marginTop: 4 },
