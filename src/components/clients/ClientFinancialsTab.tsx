@@ -382,7 +382,7 @@ function SubCard({
         {sub.scopeItems.length > 0 && (
           <div className="rounded-xl overflow-hidden" style={{ border: "1px solid #21262d" }}>
             {/* Header row — compact columns that fit mobile */}
-            <div className="grid px-2 py-1.5" style={{ gridTemplateColumns: "minmax(0,1fr) 52px 56px 52px 20px", background: "#0d1117", borderBottom: "1px solid #21262d" }}>
+            <div className="grid px-2 py-1.5" style={{ gridTemplateColumns: "minmax(0,1fr) 70px 74px 70px 20px", columnGap: "6px", background: "#0d1117", borderBottom: "1px solid #21262d" }}>
               <span className="text-xs" style={{ color: "#4d5566" }}>Item</span>
               <span className="text-xs text-right" style={{ color: "#4d5566" }}>Sale</span>
               <span className="text-xs text-right" style={{ color: "#4d5566" }}>Cost</span>
@@ -410,7 +410,7 @@ function SubCard({
                       <button onClick={() => setEditingItemId(null)} className="text-xs px-1.5 py-0.5 rounded shrink-0" style={{ background: "#30373f", color: "#8b949e" }}>✕</button>
                     </div>
                   ) : (
-                    <div className="grid items-center px-2 py-2" style={{ gridTemplateColumns: "minmax(0,1fr) 52px 56px 52px 20px" }}>
+                    <div className="grid items-center px-2 py-2" style={{ gridTemplateColumns: "minmax(0,1fr) 70px 74px 70px 20px", columnGap: "6px" }}>
                       <span className="text-xs truncate pr-1" style={{ color: "#e6edf3" }}>{item.name}</span>
                       <span className="text-xs text-right" style={{ color: "#8b949e" }}>{item.salePrice != null ? `$${fmt(item.salePrice)}` : "—"}</span>
                       <button onClick={() => { setEditingItemId(item.id); setEditingItemAmt(String(item.amount)); }} className="text-xs text-right font-semibold px-1 py-0.5 rounded" style={{ color: "#C9A84C", background: "#C9A84C11" }}>${fmt(item.amount)}</button>
@@ -430,7 +430,7 @@ function SubCard({
               const totalProfit = totalSale - totalCost;
               const hasSale = sub.scopeItems.some(i => i.salePrice != null);
               return (
-                <div className="grid px-2 py-2" style={{ gridTemplateColumns: "minmax(0,1fr) 52px 56px 52px 20px", background: "#161b22", borderTop: "1px solid #30373f" }}>
+                <div className="grid px-2 py-2" style={{ gridTemplateColumns: "minmax(0,1fr) 70px 74px 70px 20px", columnGap: "6px", background: "#161b22", borderTop: "1px solid #30373f" }}>
                   <span className="text-xs font-bold" style={{ color: "#8b949e" }}>TOTAL</span>
                   <span className="text-xs font-bold text-right" style={{ color: "#e6edf3" }}>{hasSale ? `$${fmt(totalSale)}` : "—"}</span>
                   <span className="text-xs font-bold text-right" style={{ color: "#C9A84C" }}>${fmt(totalCost)}</span>
