@@ -383,43 +383,45 @@ function SubCard({
         {/* Scope items list with sale price + sub cost + profit */}
         {sub.scopeItems.length > 0 && (
           <div className="rounded-xl overflow-hidden" style={{ border: "1px solid #21262d" }}>
-            {/* Header row */}
-            <div className="grid px-3 py-1.5" style={{ gridTemplateColumns: "1fr 80px 80px 72px 28px", background: "#0d1117", borderBottom: "1px solid #21262d" }}>
+            {/* Header row — compact columns that fit mobile */}
+            <div className="grid px-2 py-1.5" style={{ gridTemplateColumns: "minmax(0,1fr) 52px 56px 52px 20px", background: "#0d1117", borderBottom: "1px solid #21262d" }}>
               <span className="text-xs" style={{ color: "#4d5566" }}>Item</span>
               <span className="text-xs text-right" style={{ color: "#4d5566" }}>Sale</span>
-              <span className="text-xs text-right" style={{ color: "#4d5566" }}>Sub Cost</span>
+              <span className="text-xs text-right" style={{ color: "#4d5566" }}>Cost</span>
               <span className="text-xs text-right" style={{ color: "#4d5566" }}>Profit</span>
               <span />
             </div>
             {sub.scopeItems.map(item => {
               const profit = item.salePrice != null ? item.salePrice - item.amount : null;
               return (
-                <div key={item.id} className="grid items-center px-3 py-2" style={{ gridTemplateColumns: "1fr 80px 80px 72px 28px", background: "#0d1117", borderBottom: "1px solid #21262d11" }}>
-                  <span className="text-xs truncate pr-2" style={{ color: "#e6edf3" }}>{item.name}</span>
-                  <span className="text-xs text-right" style={{ color: "#8b949e" }}>{item.salePrice != null ? `$${fmt(item.salePrice)}` : "—"}</span>
+                <div key={item.id} style={{ background: "#0d1117", borderBottom: "1px solid #21262d22" }}>
                   {editingItemId === item.id ? (
-                    <div className="flex items-center gap-0.5 col-span-2">
-                      <span className="text-xs" style={{ color: "#8b949e" }}>$</span>
+                    /* Edit row — full width, stacked */
+                    <div className="flex items-center gap-1 px-2 py-2">
+                      <span className="text-xs flex-1 truncate" style={{ color: "#8b949e" }}>{item.name}</span>
+                      <span className="text-xs shrink-0" style={{ color: "#8b949e" }}>$</span>
                       <input
                         autoFocus
                         value={editingItemAmt}
                         onChange={e => setEditingItemAmt(e.target.value)}
                         onKeyDown={e => { if (e.key === "Enter") saveScopeItemAmount(item.id, editingItemAmt); if (e.key === "Escape") setEditingItemId(null); }}
-                        className="w-20 rounded px-1.5 py-0.5 text-xs text-right"
+                        className="w-20 rounded px-1.5 py-0.5 text-xs text-right shrink-0"
                         style={{ background: "#161b22", border: "1px solid #C9A84C", color: "#C9A84C" }}
                       />
-                      <button onClick={() => saveScopeItemAmount(item.id, editingItemAmt)} className="text-xs px-1.5 py-0.5 rounded font-bold ml-0.5" style={{ background: "#C9A84C", color: "#0d1117" }}>✓</button>
-                      <button onClick={() => setEditingItemId(null)} className="text-xs px-1.5 py-0.5 rounded" style={{ background: "#30373f", color: "#8b949e" }}>✕</button>
+                      <button onClick={() => saveScopeItemAmount(item.id, editingItemAmt)} className="text-xs px-1.5 py-0.5 rounded font-bold shrink-0" style={{ background: "#C9A84C", color: "#0d1117" }}>✓</button>
+                      <button onClick={() => setEditingItemId(null)} className="text-xs px-1.5 py-0.5 rounded shrink-0" style={{ background: "#30373f", color: "#8b949e" }}>✕</button>
                     </div>
                   ) : (
-                    <>
+                    <div className="grid items-center px-2 py-2" style={{ gridTemplateColumns: "minmax(0,1fr) 52px 56px 52px 20px" }}>
+                      <span className="text-xs truncate pr-1" style={{ color: "#e6edf3" }}>{item.name}</span>
+                      <span className="text-xs text-right" style={{ color: "#8b949e" }}>{item.salePrice != null ? `$${fmt(item.salePrice)}` : "—"}</span>
                       <button onClick={() => { setEditingItemId(item.id); setEditingItemAmt(String(item.amount)); }} className="text-xs text-right font-semibold px-1 py-0.5 rounded" style={{ color: "#C9A84C", background: "#C9A84C11" }}>${fmt(item.amount)}</button>
                       <span className="text-xs text-right font-semibold" style={{ color: profit == null ? "#4d5566" : profit >= 0 ? "#22c55e" : "#f85149" }}>
                         {profit != null ? `$${fmt(profit)}` : "—"}
                       </span>
-                    </>
+                      <button onClick={() => deleteScopeItem(item.id)} className="flex items-center justify-center" style={{ color: "#f85149" }}><TrashIcon size={10} /></button>
+                    </div>
                   )}
-                  <button onClick={() => deleteScopeItem(item.id)} className="w-5 h-5 rounded flex items-center justify-center ml-auto" style={{ color: "#f85149" }}><TrashIcon size={10} /></button>
                 </div>
               );
             })}
@@ -430,7 +432,7 @@ function SubCard({
               const totalProfit = totalSale - totalCost;
               const hasSale = sub.scopeItems.some(i => i.salePrice != null);
               return (
-                <div className="grid px-3 py-2" style={{ gridTemplateColumns: "1fr 80px 80px 72px 28px", background: "#161b22", borderTop: "1px solid #30373f" }}>
+                <div className="grid px-2 py-2" style={{ gridTemplateColumns: "minmax(0,1fr) 52px 56px 52px 20px", background: "#161b22", borderTop: "1px solid #30373f" }}>
                   <span className="text-xs font-bold" style={{ color: "#8b949e" }}>TOTAL</span>
                   <span className="text-xs font-bold text-right" style={{ color: "#e6edf3" }}>{hasSale ? `$${fmt(totalSale)}` : "—"}</span>
                   <span className="text-xs font-bold text-right" style={{ color: "#C9A84C" }}>${fmt(totalCost)}</span>
