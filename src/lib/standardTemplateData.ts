@@ -304,3 +304,107 @@ export const BATHROOM_TEMPLATE_DIVISIONS: TemplateDivisionData[] = [
     ],
   },
 ];
+
+/** CSI MasterFormat divisions and items for a Kitchen Remodeling template */
+export const KITCHEN_TEMPLATE_DIVISIONS: TemplateDivisionData[] = [
+  {
+    csiCode: "01 00 00",
+    name: "General Conditions",
+    items: [
+      { csiCode: "01 11 00", name: "Summary of Work & Scope" },
+      { csiCode: "01 50 00", name: "Dumpsters, Debris Removal & Site Protection" },
+      { csiCode: "01 74 19", name: "On-Site Cleaning & Waste Management" },
+    ],
+  },
+  {
+    csiCode: "02 00 00",
+    name: "Existing Conditions",
+    items: [
+      { csiCode: "02 41 19", name: "Demo — Existing Upper & Lower Cabinets" },
+      { csiCode: "02 41 19", name: "Demo — Existing Countertops & Backsplash Tile" },
+      { csiCode: "02 41 19", name: "Demo — Existing Sink, Faucet & Disposal" },
+      { csiCode: "02 41 19", name: "Demo — Existing Appliances (Disconnect & Remove)" },
+      { csiCode: "02 41 19", name: "Demo — Existing Flooring" },
+      { csiCode: "02 41 19", name: "Demo — Existing Drywall / Soffit (if applicable)" },
+    ],
+  },
+  {
+    csiCode: "06 00 00",
+    name: "Wood, Plastics, and Composites",
+    items: [
+      { csiCode: "06 10 53", name: "Rough Carpentry — Blocking, Nailers & Backing" },
+      { csiCode: "06 20 00", name: "Finish Carpentry — Crown Molding, Toe Kick & Trim" },
+      { csiCode: "06 22 13", name: "Interior Finish Carpentry — Base Trim & Door Casing" },
+      { csiCode: "06 41 00", name: "Kitchen Cabinets (Upper & Lower) — Supply & Installation" },
+      { csiCode: "06 42 16", name: "Kitchen Island / Specialty Casework — Supply & Installation" },
+    ],
+  },
+  {
+    csiCode: "07 00 00",
+    name: "Thermal & Moisture Protection",
+    items: [
+      { csiCode: "07 92 00", name: "Caulking & Joint Sealants (Countertop to Wall, Sink Cutout)" },
+    ],
+  },
+  {
+    csiCode: "09 00 00",
+    name: "Finishes",
+    items: [
+      { csiCode: "09 21 16", name: "Gypsum Board — Hang & Finish" },
+      { csiCode: "09 30 13", name: "Backsplash Tile — Supply & Installation (Thinset & Grout Included)" },
+      { csiCode: "09 30 13", name: "Kitchen Floor Tile — Supply & Installation (if applicable)" },
+      { csiCode: "09 64 00", name: "Hardwood Flooring — Supply & Installation (if applicable)" },
+      { csiCode: "09 65 00", name: "LVP / LVT Flooring — Supply & Installation (if applicable)" },
+      { csiCode: "09 91 23", name: "Interior Painting — Walls & Ceiling" },
+    ],
+  },
+  {
+    csiCode: "11 00 00",
+    name: "Equipment (Appliances)",
+    items: [
+      { csiCode: "11 31 13", name: "Refrigerator — Supply & Installation" },
+      { csiCode: "11 31 16", name: "Range / Oven — Supply & Installation" },
+      { csiCode: "11 31 26", name: "Range Hood — Supply & Installation" },
+      { csiCode: "11 31 19", name: "Dishwasher — Supply & Installation" },
+      { csiCode: "11 31 23", name: "Microwave / Built-In Oven — Supply & Installation" },
+    ],
+  },
+  {
+    csiCode: "12 00 00",
+    name: "Furnishings",
+    items: [
+      { csiCode: "12 36 61", name: "Quartz / Solid Surface Countertops — Supply & Installation" },
+      { csiCode: "12 36 40", name: "Natural Stone Countertops (Granite / Marble) — Supply & Installation" },
+      { csiCode: "12 36 23", name: "Plastic-Laminate Countertops — Supply & Installation (if applicable)" },
+    ],
+  },
+  {
+    csiCode: "22 00 00",
+    name: "Plumbing",
+    items: [
+      { csiCode: "22 05 00", name: "Plumbing General — Permits & Rough-In Inspection" },
+      { csiCode: "22 11 16", name: "Water Distribution Piping — Supply Lines, Shut-Offs & Ice Maker Connection" },
+      { csiCode: "22 13 16", name: "Sanitary Waste Piping — Drain & Vent Modification" },
+      { csiCode: "22 42 16", name: "Kitchen Sink & Faucet — Supply & Installation" },
+      { csiCode: "22 40 00", name: "Garbage Disposal — Supply & Installation" },
+    ],
+  },
+  {
+    csiCode: "23 00 00",
+    name: "HVAC / Mechanical",
+    items: [
+      { csiCode: "23 31 00", name: "Range Hood Ductwork — Fabrication, Routing & Exterior Exhaust Penetration" },
+    ],
+  },
+  {
+    csiCode: "26 00 00",
+    name: "Electrical",
+    items: [
+      { csiCode: "26 05 33", name: "Electrical Rough-In — Dedicated Circuits (Range, Dishwasher, Refrigerator, Disposal)" },
+      { csiCode: "26 27 26", name: "Countertop GFCI Receptacles — Supply & Install" },
+      { csiCode: "26 27 16", name: "Dimmer Switches & Lighting Controls — Supply & Install" },
+      { csiCode: "26 51 13", name: "Under-Cabinet Lighting — Supply & Install" },
+      { csiCode: "26 51 13", name: "Recessed Lighting / Pendant Fixtures — Supply & Install" },
+    ],
+  },
+];
