@@ -1,9 +1,11 @@
 /** Standard CSI MasterFormat divisions and items for a new Addition/Remodel template */
-export const STANDARD_TEMPLATE_DIVISIONS: {
+export type TemplateDivisionData = {
   csiCode: string;
   name: string;
   items: { csiCode: string; name: string }[];
-}[] = [
+};
+
+export const STANDARD_TEMPLATE_DIVISIONS: TemplateDivisionData[] = [
   {
     csiCode: "01 00 00",
     name: "General Conditions",
@@ -75,7 +77,7 @@ export const STANDARD_TEMPLATE_DIVISIONS: {
   },
   {
     csiCode: "06 00 00",
-    name: "Rough Carpentry",
+    name: "Wood, Plastics, and Composites",
     items: [
       { csiCode: "06 10 00", name: "Rough Carpentry" },
       { csiCode: "06 16 00", name: "Sheathing" },
@@ -188,6 +190,117 @@ export const STANDARD_TEMPLATE_DIVISIONS: {
       { csiCode: "32 13 13", name: "Concrete Paving" },
       { csiCode: "32 31 00", name: "Fences and Gates" },
       { csiCode: "32 92 00", name: "Turf and Grasses" },
+    ],
+  },
+];
+
+/** CSI MasterFormat divisions and items for a Bathroom Remodeling template */
+export const BATHROOM_TEMPLATE_DIVISIONS: TemplateDivisionData[] = [
+  {
+    csiCode: "01 00 00",
+    name: "General Conditions",
+    items: [
+      { csiCode: "01 11 00", name: "Summary of Work & Scope" },
+      { csiCode: "01 50 00", name: "Dumpsters, Debris Removal & Site Protection" },
+      { csiCode: "01 74 19", name: "On-Site Cleaning & Waste Management" },
+    ],
+  },
+  {
+    csiCode: "02 00 00",
+    name: "Existing Conditions",
+    items: [
+      { csiCode: "02 41 19", name: "Demo — Toilet, Wax Ring & Water Shutoff" },
+      { csiCode: "02 41 19", name: "Demo — Vanity Cabinet, Countertop & Mirror" },
+      { csiCode: "02 41 19", name: "Demo — Tub / Shower Unit Removal" },
+      { csiCode: "02 41 19", name: "Demo — Existing Floor Tile & Underlayment" },
+      { csiCode: "02 41 19", name: "Demo — Existing Wall Tile & Shower Surround" },
+      { csiCode: "02 41 19", name: "Demo — Existing Drywall & Cement Board" },
+    ],
+  },
+  {
+    csiCode: "06 00 00",
+    name: "Wood, Plastics, and Composites",
+    items: [
+      { csiCode: "06 10 53", name: "Rough Carpentry — Blocking & Backing (Grab Bars, Fixture Support)" },
+      { csiCode: "06 22 13", name: "Finish Carpentry — Base Trim, Door Casing & Window Stool" },
+      { csiCode: "06 41 16", name: "Vanity Cabinet — Supply & Installation" },
+    ],
+  },
+  {
+    csiCode: "07 00 00",
+    name: "Thermal & Moisture Protection",
+    items: [
+      { csiCode: "07 13 26", name: "Shower Waterproofing Membrane (Schluter / RedGard / Sheet Membrane)" },
+      { csiCode: "07 92 00", name: "Caulking & Joint Sealants (Tub Surround, Tile Transitions)" },
+    ],
+  },
+  {
+    csiCode: "08 00 00",
+    name: "Openings",
+    items: [
+      { csiCode: "08 14 16", name: "Interior Bathroom Door — Supply & Installation" },
+      { csiCode: "08 71 00", name: "Door Hardware — Lockset, Hinges & Door Stop" },
+    ],
+  },
+  {
+    csiCode: "09 00 00",
+    name: "Finishes",
+    items: [
+      { csiCode: "09 21 16", name: "Cement Board / Tile Backer — Wet Areas, Shower & Tub Surround" },
+      { csiCode: "09 29 00", name: "Moisture-Resistant Gypsum Board — Hang & Finish" },
+      { csiCode: "09 30 13", name: "Floor Tile — Supply & Installation (Thinset & Grout Included)" },
+      { csiCode: "09 30 13", name: "Shower Wall Tile — Supply & Installation" },
+      { csiCode: "09 30 13", name: "Tub Surround Tile — Supply & Installation" },
+      { csiCode: "09 30 33", name: "Natural Stone Tile — Supply & Installation (if applicable)" },
+      { csiCode: "09 65 00", name: "LVP / LVT Flooring — Supply & Installation (if applicable)" },
+      { csiCode: "09 91 23", name: "Interior Painting — Walls & Ceiling" },
+    ],
+  },
+  {
+    csiCode: "10 00 00",
+    name: "Specialties",
+    items: [
+      { csiCode: "10 21 13", name: "Frameless Glass Shower Door / Enclosure — Supply & Installation" },
+      { csiCode: "10 28 13", name: "Toilet Accessories — TP Holder, Towel Bar & Robe Hook" },
+      { csiCode: "10 28 19", name: "Medicine Cabinet — Recessed or Surface-Mounted" },
+      { csiCode: "10 28 16", name: "Vanity Mirror — Supply & Installation" },
+    ],
+  },
+  {
+    csiCode: "12 00 00",
+    name: "Furnishings",
+    items: [
+      { csiCode: "12 36 61", name: "Vanity Countertop — Supply & Installation" },
+    ],
+  },
+  {
+    csiCode: "22 00 00",
+    name: "Plumbing",
+    items: [
+      { csiCode: "22 05 00", name: "Plumbing General — Permits & Rough-In Inspection" },
+      { csiCode: "22 11 16", name: "Water Distribution Piping — Supply Lines, Shut-Offs & Connections" },
+      { csiCode: "22 13 16", name: "Sanitary Waste & Vent Piping — Drain Modification / New Rough-In" },
+      { csiCode: "22 41 39", name: "Bathtub / Soaking Tub — Supply & Installation" },
+      { csiCode: "22 42 13", name: "Water Closet (Toilet) — Supply & Installation" },
+      { csiCode: "22 42 16", name: "Lavatory (Sink & Faucet) — Supply & Installation" },
+      { csiCode: "22 42 39", name: "Shower Valve & Trim — Supply & Installation" },
+    ],
+  },
+  {
+    csiCode: "23 00 00",
+    name: "HVAC / Mechanical",
+    items: [
+      { csiCode: "23 34 23", name: "Bathroom Exhaust Fan — Supply & Installation" },
+    ],
+  },
+  {
+    csiCode: "26 00 00",
+    name: "Electrical",
+    items: [
+      { csiCode: "26 05 33", name: "Electrical Rough-In — Boxes, Conduit & New Circuits" },
+      { csiCode: "26 27 26", name: "GFCI Receptacles — Supply & Install" },
+      { csiCode: "26 51 13", name: "Vanity Light Fixture — Supply & Install" },
+      { csiCode: "26 51 13", name: "Recessed / Overhead Lighting — Supply & Install (if applicable)" },
     ],
   },
 ];

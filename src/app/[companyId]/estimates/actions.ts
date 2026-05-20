@@ -7,7 +7,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { requirePermission } from "@/lib/auth/permissions";
 import { writeAuditLog } from "@/lib/audit/log";
-import { STANDARD_TEMPLATE_DIVISIONS } from "@/lib/standardTemplateData";
+import { STANDARD_TEMPLATE_DIVISIONS, BATHROOM_TEMPLATE_DIVISIONS } from "@/lib/standardTemplateData";
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -68,7 +68,7 @@ export async function createTemplate(formData: FormData) {
   return { success: true, id: template.id };
 }
 
-export async function createStandardTemplate(name: string, description?: string) {
+export async function createStandardTemplate(name: string, description?: string, templateType: "standard" | "bathroom" = "standard") {
   const session = await auth();
   if (!session) throw new Error("Unauthorized");
   requirePermission(session, "estimateTemplate:create");
@@ -83,8 +83,9 @@ export async function createStandardTemplate(name: string, description?: string)
     },
   });
 
-  for (let divIdx = 0; divIdx < STANDARD_TEMPLATE_DIVISIONS.length; divIdx++) {
-    const div = STANDARD_TEMPLATE_DIVISIONS[divIdx];
+  const divisionData = templateType === "bathroom" ? BATHROOM_TEMPLATE_DIVISIONS : STANDARD_TEMPLATE_DIVISIONS;
+  for (let divIdx = 0; divIdx < divisionData.length; divIdx++) {
+    const div = divisionData[divIdx];
     const division = await prisma.estimateTemplateDivision.create({
       data: {
         templateId: template.id,

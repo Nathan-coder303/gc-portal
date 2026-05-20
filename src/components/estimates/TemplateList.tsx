@@ -169,7 +169,7 @@ export default function TemplateList({
   const [isPending, startTransition] = useTransition();
   const [templates, setTemplates] = useState(initialTemplates);
   const [showCreate, setShowCreate] = useState(false);
-  const [createMode, setCreateMode] = useState<"blank" | "standard">("blank");
+  const [createMode, setCreateMode] = useState<"blank" | "standard" | "bathroom">("blank");
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
   const [error, setError] = useState("");
@@ -193,8 +193,8 @@ export default function TemplateList({
     setError("");
     startTransition(async () => {
       try {
-        if (createMode === "standard") {
-          const result = await createStandardTemplate(name, description);
+        if (createMode === "standard" || createMode === "bathroom") {
+          const result = await createStandardTemplate(name, description, createMode);
           router.push(`/${companyId}/estimates/${result.id}`);
         } else {
           const fd = new FormData();
@@ -243,8 +243,10 @@ export default function TemplateList({
           <div className="flex gap-2">
             <button onClick={() => setCreateMode("blank")} className="px-3 py-1.5 rounded-lg text-xs font-medium" style={{ background: createMode === "blank" ? "#C9A84C" : "transparent", color: createMode === "blank" ? "#0d1117" : "#8b949e", border: "1px solid #30373f" }}>Blank</button>
             <button onClick={() => setCreateMode("standard")} className="px-3 py-1.5 rounded-lg text-xs font-medium" style={{ background: createMode === "standard" ? "#C9A84C" : "transparent", color: createMode === "standard" ? "#0d1117" : "#8b949e", border: "1px solid #30373f" }}>Standard (CSI Addition)</button>
+            <button onClick={() => setCreateMode("bathroom")} className="px-3 py-1.5 rounded-lg text-xs font-medium" style={{ background: createMode === "bathroom" ? "#C9A84C" : "transparent", color: createMode === "bathroom" ? "#0d1117" : "#8b949e", border: "1px solid #30373f" }}>Bathroom Remodel</button>
           </div>
           {createMode === "standard" && <p className="text-xs" style={{ color: "#8b949e" }}>Pre-populates 16 CSI divisions with 83 standard line items — delete what you don&apos;t need.</p>}
+          {createMode === "bathroom" && <p className="text-xs" style={{ color: "#8b949e" }}>Pre-populates 11 CSI divisions with 40 bathroom remodeling line items — delete what you don&apos;t need.</p>}
           <div>
             <label className="block text-sm font-medium mb-1" style={{ color: "#8b949e" }}>Name</label>
             <input autoFocus value={name} onChange={(e) => setName(e.target.value)} placeholder="e.g. Addition, Remodel, New Construction" className="rounded-lg px-3 py-2 text-sm" style={inputStyle} />
@@ -256,7 +258,7 @@ export default function TemplateList({
           {error && <p className="text-sm" style={{ color: "#ef4444" }}>{error}</p>}
           <div className="flex gap-2">
             <button onClick={handleCreate} disabled={isPending} className="px-4 py-2 rounded-lg text-sm font-medium" style={{ background: "#C9A84C", color: "#0d1117", opacity: isPending ? 0.5 : 1 }}>
-              {isPending ? "Creating..." : createMode === "standard" ? "Create Standard Template" : "Create Template"}
+              {isPending ? "Creating..." : createMode === "standard" ? "Create Standard Template" : createMode === "bathroom" ? "Create Bathroom Template" : "Create Template"}
             </button>
             <button onClick={() => setShowCreate(false)} className="px-4 py-2 rounded-lg text-sm font-medium" style={{ border: "1px solid #30373f", color: "#8b949e" }}>Cancel</button>
           </div>
