@@ -11,25 +11,21 @@ export async function GET(
   const session = await auth();
   if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-  // Prefer the approved (signed) estimate; fall back to most recently updated non-archived
-  const approvedTemplate = await prisma.estimateTemplate.findFirst({
-    where: { companyId: params.companyId, clientId: params.clientId, archivedAt: null, signedAt: { not: null } },
-    orderBy: { signedAt: "desc" },
-    select: { id: true },
-  });
+  // Only look at actual client estimates (not master templates)
+  // Prefer signed/approved, then most recently sent, then most recently updated
+  const baseWhere = { companyId: params.companyId, clientId: params.clientId, archivedAt: null, type: "CLIENT_ESTIMATE" };
 
-  const latestTemplate = approvedTemplate ?? await prisma.estimateTemplate.findFirst({
-    where: { companyId: params.companyId, clientId: params.clientId, archivedAt: null },
-    orderBy: { updatedAt: "desc" },
-    select: { id: true },
-  });
+  const chosenTemplate =
+    await prisma.estimateTemplate.findFirst({ where: { ...baseWhere, signedAt: { not: null } }, orderBy: { signedAt: "desc" }, select: { id: true } }) ??
+    await prisma.estimateTemplate.findFirst({ where: { ...baseWhere, lastSentAt: { not: null } }, orderBy: { lastSentAt: "desc" }, select: { id: true } }) ??
+    await prisma.estimateTemplate.findFirst({ where: baseWhere, orderBy: { updatedAt: "desc" }, select: { id: true } });
 
-  if (!latestTemplate) return NextResponse.json([]);
+  if (!chosenTemplate) return NextResponse.json([]);
 
   const divisions = await prisma.estimateTemplateDivision.findMany({
     where: {
       archivedAt: null,
-      templateId: latestTemplate.id,
+      templateId: chosenTemplate.id,
     },
     select: {
       id: true,
