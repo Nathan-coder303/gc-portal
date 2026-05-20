@@ -565,7 +565,7 @@ export default function PayAppEditor({
                 </thead>
                 <tbody>
                   {lines.map((line, idx) => {
-                    const { totalComplete, pct, balance } = rowComputed(line);
+                    const { balance } = rowComputed(line);
                     const isCO = line.itemNumber.startsWith("CO");
                     const rowBg = idx % 2 === 0 ? BG : `${CARD}88`;
                     const cellBorder = `1px solid ${BORDER}`;
@@ -638,7 +638,7 @@ export default function PayAppEditor({
                       ${$$(lines.reduce((s, l) => s + (l.scheduledValue - (l.fromPrevious + l.thisInvoice)), 0) + gcFeeBalance)}
                     </td>
                     <td style={{ padding: "6px 8px", textAlign: "right", fontSize: 11, color: TEXT, borderTop: `2px solid ${BORDER}` }}>
-                      ${$$(lines.reduce((s, l) => s + l.retainageThis, 0))}
+                      ${$$(retainageThisInv)}
                     </td>
                     <td style={{ padding: "6px 8px", textAlign: "right", fontSize: 11, color: TEXT, borderTop: `2px solid ${BORDER}` }}>
                       ${$$(lines.reduce((s, l) => s + l.retainageTotal, 0))}
