@@ -742,7 +742,7 @@ export default function ClientInvoicesTab({
             {previewOpen && (
               <div className="mb-4 rounded-lg overflow-hidden" style={{ border: "1px solid #30373f", height: 400 }}>
                 <iframe
-                  src={`/api/${companyId}/clients/${clientId}/invoices/${sendInvoice.id}/pdf?preview=1`}
+                  src={`/api/${companyId}/clients/${clientId}/invoices/${sendInvoice.id}/preview`}
                   className="w-full h-full bg-white"
                   style={{ border: "none" }}
                 />
@@ -876,7 +876,7 @@ export default function ClientInvoicesTab({
                     {/* Actions */}
                     <div className="flex gap-2 flex-wrap mt-0.5">
                       <a
-                        href={`/api/${companyId}/clients/${clientId}/invoices/${inv.id}/pdf?preview=1`}
+                        href={`/api/${companyId}/clients/${clientId}/invoices/${inv.id}/preview`}
                         target="_blank" rel="noopener noreferrer"
                         className="text-[10px] px-2 py-1 rounded font-semibold"
                         style={{ background: "#3b82f622", color: "#3b82f6", border: "1px solid #3b82f644" }}>

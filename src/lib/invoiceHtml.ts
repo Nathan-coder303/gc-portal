@@ -2,7 +2,18 @@ function fmt(n: number) {
   return n.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 }
 
+const fmtDate = (s: string | Date | null | undefined) => {
+  if (!s) return "—";
+  return new Date(s).toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" });
+};
+
 type PaymentEntry = { amount: number; method: string; paidDate: Date | string; notes?: string | null };
+
+export type InvoiceDivisionLine = {
+  itemNumber: string;
+  description: string;
+  scheduledValue: number;
+};
 
 export function buildInvoiceHtml(opts: {
   invoiceNumber: string;
@@ -12,141 +23,192 @@ export function buildInvoiceHtml(opts: {
   amount: number;
   estimateName: string;
   clientName: string;
+  clientAddress?: string | null;
+  fromName?: string | null;
+  fromAddress?: string | null;
+  invoiceDate?: string | Date | null;
   dueDate: Date | null;
   notes: string | null;
   customBody?: string | null;
   payments?: PaymentEntry[];
   printMode?: boolean;
+  divisions?: InvoiceDivisionLine[];
+  gcFeeScheduledValue?: number;
 }) {
-  const due = opts.dueDate
-    ? new Date(opts.dueDate).toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" })
-    : null;
-
+  const due = opts.dueDate ? fmtDate(opts.dueDate) : null;
   const payments = opts.payments ?? [];
   const totalPaid = payments.reduce((s, p) => s + p.amount, 0);
   const balance = opts.amount - totalPaid;
 
-  const intro = opts.customBody
-    ? opts.customBody.replace(/\n/g, "<br>")
-    : `Dear ${opts.clientName},<br><br>Please find below your invoice for the <strong>${opts.phase}</strong> phase of your project with MIBH Construction. We appreciate your business and look forward to completing this project to your satisfaction.`;
+  const fromName = opts.fromName ?? "MIBH Construction";
+  const fromAddress = opts.fromAddress ?? "2950 N 28 Terr, Hollywood, FL 33020";
+
+  const divisions = opts.divisions ?? [];
+  const gcFeeScheduledValue = opts.gcFeeScheduledValue ?? 0;
+  const pct = Number(opts.pct);
+
+  const totalScheduled = divisions.reduce((s, l) => s + l.scheduledValue, 0);
+  const grandScheduled = totalScheduled + gcFeeScheduledValue;
+  const gcFeeThisInvoice = gcFeeScheduledValue * pct / 100;
+  const gcFeeBalance = gcFeeScheduledValue - gcFeeThisInvoice;
+
+  const hasTable = divisions.length > 0;
 
   return `<!DOCTYPE html>
-<html>
-<head><meta charset="utf-8"><title>Invoice #${opts.invoiceNumber}</title>
-${opts.printMode ? `<style>@media print { #pdf-toolbar { display: none !important; } }</style>` : ""}
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>Invoice #${opts.invoiceNumber}</title>
 <style>
-  body { font-family: Arial, sans-serif; color: #111; max-width: 660px; margin: 0 auto; padding: 40px 20px; }
-  .header { background: #0d1117; color: #e6edf3; padding: 28px 32px; border-radius: 10px 10px 0 0; }
-  .header table { width: 100%; border-collapse: collapse; }
-  .header td { vertical-align: top; padding: 0; }
-  .header h1 { margin: 0 0 4px; font-size: 22px; color: #C9A84C; }
-  .header p { margin: 0; font-size: 13px; color: #8b949e; }
-  .header .logo { font-size: 11px; text-align: right; color: #8b949e; line-height: 1.6; }
-  .body { border: 1px solid #e5e7eb; border-top: none; padding: 28px 32px; border-radius: 0 0 10px 10px; }
-  .amount-box { background: #f9fafb; border: 2px solid #C9A84C; border-radius: 8px; padding: 20px 24px; margin: 20px 0; text-align: center; }
-  .amount-box .label { font-size: 11px; text-transform: uppercase; letter-spacing: .08em; color: #6b7280; margin-bottom: 6px; }
-  .amount-box .amount { font-size: 36px; font-weight: 700; font-family: monospace; color: #111; }
-  .amount-box .pct { font-size: 13px; color: #6b7280; margin-top: 4px; }
-  .balance-box { background: #f0fdf4; border: 2px solid #16a34a; border-radius: 8px; padding: 14px 20px; margin: 12px 0; display: flex; justify-content: space-between; align-items: center; }
-  .balance-box .bl { font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: .06em; color: #15803d; }
-  .balance-box .bv { font-size: 24px; font-weight: 700; font-family: monospace; color: #15803d; }
-  .payment-history { margin: 16px 0; }
-  .payment-history .ph-title { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .08em; color: #6b7280; margin-bottom: 8px; }
-  .ph-row { display: flex; justify-content: space-between; align-items: center; padding: 6px 10px; border-radius: 6px; background: #f9fafb; margin-bottom: 4px; font-size: 13px; }
-  .ph-row .ph-meta { color: #6b7280; font-size: 11px; }
-  .zelle-box { background: #fff8ed; border: 1px solid #f59e0b44; border-radius: 8px; padding: 16px 20px; margin: 20px 0; }
-  .zelle-box .zt { font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: .06em; color: #92400e; margin-bottom: 8px; }
-  .zelle-row { display: flex; align-items: center; gap: 8px; font-size: 13px; margin-bottom: 4px; }
-  .zelle-row .zk { color: #78716c; width: 80px; font-size: 12px; }
-  .zelle-row .zv { font-weight: 700; color: #111; }
-  table { width: 100%; border-collapse: collapse; margin: 16px 0; font-size: 13px; }
-  td { padding: 8px 0; border-bottom: 1px solid #f3f4f6; }
-  td:first-child { color: #6b7280; width: 140px; }
-  td:last-child { font-weight: 600; }
-  .sig { margin-top: 28px; padding-top: 20px; border-top: 1px solid #f3f4f6; font-size: 13px; line-height: 1.7; }
-  .sig strong { font-size: 14px; }
-  .footer { font-size: 11px; color: #9ca3af; margin-top: 20px; border-top: 1px solid #f3f4f6; padding-top: 12px; text-align: center; }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: Arial, sans-serif; font-size: 11px; color: #111; background: #fff; padding: 24px; }
+  .header-bar { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 16px; border-bottom: 2px solid #C9A84C; padding-bottom: 10px; }
+  .header-bar .title { font-size: 18px; font-weight: 800; color: #C9A84C; }
+  .grid4 { display: grid; grid-template-columns: 1fr 1fr 1fr 1fr; border: 1px solid #ccc; margin-bottom: 16px; }
+  .grid4 > div { padding: 8px 10px; border-right: 1px solid #ccc; }
+  .grid4 > div:last-child { border-right: none; }
+  .label { font-size: 8px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; color: #888; margin-bottom: 2px; }
+  .value { font-size: 11px; font-weight: 600; color: #111; }
+  table { width: 100%; border-collapse: collapse; font-size: 10px; margin-bottom: 16px; }
+  th { background: #f5f5f5; padding: 5px 6px; text-align: right; font-size: 9px; font-weight: 700; border: 1px solid #ddd; text-transform: uppercase; }
+  th:first-child, th:nth-child(2) { text-align: left; }
+  td { padding: 4px 6px; border: 1px solid #eee; text-align: right; vertical-align: middle; }
+  td:first-child, td:nth-child(2) { text-align: left; }
+  tr:nth-child(even) { background: #fafafa; }
+  tfoot td { font-weight: 700; background: #f0f0f0; border-top: 2px solid #ccc; }
+  .summary-table td:first-child { color: #555; padding-left: 10px; }
+  .summary-table tr.bold td { font-weight: 700; color: #111; }
+  .summary-table tr.highlight td { background: #FFF8E7; font-weight: 700; }
+  .gold { color: #C9A84C; }
+  .section-title { font-size: 11px; font-weight: 700; border-bottom: 1px solid #ddd; padding-bottom: 4px; margin-bottom: 8px; }
+  .box { border: 1px solid #ddd; border-radius: 4px; padding: 12px; margin-bottom: 16px; }
+  .pay-instructions { background: #fff8ed; border: 1px solid #f59e0b44; border-radius: 6px; padding: 12px 14px; margin-bottom: 14px; font-size: 11px; }
+  .pay-instructions .pt { font-size: 9px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; color: #92400e; margin-bottom: 6px; }
+  .pay-row { display: flex; gap: 8px; margin-bottom: 3px; }
+  .pay-row .pk { color: #78716c; width: 70px; font-size: 10px; }
+  .pay-row .pv { font-weight: 700; }
+  .ph-row { display: flex; justify-content: space-between; align-items: center; padding: 4px 6px; background: #f9fafb; border-radius: 4px; margin-bottom: 3px; font-size: 11px; }
+  @media print { body { padding: 12px; } }
 </style>
 </head>
 <body>
-  ${opts.printMode ? `<div id="pdf-toolbar" style="position:fixed;top:0;left:0;right:0;z-index:9999;background:#1a1a1a;padding:10px 20px;display:flex;align-items:center;justify-content:space-between;font-family:Arial,sans-serif;box-shadow:0 2px 8px rgba(0,0,0,0.4)">
-    <span style="color:#e6edf3;font-size:13px;font-weight:600">Invoice #${opts.invoiceNumber}</span>
-    <div style="display:flex;gap:10px;align-items:center">
-      <span style="color:#8b949e;font-size:12px">Save as PDF → File menu or:</span>
-      <button onclick="window.print()" style="background:#C9A84C;color:#0d1117;border:none;padding:8px 20px;border-radius:6px;font-size:13px;font-weight:700;cursor:pointer">⬇ Save as PDF</button>
-      <button onclick="window.close()" style="background:transparent;color:#8b949e;border:1px solid #30373f;padding:8px 14px;border-radius:6px;font-size:13px;cursor:pointer">✕ Close</button>
+
+<!-- Header -->
+<div class="header-bar">
+  <div>
+    <div class="title">Invoice #${opts.invoiceNumber}</div>
+    <div style="font-size:11px;color:#555;margin-top:2px;">
+      ${opts.estimateName}
+      ${opts.phase ? ` &nbsp;·&nbsp; ${opts.phase}` : ""}
     </div>
   </div>
-  <div style="height:52px"></div>` : ""}
-  <div class="header">
-    <table width="100%" cellpadding="0" cellspacing="0"><tr>
-      <td width="60%" valign="top">
-        <h1>Invoice #${opts.invoiceNumber}</h1>
-        <p>${opts.estimateName}</p>
-      </td>
-      <td width="40%" valign="top" align="right" class="logo">
-        MIBH Construction<br>
-        CGC 1527069 | CCC 1336817<br>
-        Hollywood, FL
-      </td>
-    </tr></table>
+  <div style="text-align:right;font-size:10px;color:#555;">
+    ${opts.invoiceDate ? `<div>Invoice Date: <strong>${fmtDate(opts.invoiceDate)}</strong></div>` : ""}
+    ${due ? `<div>Due: <strong>${due}</strong></div>` : ""}
+    <div style="margin-top:4px;font-size:11px;color:#888;">CGC 1527069 · CCC 1336817</div>
   </div>
-  <div class="body">
-    <p style="font-size:14px;line-height:1.6">${intro}</p>
+</div>
 
-    <div class="amount-box">
-      <div class="label">Invoice Amount</div>
-      <div class="amount">$${fmt(opts.amount)}</div>
-      <div class="pct">${opts.pct}% of project total</div>
-    </div>
-
-    ${payments.length > 0 ? `
-    <div class="payment-history">
-      <div class="ph-title">Payments Received</div>
-      ${payments.map(p => {
-        const d = new Date(p.paidDate).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
-        return `<div class="ph-row"><div><span style="font-weight:600;color:#111">$${fmt(p.amount)}</span> <span class="ph-meta">via ${p.method}${p.notes ? ` · ${p.notes}` : ""}</span></div><span class="ph-meta">${d}</span></div>`;
-      }).join("")}
-    </div>
-    <div class="balance-box">
-      <span class="bl">${balance <= 0 ? "Paid in Full" : "Balance Due"}</span>
-      <span class="bv" style="${balance <= 0 ? "" : "color:#dc2626"}">${balance <= 0 ? "✓ $0.00" : `$${fmt(balance)}`}</span>
-    </div>
-    ` : ""}
-
-    <table>
-      <tr><td>Invoice #</td><td>${opts.invoiceNumber}</td></tr>
-      <tr><td>Phase</td><td>${opts.phase}</td></tr>
-      ${opts.trigger ? `<tr><td>Milestone</td><td>${opts.trigger}</td></tr>` : ""}
-      ${due ? `<tr><td>Due Date</td><td>${due}</td></tr>` : ""}
-      ${payments.length > 0 ? `<tr><td>Total Paid</td><td style="color:#16a34a;font-weight:700">$${fmt(totalPaid)}</td></tr>` : ""}
-      ${payments.length > 0 && balance > 0 ? `<tr><td>Balance Due</td><td style="color:#dc2626;font-weight:700">$${fmt(balance)}</td></tr>` : ""}
-    </table>
-
-    ${opts.notes ? `<p style="font-size:13px;color:#374151;background:#f9fafb;padding:10px 14px;border-radius:6px"><strong>Notes:</strong> ${opts.notes}</p>` : ""}
-
-    <div class="zelle-box">
-      <div class="zt">Payment Instructions</div>
-      <div class="zelle-row"><span class="zk">Zelle</span><span class="zv">mikebaruh@gmail.com</span></div>
-      <div class="zelle-row"><span class="zk">Phone</span><span class="zv">305-746-7307</span></div>
-      <div class="zelle-row"><span class="zk">Check</span><span class="zv">Payable to MIBH Construction</span></div>
-      <p style="font-size:11px;color:#92400e;margin:8px 0 0">Please include Invoice #${opts.invoiceNumber} in the payment memo.</p>
-    </div>
-
-    <div class="sig">
-      Best regards,<br>
-      <strong>Mike Baruh</strong><br>
-      Founder/CEO · MIBH Construction<br>
-      Certified &amp; Licensed General Contractor CGC 1527069<br>
-      Certified &amp; Licensed Roofer CCC 1336817<br>
-      📱 305.746.7307 &nbsp;·&nbsp;
-      📧 <a href="mailto:mike@mibhconstruction.com" style="color:#C9A84C">mike@mibhconstruction.com</a><br>
-      📍 2950 N 28 Terr, Hollywood, FL 33020 &nbsp;·&nbsp;
-      🌐 <a href="https://www.mibhconstruction.com" style="color:#C9A84C">mibhconstruction.com</a>
-    </div>
-
-    <div class="footer">MIBH Construction · CGC 1527069 | CCC 1336817 · Licensed &amp; Insured · State of Florida</div>
+<!-- Parties + Amount Due -->
+<div class="grid4" style="margin-bottom:16px;">
+  <div>
+    <div class="label">Bill To</div>
+    <div class="value">${opts.clientName}</div>
+    ${opts.clientAddress ? `<div style="font-size:10px;color:#555;white-space:pre-line;margin-top:2px;">${opts.clientAddress}</div>` : ""}
   </div>
+  <div>
+    <div class="label">From</div>
+    <div class="value">${fromName}</div>
+    <div style="font-size:10px;color:#555;white-space:pre-line;margin-top:2px;">${fromAddress}</div>
+  </div>
+  <div>
+    <div class="label">Phase</div>
+    <div class="value">${opts.phase}</div>
+    ${opts.trigger ? `<div style="font-size:10px;color:#555;margin-top:2px;">${opts.trigger}</div>` : ""}
+    ${hasTable ? `<div style="font-size:10px;color:#888;margin-top:4px;">${pct}% of scheduled values</div>` : ""}
+  </div>
+  <div>
+    <div class="label">${balance <= 0 ? "Paid in Full" : "Amount Due"}</div>
+    <div style="font-size:20px;font-weight:800;color:${balance <= 0 ? "#16a34a" : "#C9A84C"};">$${fmt(balance <= 0 ? 0 : balance)}</div>
+    <div style="font-size:10px;color:#888;margin-top:2px;">Invoice Total: $${fmt(opts.amount)}</div>
+    ${totalPaid > 0 ? `<div style="font-size:10px;color:#16a34a;margin-top:1px;">Paid: $${fmt(totalPaid)}</div>` : ""}
+  </div>
+</div>
+
+${hasTable ? `
+<!-- Continuation Sheet -->
+<div class="section-title" style="margin-bottom:8px;">Schedule of Values — This Invoice</div>
+<table>
+  <thead>
+    <tr>
+      <th style="text-align:left;width:70px;">Item #</th>
+      <th style="text-align:left;">Description</th>
+      <th>Scheduled Value</th>
+      <th>This Invoice (${pct}%)</th>
+      <th>Balance to Finish</th>
+    </tr>
+  </thead>
+  <tbody>
+    ${divisions.map(l => {
+      const thisInv = Math.round(l.scheduledValue * pct / 100 * 100) / 100;
+      const bal = l.scheduledValue - thisInv;
+      return `<tr>
+        <td>${l.itemNumber}</td>
+        <td>${l.description}</td>
+        <td>$${fmt(l.scheduledValue)}</td>
+        <td style="font-weight:600;color:#C9A84C;">$${fmt(thisInv)}</td>
+        <td>$${fmt(bal)}</td>
+      </tr>`;
+    }).join("")}
+    ${gcFeeScheduledValue > 0 ? `<tr style="color:#888;font-style:italic;">
+      <td>GC Fee</td>
+      <td>GC Fee (auto)</td>
+      <td>$${fmt(gcFeeScheduledValue)}</td>
+      <td style="font-weight:700;color:#C9A84C;">$${fmt(gcFeeThisInvoice)}</td>
+      <td>$${fmt(gcFeeBalance)}</td>
+    </tr>` : ""}
+  </tbody>
+  <tfoot>
+    <tr>
+      <td colspan="2">TOTALS</td>
+      <td>$${fmt(grandScheduled)}</td>
+      <td style="color:#C9A84C;">$${fmt(opts.amount)}</td>
+      <td>$${fmt(grandScheduled - opts.amount)}</td>
+    </tr>
+  </tfoot>
+</table>
+` : ""}
+
+${payments.length > 0 ? `
+<div class="section-title">Payment History</div>
+<div style="margin-bottom:16px;">
+  ${payments.map(p => {
+    const d = fmtDate(p.paidDate);
+    return `<div class="ph-row"><div><strong>$${fmt(p.amount)}</strong> <span style="color:#6b7280;font-size:10px;">via ${p.method}${p.notes ? ` · ${p.notes}` : ""}</span></div><span style="font-size:10px;color:#6b7280;">${d}</span></div>`;
+  }).join("")}
+  <div style="display:flex;justify-content:space-between;padding:6px 8px;border-radius:4px;background:${balance <= 0 ? "#f0fdf4" : "#fef2f2"};margin-top:4px;">
+    <span style="font-weight:700;font-size:11px;color:${balance <= 0 ? "#16a34a" : "#dc2626"};">${balance <= 0 ? "✓ Paid in Full" : "Balance Due"}</span>
+    <span style="font-weight:700;font-size:13px;color:${balance <= 0 ? "#16a34a" : "#dc2626"};">${balance <= 0 ? "$0.00" : `$${fmt(balance)}`}</span>
+  </div>
+</div>
+` : ""}
+
+${opts.notes ? `<div style="font-size:11px;background:#f9fafb;padding:8px 10px;border-radius:4px;margin-bottom:14px;"><strong>Notes:</strong> ${opts.notes}</div>` : ""}
+
+<!-- Payment Instructions -->
+<div class="pay-instructions">
+  <div class="pt">Payment Instructions</div>
+  <div class="pay-row"><span class="pk">Zelle</span><span class="pv">mikebaruh@gmail.com</span></div>
+  <div class="pay-row"><span class="pk">Phone</span><span class="pv">305-746-7307</span></div>
+  <div class="pay-row"><span class="pk">Check</span><span class="pv">Payable to MIBH Construction</span></div>
+  <div style="font-size:10px;color:#92400e;margin-top:6px;">Please include Invoice #${opts.invoiceNumber} in the payment memo.</div>
+</div>
+
+<div style="font-size:10px;color:#9ca3af;border-top:1px solid #f3f4f6;padding-top:10px;text-align:center;">
+  MIBH Construction · CGC 1527069 | CCC 1336817 · Licensed &amp; Insured · State of Florida
+</div>
+
 </body>
 </html>`;
 }
