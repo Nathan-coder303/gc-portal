@@ -172,6 +172,17 @@ ${hasTable ? `
       const thisInv = l.thisInvoice !== undefined ? l.thisInvoice : Math.round(l.scheduledValue * pct / 100 * 100) / 100;
       const linePct = l.pctThisInvoice !== undefined ? l.pctThisInvoice : pct;
       const bal = l.scheduledValue - prevAmt - thisInv;
+      if (l.itemNumber === "GC") {
+        return `<tr style="background:#e8e8e8;">
+          <td style="font-weight:700;font-size:9px;text-transform:uppercase;letter-spacing:0.5px;color:#555;">${l.itemNumber}</td>
+          <td style="font-weight:700;font-size:9px;text-transform:uppercase;letter-spacing:0.5px;color:#555;">${l.description}</td>
+          <td>$${fmt(l.scheduledValue)}</td>
+          <td>${prevAmt > 0 ? `$${fmt(prevAmt)}` : "—"}</td>
+          <td style="color:#C9A84C;font-weight:600;">${linePct}%</td>
+          <td style="font-weight:600;color:#C9A84C;">$${fmt(thisInv)}</td>
+          <td>$${fmt(bal)}</td>
+        </tr>`;
+      }
       return `<tr>
         <td>${l.itemNumber}</td>
         <td>${l.description}</td>
@@ -182,24 +193,24 @@ ${hasTable ? `
         <td>$${fmt(bal)}</td>
       </tr>`;
     }).join("")}
-    ${gcFeeScheduledValue > 0 ? `<tr style="color:#888;font-style:italic;">
-      <td>GC</td>
-      <td>GC Fee (auto)</td>
+    ${gcFeeScheduledValue > 0 ? `<tr style="background:#e8e8e8;">
+      <td style="font-weight:700;font-size:9px;text-transform:uppercase;letter-spacing:0.5px;color:#555;">GC</td>
+      <td style="font-weight:700;font-size:9px;text-transform:uppercase;letter-spacing:0.5px;color:#555;">GC Fee</td>
       <td>$${fmt(gcFeeScheduledValue)}</td>
       <td>—</td>
-      <td style="color:#C9A84C;">${(avgPct * 100).toFixed(1)}%</td>
+      <td style="color:#C9A84C;font-weight:600;">${(avgPct * 100).toFixed(1)}%</td>
       <td style="font-weight:700;color:#C9A84C;">$${fmt(gcFeeThisInvoice)}</td>
       <td>$${fmt(gcFeeBalance)}</td>
     </tr>` : ""}
   </tbody>
   <tfoot>
     <tr>
-      <td colspan="2">TOTALS</td>
-      <td>$${fmt(grandScheduled)}</td>
-      <td>—</td>
-      <td>—</td>
-      <td style="color:#C9A84C;">$${fmt(opts.amount)}</td>
-      <td>$${fmt(grandScheduled - opts.amount)}</td>
+      <td colspan="2" style="text-align:left;">TOTALS</td>
+      <td style="text-align:right;">$${fmt(grandScheduled)}</td>
+      <td style="text-align:right;">—</td>
+      <td style="text-align:right;">—</td>
+      <td style="color:#C9A84C;text-align:right;">$${fmt(opts.amount)}</td>
+      <td style="text-align:right;">$${fmt(grandScheduled - opts.amount)}</td>
     </tr>
   </tfoot>
 </table>

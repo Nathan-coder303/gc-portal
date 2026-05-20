@@ -170,7 +170,7 @@ export async function buildInvoiceLines(
         lines.push({
           estimateItemId: item.id,
           sortOrder: globalSort++,
-          itemNumber: `${divCode}.${String(itemIdx + 1).padStart(2, "0")}`,
+          itemNumber: `${divCode}.${String(itemIdx + 1).padStart(2, "0")}.00`,
           description: item.groupName ? `${div.name} — ${item.name}` : item.name,
           scheduledValue: price,
           fromPrevious,
