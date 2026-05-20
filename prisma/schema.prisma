@@ -1183,6 +1183,7 @@ model PayApp {
   coDeductionsPrev     Decimal      @default(0) @db.Decimal(15, 2)
   coAdditionsThis      Decimal      @default(0) @db.Decimal(15, 2)
   coDeductionsThis     Decimal      @default(0) @db.Decimal(15, 2)
+  gcFeeScheduledValue  Decimal      @default(0) @db.Decimal(15, 2)
   distributeOwner      Boolean      @default(true)
   distributeArchitect  Boolean      @default(false)
   distributeContractor Boolean      @default(false)

@@ -41,19 +41,14 @@ type Header = {
   toAddress: string;
   originalContractSum: number;
   lessPreviousInvoices: number;
-  depositPriorBalance: number;
-  depositReductionThis: number;
   coAdditionsPrev: number;
   coDeductionsPrev: number;
   coAdditionsThis: number;
   coDeductionsThis: number;
+  gcFeeScheduledValue: number;
   distributeOwner: boolean;
   distributeArchitect: boolean;
   distributeContractor: boolean;
-  certifiedBy: string;
-  certState: string;
-  certCounty: string;
-  notaryName: string;
 };
 
 const EMPTY_HEADER: Header = {
@@ -62,10 +57,9 @@ const EMPTY_HEADER: Header = {
   fromName: "MIBH Construction", fromContact: "Mike Baruh", fromAddress: "",
   toName: "", toContact: "", toAddress: "",
   originalContractSum: 0, lessPreviousInvoices: 0,
-  depositPriorBalance: 0, depositReductionThis: 0,
   coAdditionsPrev: 0, coDeductionsPrev: 0, coAdditionsThis: 0, coDeductionsThis: 0,
+  gcFeeScheduledValue: 0,
   distributeOwner: true, distributeArchitect: false, distributeContractor: false,
-  certifiedBy: "", certState: "Florida", certCounty: "", notaryName: "",
 };
 
 // ─── Currency input ───────────────────────────────────────────────────────────
@@ -238,19 +232,14 @@ export default function PayAppEditor({
           toAddress: data.toAddress ?? "",
           originalContractSum: data.originalContractSum ?? 0,
           lessPreviousInvoices: data.lessPreviousInvoices ?? 0,
-          depositPriorBalance: data.depositPriorBalance ?? 0,
-          depositReductionThis: data.depositReductionThis ?? 0,
           coAdditionsPrev: data.coAdditionsPrev ?? 0,
           coDeductionsPrev: data.coDeductionsPrev ?? 0,
           coAdditionsThis: data.coAdditionsThis ?? 0,
           coDeductionsThis: data.coDeductionsThis ?? 0,
+          gcFeeScheduledValue: data.gcFeeScheduledValue ?? 0,
           distributeOwner: data.distributeOwner ?? true,
           distributeArchitect: data.distributeArchitect ?? false,
           distributeContractor: data.distributeContractor ?? false,
-          certifiedBy: data.certifiedBy ?? "",
-          certState: data.certState ?? "Florida",
-          certCounty: data.certCounty ?? "",
-          notaryName: data.notaryName ?? "",
         });
         setLines(data.lines ?? []);
         setSendSubject(`Pay App #${data.payAppNumber}${data.invoiceNumber ? ` - Invoice #${data.invoiceNumber}` : ""} - ${data.fromName ?? "MIBH Construction"}`);
@@ -311,18 +300,26 @@ export default function PayAppEditor({
   }
 
   // ── Computed summary values ────────────────────────────────────────────────
+  const totalScheduled = lines.reduce((s, l) => s + l.scheduledValue, 0);
+  const totalFromPrevious = lines.reduce((s, l) => s + l.fromPrevious, 0);
   const totalThisInvoice = lines.reduce((s, l) => s + l.thisInvoice, 0);
-  const totalCompleted = lines.reduce((s, l) => s + l.fromPrevious + l.thisInvoice, 0);
+  const totalCompleted = totalFromPrevious + totalThisInvoice;
   const retainageAllWork = lines.reduce((s, l) => s + l.retainageTotal, 0);
   const retainageThisInv = lines.reduce((s, l) => s + l.retainageThis, 0);
   const coAdditionsTotal = header.coAdditionsPrev + header.coAdditionsThis;
   const coDeductionsTotal = header.coDeductionsPrev + header.coDeductionsThis;
   const netChanges = coAdditionsTotal - coDeductionsTotal;
   const contractSumToDate = header.originalContractSum + netChanges;
-  const totalEarnedLessRetainage = totalCompleted - retainageAllWork;
-  const remainingDeposit = header.depositPriorBalance - header.depositReductionThis;
+  // GC fee: auto-calculates proportionally to % invoiced per pay period
+  const pctPrevious = totalScheduled > 0 ? totalFromPrevious / totalScheduled : 0;
+  const pctThisInv = totalScheduled > 0 ? totalThisInvoice / totalScheduled : 0;
+  const gcFeePrevious = header.gcFeeScheduledValue * pctPrevious;
+  const gcFeeThisInvoice = header.gcFeeScheduledValue * pctThisInv;
+  const gcFeeBalance = header.gcFeeScheduledValue - gcFeePrevious - gcFeeThisInvoice;
+  const grandTotalCompleted = totalCompleted + gcFeePrevious + gcFeeThisInvoice;
+  const totalEarnedLessRetainage = grandTotalCompleted - retainageAllWork;
   const currentPaymentDue = totalEarnedLessRetainage - header.lessPreviousInvoices;
-  const balanceToFinish = contractSumToDate - totalEarnedLessRetainage;
+  const balanceToFinish = (contractSumToDate + header.gcFeeScheduledValue) - totalEarnedLessRetainage;
 
   // ── Input style helpers ────────────────────────────────────────────────────
   const fieldStyle: React.CSSProperties = {
@@ -450,107 +447,35 @@ export default function PayAppEditor({
               </div>
             </div>
 
-            {/* Middle: Financial summary + Certification */}
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
-
-              {/* Left: Financial summary */}
-              <div style={{ background: CARD, border: `1px solid ${BORDER}`, borderRadius: 8, overflow: "hidden" }}>
-                <div style={{ padding: "8px 12px", borderBottom: `1px solid ${BORDER}`, fontSize: 11, color: MUTED }}>
-                  Application is made for Payment as shown below. Continuation Sheet is attached.
-                </div>
-                <div style={{ padding: "8px 12px", display: "flex", gap: 8, borderBottom: `1px solid ${BORDER}`, alignItems: "center" }}>
-                  <span style={{ fontSize: 11, color: MUTED }}>Period Start/End:</span>
-                  <input type="date" value={header.periodStart} onChange={e => setH("periodStart", e.target.value)} style={{ ...fieldStyle, width: 120, fontSize: 11 }} />
-                  <span style={{ color: MUTED }}>—</span>
-                  <input type="date" value={header.periodEnd} onChange={e => setH("periodEnd", e.target.value)} style={{ ...fieldStyle, width: 120, fontSize: 11 }} />
-                </div>
-                <table style={{ width: "100%", borderCollapse: "collapse" }}>
-                  <tbody>
-                    {summaryRow("Invoice Amount Total Before Retainage", `$${$$(totalThisInvoice)}`)}
-                    {summaryRow("1.  Original Contract Sum", (
-                      <CurrencyField value={header.originalContractSum} onChange={v => setH("originalContractSum", v)} />
-                    ))}
-                    {summaryRow("2.  Net Changes by Change Orders", `$${$$(netChanges)}`)}
-                    {summaryRow("3.  Contract Sum To Date (Line 1 +/- 2)", `$${$$(contractSumToDate)}`)}
-                    {summaryRow("4.  Total Completed", `$${$$(totalCompleted)}`)}
-                    {summaryRow("5.  Total Retainage", "")}
-                    {summaryRow("    a. Retainage of ALL Completed Work", `$${$$(retainageAllWork)}`)}
-                    {summaryRow("    b. Total Retainage This Invoice", `$${$$(retainageThisInv)}`)}
-                    {summaryRow("6.  Total Earned Less Retainage", `$${$$(totalEarnedLessRetainage)}`)}
-                    {summaryRow("7.  Less Previous Invoices for Payment", (
-                      <CurrencyField value={header.lessPreviousInvoices} onChange={v => setH("lessPreviousInvoices", v)} />
-                    ))}
-                    {summaryRow("    a. Contract Deposit - Prior Balance", (
-                      <CurrencyField value={header.depositPriorBalance} onChange={v => setH("depositPriorBalance", v)} />
-                    ))}
-                    {summaryRow("    b. Deposit - Reduction this Invoice", (
-                      <CurrencyField value={header.depositReductionThis} onChange={v => setH("depositReductionThis", v)} />
-                    ))}
-                    {summaryRow("    c. Remaining Deposit Balance", `$${$$(remainingDeposit)}`)}
-                    {summaryRow("8.  Current Payment Due", <strong style={{ color: GOLD }}>${$$(currentPaymentDue)}</strong>, true)}
-                    {summaryRow("9.  Balance to Finish, Including Retainage", `$${$$(balanceToFinish)}`)}
-                  </tbody>
-                </table>
+            {/* Financial summary — full width, no signatures */}
+            <div style={{ background: CARD, border: `1px solid ${BORDER}`, borderRadius: 8, overflow: "hidden" }}>
+              <div style={{ padding: "8px 12px", display: "flex", gap: 8, borderBottom: `1px solid ${BORDER}`, alignItems: "center" }}>
+                <span style={{ fontSize: 11, color: MUTED }}>Period Start/End:</span>
+                <input type="date" value={header.periodStart} onChange={e => setH("periodStart", e.target.value)} style={{ ...fieldStyle, width: 120, fontSize: 11 }} />
+                <span style={{ color: MUTED }}>—</span>
+                <input type="date" value={header.periodEnd} onChange={e => setH("periodEnd", e.target.value)} style={{ ...fieldStyle, width: 120, fontSize: 11 }} />
               </div>
-
-              {/* Right: Certification */}
-              <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-                {/* Contractor certification */}
-                <div style={{ background: CARD, border: `1px solid ${BORDER}`, borderRadius: 8, padding: 14 }}>
-                  <div style={{ fontSize: 11, color: MUTED, marginBottom: 10, lineHeight: 1.5 }}>
-                    The undersigned Contractor certifies that to the best of the Contractor&apos;s knowledge, information and belief the Work covered by this Application for Payment has been completed in accordance with the Contract Documents.
-                  </div>
-                  <div style={{ fontWeight: 700, fontSize: 12, color: TEXT, marginBottom: 8 }}>Contractor</div>
-                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, marginBottom: 8 }}>
-                    <div>
-                      <div style={labelStyle}>By (Signature / Name)</div>
-                      <input value={header.certifiedBy} onChange={e => setH("certifiedBy", e.target.value)}
-                        placeholder={header.fromContact} style={fieldStyle} />
-                    </div>
-                    <div>
-                      <div style={labelStyle}>Date</div>
-                      <input type="date" value={header.invoiceDate} onChange={e => setH("invoiceDate", e.target.value)} style={fieldStyle} />
-                    </div>
-                    <div>
-                      <div style={labelStyle}>State</div>
-                      <input value={header.certState} onChange={e => setH("certState", e.target.value)} placeholder="Florida" style={fieldStyle} />
-                    </div>
-                    <div>
-                      <div style={labelStyle}>County</div>
-                      <input value={header.certCounty} onChange={e => setH("certCounty", e.target.value)} placeholder="Broward" style={fieldStyle} />
-                    </div>
-                  </div>
-                  <div style={{ fontSize: 11, color: MUTED, marginBottom: 6 }}>Subscribed and sworn to before me this ___ day of ___________.</div>
-                  <div>
-                    <div style={labelStyle}>Notary Public</div>
-                    <input value={header.notaryName} onChange={e => setH("notaryName", e.target.value)} placeholder="Notary name" style={fieldStyle} />
-                  </div>
-                </div>
-
-                {/* Certificate For Payment */}
-                <div style={{ background: CARD, border: `1px solid ${BORDER}`, borderRadius: 8, padding: 14 }}>
-                  <div style={{ fontWeight: 700, fontSize: 14, color: TEXT, marginBottom: 8 }}>Certificate For Payment</div>
-                  <div style={{ fontSize: 11, color: MUTED, marginBottom: 12, lineHeight: 1.5 }}>
-                    In accordance with the Contract Documents, based on on-site observations and the data comprising this application, the GC certifies to the Owner that to the best of the GC&apos;s knowledge, information and belief the Work has progressed as indicated, the quality of the Work is in accordance with the Contract Documents, and the Contractor is entitled to payment of the AMOUNT CERTIFIED.
-                  </div>
-                  <div style={{ fontWeight: 700, fontSize: 13, color: GOLD, marginBottom: 12 }}>
-                    Amount Certified: ${$$(currentPaymentDue)}
-                  </div>
-                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
-                    <div>
-                      <div style={labelStyle}>By</div>
-                      <input value={header.certifiedBy || header.fromContact} onChange={e => setH("certifiedBy", e.target.value)} style={fieldStyle} />
-                    </div>
-                    <div>
-                      <div style={labelStyle}>Date</div>
-                      <input type="date" value={header.invoiceDate} onChange={e => setH("invoiceDate", e.target.value)} style={fieldStyle} />
-                    </div>
-                  </div>
-                  <div style={{ fontSize: 10, color: MUTED, marginTop: 10, lineHeight: 1.4 }}>
-                    This Certificate is not negotiable. Contractor certifies that all insurances and related coverage per contract is current as of this invoice date.
-                  </div>
-                </div>
-              </div>
+              <table style={{ width: "100%", borderCollapse: "collapse" }}>
+                <tbody>
+                  {summaryRow("1.  Original Contract Sum", (
+                    <CurrencyField value={header.originalContractSum} onChange={v => setH("originalContractSum", v)} />
+                  ))}
+                  {summaryRow("2.  GC Fee (Scheduled)", (
+                    <CurrencyField value={header.gcFeeScheduledValue} onChange={v => setH("gcFeeScheduledValue", v)} />
+                  ))}
+                  {summaryRow("3.  Net Changes by Change Orders", `$${$$(netChanges)}`)}
+                  {summaryRow("4.  Contract Sum To Date", `$${$$(contractSumToDate + header.gcFeeScheduledValue)}`)}
+                  {summaryRow("5.  Total Completed (incl. GC Fee)", `$${$$(grandTotalCompleted)}`)}
+                  {summaryRow("    GC Fee This Invoice", `$${$$(gcFeeThisInvoice)}`)}
+                  {summaryRow("6.  Total Retainage (All Completed Work)", `$${$$(retainageAllWork)}`)}
+                  {summaryRow("7.  Total Earned Less Retainage", `$${$$(totalEarnedLessRetainage)}`)}
+                  {summaryRow("8.  Less Previous Invoices", (
+                    <CurrencyField value={header.lessPreviousInvoices} onChange={v => setH("lessPreviousInvoices", v)} />
+                  ))}
+                  {summaryRow("9.  Current Payment Due", <strong style={{ color: GOLD }}>${$$(currentPaymentDue)}</strong>, true)}
+                  {summaryRow("10. Balance to Finish", `$${$$(balanceToFinish)}`)}
+                </tbody>
+              </table>
             </div>
 
             {/* Change Order Summary */}
@@ -632,8 +557,6 @@ export default function PayAppEditor({
                     <th style={{ padding: "8px 8px", textAlign: "right", fontSize: 10, color: MUTED, fontWeight: 700, borderBottom: `1px solid ${BORDER}`, borderRight: `1px solid ${BORDER}`, width: 110 }}>SCHEDULED VALUE</th>
                     <th style={{ padding: "8px 8px", textAlign: "right", fontSize: 10, color: MUTED, fontWeight: 700, borderBottom: `1px solid ${BORDER}`, borderRight: `1px solid ${BORDER}`, width: 110 }}>FROM PREVIOUS</th>
                     <th style={{ padding: "8px 8px", textAlign: "right", fontSize: 10, color: MUTED, fontWeight: 700, borderBottom: `1px solid ${BORDER}`, borderRight: `1px solid ${BORDER}`, width: 110 }}>THIS INVOICE</th>
-                    <th style={{ padding: "8px 8px", textAlign: "right", fontSize: 10, color: MUTED, fontWeight: 700, borderBottom: `1px solid ${BORDER}`, borderRight: `1px solid ${BORDER}`, width: 110 }}>TOTAL TO DATE</th>
-                    <th style={{ padding: "8px 8px", textAlign: "right", fontSize: 10, color: MUTED, fontWeight: 700, borderBottom: `1px solid ${BORDER}`, borderRight: `1px solid ${BORDER}`, width: 70 }}>%</th>
                     <th style={{ padding: "8px 8px", textAlign: "right", fontSize: 10, color: MUTED, fontWeight: 700, borderBottom: `1px solid ${BORDER}`, borderRight: `1px solid ${BORDER}`, width: 110 }}>BALANCE TO FINISH</th>
                     <th style={{ padding: "8px 8px", textAlign: "right", fontSize: 10, color: MUTED, fontWeight: 700, borderBottom: `1px solid ${BORDER}`, borderRight: `1px solid ${BORDER}`, width: 110 }}>RETAINAGE THIS INV</th>
                     <th style={{ padding: "8px 8px", textAlign: "right", fontSize: 10, color: MUTED, fontWeight: 700, borderBottom: `1px solid ${BORDER}`, width: 110 }}>RETAINAGE TOTAL</th>
@@ -665,12 +588,6 @@ export default function PayAppEditor({
                         <td style={{ ...tdStyle }}>
                           <CellInput value={line.thisInvoice} onChange={v => setLine(idx, "thisInvoice", v)} type="number" />
                         </td>
-                        <td style={{ ...tdStyle, textAlign: "right", padding: "4px 8px", fontSize: 11, color: totalComplete > 0 ? TEXT : MUTED }}>
-                          ${$$(totalComplete)}
-                        </td>
-                        <td style={{ ...tdStyle, textAlign: "right", padding: "4px 8px", fontSize: 11, color: pct >= 100 ? "#22c55e" : pct > 0 ? GOLD : MUTED }}>
-                          {pct.toFixed(1)}%
-                        </td>
                         <td style={{ ...tdStyle, textAlign: "right", padding: "4px 8px", fontSize: 11, color: balance > 0 ? TEXT : MUTED }}>
                           ${$$(balance)}
                         </td>
@@ -689,28 +606,36 @@ export default function PayAppEditor({
                       </tr>
                     );
                   })}
+                  {/* GC Fee row — auto-computed, not editable */}
+                  {header.gcFeeScheduledValue > 0 && (
+                    <tr style={{ background: `${CARD}88` }}>
+                      <td style={{ borderRight: `1px solid ${BORDER}`, borderBottom: `1px solid ${BORDER}`, padding: "2px 8px", fontSize: 11, color: MUTED, fontStyle: "italic" }}>GC Fee</td>
+                      <td style={{ borderRight: `1px solid ${BORDER}`, borderBottom: `1px solid ${BORDER}`, padding: "2px 8px", fontSize: 11, color: MUTED, fontStyle: "italic" }}>GC Fee (auto)</td>
+                      <td style={{ borderRight: `1px solid ${BORDER}`, borderBottom: `1px solid ${BORDER}`, padding: "4px 8px", fontSize: 11, textAlign: "right", color: MUTED }}>${$$(header.gcFeeScheduledValue)}</td>
+                      <td style={{ borderRight: `1px solid ${BORDER}`, borderBottom: `1px solid ${BORDER}`, padding: "4px 8px", fontSize: 11, textAlign: "right", color: MUTED }}>${$$(gcFeePrevious)}</td>
+                      <td style={{ borderRight: `1px solid ${BORDER}`, borderBottom: `1px solid ${BORDER}`, padding: "4px 8px", fontSize: 11, textAlign: "right", color: GOLD, fontWeight: 700 }}>${$$(gcFeeThisInvoice)}</td>
+                      <td style={{ borderRight: `1px solid ${BORDER}`, borderBottom: `1px solid ${BORDER}`, padding: "4px 8px", fontSize: 11, textAlign: "right", color: MUTED }}>${$$(gcFeeBalance)}</td>
+                      <td style={{ borderRight: `1px solid ${BORDER}`, borderBottom: `1px solid ${BORDER}` }}></td>
+                      <td style={{ borderBottom: `1px solid ${BORDER}` }}></td>
+                      <td></td>
+                    </tr>
+                  )}
                 </tbody>
                 {/* Totals row */}
                 <tfoot>
                   <tr style={{ background: CARD, fontWeight: 700 }}>
                     <td colSpan={2} style={{ padding: "6px 8px", fontSize: 11, color: TEXT, borderTop: `2px solid ${BORDER}` }}>TOTALS</td>
                     <td style={{ padding: "6px 8px", textAlign: "right", fontSize: 11, color: TEXT, borderTop: `2px solid ${BORDER}` }}>
-                      ${$$(lines.reduce((s, l) => s + l.scheduledValue, 0))}
+                      ${$$(totalScheduled + header.gcFeeScheduledValue)}
                     </td>
                     <td style={{ padding: "6px 8px", textAlign: "right", fontSize: 11, color: TEXT, borderTop: `2px solid ${BORDER}` }}>
-                      ${$$(lines.reduce((s, l) => s + l.fromPrevious, 0))}
+                      ${$$(totalFromPrevious + gcFeePrevious)}
                     </td>
                     <td style={{ padding: "6px 8px", textAlign: "right", fontSize: 11, color: GOLD, borderTop: `2px solid ${BORDER}` }}>
-                      ${$$(totalThisInvoice)}
+                      ${$$(totalThisInvoice + gcFeeThisInvoice)}
                     </td>
                     <td style={{ padding: "6px 8px", textAlign: "right", fontSize: 11, color: TEXT, borderTop: `2px solid ${BORDER}` }}>
-                      ${$$(totalCompleted)}
-                    </td>
-                    <td style={{ padding: "6px 8px", textAlign: "right", fontSize: 11, color: TEXT, borderTop: `2px solid ${BORDER}` }}>
-                      {lines.length > 0 ? `${((totalCompleted / lines.reduce((s, l) => s + l.scheduledValue, 0) || 0) * 100).toFixed(1)}%` : "0.0%"}
-                    </td>
-                    <td style={{ padding: "6px 8px", textAlign: "right", fontSize: 11, color: TEXT, borderTop: `2px solid ${BORDER}` }}>
-                      ${$$(lines.reduce((s, l) => s + (l.scheduledValue - (l.fromPrevious + l.thisInvoice)), 0))}
+                      ${$$(lines.reduce((s, l) => s + (l.scheduledValue - (l.fromPrevious + l.thisInvoice)), 0) + gcFeeBalance)}
                     </td>
                     <td style={{ padding: "6px 8px", textAlign: "right", fontSize: 11, color: TEXT, borderTop: `2px solid ${BORDER}` }}>
                       ${$$(lines.reduce((s, l) => s + l.retainageThis, 0))}

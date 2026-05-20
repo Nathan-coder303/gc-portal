@@ -34,11 +34,20 @@ export async function GET(
   const coDeductions = Number(p.coDeductionsPrev) + Number(p.coDeductionsThis);
   const netChanges = coAdditions - coDeductions;
   const contractSumToDate = Number(p.originalContractSum) + netChanges;
-  const totalCompleted = lines.reduce((s, l) => s + l.fromPrevious + l.thisInvoice, 0);
+  const gcFeeScheduledValue = Number(p.gcFeeScheduledValue);
+  const totalScheduled = lines.reduce((s, l) => s + l.scheduledValue, 0);
+  const totalFromPrevious = lines.reduce((s, l) => s + l.fromPrevious, 0);
+  const totalThisInvoice = lines.reduce((s, l) => s + l.thisInvoice, 0);
+  const pctPrevious = totalScheduled > 0 ? totalFromPrevious / totalScheduled : 0;
+  const pctThisInv = totalScheduled > 0 ? totalThisInvoice / totalScheduled : 0;
+  const gcFeePrevious = gcFeeScheduledValue * pctPrevious;
+  const gcFeeThisInvoice = gcFeeScheduledValue * pctThisInv;
+  const gcFeeBalance = gcFeeScheduledValue - gcFeePrevious - gcFeeThisInvoice;
+  const totalCompleted = (totalFromPrevious + totalThisInvoice) + gcFeePrevious + gcFeeThisInvoice;
   const retainageAll = lines.reduce((s, l) => s + l.retainageTotal, 0);
   const totalEarnedLessRetainage = totalCompleted - retainageAll;
   const currentPaymentDue = totalEarnedLessRetainage - Number(p.lessPreviousInvoices);
-  const balanceToFinish = contractSumToDate - totalEarnedLessRetainage;
+  const balanceToFinish = (contractSumToDate + gcFeeScheduledValue) - totalEarnedLessRetainage;
 
   const html = `<!DOCTYPE html>
 <html lang="en">
@@ -117,51 +126,24 @@ export async function GET(
   </div>
 </div>
 
-<div class="grid2">
-  <!-- Financial Summary -->
-  <div class="box">
-    <div class="section-title">Application for Payment</div>
-    <table class="summary-table">
-      <tbody>
-        <tr><td>1. Original Contract Sum</td><td style="text-align:right;font-weight:600;">$${$$(Number(p.originalContractSum))}</td></tr>
-        <tr><td>2. Net Changes by Change Orders</td><td style="text-align:right;">$${$$(netChanges)}</td></tr>
-        <tr class="bold"><td>3. Contract Sum to Date</td><td style="text-align:right;">$${$$(contractSumToDate)}</td></tr>
-        <tr><td>4. Total Completed to Date</td><td style="text-align:right;">$${$$(totalCompleted)}</td></tr>
-        <tr><td>5. Total Retainage</td><td style="text-align:right;">$${$$(retainageAll)}</td></tr>
-        <tr class="bold"><td>6. Total Earned Less Retainage</td><td style="text-align:right;">$${$$(totalEarnedLessRetainage)}</td></tr>
-        <tr><td>7. Less Previous Invoices</td><td style="text-align:right;">$${$$(Number(p.lessPreviousInvoices))}</td></tr>
-        <tr class="highlight"><td><strong>8. Current Payment Due</strong></td><td style="text-align:right;color:#C9A84C;font-size:13px;"><strong>$${$$(currentPaymentDue)}</strong></td></tr>
-        <tr><td>9. Balance to Finish</td><td style="text-align:right;">$${$$(balanceToFinish)}</td></tr>
-      </tbody>
-    </table>
-  </div>
-
-  <!-- Certification -->
-  <div class="box">
-    <div class="section-title">Certification</div>
-    <div style="font-size:9px;color:#555;margin-bottom:8px;line-height:1.5;">
-      The undersigned Contractor certifies that to the best of the Contractor's knowledge, information and belief the Work covered by this Application for Payment has been completed in accordance with the Contract Documents.
-    </div>
-    <table style="margin-bottom:8px;">
-      <tr>
-        <td class="label" style="border:none;">By</td>
-        <td style="border:none;font-weight:600;">${p.certifiedBy || p.fromContact || "—"}</td>
-        <td class="label" style="border:none;">Date</td>
-        <td style="border:none;">${fmtDate(p.invoiceDate)}</td>
-      </tr>
-      <tr>
-        <td class="label" style="border:none;">State</td>
-        <td style="border:none;">${p.certState || "—"}</td>
-        <td class="label" style="border:none;">County</td>
-        <td style="border:none;">${p.certCounty || "—"}</td>
-      </tr>
-    </table>
-    ${p.notaryName ? `<div style="font-size:9px;color:#555;">Notary: ${p.notaryName}</div>` : ""}
-    <div style="margin-top:12px;padding-top:8px;border-top:1px solid #eee;">
-      <div class="section-title" style="color:#C9A84C;">Amount Certified: $${$$(currentPaymentDue)}</div>
-      <div style="font-size:9px;color:#555;margin-top:4px;line-height:1.4;">This Certificate is not negotiable. Contractor certifies that all insurances and related coverage per contract is current as of this invoice date.</div>
-    </div>
-  </div>
+<!-- Financial Summary — full width -->
+<div class="box" style="margin-bottom:16px;">
+  <div class="section-title">Application for Payment</div>
+  <table class="summary-table">
+    <tbody>
+      <tr><td>1. Original Contract Sum</td><td style="text-align:right;font-weight:600;">$${$$(Number(p.originalContractSum))}</td></tr>
+      <tr><td>2. GC Fee (Scheduled)</td><td style="text-align:right;">$${$$(gcFeeScheduledValue)}</td></tr>
+      <tr><td>3. Net Changes by Change Orders</td><td style="text-align:right;">$${$$(netChanges)}</td></tr>
+      <tr class="bold"><td>4. Contract Sum to Date</td><td style="text-align:right;">$${$$(contractSumToDate + gcFeeScheduledValue)}</td></tr>
+      <tr><td>5. Total Completed (incl. GC Fee)</td><td style="text-align:right;">$${$$(totalCompleted)}</td></tr>
+      <tr><td>&nbsp;&nbsp;GC Fee This Invoice</td><td style="text-align:right;">$${$$(gcFeeThisInvoice)}</td></tr>
+      <tr><td>6. Total Retainage</td><td style="text-align:right;">$${$$(retainageAll)}</td></tr>
+      <tr class="bold"><td>7. Total Earned Less Retainage</td><td style="text-align:right;">$${$$(totalEarnedLessRetainage)}</td></tr>
+      <tr><td>8. Less Previous Invoices</td><td style="text-align:right;">$${$$(Number(p.lessPreviousInvoices))}</td></tr>
+      <tr class="highlight"><td><strong>9. Current Payment Due</strong></td><td style="text-align:right;color:#C9A84C;font-size:13px;"><strong>$${$$(currentPaymentDue)}</strong></td></tr>
+      <tr><td>10. Balance to Finish</td><td style="text-align:right;">$${$$(balanceToFinish)}</td></tr>
+    </tbody>
+  </table>
 </div>
 
 <!-- Continuation Sheet -->
@@ -174,8 +156,6 @@ export async function GET(
       <th>Scheduled Value</th>
       <th>From Previous</th>
       <th>This Invoice</th>
-      <th>Total to Date</th>
-      <th>%</th>
       <th>Balance to Finish</th>
       <th>Retainage This</th>
       <th>Retainage Total</th>
@@ -183,32 +163,36 @@ export async function GET(
   </thead>
   <tbody>
     ${lines.map(l => {
-      const total = l.fromPrevious + l.thisInvoice;
-      const pct = l.scheduledValue > 0 ? (total / l.scheduledValue * 100).toFixed(1) : "0.0";
-      const balance = l.scheduledValue - total;
+      const balance = l.scheduledValue - (l.fromPrevious + l.thisInvoice);
       return `<tr>
         <td>${l.itemNumber}</td>
         <td>${l.description}</td>
         <td>$${$$(l.scheduledValue)}</td>
         <td>$${$$(l.fromPrevious)}</td>
         <td>$${$$(l.thisInvoice)}</td>
-        <td>$${$$(total)}</td>
-        <td>${pct}%</td>
         <td>$${$$(balance)}</td>
         <td>$${$$(l.retainageThis)}</td>
         <td>$${$$(l.retainageTotal)}</td>
       </tr>`;
     }).join("")}
+    ${gcFeeScheduledValue > 0 ? `<tr style="color:#888;font-style:italic;">
+      <td>GC Fee</td>
+      <td>GC Fee (auto)</td>
+      <td>$${$$(gcFeeScheduledValue)}</td>
+      <td>$${$$(gcFeePrevious)}</td>
+      <td><strong>$${$$(gcFeeThisInvoice)}</strong></td>
+      <td>$${$$(gcFeeBalance)}</td>
+      <td>—</td>
+      <td>—</td>
+    </tr>` : ""}
   </tbody>
   <tfoot>
     <tr>
       <td colspan="2">TOTALS</td>
-      <td>$${$$(lines.reduce((s, l) => s + l.scheduledValue, 0))}</td>
-      <td>$${$$(lines.reduce((s, l) => s + l.fromPrevious, 0))}</td>
-      <td>$${$$(lines.reduce((s, l) => s + l.thisInvoice, 0))}</td>
-      <td>$${$$(totalCompleted)}</td>
-      <td>${lines.reduce((s, l) => s + l.scheduledValue, 0) > 0 ? (totalCompleted / lines.reduce((s, l) => s + l.scheduledValue, 0) * 100).toFixed(1) : "0.0"}%</td>
-      <td>$${$$(lines.reduce((s, l) => s + l.scheduledValue - (l.fromPrevious + l.thisInvoice), 0))}</td>
+      <td>$${$$(totalScheduled + gcFeeScheduledValue)}</td>
+      <td>$${$$(totalFromPrevious + gcFeePrevious)}</td>
+      <td>$${$$(totalThisInvoice + gcFeeThisInvoice)}</td>
+      <td>$${$$(lines.reduce((s, l) => s + (l.scheduledValue - (l.fromPrevious + l.thisInvoice)), 0) + gcFeeBalance)}</td>
       <td>$${$$(lines.reduce((s, l) => s + l.retainageThis, 0))}</td>
       <td>$${$$(lines.reduce((s, l) => s + l.retainageTotal, 0))}</td>
     </tr>
