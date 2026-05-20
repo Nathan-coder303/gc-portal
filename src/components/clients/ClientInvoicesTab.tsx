@@ -184,42 +184,78 @@ export default function ClientInvoicesTab({
   const [editingInvoice, setEditingInvoice] = useState<Invoice | null>(null);
   const [editPhase, setEditPhase] = useState("");
   const [editTrigger, setEditTrigger] = useState("");
-  const [editAmount, setEditAmount] = useState("");
   const [editPct, setEditPct] = useState("");
   const [editDueDate, setEditDueDate] = useState("");
   const [editNotes, setEditNotes] = useState("");
   const [editSaving, setEditSaving] = useState(false);
 
+  type EditLine = {
+    id?: string;
+    estimateItemId: string | null;
+    sortOrder: number;
+    itemNumber: string;
+    description: string;
+    scheduledValue: number;
+    fromPrevious: number;
+    pctThisInvoice: number;
+    thisInvoice: number;
+  };
+  const [editLines, setEditLines] = useState<EditLine[]>([]);
+  const [editLinesLoading, setEditLinesLoading] = useState(false);
+  const [editApplyPct, setEditApplyPct] = useState("");
+
   function openEdit(inv: Invoice) {
     setEditingInvoice(inv);
     setEditPhase(inv.phase);
     setEditTrigger(inv.trigger ?? "");
-    setEditAmount(inv.amount.toFixed(2));
     setEditPct(inv.pct.toString());
     setEditDueDate(inv.dueDate ? inv.dueDate.slice(0, 10) : "");
     setEditNotes(inv.notes ?? "");
+    setEditLines([]);
+    setEditApplyPct(inv.pct.toString());
+    setEditLinesLoading(true);
+    fetch(`/api/${companyId}/clients/${clientId}/invoices/${inv.id}`)
+      .then(r => r.json())
+      .then(data => { setEditLines(data.lines ?? []); })
+      .finally(() => setEditLinesLoading(false));
+  }
+
+  function setEditLinePct(idx: number, pct: number) {
+    setEditLines(prev => prev.map((l, i) => {
+      if (i !== idx) return l;
+      return { ...l, pctThisInvoice: pct, thisInvoice: Math.round(l.scheduledValue * pct / 100 * 100) / 100 };
+    }));
+  }
+
+  function applyEditPctAll(pct: number) {
+    setEditLines(prev => prev.map(l => ({
+      ...l, pctThisInvoice: pct,
+      thisInvoice: Math.round(l.scheduledValue * pct / 100 * 100) / 100,
+    })));
   }
 
   async function saveEdit() {
     if (!editingInvoice || !editPhase.trim()) return;
     setEditSaving(true);
     try {
-      const res = await fetch(`/api/${companyId}/clients/${clientId}/invoices/${editingInvoice.id}`, {
+      await fetch(`/api/${companyId}/clients/${clientId}/invoices/${editingInvoice.id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           phase: editPhase.trim(),
           trigger: editTrigger.trim() || null,
-          amount: editAmount,
           pct: editPct,
           dueDate: editDueDate || null,
           notes: editNotes.trim() || null,
+          lines: editLines.length > 0 ? editLines : undefined,
         }),
       });
-      const updated = await res.json();
+      const newAmount = editLines.length > 0
+        ? editLines.reduce((s, l) => s + l.thisInvoice, 0)
+        : Number(editingInvoice.amount);
       setInvoices(prev => prev.map(i =>
         i.id === editingInvoice.id
-          ? { ...i, phase: updated.phase, trigger: updated.trigger, amount: Number(updated.amount), pct: Number(updated.pct), dueDate: updated.dueDate, notes: updated.notes }
+          ? { ...i, phase: editPhase.trim(), trigger: editTrigger.trim() || null, amount: newAmount, pct: Number(editPct), dueDate: editDueDate || null, notes: editNotes.trim() || null }
           : i
       ));
       setEditingInvoice(null);
@@ -663,13 +699,16 @@ export default function ClientInvoicesTab({
 
       {/* Edit invoice modal */}
       {editingInvoice && (
-        <div style={{ position: "fixed", inset: 0, zIndex: 60, background: "rgba(0,0,0,0.7)", display: "flex", alignItems: "center", justifyContent: "center", padding: 16 }}
+        <div style={{ position: "fixed", inset: 0, zIndex: 60, background: "rgba(0,0,0,0.75)", display: "flex", alignItems: "center", justifyContent: "center", padding: 16 }}
           onClick={() => setEditingInvoice(null)}>
-          <div style={{ background: "#161b22", border: "1px solid #30373f", borderRadius: 14, padding: 24, width: "100%", maxWidth: 480 }}
+          <div style={{ background: "#161b22", border: "1px solid #30373f", borderRadius: 14, padding: 24, width: "100%", maxWidth: 860, maxHeight: "92vh", overflowY: "auto" }}
             onClick={e => e.stopPropagation()}>
-            <h3 className="text-sm font-bold mb-4" style={{ color: "#e6edf3" }}>Edit Invoice #{editingInvoice.invoiceNumber}</h3>
+            <h3 className="text-sm font-bold mb-4" style={{ color: "#e6edf3" }}>
+              Edit Invoice #{editingInvoice.invoiceNumber}
+            </h3>
 
-            <div className="space-y-3">
+            {/* Top fields */}
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginBottom: 10 }}>
               <div>
                 <label className="block text-[11px] mb-1" style={{ color: "#8b949e" }}>Phase / Name *</label>
                 <input type="text" value={editPhase} onChange={e => setEditPhase(e.target.value)} style={INPUT_STYLE} autoFocus />
@@ -678,24 +717,84 @@ export default function ClientInvoicesTab({
                 <label className="block text-[11px] mb-1" style={{ color: "#8b949e" }}>Milestone / Trigger</label>
                 <input type="text" value={editTrigger} onChange={e => setEditTrigger(e.target.value)} style={INPUT_STYLE} placeholder="e.g. Contract signing" />
               </div>
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-[11px] mb-1" style={{ color: "#8b949e" }}>Amount ($)</label>
-                  <input type="number" step="0.01" value={editAmount} onChange={e => setEditAmount(e.target.value)} style={INPUT_STYLE} />
-                </div>
-                <div>
-                  <label className="block text-[11px] mb-1" style={{ color: "#8b949e" }}>% of Contract</label>
-                  <input type="number" step="0.01" value={editPct} onChange={e => setEditPct(e.target.value)} style={INPUT_STYLE} />
-                </div>
-              </div>
+            </div>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginBottom: 16 }}>
               <div>
                 <label className="block text-[11px] mb-1" style={{ color: "#8b949e" }}>Due Date</label>
                 <input type="date" value={editDueDate} onChange={e => setEditDueDate(e.target.value)} style={INPUT_STYLE} />
               </div>
               <div>
                 <label className="block text-[11px] mb-1" style={{ color: "#8b949e" }}>Notes</label>
-                <textarea value={editNotes} onChange={e => setEditNotes(e.target.value)} rows={2} style={{ ...INPUT_STYLE, resize: "none" }} />
+                <input type="text" value={editNotes} onChange={e => setEditNotes(e.target.value)} style={INPUT_STYLE} placeholder="Optional" />
               </div>
+            </div>
+
+            {/* Line items */}
+            <div style={{ borderTop: "1px solid #30373f", paddingTop: 14 }}>
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10 }}>
+                <span style={{ fontSize: 12, fontWeight: 700, color: "#e6edf3" }}>Schedule of Values</span>
+                <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                  <span style={{ fontSize: 11, color: "#8b949e" }}>Apply % to all:</span>
+                  <input type="number" min={0} max={100} step={0.5}
+                    value={editApplyPct}
+                    onChange={e => setEditApplyPct(e.target.value)}
+                    placeholder="%"
+                    style={{ width: 60, background: "#0d1117", border: `1px solid ${GOLD}44`, color: GOLD, borderRadius: 6, padding: "4px 6px", fontSize: 12, textAlign: "right", outline: "none" }} />
+                  <button onClick={() => { const p = parseFloat(editApplyPct); if (!isNaN(p)) applyEditPctAll(p); }}
+                    style={{ background: `${GOLD}22`, color: GOLD, border: `1px solid ${GOLD}44`, borderRadius: 6, padding: "4px 12px", fontSize: 11, fontWeight: 700, cursor: "pointer" }}>
+                    Apply
+                  </button>
+                </div>
+              </div>
+
+              {editLinesLoading ? (
+                <div style={{ color: "#8b949e", fontSize: 12, textAlign: "center", padding: 24 }}>Loading lines…</div>
+              ) : editLines.length === 0 ? (
+                <div style={{ color: "#8b949e", fontSize: 12, textAlign: "center", padding: 24 }}>No lines found for this invoice.</div>
+              ) : (
+                <div style={{ overflowY: "auto", maxHeight: 380, border: "1px solid #30373f", borderRadius: 8 }}>
+                  <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 11 }}>
+                    <thead style={{ position: "sticky", top: 0, zIndex: 1 }}>
+                      <tr style={{ background: "#0d1117" }}>
+                        <th style={{ padding: "6px 6px", textAlign: "left", color: "#8b949e", fontWeight: 700, fontSize: 10, borderBottom: "1px solid #30373f", width: 56 }}>#</th>
+                        <th style={{ padding: "6px 6px", textAlign: "left", color: "#8b949e", fontWeight: 700, fontSize: 10, borderBottom: "1px solid #30373f" }}>DESCRIPTION</th>
+                        <th style={{ padding: "6px 6px", textAlign: "right", color: "#8b949e", fontWeight: 700, fontSize: 10, borderBottom: "1px solid #30373f", width: 88 }}>SCHEDULED</th>
+                        <th style={{ padding: "6px 6px", textAlign: "right", color: "#8b949e", fontWeight: 700, fontSize: 10, borderBottom: "1px solid #30373f", width: 80 }}>FROM PREV</th>
+                        <th style={{ padding: "6px 6px", textAlign: "right", color: GOLD, fontWeight: 700, fontSize: 10, borderBottom: "1px solid #30373f", width: 76 }}>% THIS INV</th>
+                        <th style={{ padding: "6px 6px", textAlign: "right", color: "#8b949e", fontWeight: 700, fontSize: 10, borderBottom: "1px solid #30373f", width: 90 }}>THIS INVOICE</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {editLines.map((line, idx) => (
+                        <tr key={idx} style={{ background: idx % 2 === 0 ? "transparent" : "#1a1f2b", borderBottom: "1px solid #21262d" }}>
+                          <td style={{ padding: "4px 6px", color: "#8b949e", fontSize: 10 }}>{line.itemNumber}</td>
+                          <td style={{ padding: "4px 6px", color: "#e6edf3" }}>{line.description}</td>
+                          <td style={{ padding: "4px 6px", textAlign: "right", color: "#8b949e" }}>${fmt(line.scheduledValue)}</td>
+                          <td style={{ padding: "4px 6px", textAlign: "right", color: "#8b949e" }}>{line.fromPrevious > 0 ? `$${fmt(line.fromPrevious)}` : "—"}</td>
+                          <td style={{ padding: "2px 2px", textAlign: "right" }}>
+                            <input
+                              type="number" min={0} max={100} step={0.5}
+                              value={line.pctThisInvoice}
+                              onChange={e => setEditLinePct(idx, parseFloat(e.target.value) || 0)}
+                              style={{ width: "100%", background: "transparent", border: "none", borderBottom: `1px solid ${GOLD}44`, outline: "none", color: GOLD, fontWeight: 700, fontSize: 11, textAlign: "right", padding: "2px 6px" }}
+                            />
+                          </td>
+                          <td style={{ padding: "4px 6px", textAlign: "right", color: line.thisInvoice > 0 ? GOLD : "#8b949e", fontWeight: 600 }}>${fmt(line.thisInvoice)}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+
+              {editLines.length > 0 && (
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "8px 12px", marginTop: 8, background: "#0d1117", borderRadius: 6, border: "1px solid #30373f" }}>
+                  <span style={{ fontSize: 12, color: "#8b949e" }}>Invoice Total</span>
+                  <span style={{ fontSize: 16, fontWeight: 800, color: GOLD }}>
+                    ${fmt(editLines.reduce((s, l) => s + l.thisInvoice, 0))}
+                  </span>
+                </div>
+              )}
             </div>
 
             <div className="flex gap-2 mt-4">

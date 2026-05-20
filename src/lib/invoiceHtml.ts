@@ -13,6 +13,9 @@ export type InvoiceDivisionLine = {
   itemNumber: string;
   description: string;
   scheduledValue: number;
+  fromPrevious?: number;
+  thisInvoice?: number;       // pre-computed when per-line %s differ
+  pctThisInvoice?: number;
 };
 
 export function buildInvoiceHtml(opts: {
@@ -47,9 +50,14 @@ export function buildInvoiceHtml(opts: {
   const gcFeeScheduledValue = opts.gcFeeScheduledValue ?? 0;
   const pct = Number(opts.pct);
 
+  const perLine = divisions.length > 0 && divisions[0].thisInvoice !== undefined;
   const totalScheduled = divisions.reduce((s, l) => s + l.scheduledValue, 0);
   const grandScheduled = totalScheduled + gcFeeScheduledValue;
-  const gcFeeThisInvoice = gcFeeScheduledValue * pct / 100;
+  const totalThisInvoice = perLine
+    ? divisions.reduce((s, l) => s + (l.thisInvoice ?? 0), 0)
+    : totalScheduled * pct / 100;
+  const avgPct = grandScheduled > 0 ? totalThisInvoice / totalScheduled : pct / 100;
+  const gcFeeThisInvoice = gcFeeScheduledValue * avgPct;
   const gcFeeBalance = gcFeeScheduledValue - gcFeeThisInvoice;
 
   const hasTable = divisions.length > 0;
@@ -142,29 +150,37 @@ ${hasTable ? `
 <table>
   <thead>
     <tr>
-      <th style="text-align:left;width:70px;">Item #</th>
+      <th style="text-align:left;width:60px;">Item #</th>
       <th style="text-align:left;">Description</th>
       <th>Scheduled Value</th>
-      <th>This Invoice (${pct}%)</th>
+      <th>From Previous</th>
+      <th>% This Inv</th>
+      <th>This Invoice</th>
       <th>Balance to Finish</th>
     </tr>
   </thead>
   <tbody>
     ${divisions.map(l => {
-      const thisInv = Math.round(l.scheduledValue * pct / 100 * 100) / 100;
-      const bal = l.scheduledValue - thisInv;
+      const prevAmt = l.fromPrevious ?? 0;
+      const thisInv = l.thisInvoice !== undefined ? l.thisInvoice : Math.round(l.scheduledValue * pct / 100 * 100) / 100;
+      const linePct = l.pctThisInvoice !== undefined ? l.pctThisInvoice : pct;
+      const bal = l.scheduledValue - prevAmt - thisInv;
       return `<tr>
         <td>${l.itemNumber}</td>
         <td>${l.description}</td>
         <td>$${fmt(l.scheduledValue)}</td>
+        <td>${prevAmt > 0 ? `$${fmt(prevAmt)}` : "—"}</td>
+        <td style="color:#C9A84C;font-weight:600;">${linePct}%</td>
         <td style="font-weight:600;color:#C9A84C;">$${fmt(thisInv)}</td>
         <td>$${fmt(bal)}</td>
       </tr>`;
     }).join("")}
     ${gcFeeScheduledValue > 0 ? `<tr style="color:#888;font-style:italic;">
-      <td>GC Fee</td>
+      <td>GC</td>
       <td>GC Fee (auto)</td>
       <td>$${fmt(gcFeeScheduledValue)}</td>
+      <td>—</td>
+      <td style="color:#C9A84C;">${(avgPct * 100).toFixed(1)}%</td>
       <td style="font-weight:700;color:#C9A84C;">$${fmt(gcFeeThisInvoice)}</td>
       <td>$${fmt(gcFeeBalance)}</td>
     </tr>` : ""}
@@ -173,6 +189,8 @@ ${hasTable ? `
     <tr>
       <td colspan="2">TOTALS</td>
       <td>$${fmt(grandScheduled)}</td>
+      <td>—</td>
+      <td>—</td>
       <td style="color:#C9A84C;">$${fmt(opts.amount)}</td>
       <td>$${fmt(grandScheduled - opts.amount)}</td>
     </tr>

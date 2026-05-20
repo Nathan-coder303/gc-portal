@@ -32,19 +32,25 @@ export async function GET(
             where: { archivedAt: null },
             orderBy: { sortOrder: "asc" },
             select: {
+              id: true,
               name: true,
               csiCode: true,
               manualTotal: true,
+              sortOrder: true,
               items: {
                 where: { archivedAt: null, groupId: null },
-                select: { defaultQty: true, defaultUnitCost: true, defaultMarkupPct: true },
+                orderBy: { sortOrder: "asc" },
+                select: { id: true, name: true, defaultQty: true, defaultUnitCost: true, defaultMarkupPct: true },
               },
               groups: {
                 where: { archivedAt: null },
+                orderBy: { sortOrder: "asc" },
                 select: {
+                  name: true,
                   items: {
                     where: { archivedAt: null },
-                    select: { defaultQty: true, defaultUnitCost: true, defaultMarkupPct: true },
+                    orderBy: { sortOrder: "asc" },
+                    select: { id: true, name: true, defaultQty: true, defaultUnitCost: true, defaultMarkupPct: true },
                   },
                 },
               },
@@ -53,6 +59,7 @@ export async function GET(
         },
       },
       payments: { orderBy: { paidDate: "asc" } },
+      lines: { orderBy: { sortOrder: "asc" } },
     },
   });
   if (!invoice) return NextResponse.json({ error: "Not found" }, { status: 404 });
@@ -63,21 +70,41 @@ export async function GET(
     client.city && client.state ? `${client.city}, ${client.state} ${client.zip ?? ""}`.trim() : null,
   ].filter(Boolean).join("\n");
 
-  // Build division lines
-  const divisions: InvoiceDivisionLine[] = invoice.estimate.divisions.map((d, i) => {
-    const rawCode = d.csiCode ? d.csiCode.slice(0, 2).trim() : null;
-    const itemNumber = rawCode ? `Div ${rawCode}` : `Div ${i + 1}`;
-    const total = d.manualTotal !== null && d.manualTotal !== undefined
-      ? Number(d.manualTotal)
-      : [...d.items, ...d.groups.flatMap(g => g.items)].reduce((s, it) => s + itemTotal(it), 0);
-    return { itemNumber, description: d.name, scheduledValue: total };
-  }).filter(l => l.scheduledValue > 0);
+  let divisions: InvoiceDivisionLine[];
+  let gcFeeScheduledValue = 0;
 
-  // GC fee
-  const rawTotal = divisions.reduce((s, l) => s + l.scheduledValue, 0);
-  const gcFeeScheduledValue = invoice.estimate.gcFeePercent
-    ? Math.round(rawTotal * Number(invoice.estimate.gcFeePercent) / 100 * 100) / 100
-    : 0;
+  if (invoice.lines.length > 0) {
+    // Use stored per-line data
+    divisions = invoice.lines.map(l => ({
+      itemNumber: l.itemNumber,
+      description: l.description,
+      scheduledValue: Number(l.scheduledValue),
+      fromPrevious: Number(l.fromPrevious),
+      thisInvoice: Number(l.thisInvoice),
+      pctThisInvoice: Number(l.pctThisInvoice),
+    }));
+    // GC fee: derive from estimate gcFeePercent applied to total scheduled
+    if (invoice.estimate.gcFeePercent) {
+      const rawTotal = divisions.reduce((s, l) => s + l.scheduledValue, 0);
+      gcFeeScheduledValue = Math.round(rawTotal * Number(invoice.estimate.gcFeePercent) / 100 * 100) / 100;
+    }
+  } else {
+    // Fallback: compute from estimate divisions at uniform pct
+    const rawDivisions = invoice.estimate.divisions.map((d, i) => {
+      const rawCode = d.csiCode ? d.csiCode.slice(0, 2).trim() : null;
+      const itemNumber = rawCode ? `Div ${rawCode}` : `Div ${i + 1}`;
+      const total = d.manualTotal !== null && d.manualTotal !== undefined
+        ? Number(d.manualTotal)
+        : [...d.items, ...d.groups.flatMap(g => g.items)].reduce((s, it) => s + itemTotal(it), 0);
+      return { itemNumber, description: d.name, scheduledValue: total };
+    }).filter(l => l.scheduledValue > 0);
+
+    const rawTotal = rawDivisions.reduce((s, l) => s + l.scheduledValue, 0);
+    if (invoice.estimate.gcFeePercent) {
+      gcFeeScheduledValue = Math.round(rawTotal * Number(invoice.estimate.gcFeePercent) / 100 * 100) / 100;
+    }
+    divisions = rawDivisions;
+  }
 
   const html = buildInvoiceHtml({
     invoiceNumber: invoice.invoiceNumber,
@@ -88,7 +115,6 @@ export async function GET(
     estimateName: invoice.estimate.name,
     clientName: client.name,
     clientAddress: clientAddress || null,
-    invoiceDate: null,
     dueDate: invoice.dueDate,
     notes: invoice.notes,
     payments: invoice.payments.map(p => ({

@@ -1067,10 +1067,29 @@ model Invoice {
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
   payments      Payment[]
+  lines         InvoiceLine[]
 
   @@index([companyId])
   @@index([clientId])
   @@index([estimateId])
+}
+
+model InvoiceLine {
+  id               String   @id @default(cuid())
+  invoiceId        String
+  invoice          Invoice  @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+  estimateItemId   String?
+  sortOrder        Int      @default(0)
+  itemNumber       String   @default("")
+  description      String   @default("")
+  scheduledValue   Decimal  @default(0) @db.Decimal(15, 2)
+  fromPrevious     Decimal  @default(0) @db.Decimal(15, 2)
+  pctThisInvoice   Decimal  @default(0) @db.Decimal(7, 4)
+  thisInvoice      Decimal  @default(0) @db.Decimal(15, 2)
+  createdAt        DateTime @default(now())
+
+  @@index([invoiceId])
+  @@index([estimateItemId])
 }
 
 model Payment {

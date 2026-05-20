@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { buildInvoiceLines } from "@/lib/invoiceLines";
 
 export const runtime = "nodejs";
 
@@ -20,7 +21,7 @@ export async function GET(
   return NextResponse.json(invoices);
 }
 
-// POST — create a new invoice for a phase
+// POST — create a new invoice and auto-populate lines from estimate
 export async function POST(
   req: NextRequest,
   { params }: { params: { companyId: string; clientId: string } }
@@ -35,7 +36,6 @@ export async function POST(
     return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
   }
 
-  // Build invoice number: "{estimateNumber}-{n}"
   const estimate = await prisma.estimateTemplate.findFirst({
     where: { id: estimateId, companyId: params.companyId },
     select: { estimateNumber: true },
@@ -60,6 +60,23 @@ export async function POST(
       status: "DRAFT",
     },
   });
+
+  // Auto-populate lines from estimate items
+  try {
+    const lines = await buildInvoiceLines(estimateId, invoice.id, Number(pct));
+    if (lines.length > 0) {
+      await prisma.invoiceLine.createMany({
+        data: lines.map(l => ({ ...l, invoiceId: invoice.id })),
+      });
+      // Update invoice amount to sum of line thisInvoice
+      const lineTotal = lines.reduce((s, l) => s + l.thisInvoice, 0);
+      if (Math.abs(lineTotal - Number(amount)) > 0.01) {
+        await prisma.invoice.update({ where: { id: invoice.id }, data: { amount: lineTotal } });
+      }
+    }
+  } catch {
+    // Lines are optional — invoice still created
+  }
 
   return NextResponse.json(invoice);
 }
