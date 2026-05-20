@@ -85,7 +85,7 @@ export async function POST(req: NextRequest, { params }: { params: { companyId: 
     "General Requirements", "Existing Conditions", "Concrete / Shell",
     "Structural Steel", "Finished & Decorative Metals", "Wood & Plastics",
     "Thermal & Moisture Protection", "Openings & Glazing", "Finishes",
-    "Specialties", "Equipment", "Mechanical", "Electrical", "Plumbing", "GC Fee",
+    "Specialties", "Equipment", "Mechanical", "Electrical", "Plumbing",
   ].map((desc, i) => ({
     sortOrder: i,
     itemNumber: `Div ${i + 1}`,

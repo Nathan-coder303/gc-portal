@@ -242,10 +242,12 @@ export default function PayAppEditor({
   const [sending, setSending] = useState(false);
   const [sendResult, setSendResult] = useState<string | null>(null);
 
+  const [loadError, setLoadError] = useState<string | null>(null);
+
   // Load
   useEffect(() => {
     fetch(`/api/${companyId}/clients/${clientId}/payapps/${payAppId}`)
-      .then(r => r.json())
+      .then(r => r.ok ? r.json() : r.json().then((e: { error?: string }) => Promise.reject(e.error ?? "Load failed")))
       .then(data => {
         setHeader({
           payAppNumber: data.payAppNumber ?? 1,
@@ -279,7 +281,8 @@ export default function PayAppEditor({
         setSendSubject(`Pay App #${data.payAppNumber}${data.invoiceNumber ? ` - Invoice #${data.invoiceNumber}` : ""} - ${data.fromName ?? "MIBH Construction"}`);
         setSendBody(`Please find attached Pay Application #${data.payAppNumber}${data.periodStart ? ` for the period ${data.periodStart} – ${data.periodEnd ?? ""}` : ""}.\n\nPlease review and advise.\n\nThank you,\n${data.fromContact ?? "Mike Baruh"}\n${data.fromName ?? "MIBH Construction"}`);
         setLoading(false);
-      });
+      })
+      .catch((err: unknown) => { setLoadError(String(err)); setLoading(false); });
   }, [payAppId, companyId, clientId]);
 
   const doSave = useCallback(async () => {
@@ -390,6 +393,13 @@ export default function PayAppEditor({
   if (loading) return (
     <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.85)", zIndex: 100, display: "flex", alignItems: "center", justifyContent: "center" }}>
       <span style={{ color: MUTED }}>Loading…</span>
+    </div>
+  );
+
+  if (loadError) return (
+    <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.85)", zIndex: 100, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 12 }}>
+      <span style={{ color: "#f85149", fontSize: 13 }}>Failed to load pay app: {loadError}</span>
+      <button onClick={() => onClose(false)} style={{ background: BORDER, color: TEXT, border: "none", borderRadius: 8, padding: "6px 16px", fontSize: 12, cursor: "pointer" }}>Close</button>
     </div>
   );
 
