@@ -16,6 +16,7 @@ export type InvoiceDivisionLine = {
   fromPrevious?: number;
   thisInvoice?: number;       // pre-computed when per-line %s differ
   pctThisInvoice?: number;
+  isDivisionHeader?: boolean; // renders as a section header row, no amounts
 };
 
 export function buildInvoiceHtml(opts: {
@@ -50,8 +51,9 @@ export function buildInvoiceHtml(opts: {
   const gcFeeScheduledValue = opts.gcFeeScheduledValue ?? 0;
   const pct = Number(opts.pct);
 
-  const perLine = divisions.length > 0 && divisions[0].thisInvoice !== undefined;
-  const totalScheduled = divisions.reduce((s, l) => s + l.scheduledValue, 0);
+  const dataLines = divisions.filter(l => !l.isDivisionHeader);
+  const perLine = dataLines.some(l => l.thisInvoice !== undefined);
+  const totalScheduled = dataLines.reduce((s, l) => s + l.scheduledValue, 0);
   const grandScheduled = totalScheduled + gcFeeScheduledValue;
   const totalThisInvoice = perLine
     ? divisions.reduce((s, l) => s + (l.thisInvoice ?? 0), 0)
@@ -161,6 +163,11 @@ ${hasTable ? `
   </thead>
   <tbody>
     ${divisions.map(l => {
+      if (l.isDivisionHeader) {
+        return `<tr style="background:#efefef;">
+          <td colspan="7" style="font-weight:700;font-size:9px;text-transform:uppercase;letter-spacing:0.6px;color:#444;padding:5px 6px;">${l.itemNumber} &mdash; ${l.description}</td>
+        </tr>`;
+      }
       const prevAmt = l.fromPrevious ?? 0;
       const thisInv = l.thisInvoice !== undefined ? l.thisInvoice : Math.round(l.scheduledValue * pct / 100 * 100) / 100;
       const linePct = l.pctThisInvoice !== undefined ? l.pctThisInvoice : pct;

@@ -74,20 +74,35 @@ export async function GET(
   let gcFeeScheduledValue = 0;
 
   if (invoice.lines.length > 0) {
-    // Use stored per-line data
-    divisions = invoice.lines.map(l => ({
-      itemNumber: l.itemNumber,
-      description: l.description,
-      scheduledValue: Number(l.scheduledValue),
-      fromPrevious: Number(l.fromPrevious),
-      thisInvoice: Number(l.thisInvoice),
-      pctThisInvoice: Number(l.pctThisInvoice),
-    }));
-    // GC fee: derive from estimate gcFeePercent applied to total scheduled
-    if (invoice.estimate.gcFeePercent) {
-      const rawTotal = divisions.reduce((s, l) => s + l.scheduledValue, 0);
-      gcFeeScheduledValue = Math.round(rawTotal * Number(invoice.estimate.gcFeePercent) / 100 * 100) / 100;
+    // Build divCode -> divName map from estimate
+    const divMap = new Map<string, string>();
+    invoice.estimate.divisions.forEach((d, i) => {
+      const code = d.csiCode ? d.csiCode.slice(0, 2).padStart(2, "0") : String(i + 1).padStart(2, "0");
+      divMap.set(code, d.name);
+    });
+
+    // Insert division header rows before each group of items
+    const withHeaders: InvoiceDivisionLine[] = [];
+    let lastDivCode: string | null = null;
+    for (const l of invoice.lines) {
+      const rawNum = l.itemNumber;
+      const divCode = rawNum.includes(".") ? rawNum.split(".")[0].padStart(2, "0") : null;
+      if (divCode && divCode !== lastDivCode && divMap.has(divCode)) {
+        withHeaders.push({ isDivisionHeader: true, itemNumber: `DIV ${divCode}`, description: divMap.get(divCode)!, scheduledValue: 0 });
+        lastDivCode = divCode;
+      }
+      withHeaders.push({
+        itemNumber: rawNum,
+        description: l.description,
+        scheduledValue: Number(l.scheduledValue),
+        fromPrevious: Number(l.fromPrevious),
+        thisInvoice: Number(l.thisInvoice),
+        pctThisInvoice: Number(l.pctThisInvoice),
+      });
     }
+    divisions = withHeaders;
+    // GC fee is already a stored line — do not add auto row
+    gcFeeScheduledValue = 0;
   } else {
     // Fallback: compute from estimate divisions at uniform pct
     const rawDivisions = invoice.estimate.divisions.map((d, i) => {
