@@ -20,7 +20,7 @@ export async function PUT(req: NextRequest, { params }: { params: { companyId: s
       data: lines.map((l: {
         sortOrder: number; itemNumber: string; description: string;
         scheduledValue: number; fromPrevious: number; thisInvoice: number;
-        retainageThis: number; retainageTotal: number;
+        pctThisInvoice: number; retainageThis: number; retainageTotal: number;
       }, i: number) => ({
         payAppId: params.payAppId,
         sortOrder: l.sortOrder ?? i,
@@ -29,6 +29,7 @@ export async function PUT(req: NextRequest, { params }: { params: { companyId: s
         scheduledValue: Number(l.scheduledValue) || 0,
         fromPrevious: Number(l.fromPrevious) || 0,
         thisInvoice: Number(l.thisInvoice) || 0,
+        pctThisInvoice: Number(l.pctThisInvoice) || 0,
         retainageThis: Number(l.retainageThis) || 0,
         retainageTotal: Number(l.retainageTotal) || 0,
       })),

@@ -20,6 +20,7 @@ type Line = {
   scheduledValue: number;
   fromPrevious: number;
   thisInvoice: number;
+  pctThisInvoice: number;
   retainageThis: number;
   retainageTotal: number;
 };
@@ -46,6 +47,8 @@ type Header = {
   coAdditionsThis: number;
   coDeductionsThis: number;
   gcFeeScheduledValue: number;
+  isDepositInvoice: boolean;
+  depositPct: number;
   distributeOwner: boolean;
   distributeArchitect: boolean;
   distributeContractor: boolean;
@@ -59,6 +62,7 @@ const EMPTY_HEADER: Header = {
   originalContractSum: 0, lessPreviousInvoices: 0,
   coAdditionsPrev: 0, coDeductionsPrev: 0, coAdditionsThis: 0, coDeductionsThis: 0,
   gcFeeScheduledValue: 0,
+  isDepositInvoice: false, depositPct: 25,
   distributeOwner: true, distributeArchitect: false, distributeContractor: false,
 };
 
@@ -139,6 +143,33 @@ function CellInput({ value, onChange, type = "text", style }: {
   );
 }
 
+// ─── Percentage input ─────────────────────────────────────────────────────────
+function PctInput({ value, onChange }: { value: number; onChange: (pct: number) => void }) {
+  const [editing, setEditing] = useState(false);
+  const [raw, setRaw] = useState("");
+  function commit() {
+    setEditing(false);
+    onChange(parseFloat(raw) || 0);
+  }
+  const style: React.CSSProperties = {
+    background: "transparent", border: "none", outline: "none", width: "100%",
+    color: value > 0 ? GOLD : MUTED, fontSize: 11, padding: "0 4px",
+    fontFamily: "inherit", textAlign: "right", fontWeight: value > 0 ? 700 : 400,
+  };
+  if (editing) return (
+    <input autoFocus type="number" min={0} max={100} step={0.5} value={raw}
+      onChange={e => setRaw(e.target.value)} onBlur={commit}
+      onKeyDown={e => { if (e.key === "Enter") commit(); if (e.key === "Escape") setEditing(false); }}
+      style={{ ...style, cursor: "text" }} />
+  );
+  return (
+    <div onClick={() => { setEditing(true); setRaw(String(value)); }}
+      style={{ ...style, cursor: "text" }}>
+      {value > 0 ? `${value}%` : <span style={{ color: MUTED }}>0%</span>}
+    </div>
+  );
+}
+
 // ─── Row computed ─────────────────────────────────────────────────────────────
 function rowComputed(l: Line) {
   const totalComplete = l.fromPrevious + l.thisInvoice;
@@ -193,6 +224,7 @@ export default function PayAppEditor({
             scheduledValue: d.total,
             fromPrevious: existing?.fromPrevious ?? 0,
             thisInvoice: existing?.thisInvoice ?? 0,
+            pctThisInvoice: existing?.pctThisInvoice ?? 0,
             retainageThis: existing?.retainageThis ?? 0,
             retainageTotal: existing?.retainageTotal ?? 0,
           };
@@ -237,6 +269,8 @@ export default function PayAppEditor({
           coAdditionsThis: data.coAdditionsThis ?? 0,
           coDeductionsThis: data.coDeductionsThis ?? 0,
           gcFeeScheduledValue: data.gcFeeScheduledValue ?? 0,
+          isDepositInvoice: data.isDepositInvoice ?? false,
+          depositPct: data.depositPct ?? 25,
           distributeOwner: data.distributeOwner ?? true,
           distributeArchitect: data.distributeArchitect ?? false,
           distributeContractor: data.distributeContractor ?? false,
@@ -287,7 +321,7 @@ export default function PayAppEditor({
       sortOrder: count,
       itemNumber: type === "div" ? `Div ${divCount + 1}` : `CO #${coCount + 1}`,
       description: "",
-      scheduledValue: 0, fromPrevious: 0, thisInvoice: 0,
+      scheduledValue: 0, fromPrevious: 0, thisInvoice: 0, pctThisInvoice: 0,
       retainageThis: 0, retainageTotal: 0,
     };
     setLines(prev => [...prev, newLine]);
@@ -296,6 +330,24 @@ export default function PayAppEditor({
 
   function removeLine(idx: number) {
     setLines(prev => prev.filter((_, i) => i !== idx));
+    scheduleSave();
+  }
+
+  function setLinePct(idx: number, pct: number) {
+    setLines(prev => prev.map((l, i) => {
+      if (i !== idx) return l;
+      const thisInvoice = Math.round(l.scheduledValue * pct / 100 * 100) / 100;
+      return { ...l, pctThisInvoice: pct, thisInvoice };
+    }));
+    scheduleSave();
+  }
+
+  function applyDepositPct(pct: number) {
+    setLines(prev => prev.map(l => ({
+      ...l,
+      pctThisInvoice: pct,
+      thisInvoice: Math.round(l.scheduledValue * pct / 100 * 100) / 100,
+    })));
     scheduleSave();
   }
 
@@ -548,14 +600,41 @@ export default function PayAppEditor({
               )}
             </div>
 
+            {/* Deposit toggle bar */}
+            <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 10, padding: "10px 14px", borderRadius: 8, background: CARD, border: `1px solid ${header.isDepositInvoice ? GOLD : BORDER}` }}>
+              <label style={{ display: "flex", alignItems: "center", gap: 8, cursor: "pointer" }}>
+                <input type="checkbox" checked={header.isDepositInvoice}
+                  onChange={e => { setH("isDepositInvoice", e.target.checked); if (e.target.checked) applyDepositPct(header.depositPct); }}
+                  style={{ accentColor: GOLD, width: 16, height: 16 }} />
+                <span style={{ fontSize: 12, fontWeight: 700, color: header.isDepositInvoice ? GOLD : MUTED }}>Deposit Invoice</span>
+              </label>
+              {header.isDepositInvoice && (
+                <>
+                  <span style={{ fontSize: 11, color: MUTED }}>—</span>
+                  <span style={{ fontSize: 11, color: MUTED }}>Apply</span>
+                  <input
+                    type="number" min={0} max={100} step={0.5}
+                    value={header.depositPct}
+                    onChange={e => { const pct = parseFloat(e.target.value) || 0; setH("depositPct", pct); applyDepositPct(pct); }}
+                    style={{ width: 70, background: BG, border: `1px solid ${GOLD}`, color: GOLD, borderRadius: 6, padding: "4px 8px", fontSize: 13, fontWeight: 700, textAlign: "right", outline: "none" }}
+                  />
+                  <span style={{ fontSize: 13, fontWeight: 700, color: GOLD }}>% to all lines</span>
+                </>
+              )}
+              {!header.isDepositInvoice && (
+                <span style={{ fontSize: 11, color: MUTED }}>Individual % per line below</span>
+              )}
+            </div>
+
             <div style={{ overflowX: "auto", borderRadius: 8, border: `1px solid ${BORDER}` }}>
-              <table style={{ borderCollapse: "collapse", width: "100%", minWidth: 1050 }}>
+              <table style={{ borderCollapse: "collapse", width: "100%", minWidth: 1100 }}>
                 <thead>
                   <tr style={{ background: CARD }}>
                     <th style={{ padding: "8px 8px", textAlign: "left", fontSize: 10, color: MUTED, fontWeight: 700, borderBottom: `1px solid ${BORDER}`, borderRight: `1px solid ${BORDER}`, width: 80 }}>ITEM #</th>
                     <th style={{ padding: "8px 8px", textAlign: "left", fontSize: 10, color: MUTED, fontWeight: 700, borderBottom: `1px solid ${BORDER}`, borderRight: `1px solid ${BORDER}`, width: 200 }}>DESCRIPTION</th>
                     <th style={{ padding: "8px 8px", textAlign: "right", fontSize: 10, color: MUTED, fontWeight: 700, borderBottom: `1px solid ${BORDER}`, borderRight: `1px solid ${BORDER}`, width: 110 }}>SCHEDULED VALUE</th>
                     <th style={{ padding: "8px 8px", textAlign: "right", fontSize: 10, color: MUTED, fontWeight: 700, borderBottom: `1px solid ${BORDER}`, borderRight: `1px solid ${BORDER}`, width: 110 }}>FROM PREVIOUS</th>
+                    <th style={{ padding: "8px 8px", textAlign: "right", fontSize: 10, color: GOLD, fontWeight: 700, borderBottom: `1px solid ${BORDER}`, borderRight: `1px solid ${BORDER}`, width: 70 }}>% THIS INV</th>
                     <th style={{ padding: "8px 8px", textAlign: "right", fontSize: 10, color: MUTED, fontWeight: 700, borderBottom: `1px solid ${BORDER}`, borderRight: `1px solid ${BORDER}`, width: 110 }}>THIS INVOICE</th>
                     <th style={{ padding: "8px 8px", textAlign: "right", fontSize: 10, color: MUTED, fontWeight: 700, borderBottom: `1px solid ${BORDER}`, borderRight: `1px solid ${BORDER}`, width: 110 }}>BALANCE TO FINISH</th>
                     <th style={{ padding: "8px 8px", textAlign: "right", fontSize: 10, color: MUTED, fontWeight: 700, borderBottom: `1px solid ${BORDER}`, borderRight: `1px solid ${BORDER}`, width: 110 }}>RETAINAGE THIS INV</th>
@@ -585,8 +664,12 @@ export default function PayAppEditor({
                         <td style={{ ...tdStyle }}>
                           <CellInput value={line.fromPrevious} onChange={v => setLine(idx, "fromPrevious", v)} type="number" />
                         </td>
-                        <td style={{ ...tdStyle }}>
-                          <CellInput value={line.thisInvoice} onChange={v => setLine(idx, "thisInvoice", v)} type="number" />
+                        {/* % This Invoice — editable, drives the dollar amount */}
+                        <td style={{ ...tdStyle, background: `${GOLD}11` }}>
+                          <PctInput value={line.pctThisInvoice} onChange={pct => setLinePct(idx, pct)} />
+                        </td>
+                        <td style={{ ...tdStyle, textAlign: "right", padding: "4px 8px", fontSize: 11, color: line.thisInvoice > 0 ? GOLD : MUTED, fontWeight: 600 }}>
+                          ${$$(line.thisInvoice)}
                         </td>
                         <td style={{ ...tdStyle, textAlign: "right", padding: "4px 8px", fontSize: 11, color: balance > 0 ? TEXT : MUTED }}>
                           ${$$(balance)}
@@ -606,13 +689,14 @@ export default function PayAppEditor({
                       </tr>
                     );
                   })}
-                  {/* GC Fee row — auto-computed, not editable */}
+                  {/* GC Fee row — auto-computed proportional to % invoiced */}
                   {header.gcFeeScheduledValue > 0 && (
                     <tr style={{ background: `${CARD}88` }}>
                       <td style={{ borderRight: `1px solid ${BORDER}`, borderBottom: `1px solid ${BORDER}`, padding: "2px 8px", fontSize: 11, color: MUTED, fontStyle: "italic" }}>GC Fee</td>
                       <td style={{ borderRight: `1px solid ${BORDER}`, borderBottom: `1px solid ${BORDER}`, padding: "2px 8px", fontSize: 11, color: MUTED, fontStyle: "italic" }}>GC Fee (auto)</td>
                       <td style={{ borderRight: `1px solid ${BORDER}`, borderBottom: `1px solid ${BORDER}`, padding: "4px 8px", fontSize: 11, textAlign: "right", color: MUTED }}>${$$(header.gcFeeScheduledValue)}</td>
                       <td style={{ borderRight: `1px solid ${BORDER}`, borderBottom: `1px solid ${BORDER}`, padding: "4px 8px", fontSize: 11, textAlign: "right", color: MUTED }}>${$$(gcFeePrevious)}</td>
+                      <td style={{ borderRight: `1px solid ${BORDER}`, borderBottom: `1px solid ${BORDER}`, padding: "4px 8px", fontSize: 11, textAlign: "right", color: MUTED }}>{(pctThisInv * 100).toFixed(1)}%</td>
                       <td style={{ borderRight: `1px solid ${BORDER}`, borderBottom: `1px solid ${BORDER}`, padding: "4px 8px", fontSize: 11, textAlign: "right", color: GOLD, fontWeight: 700 }}>${$$(gcFeeThisInvoice)}</td>
                       <td style={{ borderRight: `1px solid ${BORDER}`, borderBottom: `1px solid ${BORDER}`, padding: "4px 8px", fontSize: 11, textAlign: "right", color: MUTED }}>${$$(gcFeeBalance)}</td>
                       <td style={{ borderRight: `1px solid ${BORDER}`, borderBottom: `1px solid ${BORDER}` }}></td>
@@ -630,6 +714,9 @@ export default function PayAppEditor({
                     </td>
                     <td style={{ padding: "6px 8px", textAlign: "right", fontSize: 11, color: TEXT, borderTop: `2px solid ${BORDER}` }}>
                       ${$$(totalFromPrevious + gcFeePrevious)}
+                    </td>
+                    <td style={{ padding: "6px 8px", textAlign: "right", fontSize: 11, color: GOLD, borderTop: `2px solid ${BORDER}` }}>
+                      —
                     </td>
                     <td style={{ padding: "6px 8px", textAlign: "right", fontSize: 11, color: GOLD, borderTop: `2px solid ${BORDER}` }}>
                       ${$$(totalThisInvoice + gcFeeThisInvoice)}
