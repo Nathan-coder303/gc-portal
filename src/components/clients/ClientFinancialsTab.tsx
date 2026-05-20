@@ -270,8 +270,6 @@ function SubCard({
   const [showPayForm, setShowPayForm] = useState(false);
   const [editingPayId, setEditingPayId] = useState<string | null>(null);
 
-  const addedCsiCodes = new Set(sub.scopeItems.map(i => i.csiCode).filter(Boolean));
-
   async function saveInfo() {
     setSavingInfo(true);
     try {

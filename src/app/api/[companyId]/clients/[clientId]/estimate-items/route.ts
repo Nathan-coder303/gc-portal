@@ -11,11 +11,19 @@ export async function GET(
   const session = await auth();
   if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-  // Get all non-archived divisions (with items) from active estimates for this client
+  // Get the most recently updated non-archived template for this client
+  const latestTemplate = await prisma.estimateTemplate.findFirst({
+    where: { companyId: params.companyId, clientId: params.clientId, archivedAt: null },
+    orderBy: { updatedAt: "desc" },
+    select: { id: true },
+  });
+
+  if (!latestTemplate) return NextResponse.json([]);
+
   const divisions = await prisma.estimateTemplateDivision.findMany({
     where: {
       archivedAt: null,
-      template: { companyId: params.companyId, clientId: params.clientId, archivedAt: null },
+      templateId: latestTemplate.id,
     },
     select: {
       id: true,
@@ -56,7 +64,7 @@ export async function GET(
           csiCode: i.csiCode,
           salePrice: Math.round(salePrice * 100) / 100,
         };
-      }).filter(i => i.name),
+      }).filter(i => i.name && i.salePrice > 0),
     }))
     .filter(d => d.items.length > 0);
 
