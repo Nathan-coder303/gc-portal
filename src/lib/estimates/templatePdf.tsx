@@ -1,8 +1,24 @@
-import { Document, Page, Text, View, StyleSheet, renderToBuffer, Image, Font } from "@react-pdf/renderer";
+import { Document, Page, Text, View, StyleSheet, renderToBuffer, Image, Font, Svg, Path } from "@react-pdf/renderer";
 import React from "react";
 import path from "path";
 
 Font.registerHyphenationCallback((word) => [word]);
+
+function polarToCartesian(cx: number, cy: number, r: number, angleDeg: number) {
+  const rad = ((angleDeg - 90) * Math.PI) / 180;
+  return { x: cx + r * Math.cos(rad), y: cy + r * Math.sin(rad) };
+}
+function pieSlicePath(cx: number, cy: number, r: number, startDeg: number, sweepDeg: number): string {
+  if (sweepDeg >= 359.9) {
+    const p1 = polarToCartesian(cx, cy, r, 0);
+    const p2 = polarToCartesian(cx, cy, r, 180);
+    return `M ${p1.x.toFixed(2)} ${p1.y.toFixed(2)} A ${r} ${r} 0 1 1 ${p2.x.toFixed(2)} ${p2.y.toFixed(2)} A ${r} ${r} 0 1 1 ${p1.x.toFixed(2)} ${p1.y.toFixed(2)} Z`;
+  }
+  const start = polarToCartesian(cx, cy, r, startDeg);
+  const end = polarToCartesian(cx, cy, r, startDeg + sweepDeg);
+  const largeArc = sweepDeg > 180 ? 1 : 0;
+  return `M ${cx.toFixed(2)} ${cy.toFixed(2)} L ${start.x.toFixed(2)} ${start.y.toFixed(2)} A ${r} ${r} 0 ${largeArc} 1 ${end.x.toFixed(2)} ${end.y.toFixed(2)} Z`;
+}
 
 export type CompanyBranding = {
   name: string;
@@ -1233,6 +1249,22 @@ function DivisionSummaryPage({ template, client, divisions, gcFeePercent }: Pick
   const hasAllowances = allowanceLines.length > 0;
   const allowancesTotal = allowanceLines.reduce((s, l) => s + l.amount, 0);
 
+  // Pie chart slices: Labor & Rough Material, Allowances, GC Fee
+  const laborAmount = Math.max(0, grandTotalWithGc - allowancesTotal - gcFeeAmount);
+  const rawPieSlices = [
+    { label: "Labor & Rough Material", amount: laborAmount, color: "#1e3a5f" },
+    { label: "Allowances", amount: allowancesTotal, color: "#C9A84C" },
+    { label: "GC Overhead & Profit", amount: gcFeeAmount, color: "#3b82f6" },
+  ].filter(s => s.amount > 0);
+  const pieTotal = rawPieSlices.reduce((s, p) => s + p.amount, 0);
+  let _pieAngle = 0;
+  const svgSlices = rawPieSlices.map(s => {
+    const sweep = pieTotal > 0 ? (s.amount / pieTotal) * 360 : 0;
+    const d = pieSlicePath(80, 80, 72, _pieAngle, sweep);
+    _pieAngle += sweep;
+    return { ...s, sweep, d };
+  });
+
   return (
     <Page size="LETTER" style={{ fontFamily: "Helvetica", paddingTop: 0, paddingBottom: 0 }}>
       {/* Header bar */}
@@ -1284,33 +1316,63 @@ function DivisionSummaryPage({ template, client, divisions, gcFeePercent }: Pick
             <Text style={{ fontSize: 14, fontFamily: "Helvetica-Bold", color: GOLD }}>ESTIMATE TOTAL</Text>
             <Text style={{ fontSize: 16, fontFamily: "Helvetica-Bold", color: GOLD }}>${fmt(grandTotalWithGc)}</Text>
           </View>
-          {hasAllowances && (
-            <View style={{ marginTop: 12 }}>
-              {/* Section header */}
-              <View style={{ backgroundColor: "#2d2410", paddingHorizontal: 12, paddingVertical: 6, borderRadius: 3, marginBottom: 0 }}>
-                <Text style={{ fontSize: 9, fontFamily: "Helvetica-Bold", color: GOLD, letterSpacing: 1, textTransform: "uppercase" }}>Allowances Recap</Text>
-              </View>
-              {/* Column headers */}
-              <View style={{ flexDirection: "row", paddingHorizontal: 12, paddingVertical: 4, borderBottomWidth: 1, borderBottomColor: "#e2e8f0", backgroundColor: "#f8f4ec" }}>
-                <Text style={{ fontSize: 8, fontFamily: "Helvetica-Bold", color: "#92400e", width: 80 }}>CSI DIVISION</Text>
-                <Text style={{ fontSize: 8, fontFamily: "Helvetica-Bold", color: "#92400e", flex: 1 }}>DESCRIPTION</Text>
-                <Text style={{ fontSize: 8, fontFamily: "Helvetica-Bold", color: "#92400e", width: 72, textAlign: "right" }}>AMOUNT</Text>
-              </View>
-              {/* Allowance rows */}
-              {allowanceLines.map((line, idx) => (
-                <View key={idx} style={{ flexDirection: "row", paddingHorizontal: 12, paddingVertical: 4, borderBottomWidth: 1, borderBottomColor: "#f1f5f9", backgroundColor: idx % 2 === 0 ? "#fffbf2" : "#ffffff" }}>
-                  <Text style={{ fontSize: 9, color: "#78716c", width: 80 }}>{line.csiCode}</Text>
-                  <Text style={{ fontSize: 9, color: "#334155", flex: 1 }}>{line.name}</Text>
-                  <Text style={{ fontSize: 9, fontFamily: "Helvetica-Bold", color: line.amount > 0 ? "#0f172a" : "#92400e", width: 72, textAlign: "right" }}>
-                    {line.amount > 0 ? `$${fmt(line.amount)}` : "TBD"}
-                  </Text>
+          {/* Two-column: Allowances table (left) + Pie chart (right) */}
+          {(hasAllowances || svgSlices.length > 0) && (
+            <View style={{ flexDirection: "row", gap: 14, marginTop: 14 }}>
+              {/* LEFT: Allowances table */}
+              {hasAllowances ? (
+                <View style={{ flex: 1 }}>
+                  <View style={{ backgroundColor: "#2d2410", paddingHorizontal: 12, paddingVertical: 6, borderRadius: 3 }}>
+                    <Text style={{ fontSize: 9, fontFamily: "Helvetica-Bold", color: GOLD, letterSpacing: 1 }}>ALLOWANCES RECAP</Text>
+                  </View>
+                  <View style={{ flexDirection: "row", paddingHorizontal: 12, paddingVertical: 4, borderBottomWidth: 1, borderBottomColor: "#e2e8f0", backgroundColor: "#f8f4ec" }}>
+                    <Text style={{ fontSize: 7, fontFamily: "Helvetica-Bold", color: "#92400e", width: 58 }}>CSI CODE</Text>
+                    <Text style={{ fontSize: 7, fontFamily: "Helvetica-Bold", color: "#92400e", flex: 1 }}>DESCRIPTION</Text>
+                    <Text style={{ fontSize: 7, fontFamily: "Helvetica-Bold", color: "#92400e", width: 54, textAlign: "right" }}>AMOUNT</Text>
+                  </View>
+                  {allowanceLines.map((line, idx) => (
+                    <View key={idx} style={{ flexDirection: "row", paddingHorizontal: 12, paddingVertical: 3, borderBottomWidth: 1, borderBottomColor: "#f1f5f9", backgroundColor: idx % 2 === 0 ? "#fffbf2" : "#ffffff" }}>
+                      <Text style={{ fontSize: 8, color: "#78716c", width: 58 }}>{line.csiCode}</Text>
+                      <Text style={{ fontSize: 8, color: "#334155", flex: 1 }}>{line.name}</Text>
+                      <Text style={{ fontSize: 8, fontFamily: "Helvetica-Bold", color: line.amount > 0 ? "#0f172a" : "#92400e", width: 54, textAlign: "right" }}>
+                        {line.amount > 0 ? `$${fmt(line.amount)}` : "TBD"}
+                      </Text>
+                    </View>
+                  ))}
+                  <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", backgroundColor: "#2d2410", paddingHorizontal: 12, paddingVertical: 6, borderRadius: 3 }}>
+                    <Text style={{ fontSize: 8, fontFamily: "Helvetica-Bold", color: GOLD }}>TOTAL ALLOWANCES</Text>
+                    <Text style={{ fontSize: 10, fontFamily: "Helvetica-Bold", color: GOLD }}>{allowancesTotal > 0 ? `$${fmt(allowancesTotal)}` : "TBD"}</Text>
+                  </View>
                 </View>
-              ))}
-              {/* Total row */}
-              <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", backgroundColor: "#2d2410", paddingHorizontal: 12, paddingVertical: 6, borderRadius: 3, marginTop: 0 }}>
-                <Text style={{ fontSize: 9, fontFamily: "Helvetica-Bold", color: GOLD }}>TOTAL ALLOWANCES INCLUDED</Text>
-                <Text style={{ fontSize: 11, fontFamily: "Helvetica-Bold", color: GOLD }}>{allowancesTotal > 0 ? `$${fmt(allowancesTotal)}` : "TBD"}</Text>
-              </View>
+              ) : <View style={{ flex: 1 }} />}
+
+              {/* RIGHT: Pie chart */}
+              {svgSlices.length > 0 && (
+                <View style={{ width: 188, alignItems: "center" }}>
+                  <View style={{ backgroundColor: DARK, paddingHorizontal: 8, paddingVertical: 6, borderRadius: 3, width: 188, marginBottom: 6 }}>
+                    <Text style={{ fontSize: 9, fontFamily: "Helvetica-Bold", color: GOLD, letterSpacing: 1, textAlign: "center" }}>COST BREAKDOWN</Text>
+                  </View>
+                  <Svg width={160} height={160} viewBox="0 0 160 160">
+                    {svgSlices.map((s, i) => (
+                      <Path key={i} d={s.d} fill={s.color} stroke="white" strokeWidth={1.5} />
+                    ))}
+                  </Svg>
+                  <View style={{ width: 188, paddingHorizontal: 4, marginTop: 4 }}>
+                    {svgSlices.map((s, i) => (
+                      <View key={i} style={{ flexDirection: "row", alignItems: "center", marginTop: 4 }}>
+                        <View style={{ width: 10, height: 10, backgroundColor: s.color, borderRadius: 2, marginRight: 5 }} />
+                        <Text style={{ fontSize: 7.5, color: "#334155", flex: 1 }}>{s.label}</Text>
+                        <View style={{ alignItems: "flex-end" }}>
+                          <Text style={{ fontSize: 7.5, fontFamily: "Helvetica-Bold", color: "#0f172a" }}>
+                            {pieTotal > 0 ? `${Math.round(s.amount / pieTotal * 100)}%` : "0%"}
+                          </Text>
+                          <Text style={{ fontSize: 7, color: "#64748b" }}>${fmt(s.amount)}</Text>
+                        </View>
+                      </View>
+                    ))}
+                  </View>
+                </View>
+              )}
             </View>
           )}
           {(template.sqFt || template.durationMonths) && (
