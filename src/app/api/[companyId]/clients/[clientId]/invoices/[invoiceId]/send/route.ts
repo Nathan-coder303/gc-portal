@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { google } from "googleapis";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { buildInvoiceHtml } from "@/lib/invoiceHtml";
+import { buildInvoiceHtml, InvoiceDivisionLine } from "@/lib/invoiceHtml";
 import { renderTemplatePdf } from "@/lib/estimates/templatePdf";
 import { getGmailOAuth } from "@/lib/gmail";
 
@@ -51,12 +51,72 @@ export async function POST(
           },
         },
         payments: { orderBy: { paidDate: "asc" } },
+        lines: { orderBy: { sortOrder: "asc" } },
       },
     }),
     prisma.company.findFirst({ where: { id: params.companyId } }),
   ]);
 
   if (!invoice || !company) return NextResponse.json({ error: "Invoice not found" }, { status: 404 });
+
+  // Build division lines for the email body — same logic as the preview route
+  function itemTotal(item: { defaultQty: unknown; defaultUnitCost: unknown; defaultMarkupPct: unknown }): number {
+    const qty = Number(item.defaultQty ?? 0);
+    const cost = Number(item.defaultUnitCost ?? 0);
+    const markup = Number(item.defaultMarkupPct ?? 0);
+    return qty * cost * (1 + markup / 100);
+  }
+
+  let emailDivisions: InvoiceDivisionLine[];
+  let gcFeeScheduledValue = 0;
+
+  if (invoice.lines.length > 0) {
+    const divMap = new Map<string, string>();
+    invoice.estimate.divisions.forEach((d, i) => {
+      const code = d.csiCode ? d.csiCode.slice(0, 2).padStart(2, "0") : String(i + 1).padStart(2, "0");
+      divMap.set(code, d.name);
+    });
+    const withHeaders: InvoiceDivisionLine[] = [];
+    let lastDivCode: string | null = null;
+    for (const l of invoice.lines) {
+      const rawNum = l.itemNumber;
+      const divCode = rawNum.includes(".") ? rawNum.split(".")[0].padStart(2, "0") : null;
+      if (divCode && divCode !== lastDivCode && divMap.has(divCode)) {
+        withHeaders.push({ isDivisionHeader: true, itemNumber: `DIV ${divCode}`, description: divMap.get(divCode)!, scheduledValue: 0 });
+        lastDivCode = divCode;
+      }
+      withHeaders.push({
+        itemNumber: rawNum,
+        description: l.description,
+        scheduledValue: Number(l.scheduledValue),
+        fromPrevious: Number(l.fromPrevious),
+        thisInvoice: Number(l.thisInvoice),
+        pctThisInvoice: Number(l.pctThisInvoice),
+      });
+    }
+    emailDivisions = withHeaders;
+  } else {
+    const rawDivisions = invoice.estimate.divisions.map((d, i) => {
+      const rawCode = d.csiCode ? d.csiCode.slice(0, 2).trim() : null;
+      const itemNumber = rawCode ? `Div ${rawCode}` : `Div ${i + 1}`;
+      const total = d.manualTotal !== null && d.manualTotal !== undefined
+        ? Number(d.manualTotal)
+        : [...d.items, ...d.groups.flatMap(g => g.items)].reduce((s, it) => s + itemTotal(it), 0);
+      return { itemNumber, description: d.name, scheduledValue: total };
+    }).filter(l => l.scheduledValue > 0);
+    if (invoice.estimate.gcFeePercent) {
+      const rawTotal = rawDivisions.reduce((s, l) => s + l.scheduledValue, 0);
+      gcFeeScheduledValue = Math.round(rawTotal * Number(invoice.estimate.gcFeePercent) / 100 * 100) / 100;
+    }
+    emailDivisions = rawDivisions;
+  }
+
+  const clientAddress = [
+    invoice.client.address,
+    invoice.client.city && invoice.client.state
+      ? `${invoice.client.city}, ${invoice.client.state} ${invoice.client.zip ?? ""}`.trim()
+      : null,
+  ].filter(Boolean).join("\n");
 
   const html = buildInvoiceHtml({
     invoiceNumber: invoice.invoiceNumber,
@@ -66,10 +126,13 @@ export async function POST(
     amount: Number(invoice.amount),
     estimateName: invoice.estimate.name,
     clientName: invoice.client.name,
+    clientAddress: clientAddress || null,
     dueDate: invoice.dueDate,
     notes: invoice.notes,
     customBody: bodyText ?? null,
     payments: invoice.payments.map(p => ({ amount: p.amount, method: p.method, paidDate: p.paidDate, notes: p.notes })),
+    divisions: emailDivisions,
+    gcFeeScheduledValue,
   });
 
   // Generate estimate PDF (no cover, no presentation pages — just the line items)
