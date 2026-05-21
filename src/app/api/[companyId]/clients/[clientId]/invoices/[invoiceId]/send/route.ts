@@ -6,6 +6,17 @@ import { buildInvoiceHtml, InvoiceDivisionLine } from "@/lib/invoiceHtml";
 import { renderTemplatePdf } from "@/lib/estimates/templatePdf";
 import { getGmailOAuth } from "@/lib/gmail";
 
+async function resolvePrivateCoverUrl(blobUrl: string | null): Promise<string | null> {
+  if (!blobUrl) return null;
+  try {
+    const res = await fetch(blobUrl, { headers: { Authorization: `Bearer ${process.env.BLOB_READ_WRITE_TOKEN}` } });
+    if (!res.ok) return null;
+    const ab = await res.arrayBuffer();
+    const mt = res.headers.get("content-type") ?? "image/jpeg";
+    return `data:${mt};base64,${Buffer.from(ab).toString("base64")}`;
+  } catch { return null; }
+}
+
 export const runtime = "nodejs";
 export const maxDuration = 30;
 
@@ -171,6 +182,8 @@ export async function POST(
     })),
   }));
 
+  const companyLogoDataUrl = company.logoUrl ? await resolvePrivateCoverUrl(company.logoUrl) : null;
+
   const estimatePdf = await renderTemplatePdf({
     companyName: company.name,
     branding: {
@@ -182,6 +195,7 @@ export async function POST(
       tagline: company.tagline || undefined,
       website: company.website || undefined,
       contactName: company.contactName || undefined,
+      logoSrc: companyLogoDataUrl || undefined,
     },
     template: {
       name: invoice.estimate.name,

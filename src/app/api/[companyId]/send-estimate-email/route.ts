@@ -217,7 +217,7 @@ export async function POST(
     includeRetailPages: page2 ? page2 === "RETAIL" : template.name.toLowerCase().includes("retail"),
     includeCoverPage: coverType !== "NONE",
     includeDivisionSummary: includeDivisionSummary ?? false,
-    showTerms: template.showTerms && !noPresentation,
+    showTerms: template.showTerms,
     forcedBreakCsiPrefixes: forcedBreakCsiPrefixes ?? [],
     scopeOfWork: scopeOfWork ?? null,
     insulationType: template.insulationType ?? "ISO",
