@@ -1260,9 +1260,10 @@ function DivisionSummaryPage({ template, client, divisions, gcFeePercent }: Pick
   let _pieAngle = 0;
   const svgSlices = rawPieSlices.map(s => {
     const sweep = pieTotal > 0 ? (s.amount / pieTotal) * 360 : 0;
-    const d = pieSlicePath(80, 80, 72, _pieAngle, sweep);
+    const startAngle = _pieAngle;
+    const d = pieSlicePath(80, 80, 72, startAngle, sweep);
     _pieAngle += sweep;
-    return { ...s, sweep, d };
+    return { ...s, sweep, startAngle, d };
   });
 
   return (
@@ -1330,15 +1331,17 @@ function DivisionSummaryPage({ template, client, divisions, gcFeePercent }: Pick
                     <Text style={{ fontSize: 7, fontFamily: "Helvetica-Bold", color: "#92400e", flex: 1 }}>DESCRIPTION</Text>
                     <Text style={{ fontSize: 7, fontFamily: "Helvetica-Bold", color: "#92400e", width: 54, textAlign: "right" }}>AMOUNT</Text>
                   </View>
-                  {allowanceLines.map((line, idx) => (
-                    <View key={idx} style={{ flexDirection: "row", paddingHorizontal: 12, paddingVertical: 3, borderBottomWidth: 1, borderBottomColor: "#f1f5f9", backgroundColor: idx % 2 === 0 ? "#fffbf2" : "#ffffff" }}>
-                      <Text style={{ fontSize: 8, color: "#78716c", width: 58 }}>{line.csiCode}</Text>
-                      <Text style={{ fontSize: 8, color: "#334155", flex: 1 }}>{line.name}</Text>
-                      <Text style={{ fontSize: 8, fontFamily: "Helvetica-Bold", color: line.amount > 0 ? "#0f172a" : "#92400e", width: 54, textAlign: "right" }}>
-                        {line.amount > 0 ? `$${fmt(line.amount)}` : "TBD"}
-                      </Text>
-                    </View>
-                  ))}
+                  <View style={{ flex: 1, justifyContent: "space-evenly" }}>
+                    {allowanceLines.map((line, idx) => (
+                      <View key={idx} style={{ flexDirection: "row", paddingHorizontal: 12, paddingVertical: 3, borderBottomWidth: 1, borderBottomColor: "#f1f5f9", backgroundColor: idx % 2 === 0 ? "#fffbf2" : "#ffffff" }}>
+                        <Text style={{ fontSize: 8, color: "#78716c", width: 58 }}>{line.csiCode}</Text>
+                        <Text style={{ fontSize: 8, color: "#334155", flex: 1 }}>{line.name}</Text>
+                        <Text style={{ fontSize: 8, fontFamily: "Helvetica-Bold", color: line.amount > 0 ? "#0f172a" : "#92400e", width: 54, textAlign: "right" }}>
+                          {line.amount > 0 ? `$${fmt(line.amount)}` : "TBD"}
+                        </Text>
+                      </View>
+                    ))}
+                  </View>
                   <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", backgroundColor: "#2d2410", paddingHorizontal: 12, paddingVertical: 6, borderRadius: 3 }}>
                     <Text style={{ fontSize: 8, fontFamily: "Helvetica-Bold", color: GOLD }}>TOTAL ALLOWANCES</Text>
                     <Text style={{ fontSize: 10, fontFamily: "Helvetica-Bold", color: GOLD }}>{allowancesTotal > 0 ? `$${fmt(allowancesTotal)}` : "TBD"}</Text>
@@ -1352,11 +1355,28 @@ function DivisionSummaryPage({ template, client, divisions, gcFeePercent }: Pick
                   <View style={{ backgroundColor: DARK, paddingHorizontal: 8, paddingVertical: 6, borderRadius: 3, width: 188, marginBottom: 6 }}>
                     <Text style={{ fontSize: 9, fontFamily: "Helvetica-Bold", color: GOLD, letterSpacing: 1, textAlign: "center" }}>COST BREAKDOWN</Text>
                   </View>
-                  <Svg width={160} height={160} viewBox="0 0 160 160">
-                    {svgSlices.map((s, i) => (
-                      <Path key={i} d={s.d} fill={s.color} stroke="white" strokeWidth={1.5} />
-                    ))}
-                  </Svg>
+                  <View style={{ position: "relative", width: 160, height: 160 }}>
+                    <Svg width={160} height={160} viewBox="0 0 160 160">
+                      {svgSlices.map((s, i) => (
+                        <Path key={i} d={s.d} fill={s.color} stroke="white" strokeWidth={1.5} />
+                      ))}
+                    </Svg>
+                    {svgSlices.map((s, i) => {
+                      const centroid = polarToCartesian(80, 80, 44, s.startAngle + s.sweep / 2);
+                      const pct = pieTotal > 0 ? Math.round(s.amount / pieTotal * 100) : 0;
+                      const shortLabel = s.label === "Labor & Rough Material"
+                        ? `Labor &\nRough Material`
+                        : s.label === "GC Overhead & Profit"
+                        ? `GC Overhead\n& Profit`
+                        : s.label;
+                      return (
+                        <View key={`lbl-${i}`} style={{ position: "absolute", left: centroid.x - 22, top: centroid.y - 14, width: 44, alignItems: "center" }}>
+                          <Text style={{ fontSize: 5.5, color: "white", textAlign: "center", lineHeight: 1.3 }}>{shortLabel}</Text>
+                          <Text style={{ fontSize: 6.5, color: "white", fontFamily: "Helvetica-Bold", textAlign: "center", marginTop: 1 }}>{pct}%</Text>
+                        </View>
+                      );
+                    })}
+                  </View>
                   <View style={{ width: 188, paddingHorizontal: 4, marginTop: 4 }}>
                     {svgSlices.map((s, i) => (
                       <View key={i} style={{ flexDirection: "row", alignItems: "center", marginTop: 4 }}>
