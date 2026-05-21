@@ -81,7 +81,7 @@ export async function POST(
   if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const body = await req.json().catch(() => ({}));
-  const { templateId, to, cc, bcc, subject, body: emailBody, coverType, page2, includeInsert } = body as {
+  const { templateId, to, cc, bcc, subject, body: emailBody, coverType, page2, includeInsert, includeDivisionSummary, noPresentation, forcedBreakCsiPrefixes, scopeOfWorkId } = body as {
     templateId?: string;
     to?: string;
     cc?: string;
@@ -91,6 +91,10 @@ export async function POST(
     coverType?: string;
     page2?: string;
     includeInsert?: boolean;
+    includeDivisionSummary?: boolean;
+    noPresentation?: boolean;
+    forcedBreakCsiPrefixes?: string[];
+    scopeOfWorkId?: string | null;
   };
 
   if (!templateId || !to || !subject || !emailBody) {
@@ -100,7 +104,7 @@ export async function POST(
     );
   }
 
-  const [template, company] = await Promise.all([
+  const [template, company, scopeOfWork] = await Promise.all([
     prisma.estimateTemplate.findFirst({
       where: { id: templateId, companyId: params.companyId, archivedAt: null },
       include: {
@@ -120,6 +124,9 @@ export async function POST(
       },
     }),
     prisma.company.findFirst({ where: { id: params.companyId } }),
+    scopeOfWorkId
+      ? prisma.scopeOfWork.findFirst({ where: { id: scopeOfWorkId, companyId: params.companyId }, select: { title: true, body: true } })
+      : Promise.resolve(null),
   ]);
 
   if (!template || !company) {
@@ -194,7 +201,6 @@ export async function POST(
         }
       : null,
     divisions,
-    showTerms: template.showTerms,
     termsContent: template.termsContent,
     paymentSchedule:
       (template.paymentSchedule as { payment: string; trigger: string; pct: number }[] | null) ??
@@ -210,6 +216,10 @@ export async function POST(
     includePermitPages: page2 ? page2 === "PERMIT" : false,
     includeRetailPages: page2 ? page2 === "RETAIL" : template.name.toLowerCase().includes("retail"),
     includeCoverPage: coverType !== "NONE",
+    includeDivisionSummary: includeDivisionSummary ?? false,
+    showTerms: template.showTerms && !noPresentation,
+    forcedBreakCsiPrefixes: forcedBreakCsiPrefixes ?? [],
+    scopeOfWork: scopeOfWork ?? null,
     insulationType: template.insulationType ?? "ISO",
     clientCoverPhotoType: coverType ?? template.client?.coverPhotoType ?? null,
     clientCoverPhotoUrl: await resolvePrivateCoverUrl(template.client?.coverPhotoUrl ?? null),

@@ -191,6 +191,10 @@ function EstimateCard({
           coverType: pdfOpts.coverType,
           page2: pdfOpts.page2,
           includeInsert: pdfOpts.includeInsert,
+          includeDivisionSummary: pdfOpts.includeDivisionSummary,
+          noPresentation: pdfOpts.noPresentation,
+          forcedBreakCsiPrefixes: pdfOpts.forcedBreakCsiPrefixes,
+          scopeOfWorkId: pdfOpts.scopeOfWorkId ?? null,
         }),
       });
       const text = await res.text();
