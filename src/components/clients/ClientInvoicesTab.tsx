@@ -204,6 +204,16 @@ export default function ClientInvoicesTab({
   const [editLinesLoading, setEditLinesLoading] = useState(false);
   const [editApplyPct, setEditApplyPct] = useState("");
   const [editDivNames, setEditDivNames] = useState<Record<string, string>>({});
+  const [expandedInvoices, setExpandedInvoices] = useState<Set<string>>(new Set());
+
+  function toggleInvoice(id: string) {
+    setExpandedInvoices(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      return next;
+    });
+  }
+
   const [expandedDivs, setExpandedDivs] = useState<Set<string>>(new Set());
 
   function toggleDiv(code: string) {
@@ -967,108 +977,132 @@ export default function ClientInvoicesTab({
               {estInvoices.map((inv) => {
                 const invPaid = inv.payments.reduce((s, p) => s + p.amount, 0);
                 const balance = inv.amount - invPaid;
+                const isExpanded = expandedInvoices.has(inv.id);
 
                 return (
-                  <div key={inv.id} className="rounded-xl p-4 flex flex-col gap-2" style={{ background: "#0d1117", border: "1px solid #30373f" }}>
-                    {/* Invoice header row */}
-                    <div className="flex items-center justify-between gap-2">
+                  <div key={inv.id} className="rounded-xl overflow-hidden" style={{ background: "#0d1117", border: "1px solid #30373f" }}>
+                    {/* Header row — always visible, click to toggle */}
+                    <div
+                      className="flex items-center justify-between gap-2 px-4 py-3 cursor-pointer select-none"
+                      style={{ borderBottom: isExpanded ? "1px solid #21262d" : "none" }}
+                      onClick={() => toggleInvoice(inv.id)}
+                    >
                       <div className="flex items-center gap-2 flex-wrap">
                         <span className="text-xs font-bold" style={{ color: GOLD }}>#{inv.invoiceNumber}</span>
                         <span className="text-xs font-medium" style={{ color: "#e6edf3" }}>{inv.phase}</span>
                         <StatusBadge status={inv.status} />
+                        {!isExpanded && inv.dueDate && (
+                          <span className="text-[10px]" style={{ color: balance > 0 && new Date(inv.dueDate) < new Date() ? "#f87171" : "#6b7280" }}>
+                            Due {fmtDate(inv.dueDate)}
+                          </span>
+                        )}
                       </div>
-                      <span className="text-sm font-mono font-bold" style={{ color: "#e6edf3" }}>${fmt(inv.amount)}</span>
+                      <div className="flex items-center gap-2 shrink-0">
+                        <span className="text-sm font-mono font-bold" style={{ color: "#e6edf3" }}>${fmt(inv.amount)}</span>
+                        <span
+                          className="flex items-center justify-center w-6 h-6 rounded text-[13px]"
+                          style={{ background: "#1e2736", color: "#8b949e", border: "1px solid #30373f", transition: "color 0.15s" }}
+                          title={isExpanded ? "Collapse" : "Expand"}
+                        >
+                          {isExpanded ? "▶" : "▼"}
+                        </span>
+                      </div>
                     </div>
 
-                    {inv.trigger && (
-                      <div className="text-[11px]" style={{ color: "#8b949e" }}>{inv.trigger}</div>
-                    )}
+                    {/* Expandable body */}
+                    {isExpanded && (
+                      <div className="px-4 pb-4 pt-3 flex flex-col gap-2">
+                        {inv.trigger && (
+                          <div className="text-[11px]" style={{ color: "#8b949e" }}>{inv.trigger}</div>
+                        )}
 
-                    <div className="flex flex-wrap gap-3 text-[10px]" style={{ color: "#6b7280" }}>
-                      <span>Created {fmtDate(inv.createdAt)}</span>
-                      {inv.dueDate && <span style={{ color: balance > 0 && new Date(inv.dueDate) < new Date() ? "#f87171" : undefined }}>Due {fmtDate(inv.dueDate)}</span>}
-                      {inv.sentAt && <span>Sent {fmtDate(inv.sentAt)}</span>}
-                      {inv.paidAt && <span style={{ color: "#22c55e" }}>Paid in full {fmtDate(inv.paidAt)}</span>}
-                    </div>
-
-                    {inv.notes && (
-                      <div className="text-[11px] rounded px-2 py-1" style={{ background: "#1e2736", color: "#8b949e" }}>{inv.notes}</div>
-                    )}
-
-                    {/* Payment history */}
-                    {inv.payments.length > 0 && (
-                      <div className="rounded-lg overflow-hidden" style={{ border: "1px solid #1a2a1a" }}>
-                        <div className="px-3 py-1.5 text-[10px] font-semibold uppercase tracking-wider" style={{ background: "#0a1a0a", color: "#22c55e88" }}>
-                          Payments Received
+                        <div className="flex flex-wrap gap-3 text-[10px]" style={{ color: "#6b7280" }}>
+                          <span>Created {fmtDate(inv.createdAt)}</span>
+                          {inv.dueDate && <span style={{ color: balance > 0 && new Date(inv.dueDate) < new Date() ? "#f87171" : undefined }}>Due {fmtDate(inv.dueDate)}</span>}
+                          {inv.sentAt && <span>Sent {fmtDate(inv.sentAt)}</span>}
+                          {inv.paidAt && <span style={{ color: "#22c55e" }}>Paid in full {fmtDate(inv.paidAt)}</span>}
                         </div>
-                        {inv.payments.map((p) => (
-                          <div key={p.id} className="flex items-center justify-between px-3 py-2 gap-2" style={{ borderTop: "1px solid #1a2a1a" }}>
-                            <div className="flex items-center gap-2">
-                              <span className="text-xs font-bold font-mono" style={{ color: "#22c55e" }}>${fmt(p.amount)}</span>
-                              <PaymentMethodBadge method={p.method} />
-                              {p.notes && <span className="text-[10px]" style={{ color: "#8b949e" }}>{p.notes}</span>}
+
+                        {inv.notes && (
+                          <div className="text-[11px] rounded px-2 py-1" style={{ background: "#1e2736", color: "#8b949e" }}>{inv.notes}</div>
+                        )}
+
+                        {/* Payment history */}
+                        {inv.payments.length > 0 && (
+                          <div className="rounded-lg overflow-hidden" style={{ border: "1px solid #1a2a1a" }}>
+                            <div className="px-3 py-1.5 text-[10px] font-semibold uppercase tracking-wider" style={{ background: "#0a1a0a", color: "#22c55e88" }}>
+                              Payments Received
                             </div>
-                            <div className="flex items-center gap-2">
-                              <span className="text-[10px]" style={{ color: "#6b7280" }}>{fmtDate(p.paidDate)}</span>
-                              <button onClick={() => deletePayment(inv.id, p.id)}
-                                className="text-[10px] px-1.5 py-0.5 rounded"
-                                style={{ background: "#2d1b1b", color: "#f87171" }} title="Remove payment">
-                                ✕
-                              </button>
+                            {inv.payments.map((p) => (
+                              <div key={p.id} className="flex items-center justify-between px-3 py-2 gap-2" style={{ borderTop: "1px solid #1a2a1a" }}>
+                                <div className="flex items-center gap-2">
+                                  <span className="text-xs font-bold font-mono" style={{ color: "#22c55e" }}>${fmt(p.amount)}</span>
+                                  <PaymentMethodBadge method={p.method} />
+                                  {p.notes && <span className="text-[10px]" style={{ color: "#8b949e" }}>{p.notes}</span>}
+                                </div>
+                                <div className="flex items-center gap-2">
+                                  <span className="text-[10px]" style={{ color: "#6b7280" }}>{fmtDate(p.paidDate)}</span>
+                                  <button onClick={() => deletePayment(inv.id, p.id)}
+                                    className="text-[10px] px-1.5 py-0.5 rounded"
+                                    style={{ background: "#2d1b1b", color: "#f87171" }} title="Remove payment">
+                                    ✕
+                                  </button>
+                                </div>
+                              </div>
+                            ))}
+                            <div className="flex items-center justify-between px-3 py-2" style={{ background: balance <= 0 ? "#0a1a0a" : "#1a0a0a", borderTop: "1px solid #1a2a1a" }}>
+                              <span className="text-[11px] font-semibold" style={{ color: balance <= 0 ? "#22c55e" : "#f87171" }}>
+                                {balance <= 0 ? "✓ Paid in Full" : "Balance Due"}
+                              </span>
+                              <span className="text-sm font-bold font-mono" style={{ color: balance <= 0 ? "#22c55e" : "#f87171" }}>
+                                {balance <= 0 ? "$0.00" : `$${fmt(balance)}`}
+                              </span>
                             </div>
                           </div>
-                        ))}
-                        <div className="flex items-center justify-between px-3 py-2" style={{ background: balance <= 0 ? "#0a1a0a" : "#1a0a0a", borderTop: "1px solid #1a2a1a" }}>
-                          <span className="text-[11px] font-semibold" style={{ color: balance <= 0 ? "#22c55e" : "#f87171" }}>
-                            {balance <= 0 ? "✓ Paid in Full" : "Balance Due"}
-                          </span>
-                          <span className="text-sm font-bold font-mono" style={{ color: balance <= 0 ? "#22c55e" : "#f87171" }}>
-                            {balance <= 0 ? "$0.00" : `$${fmt(balance)}`}
-                          </span>
+                        )}
+
+                        {/* Actions */}
+                        <div className="flex gap-2 flex-wrap mt-0.5">
+                          <a
+                            href={`/api/${companyId}/clients/${clientId}/invoices/${inv.id}/preview`}
+                            target="_blank" rel="noopener noreferrer"
+                            className="text-[10px] px-2 py-1 rounded font-semibold"
+                            style={{ background: "#3b82f622", color: "#3b82f6", border: "1px solid #3b82f644" }}>
+                            👁 Preview
+                          </a>
+                          {inv.status !== "PAID" && (
+                            <button onClick={() => openSend(inv)}
+                              className="text-[10px] px-2 py-1 rounded font-semibold"
+                              style={{ background: "#C9A84C22", color: GOLD, border: `1px solid ${GOLD}44` }}>
+                              ✉ Send
+                            </button>
+                          )}
+                          {balance > 0 && (
+                            <button onClick={() => openPayment(inv)}
+                              className="text-[10px] px-2 py-1 rounded font-semibold"
+                              style={{ background: "#22c55e22", color: "#22c55e", border: "1px solid #22c55e44" }}>
+                              $ Record Payment
+                            </button>
+                          )}
+                          <button onClick={() => openEdit(inv)}
+                            className="text-[10px] px-2 py-1 rounded font-semibold"
+                            style={{ background: "#1e2736", color: "#8b949e", border: "1px solid #30373f" }}>
+                            ✎ Edit
+                          </button>
+                          <button onClick={() => duplicateInvoice(inv)}
+                            className="text-[10px] px-2 py-1 rounded"
+                            style={{ background: "#1e2736", color: "#8b949e", border: "1px solid #30373f" }}
+                            title="Duplicate invoice">
+                            ⧉ Duplicate
+                          </button>
+                          <button onClick={() => deleteInvoice(inv.id)}
+                            className="text-[10px] px-2 py-1 rounded"
+                            style={{ background: "#2d1b1b", color: "#f87171" }}>
+                            ✕
+                          </button>
                         </div>
                       </div>
                     )}
-
-                    {/* Actions */}
-                    <div className="flex gap-2 flex-wrap mt-0.5">
-                      <a
-                        href={`/api/${companyId}/clients/${clientId}/invoices/${inv.id}/preview`}
-                        target="_blank" rel="noopener noreferrer"
-                        className="text-[10px] px-2 py-1 rounded font-semibold"
-                        style={{ background: "#3b82f622", color: "#3b82f6", border: "1px solid #3b82f644" }}>
-                        👁 Preview
-                      </a>
-                      {inv.status !== "PAID" && (
-                        <button onClick={() => openSend(inv)}
-                          className="text-[10px] px-2 py-1 rounded font-semibold"
-                          style={{ background: "#C9A84C22", color: GOLD, border: `1px solid ${GOLD}44` }}>
-                          ✉ Send
-                        </button>
-                      )}
-                      {balance > 0 && (
-                        <button onClick={() => openPayment(inv)}
-                          className="text-[10px] px-2 py-1 rounded font-semibold"
-                          style={{ background: "#22c55e22", color: "#22c55e", border: "1px solid #22c55e44" }}>
-                          $ Record Payment
-                        </button>
-                      )}
-                      <button onClick={() => openEdit(inv)}
-                        className="text-[10px] px-2 py-1 rounded font-semibold"
-                        style={{ background: "#1e2736", color: "#8b949e", border: "1px solid #30373f" }}>
-                        ✎ Edit
-                      </button>
-                      <button onClick={() => duplicateInvoice(inv)}
-                        className="text-[10px] px-2 py-1 rounded"
-                        style={{ background: "#1e2736", color: "#8b949e", border: "1px solid #30373f" }}
-                        title="Duplicate invoice">
-                        ⧉ Duplicate
-                      </button>
-                      <button onClick={() => deleteInvoice(inv.id)}
-                        className="text-[10px] px-2 py-1 rounded"
-                        style={{ background: "#2d1b1b", color: "#f87171" }}>
-                        ✕
-                      </button>
-                    </div>
                   </div>
                 );
               })}
