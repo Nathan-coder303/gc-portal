@@ -775,12 +775,12 @@ function AdditionPage2({ client }: Pick<TemplatePdfProps, "client">) {
         <View style={{ flexDirection: "row", gap: 20 }}>
           <View style={{ flex: 1 }}>
             {SECTIONS.slice(0, 3).map((sec, si) => (
-              <View key={si} style={{ marginTop: si === 0 ? 0 : 9, marginBottom: 2 }}>
-                <Text style={{ fontSize: 10.5, fontFamily: "Helvetica-Bold", color: DARK, marginBottom: 3, textTransform: "uppercase" }}>{sec.title}</Text>
+              <View key={si} style={{ marginTop: si === 0 ? 0 : 18, marginBottom: 2 }}>
+                <Text style={{ fontSize: 10.5, fontFamily: "Helvetica-Bold", color: DARK, marginBottom: 5, textTransform: "uppercase" }}>{sec.title}</Text>
                 {sec.items.map((item, ii) => (
-                  <View key={ii} style={{ flexDirection: "row", alignItems: "flex-start", marginBottom: 2, gap: 7 }}>
+                  <View key={ii} style={{ flexDirection: "row", alignItems: "flex-start", marginBottom: 5, gap: 7 }}>
                     <Text style={{ fontSize: 10.5, color: GOLD, fontFamily: "Helvetica-Bold" }}>•</Text>
-                    <Text style={{ fontSize: 10.5, color: "#475569", flex: 1 }}>{item}</Text>
+                    <Text style={{ fontSize: 10.5, color: "#475569", flex: 1, lineHeight: 1.4 }}>{item}</Text>
                   </View>
                 ))}
               </View>
@@ -788,12 +788,12 @@ function AdditionPage2({ client }: Pick<TemplatePdfProps, "client">) {
           </View>
           <View style={{ flex: 1 }}>
             {SECTIONS.slice(3).map((sec, si) => (
-              <View key={si} style={{ marginTop: si === 0 ? 0 : 9, marginBottom: 2 }}>
-                <Text style={{ fontSize: 10.5, fontFamily: "Helvetica-Bold", color: DARK, marginBottom: 3, textTransform: "uppercase" }}>{sec.title}</Text>
+              <View key={si} style={{ marginTop: si === 0 ? 0 : 18, marginBottom: 2 }}>
+                <Text style={{ fontSize: 10.5, fontFamily: "Helvetica-Bold", color: DARK, marginBottom: 5, textTransform: "uppercase" }}>{sec.title}</Text>
                 {sec.items.map((item, ii) => (
-                  <View key={ii} style={{ flexDirection: "row", alignItems: "flex-start", marginBottom: 2, gap: 7 }}>
+                  <View key={ii} style={{ flexDirection: "row", alignItems: "flex-start", marginBottom: 5, gap: 7 }}>
                     <Text style={{ fontSize: 10.5, color: GOLD, fontFamily: "Helvetica-Bold" }}>•</Text>
-                    <Text style={{ fontSize: 10.5, color: "#475569", flex: 1 }}>{item}</Text>
+                    <Text style={{ fontSize: 10.5, color: "#475569", flex: 1, lineHeight: 1.4 }}>{item}</Text>
                   </View>
                 ))}
               </View>
@@ -1310,13 +1310,14 @@ function DivisionSummaryPage({ template, client, divisions, gcFeePercent }: Pick
           </>
         )}
 
-        {/* Gold divider + Grand total + note — kept together, never orphaned */}
-        <View wrap={false} minPresenceAhead={80}>
+        {/* Gold divider + Grand total — kept together */}
+        <View wrap={false} minPresenceAhead={40}>
           <View style={{ height: 2, backgroundColor: GOLD, marginTop: 20, marginBottom: 0 }} />
           <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", backgroundColor: DARK, paddingHorizontal: 16, paddingVertical: 12, borderRadius: 4, marginTop: 0 }}>
             <Text style={{ fontSize: 14, fontFamily: "Helvetica-Bold", color: GOLD }}>ESTIMATE TOTAL</Text>
             <Text style={{ fontSize: 16, fontFamily: "Helvetica-Bold", color: GOLD }}>${fmt(grandTotalWithGc)}</Text>
           </View>
+        </View>
           {/* Two-column: Allowances table (left) + Pie chart (right) */}
           {(hasAllowances || svgSlices.length > 0) && (
             <View style={{ flexDirection: "row", gap: 14, marginTop: 14 }}>
@@ -1414,7 +1415,6 @@ function DivisionSummaryPage({ template, client, divisions, gcFeePercent }: Pick
           <Text style={{ fontSize: 8, color: "#94a3b8", textAlign: "center", marginTop: (template.sqFt || template.durationMonths) ? 8 : 20 }}>
             Detailed scope of work and line items follow on the next pages.
           </Text>
-        </View>
       </View>
 
       {/* Footer */}
