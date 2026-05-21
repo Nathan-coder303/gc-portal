@@ -108,14 +108,14 @@ export async function buildInvoiceLines(
   // Build scheduled value map for all items first (needed for fromPrevious computation)
   const tempLines: { estimateItemId: string; scheduledValue: number }[] = [];
   divisions.forEach((div) => {
-    const allItems = [
-      ...div.items.map(i => ({ ...i, groupName: undefined as string | undefined })),
-      ...div.groups.flatMap(g => g.items.map(i => ({ ...i, groupName: g.name }))),
-    ];
-    if (allItems.length === 0) {
-      const scheduled = div.manualTotal !== null ? Number(div.manualTotal) : 0;
+    if (div.manualTotal !== null) {
+      const scheduled = Number(div.manualTotal);
       if (scheduled > 0) tempLines.push({ estimateItemId: div.id, scheduledValue: scheduled });
     } else {
+      const allItems = [
+        ...div.items.map(i => ({ ...i, groupName: undefined as string | undefined })),
+        ...div.groups.flatMap(g => g.items.map(i => ({ ...i, groupName: g.name }))),
+      ];
       allItems.forEach(item => {
         const price = itemSalePrice(item);
         if (price > 0) tempLines.push({ estimateItemId: item.id, scheduledValue: price });
@@ -146,8 +146,9 @@ export async function buildInvoiceLines(
       ...div.groups.flatMap(g => g.items.map(i => ({ ...i, groupName: g.name }))),
     ];
 
-    if (allItems.length === 0) {
-      const scheduled = div.manualTotal !== null ? Number(div.manualTotal) : 0;
+    // If division has a manual total override, use it as a single line — same logic as calcEstimateTotal
+    if (div.manualTotal !== null) {
+      const scheduled = Number(div.manualTotal);
       if (scheduled <= 0) return;
       const fromPrevious = prevMap.get(div.id) ?? 0;
       const thisInv = Math.round(scheduled * pct / 100 * 100) / 100;
@@ -161,6 +162,9 @@ export async function buildInvoiceLines(
         pctThisInvoice: pct,
         thisInvoice: thisInv,
       });
+    } else if (allItems.length === 0) {
+      // No items and no manualTotal — nothing to invoice for this division
+      return;
     } else {
       allItems.forEach((item, itemIdx) => {
         const price = itemSalePrice(item);
