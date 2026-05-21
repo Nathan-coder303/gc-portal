@@ -1,12 +1,13 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import DeleteEstimateButton from "@/components/clients/DeleteEstimateButton";
 import EditEstimateModal from "@/components/clients/EditEstimateModal";
 import CoverPagePickerModal, { PdfOptions, Page2Type, CoverType, COVER_OPTIONS } from "@/components/clients/CoverPagePickerModal";
 import { duplicateTemplate } from "@/app/[companyId]/estimates/actions";
 import EstimateVersionDiff, { Snapshot } from "@/components/clients/EstimateVersionDiff";
+import CountersignModal from "@/components/estimates/CountersignModal";
 
 const MIKE_SIGNATURE = `Mike Baruh
 Founder/CEO | MIBH Construction
@@ -76,6 +77,46 @@ function EstimateCard({
   const [step, setStep] = useState<"cover" | "email" | null>(null);
   const [pdfOpts, setPdfOpts] = useState<PdfOptions | null>(null);
   const [duplicating, setDuplicating] = useState(false);
+
+  // Record off-portal client signature → countersign flow
+  const [showRecordSign, setShowRecordSign] = useState(false);
+  const [recordName, setRecordName] = useState(clientName);
+  const [recordFile, setRecordFile] = useState<File | null>(null);
+  const [recordLoading, setRecordLoading] = useState(false);
+  const [recordError, setRecordError] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  // After recording, these hold the values for CountersignModal
+  const [localSignedAt, setLocalSignedAt] = useState<string | null>(est.signedAt);
+  const [localSignedByName, setLocalSignedByName] = useState<string | null>(est.signedByName);
+  const [showCountersign, setShowCountersign] = useState(false);
+
+  async function handleRecordSign() {
+    if (!recordName.trim()) return;
+    setRecordLoading(true);
+    setRecordError(null);
+    try {
+      const fd = new FormData();
+      fd.set("signedByName", recordName.trim());
+      if (recordFile) fd.set("pdfFile", recordFile);
+      const res = await fetch(`/api/${companyId}/estimates/${est.id}/record-client-sign`, {
+        method: "POST",
+        body: fd,
+      });
+      const data = await res.json();
+      if (res.ok) {
+        setLocalSignedAt(data.signedAt);
+        setLocalSignedByName(data.signedByName);
+        setShowRecordSign(false);
+        setShowCountersign(true);
+      } else {
+        setRecordError(data.error ?? "Failed to record signature");
+      }
+    } catch {
+      setRecordError("Network error. Please try again.");
+    } finally {
+      setRecordLoading(false);
+    }
+  }
 
   // Email compose state
   const firstName = clientName.split(" ")[0];
@@ -234,6 +275,24 @@ function EstimateCard({
               >
                 ↓ Signed PDF
               </a>
+            )}
+            {canEdit && !est.counterSignedAt && !localSignedAt && (
+              <button
+                onClick={() => { setShowRecordSign(true); setRecordName(clientName); setRecordFile(null); setRecordError(null); }}
+                className="px-3 py-1.5 rounded-lg text-xs font-semibold"
+                style={{ background: "#22c55e22", color: "#22c55e", border: "1px solid #22c55e44" }}
+              >
+                ✍ Upload Client Signature
+              </button>
+            )}
+            {canEdit && localSignedAt && !est.counterSignedAt && (
+              <button
+                onClick={() => setShowCountersign(true)}
+                className="px-3 py-1.5 rounded-lg text-xs font-semibold"
+                style={{ background: "#22c55e", color: "#fff" }}
+              >
+                ✍ Countersign Now
+              </button>
             )}
             {canEdit && (
               <EditEstimateModal
@@ -473,6 +532,85 @@ function EstimateCard({
             </div>
           </div>
         </div>
+      )}
+
+      {/* Record off-portal client signature modal */}
+      {showRecordSign && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ background: "rgba(0,0,0,0.75)" }} onClick={() => setShowRecordSign(false)}>
+          <div className="w-full max-w-md rounded-2xl p-6 space-y-4" style={{ background: "#161b22", border: "1px solid #22c55e55" }} onClick={e => e.stopPropagation()}>
+            <div className="flex items-start justify-between">
+              <div>
+                <div className="text-xs font-semibold uppercase tracking-widest mb-1" style={{ color: "#22c55e88" }}>Record Client Signature</div>
+                <div className="text-sm font-bold" style={{ color: "#e6edf3" }}>{est.estimateNumber ? `#${est.estimateNumber} — ` : ""}{est.name}</div>
+                <div className="text-xs mt-0.5" style={{ color: "#8b949e" }}>Upload the signed PDF you received from the client.</div>
+              </div>
+              <button onClick={() => setShowRecordSign(false)} className="text-xl leading-none" style={{ color: "#8b949e" }}>×</button>
+            </div>
+
+            <div>
+              <label className="block text-xs font-medium mb-1" style={{ color: "#8b949e" }}>Signed by (client name)</label>
+              <input
+                autoFocus
+                value={recordName}
+                onChange={e => setRecordName(e.target.value)}
+                className="w-full rounded-lg px-3 py-2 text-sm"
+                style={{ background: "#0d1117", border: "1px solid #30373f", color: "#e6edf3" }}
+                placeholder="Client full name"
+              />
+            </div>
+
+            <div>
+              <label className="block text-xs font-medium mb-1" style={{ color: "#8b949e" }}>Signed estimate PDF (from client)</label>
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="application/pdf"
+                onChange={e => setRecordFile(e.target.files?.[0] ?? null)}
+                className="w-full text-xs"
+                style={{ color: "#8b949e" }}
+              />
+              {recordFile && <p className="text-xs mt-1" style={{ color: "#22c55e" }}>✓ {recordFile.name}</p>}
+            </div>
+
+            {recordError && <p className="text-xs font-medium" style={{ color: "#ef4444" }}>{recordError}</p>}
+
+            <p className="text-xs" style={{ color: "#484f58" }}>
+              After recording, you&apos;ll be asked to countersign. The fully executed PDF (with both signatures) will be emailed to you and the client.
+            </p>
+
+            <div className="flex gap-3">
+              <button
+                onClick={handleRecordSign}
+                disabled={recordLoading || !recordName.trim()}
+                className="flex-1 rounded-xl py-2.5 text-sm font-bold disabled:opacity-40"
+                style={{ background: "#22c55e", color: "#fff" }}
+              >
+                {recordLoading ? "Recording…" : "Record & Countersign →"}
+              </button>
+              <button
+                onClick={() => setShowRecordSign(false)}
+                className="px-4 py-2.5 rounded-xl text-sm font-medium"
+                style={{ background: "#30373f", color: "#8b949e" }}
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Countersign modal — opens after recording off-portal signature */}
+      {showCountersign && (
+        <CountersignModal
+          companyId={companyId}
+          templateId={est.id}
+          estimateLabel={est.estimateNumber ? `Estimate #${est.estimateNumber} — ${est.name}` : est.name}
+          clientName={clientName}
+          signedByName={localSignedByName}
+          signedAt={localSignedAt}
+          onDone={() => { setShowCountersign(false); router.refresh(); }}
+          onClose={() => setShowCountersign(false)}
+        />
       )}
     </>
   );
