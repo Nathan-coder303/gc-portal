@@ -4,20 +4,10 @@ import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { buildInvoiceHtml } from "@/lib/invoiceHtml";
 import { renderTemplatePdf } from "@/lib/estimates/templatePdf";
+import { getGmailOAuth } from "@/lib/gmail";
 
 export const runtime = "nodejs";
 export const maxDuration = 30;
-
-
-function getOAuthClient() {
-  const oauth2Client = new google.auth.OAuth2(
-    process.env.GOOGLE_CLIENT_ID,
-    process.env.GOOGLE_CLIENT_SECRET,
-    "urn:ietf:wg:oauth:2.0:oob"
-  );
-  oauth2Client.setCredentials({ refresh_token: process.env.GOOGLE_REFRESH_TOKEN });
-  return oauth2Client;
-}
 
 function sanitizeSubject(s: string): string {
   return s
@@ -212,7 +202,7 @@ export async function POST(
   const raw = Buffer.from(mime).toString("base64url");
 
   try {
-    const oauth2Client = getOAuthClient();
+    const oauth2Client = await getGmailOAuth(params.companyId);
     const gmail = google.gmail({ version: "v1", auth: oauth2Client });
     await gmail.users.messages.send({ userId: "me", requestBody: { raw } });
 
@@ -221,7 +211,7 @@ export async function POST(
       data: { status: "SENT", sentAt: new Date() },
     });
 
-    const fromProfile = await google.gmail({ version: "v1", auth: getOAuthClient() }).users.getProfile({ userId: "me" }).catch(() => null);
+    const fromProfile = await gmail.users.getProfile({ userId: "me" }).catch(() => null);
     await prisma.clientEmail.create({
       data: {
         clientId: params.clientId,
