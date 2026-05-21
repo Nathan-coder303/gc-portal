@@ -1222,16 +1222,16 @@ function DivisionSummaryPage({ template, client, divisions, gcFeePercent }: Pick
   const gcFeeAmount = gcFeePercent && gcFeePercent > 0 ? subtotal * gcFeePercent / 100 : 0;
   const grandTotalWithGc = subtotal + gcFeeAmount;
   const dateDisplay = fmtDate(template.estimateDate);
-  const hasAllowances = divisions.some(div =>
-    div.items.some(i => i.detail === "Allowances") ||
-    div.groups.some(g => g.items.some(i => i.detail === "Allowances"))
-  );
-  const allowancesTotal = divisions.reduce((sum, div) => {
-    return sum + [
-      ...div.items.filter(i => i.detail === "Allowances"),
-      ...div.groups.flatMap(g => g.items.filter(i => i.detail === "Allowances")),
-    ].reduce((s, i) => s + calcTotal(i.defaultQty, i.defaultUnitCost, i.defaultMarkupPct), 0);
-  }, 0);
+  const allowanceLines: { csiCode: string; name: string; amount: number }[] = divisions.flatMap(div => [
+    ...div.items.filter(i => i.detail === "Allowances"),
+    ...div.groups.flatMap(g => g.items.filter(i => i.detail === "Allowances")),
+  ].map(item => ({
+    csiCode: item.csiCode ?? div.csiCode ?? "",
+    name: item.name,
+    amount: calcTotal(item.defaultQty, item.defaultUnitCost, item.defaultMarkupPct),
+  })));
+  const hasAllowances = allowanceLines.length > 0;
+  const allowancesTotal = allowanceLines.reduce((s, l) => s + l.amount, 0);
 
   return (
     <Page size="LETTER" style={{ fontFamily: "Helvetica", paddingTop: 0, paddingBottom: 0 }}>
@@ -1285,9 +1285,32 @@ function DivisionSummaryPage({ template, client, divisions, gcFeePercent }: Pick
             <Text style={{ fontSize: 16, fontFamily: "Helvetica-Bold", color: GOLD }}>${fmt(grandTotalWithGc)}</Text>
           </View>
           {hasAllowances && (
-            <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", backgroundColor: "#2d2410", paddingHorizontal: 16, paddingVertical: 8, borderRadius: 4, marginTop: 4 }}>
-              <Text style={{ fontSize: 10, fontFamily: "Helvetica-Bold", color: GOLD }}>TOTAL ALLOWANCES INCLUDED</Text>
-              <Text style={{ fontSize: 13, fontFamily: "Helvetica-Bold", color: GOLD }}>{allowancesTotal > 0 ? `$${fmt(allowancesTotal)}` : "TBD"}</Text>
+            <View style={{ marginTop: 12 }}>
+              {/* Section header */}
+              <View style={{ backgroundColor: "#2d2410", paddingHorizontal: 12, paddingVertical: 6, borderRadius: 3, marginBottom: 0 }}>
+                <Text style={{ fontSize: 9, fontFamily: "Helvetica-Bold", color: GOLD, letterSpacing: 1, textTransform: "uppercase" }}>Allowances Recap</Text>
+              </View>
+              {/* Column headers */}
+              <View style={{ flexDirection: "row", paddingHorizontal: 12, paddingVertical: 4, borderBottomWidth: 1, borderBottomColor: "#e2e8f0", backgroundColor: "#f8f4ec" }}>
+                <Text style={{ fontSize: 8, fontFamily: "Helvetica-Bold", color: "#92400e", width: 80 }}>CSI DIVISION</Text>
+                <Text style={{ fontSize: 8, fontFamily: "Helvetica-Bold", color: "#92400e", flex: 1 }}>DESCRIPTION</Text>
+                <Text style={{ fontSize: 8, fontFamily: "Helvetica-Bold", color: "#92400e", width: 72, textAlign: "right" }}>AMOUNT</Text>
+              </View>
+              {/* Allowance rows */}
+              {allowanceLines.map((line, idx) => (
+                <View key={idx} style={{ flexDirection: "row", paddingHorizontal: 12, paddingVertical: 4, borderBottomWidth: 1, borderBottomColor: "#f1f5f9", backgroundColor: idx % 2 === 0 ? "#fffbf2" : "#ffffff" }}>
+                  <Text style={{ fontSize: 9, color: "#78716c", width: 80 }}>{line.csiCode}</Text>
+                  <Text style={{ fontSize: 9, color: "#334155", flex: 1 }}>{line.name}</Text>
+                  <Text style={{ fontSize: 9, fontFamily: "Helvetica-Bold", color: line.amount > 0 ? "#0f172a" : "#92400e", width: 72, textAlign: "right" }}>
+                    {line.amount > 0 ? `$${fmt(line.amount)}` : "TBD"}
+                  </Text>
+                </View>
+              ))}
+              {/* Total row */}
+              <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", backgroundColor: "#2d2410", paddingHorizontal: 12, paddingVertical: 6, borderRadius: 3, marginTop: 0 }}>
+                <Text style={{ fontSize: 9, fontFamily: "Helvetica-Bold", color: GOLD }}>TOTAL ALLOWANCES INCLUDED</Text>
+                <Text style={{ fontSize: 11, fontFamily: "Helvetica-Bold", color: GOLD }}>{allowancesTotal > 0 ? `$${fmt(allowancesTotal)}` : "TBD"}</Text>
+              </View>
             </View>
           )}
           {(template.sqFt || template.durationMonths) && (
