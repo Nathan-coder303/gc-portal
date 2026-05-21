@@ -561,12 +561,43 @@ function TemplateItemTable({ divisionId, groupId, items, canEdit }: { divisionId
 function TemplateGroupSection({ group, divisionId, canEdit }: { group: Group; divisionId: string; canEdit: boolean }) {
   const [isPending, startTransition] = useTransition();
   const { pushUndo } = useContext(UndoCtx);
+  const [editingName, setEditingName] = useState(false);
+  const [nameInput, setNameInput] = useState(group.name);
   const total = groupTotal(group.items);
   const { setNodeRef: setGroupDropRef, isOver: isGroupOver } = useDroppable({ id: `group:${group.id}:${divisionId}` });
+
+  function commitRename() {
+    const trimmed = nameInput.trim();
+    if (!trimmed || trimmed === group.name) { setNameInput(group.name); setEditingName(false); return; }
+    startTransition(async () => {
+      await upsertTemplateGroup(divisionId, { id: group.id, name: trimmed });
+      setEditingName(false);
+    });
+  }
+
   return (
     <div ref={setGroupDropRef} className="mt-3" style={{ outline: isGroupOver ? "2px solid #C9A84C" : "none", borderRadius: 6 }}>
       <div className="flex items-center justify-between px-3 py-1.5 rounded" style={{ background: isGroupOver ? "#2a2010" : "#0d1117" }}>
-        <span className="text-xs font-semibold uppercase tracking-wide" style={{ color: "#8b949e" }}>{group.name}</span>
+        {canEdit && editingName ? (
+          <input
+            autoFocus
+            value={nameInput}
+            onChange={e => setNameInput(e.target.value)}
+            onBlur={commitRename}
+            onKeyDown={e => { if (e.key === "Enter") commitRename(); if (e.key === "Escape") { setNameInput(group.name); setEditingName(false); } }}
+            className="text-xs font-semibold uppercase tracking-wide bg-transparent outline-none border-b"
+            style={{ color: "#e6edf3", borderColor: "#C9A84C", minWidth: 120 }}
+          />
+        ) : (
+          <span
+            className="text-xs font-semibold uppercase tracking-wide"
+            style={{ color: "#8b949e", cursor: canEdit ? "text" : "default" }}
+            onDoubleClick={() => { if (canEdit) { setNameInput(group.name); setEditingName(true); } }}
+            title={canEdit ? "Double-click to rename" : undefined}
+          >
+            {group.name}
+          </span>
+        )}
         <div className="flex items-center gap-3">
           {total > 0 && <span className="text-xs font-semibold" style={{ color: "#C9A84C" }}>${fmt(total)}</span>}
           {canEdit && (
