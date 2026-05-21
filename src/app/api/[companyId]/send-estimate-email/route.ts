@@ -81,7 +81,7 @@ export async function POST(
   if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const body = await req.json().catch(() => ({}));
-  const { templateId, to, cc, bcc, subject, body: emailBody, coverType, page2, includeInsert, includeDivisionSummary, noPresentation, forcedBreakCsiPrefixes, scopeOfWorkId } = body as {
+  const { templateId, to, cc, bcc, subject, body: emailBody, coverType, page2, includeInsert, includeDivisionSummary, forcedBreakCsiPrefixes, scopeOfWorkId } = body as {
     templateId?: string;
     to?: string;
     cc?: string;
@@ -92,7 +92,6 @@ export async function POST(
     page2?: string;
     includeInsert?: boolean;
     includeDivisionSummary?: boolean;
-    noPresentation?: boolean;
     forcedBreakCsiPrefixes?: string[];
     scopeOfWorkId?: string | null;
   };
