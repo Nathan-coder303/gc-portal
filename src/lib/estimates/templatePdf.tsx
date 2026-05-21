@@ -1350,54 +1350,47 @@ function DivisionSummaryPage({ template, client, divisions, gcFeePercent }: Pick
                 </View>
               ) : <View style={{ flex: 1 }} />}
 
-              {/* RIGHT: Pie chart — compact horizontal layout */}
+              {/* RIGHT: Pie chart */}
               {svgSlices.length > 0 && (
-                <View style={{ width: 188 }}>
-                  <View style={{ backgroundColor: DARK, paddingHorizontal: 8, paddingVertical: 5, borderRadius: 3, marginBottom: 4 }}>
-                    <Text style={{ fontSize: 8, fontFamily: "Helvetica-Bold", color: GOLD, letterSpacing: 1, textAlign: "center" }}>COST BREAKDOWN</Text>
+                <View style={{ width: 188, alignItems: "center" }}>
+                  <View style={{ backgroundColor: DARK, paddingHorizontal: 8, paddingVertical: 6, borderRadius: 3, width: 188, marginBottom: 6 }}>
+                    <Text style={{ fontSize: 9, fontFamily: "Helvetica-Bold", color: GOLD, letterSpacing: 1, textAlign: "center" }}>COST BREAKDOWN</Text>
                   </View>
-                  {/* Pie SVG + legend side by side */}
-                  <View style={{ flexDirection: "row", gap: 8, alignItems: "center" }}>
-                    {/* SVG with in-slice labels */}
-                    <View style={{ position: "relative", width: 110, height: 110 }}>
-                      <Svg width={110} height={110} viewBox="0 0 160 160">
-                        {svgSlices.map((s, i) => (
-                          <Path key={i} d={s.d} fill={s.color} stroke="white" strokeWidth={2} />
-                        ))}
-                      </Svg>
-                      {svgSlices.map((s, i) => {
-                        const scale = 110 / 160;
-                        const centroid = polarToCartesian(80, 80, 44, s.startAngle + s.sweep / 2);
-                        const pct = pieTotal > 0 ? Math.round(s.amount / pieTotal * 100) : 0;
-                        const shortLabel = s.label === "Labor & Rough Material"
-                          ? `Labor &\nRough Material`
-                          : s.label === "GC Overhead & Profit"
-                          ? `GC Overhead\n& Profit`
-                          : s.label;
-                        return (
-                          <View key={`lbl-${i}`} style={{ position: "absolute", left: centroid.x * scale - 19, top: centroid.y * scale - 12, width: 38, alignItems: "center" }}>
-                            <Text style={{ fontSize: 5, color: "white", textAlign: "center", lineHeight: 1.3 }}>{shortLabel}</Text>
-                            <Text style={{ fontSize: 6, color: "white", fontFamily: "Helvetica-Bold", textAlign: "center", marginTop: 1 }}>{pct}%</Text>
-                          </View>
-                        );
-                      })}
-                    </View>
-                    {/* Legend */}
-                    <View style={{ flex: 1 }}>
-                      {svgSlices.map((s, i) => {
-                        const pct = pieTotal > 0 ? Math.round(s.amount / pieTotal * 100) : 0;
-                        return (
-                          <View key={i} style={{ flexDirection: "row", alignItems: "flex-start", marginBottom: 8 }}>
-                            <View style={{ width: 9, height: 9, backgroundColor: s.color, borderRadius: 1, marginRight: 4, marginTop: 1 }} />
-                            <View style={{ flex: 1 }}>
-                              <Text style={{ fontSize: 6.5, color: "#334155" }}>{s.label}</Text>
-                              <Text style={{ fontSize: 7.5, fontFamily: "Helvetica-Bold", color: "#0f172a" }}>{pct}%</Text>
-                              <Text style={{ fontSize: 6.5, color: "#64748b" }}>${fmt(s.amount)}</Text>
-                            </View>
-                          </View>
-                        );
-                      })}
-                    </View>
+                  <View style={{ position: "relative", width: 160, height: 160 }}>
+                    <Svg width={160} height={160} viewBox="0 0 160 160">
+                      {svgSlices.map((s, i) => (
+                        <Path key={i} d={s.d} fill={s.color} stroke="white" strokeWidth={1.5} />
+                      ))}
+                    </Svg>
+                    {svgSlices.map((s, i) => {
+                      const centroid = polarToCartesian(80, 80, 44, s.startAngle + s.sweep / 2);
+                      const pct = pieTotal > 0 ? Math.round(s.amount / pieTotal * 100) : 0;
+                      const shortLabel = s.label === "Labor & Rough Material"
+                        ? `Labor &\nRough Material`
+                        : s.label === "GC Overhead & Profit"
+                        ? `GC Overhead\n& Profit`
+                        : s.label;
+                      return (
+                        <View key={`lbl-${i}`} style={{ position: "absolute", left: centroid.x - 22, top: centroid.y - 14, width: 44, alignItems: "center" }}>
+                          <Text style={{ fontSize: 5.5, color: "white", textAlign: "center", lineHeight: 1.3 }}>{shortLabel}</Text>
+                          <Text style={{ fontSize: 6.5, color: "white", fontFamily: "Helvetica-Bold", textAlign: "center", marginTop: 1 }}>{pct}%</Text>
+                        </View>
+                      );
+                    })}
+                  </View>
+                  <View style={{ width: 188, paddingHorizontal: 4, marginTop: 4 }}>
+                    {svgSlices.map((s, i) => (
+                      <View key={i} style={{ flexDirection: "row", alignItems: "center", marginTop: 4 }}>
+                        <View style={{ width: 10, height: 10, backgroundColor: s.color, borderRadius: 2, marginRight: 5 }} />
+                        <Text style={{ fontSize: 7.5, color: "#334155", flex: 1 }}>{s.label}</Text>
+                        <View style={{ alignItems: "flex-end" }}>
+                          <Text style={{ fontSize: 7.5, fontFamily: "Helvetica-Bold", color: "#0f172a" }}>
+                            {pieTotal > 0 ? `${Math.round(s.amount / pieTotal * 100)}%` : "0%"}
+                          </Text>
+                          <Text style={{ fontSize: 7, color: "#64748b" }}>${fmt(s.amount)}</Text>
+                        </View>
+                      </View>
+                    ))}
                   </View>
                 </View>
               )}
