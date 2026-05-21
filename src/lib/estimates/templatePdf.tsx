@@ -1281,16 +1281,16 @@ function DivisionSummaryPage({ template, client, divisions, gcFeePercent }: Pick
       <View style={{ height: 3, backgroundColor: GOLD }} />
 
       {/* Main centered content */}
-      <View style={{ flex: 1, paddingHorizontal: 48, paddingTop: 32, paddingBottom: 32 }}>
+      <View style={{ flex: 1, paddingHorizontal: 48, paddingTop: 14, paddingBottom: 32 }}>
         {/* Title */}
         <Text style={{ fontSize: 18, fontFamily: "Helvetica-Bold", color: DARK, textAlign: "center", letterSpacing: 1, marginBottom: 6 }}>
           ESTIMATE SUMMARY
         </Text>
         <Text style={{ fontSize: 10, color: "#94a3b8", textAlign: "center", marginBottom: 4 }}>{template.name}</Text>
-        {dateDisplay ? <Text style={{ fontSize: 9, color: "#94a3b8", textAlign: "center", marginBottom: 24 }}>{dateDisplay}</Text> : <View style={{ height: 24 }} />}
+        {dateDisplay ? <Text style={{ fontSize: 9, color: "#94a3b8", textAlign: "center", marginBottom: 12 }}>{dateDisplay}</Text> : <View style={{ height: 12 }} />}
 
         {/* Gold divider */}
-        <View style={{ height: 2, backgroundColor: GOLD, marginBottom: 20 }} />
+        <View style={{ height: 2, backgroundColor: GOLD, marginBottom: 12 }} />
 
         {/* Division rows */}
         {divTotals.map((d, idx) => (
@@ -1313,9 +1313,9 @@ function DivisionSummaryPage({ template, client, divisions, gcFeePercent }: Pick
         {/* Gold divider + Grand total — kept together */}
         <View wrap={false} minPresenceAhead={40}>
           <View style={{ height: 2, backgroundColor: GOLD, marginTop: 20, marginBottom: 0 }} />
-          <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", backgroundColor: DARK, paddingHorizontal: 16, paddingVertical: 8, borderRadius: 4, marginTop: 0 }}>
-            <Text style={{ fontSize: 12, fontFamily: "Helvetica-Bold", color: GOLD }}>ESTIMATE TOTAL</Text>
-            <Text style={{ fontSize: 14, fontFamily: "Helvetica-Bold", color: GOLD }}>${fmt(grandTotalWithGc)}</Text>
+          <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", backgroundColor: DARK, paddingHorizontal: 16, paddingVertical: 12, borderRadius: 4, marginTop: 0 }}>
+            <Text style={{ fontSize: 14, fontFamily: "Helvetica-Bold", color: GOLD }}>ESTIMATE TOTAL</Text>
+            <Text style={{ fontSize: 16, fontFamily: "Helvetica-Bold", color: GOLD }}>${fmt(grandTotalWithGc)}</Text>
           </View>
         </View>
           {/* Two-column: Allowances table (left) + Pie chart (right) */}
