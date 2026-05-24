@@ -1582,8 +1582,9 @@ function TemplatePdfDocument({ companyName, template, client, divisions, showTer
         </View>
       )}
       {/* T&C */}
+      {showTerms && !!termsContent && forcedBreakTerms && <View break />}
       {showTerms && !!termsContent && (
-        <View break={forcedBreakTerms}>
+        <View>
           <View style={styles.sectionDivider} />
           <Text style={styles.sectionTitle}>Terms &amp; Conditions</Text>
           {termsContent.split(/\r?\n\r?\n|\r?\n(?=\d+[\.\)]?\s)/).map(p => p.trim()).filter(Boolean).map((para, i) => (
