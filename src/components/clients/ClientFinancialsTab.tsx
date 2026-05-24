@@ -15,6 +15,8 @@ type EstimateDivision = { divisionId: string; divisionName: string; csiCode: str
 type ClientSub = { id: string; subContractorId: string | null; subName: string; scope: string | null; division: string | null; contractAmount: number; notes: string | null; payments: SubPayment[]; scopeItems: ScopeItem[] };
 type Supplier = { id: string; name: string };
 type MaterialPurchase = { id: string; supplierId: string; supplierName: string; amount: number; description: string | null; purchasedAt: string; notes: string | null };
+type InvoicePayment = { id: string; amount: number };
+type ClientInvoice = { id: string; amount: number; status: string; payments: InvoicePayment[] };
 type LienRelease = { id: string; type: "PARTIAL" | "FINAL"; subName: string; recipientEmail: string | null; amount: string | null; throughDate: string | null; legalDescription: string; signatureToken: string | null; signedAt: string | null; signedByName: string | null; emailSentAt: string | null; createdAt: string };
 
 function fmt(n: number) { return n.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 }); }
@@ -861,6 +863,7 @@ export default function ClientFinancialsTab({
   const [materials, setMaterials] = useState<MaterialPurchase[]>([]);
   const [estimateDivisions, setEstimateDivisions] = useState<EstimateDivision[]>([]);
   const [lienReleases, setLienReleases] = useState<LienRelease[]>([]);
+  const [invoices, setInvoices] = useState<ClientInvoice[]>([]);
   const [loading, setLoading] = useState(true);
 
   // Add sub form
@@ -884,16 +887,17 @@ export default function ClientFinancialsTab({
   const [savingMat, setSavingMat] = useState(false);
 
   const load = useCallback(async () => {
-    const [subsRes, allSubsRes, suppliersRes, matsRes, itemsRes, lienRes] = await Promise.all([
+    const [subsRes, allSubsRes, suppliersRes, matsRes, itemsRes, lienRes, invRes] = await Promise.all([
       fetch(`/api/${companyId}/clients/${clientId}/financials/subs`),
       fetch(`/api/${companyId}/subs`),
       fetch(`/api/${companyId}/suppliers`),
       fetch(`/api/${companyId}/clients/${clientId}/financials/materials`),
       fetch(`/api/${companyId}/clients/${clientId}/estimate-items`),
       fetch(`/api/${companyId}/clients/${clientId}/lien-releases`),
+      fetch(`/api/${companyId}/clients/${clientId}/invoices`),
     ]);
-    const [subs, allSubsList, suppliersList, matsList, itemsList, lienList] = await Promise.all([
-      subsRes.json(), allSubsRes.json(), suppliersRes.json(), matsRes.json(), itemsRes.json(), lienRes.json(),
+    const [subs, allSubsList, suppliersList, matsList, itemsList, lienList, invList] = await Promise.all([
+      subsRes.json(), allSubsRes.json(), suppliersRes.json(), matsRes.json(), itemsRes.json(), lienRes.json(), invRes.json(),
     ]);
     setClientSubs(subs);
     setAllSubs(Array.isArray(allSubsList) ? allSubsList.sort((a: SubContractor, b: SubContractor) => a.name.localeCompare(b.name)) : []);
@@ -901,6 +905,7 @@ export default function ClientFinancialsTab({
     setMaterials(Array.isArray(matsList) ? matsList : []);
     setEstimateDivisions(Array.isArray(itemsList) ? itemsList : []);
     setLienReleases(Array.isArray(lienList) ? lienList : []);
+    setInvoices(Array.isArray(invList) ? invList : []);
     setLoading(false);
   }, [companyId, clientId]);
 
@@ -991,6 +996,10 @@ export default function ClientFinancialsTab({
   const totalMaterials = materials.reduce((s, p) => s + p.amount, 0);
   const totalExpenses = totalContracted + totalMaterials;
   const netProfit = contractTotal - totalExpenses;
+  const invoiceBalance = invoices.reduce((s, inv) => {
+    const paid = inv.payments.reduce((ps, p) => ps + p.amount, 0);
+    return s + Math.max(0, inv.amount - paid);
+  }, 0);
 
   // Auto-sync netProfit → internalProfitOverride on the client's estimate
   useEffect(() => {
@@ -1063,14 +1072,15 @@ ${rows}
       </div>
 
       {/* Sub breakdown under summary */}
-      <div className="grid grid-cols-4 gap-3">
+      <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
         {[
           { label: "Sub Contracted", value: totalContracted, color: "#C9A84C" },
           { label: "Labor Paid", value: totalLaborPaid, color: "#22c55e" },
-          { label: "Balance Owed", value: totalLaborBalance, color: "#f85149" },
+          { label: "Balance Owed to Subs", value: totalLaborBalance, color: "#f85149" },
+          { label: "Balance Owed to MIBH", value: invoiceBalance, color: invoiceBalance < totalLaborBalance ? "#f85149" : "#22c55e", warn: invoiceBalance < totalLaborBalance },
           { label: "Materials", value: totalMaterials, color: "#3b82f6" },
         ].map(card => (
-          <div key={card.label} className="rounded-xl px-4 py-3" style={{ background: "#0d1117", border: "1px solid #21262d" }}>
+          <div key={card.label} className="rounded-xl px-4 py-3" style={{ background: (card as { warn?: boolean }).warn ? "#2d1010" : "#0d1117", border: `1px solid ${(card as { warn?: boolean }).warn ? "#dc262644" : "#21262d"}` }}>
             <div className="text-xs uppercase tracking-widest mb-1" style={{ color: "#8b949e" }}>{card.label}</div>
             <div className="text-base font-bold" style={{ color: card.color }}>${fmt(card.value)}</div>
           </div>

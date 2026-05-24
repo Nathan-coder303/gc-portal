@@ -68,7 +68,7 @@ export default async function TodayPage({
   if (verifyHour !== 0) todayStart = new Date(Date.UTC(etY, etM - 1, etD, 5, 0, 0, 0));
   const todayEnd = new Date(todayStart.getTime() + 24 * 60 * 60 * 1000 - 1);
 
-  const [todayLeads, allLeadsCount, followUps, clients, leads, urgentLeads, untriaged, pendingCountersigns, todayAppointments, upcomingAppointments, pastAppointments, activeClients, upcomingTasks, activeClientCount, prospectCount] = await Promise.all([
+  const [todayLeads, allLeadsCount, followUps, clients, leads, urgentLeads, untriaged, pendingCountersigns, todayAppointments, upcomingAppointments, pastAppointments, activeClients, upcomingTasks, activeClientCount, prospectCount, allClientSubs, allClientInvoices] = await Promise.all([
     // Leads received today from email
     prisma.lead.findMany({
       where: {
@@ -211,6 +211,14 @@ export default async function TodayPage({
     }),
     prisma.client.count({ where: { companyId: params.companyId, status: "ACTIVE" } }),
     prisma.client.count({ where: { companyId: params.companyId, status: "PROSPECT" } }),
+    prisma.clientSub.findMany({
+      where: { client: { companyId: params.companyId, status: { in: ["ACTIVE"] } } },
+      select: { contractAmount: true, scopeItems: { select: { amount: true } }, payments: { select: { amount: true } } },
+    }),
+    prisma.invoice.findMany({
+      where: { companyId: params.companyId, client: { status: "ACTIVE" } },
+      select: { amount: true, payments: { select: { amount: true } } },
+    }),
   ]);
 
   const today = new Date().toLocaleDateString("en-US", {
@@ -228,6 +236,19 @@ export default async function TodayPage({
     return { id: c.id, name: c.name, status: c.status, estimateTotal, internalProfit, gcFee, mibhIncome: internalProfit + gcFee, companyId: params.companyId };
   });
   const mibhIncome = clientIncomeSummaries.filter(c => c.status === "ACTIVE").reduce((s, c) => s + c.mibhIncome, 0);
+
+  const totalSubsOwed = allClientSubs.reduce((s, sub) => {
+    const contractAmt = sub.scopeItems.length > 0
+      ? sub.scopeItems.reduce((ss, i) => ss + Number(i.amount), 0)
+      : Number(sub.contractAmount);
+    const paid = sub.payments.reduce((ps, p) => ps + Number(p.amount), 0);
+    return s + Math.max(0, contractAmt - paid);
+  }, 0);
+  const totalMibhOwed = allClientInvoices.reduce((s, inv) => {
+    const paid = inv.payments.reduce((ps, p) => ps + p.amount, 0);
+    return s + Math.max(0, inv.amount - paid);
+  }, 0);
+  const cashFlowWarning = totalSubsOwed > totalMibhOwed;
 
   // Today's appointments come from the dedicated query (exact date match, works for future dates too)
   const appointments = todayAppointments;
@@ -284,6 +305,23 @@ export default async function TodayPage({
           <SyncLeadsButton companyId={params.companyId} />
         </div>
       </div>
+
+      {/* Cash flow warning */}
+      {cashFlowWarning && (
+        <div className="mb-4 rounded-2xl p-5 flex items-start gap-4" style={{ background: "#1a0505", border: "2px solid #dc2626" }}>
+          <div className="text-5xl shrink-0 leading-none">🛑</div>
+          <div>
+            <div className="text-base font-black mb-1 uppercase tracking-wide" style={{ color: "#ef4444" }}>Cash Flow Alert</div>
+            <div className="text-sm leading-relaxed" style={{ color: "#fca5a5" }}>
+              Your outstanding obligations to subcontractors{" "}
+              <strong style={{ color: "#fff" }}>(${totalSubsOwed.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })})</strong>{" "}
+              currently exceed what active clients owe MIBH{" "}
+              <strong style={{ color: "#fff" }}>(${totalMibhOwed.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })})</strong>.{" "}
+              Review your financials and ensure sufficient cash reserves before releasing sub payments.
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* MIBH Income 2026 Barometer */}
       <BarometerSection mibhIncome={mibhIncome} clients={clientIncomeSummaries} />
