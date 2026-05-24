@@ -1070,13 +1070,11 @@ export default function ClientInvoicesTab({
                             style={{ background: "#3b82f622", color: "#3b82f6", border: "1px solid #3b82f644" }}>
                             👁 Preview
                           </a>
-                          {inv.status !== "PAID" && (
-                            <button onClick={() => openSend(inv)}
-                              className="text-[10px] px-2 py-1 rounded font-semibold"
-                              style={{ background: "#C9A84C22", color: GOLD, border: `1px solid ${GOLD}44` }}>
-                              ✉ Send
-                            </button>
-                          )}
+                          <button onClick={() => openSend(inv)}
+                            className="text-[10px] px-2 py-1 rounded font-semibold"
+                            style={{ background: "#C9A84C22", color: GOLD, border: `1px solid ${GOLD}44` }}>
+                            ✉ Send
+                          </button>
                           {balance > 0 && (
                             <button onClick={() => openPayment(inv)}
                               className="text-[10px] px-2 py-1 rounded font-semibold"
