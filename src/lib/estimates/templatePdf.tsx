@@ -140,14 +140,14 @@ const styles = StyleSheet.create({
 
   // Left column
   logo: { width: 152, height: 152, marginBottom: 4 },
-  companyInfo: { fontSize: 11, fontFamily: "Helvetica-Bold", color: DARK, marginTop: 2 },
+  companyInfo: { fontSize: 9, fontFamily: "Helvetica-Bold", color: DARK, marginTop: 2 },
 
   // Center column
   centerSection: { alignSelf: "stretch", alignItems: "center", paddingBottom: 2 },
   centerBold: { fontSize: 15, fontFamily: "Helvetica-Bold", color: DARK, textAlign: "center", marginBottom: 4 },
 
   // Right column
-  clientName: { fontSize: 13, fontFamily: "Helvetica-Bold", color: "#0f172a", marginBottom: 3, textAlign: "right" },
+  clientName: { fontSize: 11, fontFamily: "Helvetica-Bold", color: "#0f172a", marginBottom: 2, textAlign: "right" },
 
   // Division header row — text/total both white
   divisionHeader: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", backgroundColor: DARK, paddingHorizontal: 8, paddingVertical: 2, marginTop: 4, borderRadius: 3 },
@@ -1700,9 +1700,19 @@ function TemplatePdfDocument({ companyName, template, client, divisions, showTer
             <View style={{ flex: 1 }}>
               {/* eslint-disable-next-line jsx-a11y/alt-text */}
               <Image style={styles.logo} src={branding.logoSrc} />
-              <Text style={styles.companyInfo}>{branding.address}</Text>
+              {(() => {
+                const parts = branding.address.split(", ");
+                const street = parts[0] ? parts[0] + "," : branding.address;
+                const rest = parts.slice(1).join(", ");
+                return (
+                  <>
+                    <Text style={styles.companyInfo}>{street}</Text>
+                    {rest ? <Text style={styles.companyInfo}>{rest}</Text> : null}
+                  </>
+                );
+              })()}
               <Text style={styles.companyInfo}>Tel: {branding.phone}</Text>
-              <Text style={styles.companyInfo}>{branding.licenses}</Text>
+              <Text style={styles.companyInfo}>CGC1527069 | CCC1336817</Text>
             </View>
 
             {/* Center: Scope of Work title */}
@@ -1725,9 +1735,9 @@ function TemplatePdfDocument({ companyName, template, client, divisions, showTer
               {client ? (
                 <>
                   <Text style={styles.clientName}>{client.name}</Text>
-                  {client.address ? <Text style={styles.clientName}>{client.address}</Text> : null}
+                  {client.address ? <Text style={{ fontSize: 9, fontFamily: "Helvetica-Bold", color: "#0f172a", marginBottom: 2, textAlign: "right" }}>{client.address}</Text> : null}
                   {(client.city || client.state || client.zip) ? (
-                    <Text style={styles.clientName}>{[client.city, client.state, client.zip].filter(Boolean).join(", ")}</Text>
+                    <Text style={{ fontSize: 9, fontFamily: "Helvetica-Bold", color: "#0f172a", textAlign: "right" }}>{[client.city, client.state, client.zip].filter(Boolean).join(", ")}</Text>
                   ) : null}
                 </>
               ) : null}
