@@ -2,7 +2,6 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { renderInvoicePdf, InvoicePdfLine } from "@/lib/invoicePdf";
-import { buildInvoiceHtml, InvoiceDivisionLine } from "@/lib/invoiceHtml";
 
 export const runtime = "nodejs";
 export const maxDuration = 30;
