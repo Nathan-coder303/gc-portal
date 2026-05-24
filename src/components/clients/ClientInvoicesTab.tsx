@@ -472,7 +472,12 @@ export default function ClientInvoicesTab({
         );
         setTimeout(() => { setSendInvoice(null); setSendResult(null); }, 1500);
       } else {
-        setSendResult("Error: " + (data.error ?? "Unknown error"));
+        const errMsg = data.error ?? "Unknown error";
+        if (errMsg.includes("invalid_grant") || errMsg.includes("Invalid Credentials")) {
+          setSendResult("RECONNECT");
+        } else {
+          setSendResult("Error: " + errMsg);
+        }
       }
     } finally {
       setSending(false);
@@ -946,9 +951,21 @@ export default function ClientInvoicesTab({
               </div>
             </div>
 
-            {sendResult && (
+            {sendResult && sendResult === "RECONNECT" ? (
+              <div className="mt-3 rounded-lg px-3 py-2" style={{ background: "#2d1b1b", border: "1px solid #f8514944" }}>
+                <p className="text-xs font-semibold mb-1" style={{ color: "#f87171" }}>Gmail authorization expired.</p>
+                <a
+                  href={`/api/google-oauth?companyId=${companyId}`}
+                  className="text-xs font-bold underline"
+                  style={{ color: "#C9A84C" }}
+                >
+                  Click here to reconnect Gmail →
+                </a>
+                <p className="text-[10px] mt-1" style={{ color: "#8b949e" }}>After reconnecting, return here and send again.</p>
+              </div>
+            ) : sendResult ? (
               <p className="text-xs mt-3" style={{ color: sendResult.startsWith("✓") ? "#22c55e" : "#f87171" }}>{sendResult}</p>
-            )}
+            ) : null}
 
             <div className="flex gap-2 mt-4">
               <button onClick={sendEmail} disabled={sending || !sendTo}
@@ -998,6 +1015,44 @@ export default function ClientInvoicesTab({
                         )}
                       </div>
                       <div className="flex items-center gap-2 shrink-0">
+                        {/* Desktop-only inline actions — always visible on sm+ */}
+                        <div className="hidden sm:flex items-center gap-1" onClick={e => e.stopPropagation()}>
+                          <a
+                            href={`/api/${companyId}/clients/${clientId}/invoices/${inv.id}/preview`}
+                            target="_blank" rel="noopener noreferrer"
+                            className="text-[10px] px-2 py-1 rounded font-semibold"
+                            style={{ background: "#3b82f622", color: "#3b82f6", border: "1px solid #3b82f644" }}>
+                            👁 Preview
+                          </a>
+                          <button onClick={() => openSend(inv)}
+                            className="text-[10px] px-2 py-1 rounded font-semibold"
+                            style={{ background: "#C9A84C22", color: GOLD, border: `1px solid ${GOLD}44` }}>
+                            ✉ Send
+                          </button>
+                          {balance > 0 && (
+                            <button onClick={() => openPayment(inv)}
+                              className="text-[10px] px-2 py-1 rounded font-semibold"
+                              style={{ background: "#22c55e22", color: "#22c55e", border: "1px solid #22c55e44" }}>
+                              $ Pay
+                            </button>
+                          )}
+                          <button onClick={() => openEdit(inv)}
+                            className="text-[10px] px-2 py-1 rounded font-semibold"
+                            style={{ background: "#1e2736", color: "#8b949e", border: "1px solid #30373f" }}>
+                            ✎ Edit
+                          </button>
+                          <button onClick={() => duplicateInvoice(inv)}
+                            className="text-[10px] px-2 py-1 rounded"
+                            style={{ background: "#1e2736", color: "#8b949e", border: "1px solid #30373f" }}
+                            title="Duplicate">
+                            ⧉
+                          </button>
+                          <button onClick={() => deleteInvoice(inv.id)}
+                            className="text-[10px] px-2 py-1 rounded"
+                            style={{ background: "#2d1b1b", color: "#f87171" }}>
+                            ✕
+                          </button>
+                        </div>
                         <span className="text-sm font-mono font-bold" style={{ color: "#e6edf3" }}>${fmt(inv.amount)}</span>
                         <span
                           className="flex items-center justify-center w-6 h-6 rounded text-[13px]"

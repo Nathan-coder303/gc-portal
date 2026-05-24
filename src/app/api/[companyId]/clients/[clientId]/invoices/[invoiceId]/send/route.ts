@@ -230,7 +230,11 @@ export async function POST(
 
     return NextResponse.json({ success: true });
   } catch (e) {
-    console.error("Invoice send error:", e);
-    return NextResponse.json({ error: String(e) }, { status: 500 });
+    const msg = String(e);
+    console.error("Invoice send error:", msg);
+    if (msg.includes("invalid_grant") || msg.includes("Invalid Credentials")) {
+      return NextResponse.json({ error: "invalid_grant" }, { status: 401 });
+    }
+    return NextResponse.json({ error: msg }, { status: 500 });
   }
 }
