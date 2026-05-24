@@ -15,6 +15,7 @@ type EstimateDivision = { divisionId: string; divisionName: string; csiCode: str
 type ClientSub = { id: string; subContractorId: string | null; subName: string; scope: string | null; division: string | null; contractAmount: number; notes: string | null; payments: SubPayment[]; scopeItems: ScopeItem[] };
 type Supplier = { id: string; name: string };
 type MaterialPurchase = { id: string; supplierId: string; supplierName: string; amount: number; description: string | null; purchasedAt: string; notes: string | null };
+type LienRelease = { id: string; type: "PARTIAL" | "FINAL"; subName: string; recipientEmail: string | null; amount: string | null; throughDate: string | null; legalDescription: string; signatureToken: string | null; signedAt: string | null; signedByName: string | null; emailSentAt: string | null; createdAt: string };
 
 function fmt(n: number) { return n.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 }); }
 function today() { return new Date().toISOString().slice(0, 10); }
@@ -164,6 +165,202 @@ function DivisionPicker({ value, onChange, bg = "#0d1117" }: { value: string; on
   );
 }
 
+// ─── Release Panel ────────────────────────────────────────────────────────────
+function ReleasePanel({
+  companyId, clientId, subName, defaultAmount, defaultDate, type, onClose,
+  releases, onCreated, onDeleted,
+}: {
+  companyId: string; clientId: string; subName: string;
+  defaultAmount: string; defaultDate: string;
+  type: "PARTIAL" | "FINAL";
+  onClose: () => void;
+  releases: LienRelease[];
+  onCreated: (r: LienRelease) => void;
+  onDeleted: (id: string) => void;
+}) {
+  const [rlSubName, setRlSubName] = useState(subName);
+  const [rlEmail, setRlEmail] = useState("");
+  const [rlAmount, setRlAmount] = useState(defaultAmount);
+  const [rlDate, setRlDate] = useState(defaultDate);
+  const [rlLegal, setRlLegal] = useState("");
+  const [creating, setCreating] = useState(false);
+  const [showForm, setShowForm] = useState(true);
+
+  const [sendingId, setSendingId] = useState<string | null>(null);
+  const [sendEmail, setSendEmail] = useState("");
+  const [sendName, setSendName] = useState("");
+  const [sendingReq, setSendingReq] = useState(false);
+
+  const typeColor = type === "PARTIAL" ? "#60a5fa" : "#22c55e";
+  const typeBg = type === "PARTIAL" ? "#1e3a5f" : "#0d2318";
+
+  async function create() {
+    if (!rlSubName.trim() || !rlLegal.trim()) return;
+    setCreating(true);
+    try {
+      const res = await fetch(`/api/${companyId}/clients/${clientId}/lien-releases`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ type, subName: rlSubName.trim(), recipientEmail: rlEmail.trim() || null, amount: rlAmount.trim() || null, throughDate: rlDate || null, legalDescription: rlLegal.trim() }),
+      });
+      if (res.ok) {
+        const data = await res.json();
+        onCreated({ ...data, emailSentAt: null });
+        setRlLegal("");
+        setShowForm(false);
+      }
+    } finally { setCreating(false); }
+  }
+
+  async function deleteRelease(id: string) {
+    if (!confirm("Delete this lien release?")) return;
+    await fetch(`/api/${companyId}/clients/${clientId}/lien-releases`, {
+      method: "DELETE",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ id }),
+    });
+    onDeleted(id);
+  }
+
+  async function sendRelease(r: LienRelease) {
+    if (!sendEmail.trim()) return;
+    setSendingReq(true);
+    try {
+      const res = await fetch(`/api/${companyId}/clients/${clientId}/lien-releases/send`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id: r.id, recipientEmail: sendEmail.trim(), recipientName: sendName.trim() || null }),
+      });
+      if (res.ok) {
+        onCreated({ ...r, emailSentAt: new Date().toISOString(), recipientEmail: sendEmail.trim() });
+        setSendingId(null); setSendEmail(""); setSendName("");
+      }
+    } finally { setSendingReq(false); }
+  }
+
+  return (
+    <div className="px-3 pb-3 pt-2" style={{ background: "#0d1421", borderTop: "1px solid #21262d44" }}>
+      <div className="flex items-center justify-between mb-3">
+        <div className="flex items-center gap-2">
+          <span className="text-xs font-bold px-2 py-0.5 rounded" style={{ background: typeBg, color: typeColor }}>
+            {type === "PARTIAL" ? "PARTIAL" : "FINAL"} RELEASE
+          </span>
+          <span className="text-xs font-semibold" style={{ color: "#e6edf3" }}>{subName}</span>
+        </div>
+        <button onClick={onClose} className="text-xs px-2 py-0.5 rounded" style={{ color: "#8b949e", background: "#30373f22", border: "1px solid #30373f" }}>✕ Close</button>
+      </div>
+
+      {showForm ? (
+        <div className="rounded-xl p-4 space-y-3 mb-3" style={{ background: "#161b22", border: "1px solid #30373f" }}>
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="text-xs font-semibold mb-1 block" style={{ color: "#8b949e" }}>Subcontractor Name *</label>
+              <input value={rlSubName} onChange={e => setRlSubName(e.target.value)} className="w-full rounded-lg px-3 py-2 text-xs" style={{ background: "#0d1117", border: "1px solid #30373f", color: "#e6edf3" }} />
+            </div>
+            <div>
+              <label className="text-xs font-semibold mb-1 block" style={{ color: "#8b949e" }}>Recipient Email</label>
+              <input type="email" value={rlEmail} onChange={e => setRlEmail(e.target.value)} placeholder="email@example.com" className="w-full rounded-lg px-3 py-2 text-xs" style={{ background: "#0d1117", border: "1px solid #30373f", color: "#e6edf3" }} />
+            </div>
+            <div>
+              <label className="text-xs font-semibold mb-1 block" style={{ color: "#8b949e" }}>Amount (consideration)</label>
+              <input value={rlAmount} onChange={e => setRlAmount(e.target.value)} placeholder="0.00" className="w-full rounded-lg px-3 py-2 text-xs" style={{ background: "#0d1117", border: "1px solid #30373f", color: "#e6edf3" }} />
+            </div>
+            <div>
+              <label className="text-xs font-semibold mb-1 block" style={{ color: "#8b949e" }}>Through Date</label>
+              <input type="date" value={rlDate} onChange={e => setRlDate(e.target.value)} className="w-full rounded-lg px-3 py-2 text-xs" style={{ background: "#0d1117", border: "1px solid #30373f", color: "#e6edf3" }} />
+            </div>
+          </div>
+          <div>
+            <label className="text-xs font-semibold mb-1 block" style={{ color: "#8b949e" }}>Legal Description *</label>
+            <textarea
+              value={rlLegal}
+              onChange={e => setRlLegal(e.target.value)}
+              rows={3}
+              placeholder="Property legal description (e.g. LOT 12 BLK 4 SUBDIVISION PB 44-98)"
+              className="w-full rounded-lg px-3 py-2 text-xs"
+              style={{ background: "#0d1117", border: "1px solid #30373f", color: "#e6edf3", resize: "vertical", fontFamily: "monospace" }}
+            />
+          </div>
+          <div className="flex gap-2">
+            <button onClick={create} disabled={creating || !rlSubName.trim() || !rlLegal.trim()}
+              className="flex-1 py-2 rounded-xl text-xs font-bold disabled:opacity-50"
+              style={{ background: typeColor, color: type === "PARTIAL" ? "#fff" : "#0d1117" }}>
+              {creating ? "Creating…" : `Create ${type === "PARTIAL" ? "Partial" : "Final"} Release`}
+            </button>
+            <button onClick={() => setShowForm(false)} className="px-3 py-2 rounded-xl text-xs" style={{ background: "#30373f", color: "#8b949e" }}>Cancel</button>
+          </div>
+        </div>
+      ) : (
+        <button onClick={() => setShowForm(true)} className="w-full mb-3 py-1.5 rounded-xl text-xs font-semibold" style={{ background: `${typeColor}11`, color: typeColor, border: `1px solid ${typeColor}33` }}>
+          + New {type === "PARTIAL" ? "Partial" : "Final"} Release
+        </button>
+      )}
+
+      {releases.length > 0 && (
+        <div className="space-y-2">
+          <div className="text-xs font-semibold uppercase tracking-widest mb-2" style={{ color: "#8b949e" }}>Existing Releases — {subName}</div>
+          {releases.map(r => (
+            <div key={r.id} className="rounded-xl p-3 space-y-2" style={{ background: "#1e2736", border: "1px solid #30373f" }}>
+              <div className="flex items-start gap-2">
+                <div className="flex-1 min-w-0">
+                  <div className="flex flex-wrap items-center gap-1.5 mb-1">
+                    <span className="text-xs font-bold px-1.5 py-0.5 rounded" style={{ background: r.type === "PARTIAL" ? "#1e3a5f" : "#0d2318", color: r.type === "PARTIAL" ? "#60a5fa" : "#22c55e" }}>{r.type}</span>
+                    {r.signedAt && <span className="text-xs px-1.5 py-0.5 rounded" style={{ background: "#0d2318", color: "#22c55e" }}>✓ Signed {new Date(r.signedAt).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}</span>}
+                    {!r.signedAt && r.emailSentAt && <span className="text-xs px-1.5 py-0.5 rounded" style={{ color: "#f59e0b", border: "1px solid #f59e0b44" }}>Awaiting signature</span>}
+                  </div>
+                  <div className="text-xs" style={{ color: "#8b949e" }}>
+                    {r.amount && `$${r.amount}`}{r.amount && r.throughDate && " · "}{r.throughDate && `Through ${new Date(r.throughDate + "T00:00:00").toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}`}
+                    {(r.amount || r.throughDate) ? " · " : ""}Created {new Date(r.createdAt).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
+                  </div>
+                  {r.signedByName && <div className="text-xs mt-0.5" style={{ color: "#64748b" }}>Signed by: {r.signedByName}</div>}
+                  {r.emailSentAt && r.recipientEmail && <div className="text-xs mt-0.5" style={{ color: "#22c55e" }}>✓ Sent to {r.recipientEmail}</div>}
+                </div>
+                <div className="flex items-center gap-1 shrink-0">
+                  <a href={`/api/${companyId}/lien-releases/${r.id}/pdf`} target="_blank" rel="noopener noreferrer"
+                    className="text-xs px-2 py-0.5 rounded font-semibold"
+                    style={{ background: "#C9A84C11", color: "#C9A84C", border: "1px solid #C9A84C33" }}>
+                    📄 PDF
+                  </a>
+                  {!r.signedAt && (
+                    <button onClick={() => { setSendingId(sendingId === r.id ? null : r.id); setSendEmail(r.recipientEmail ?? ""); setSendName(r.subName); }}
+                      className="text-xs px-2 py-0.5 rounded font-semibold"
+                      style={{ background: "#1e3a5f", color: "#60a5fa", border: "1px solid #60a5fa44" }}>
+                      ✉ Send
+                    </button>
+                  )}
+                  <button onClick={() => deleteRelease(r.id)} className="text-xs px-2 py-0.5 rounded" style={{ color: "#8b949e", border: "1px solid #30373f" }}>Del</button>
+                </div>
+              </div>
+              {sendingId === r.id && (
+                <div className="rounded-lg p-3 space-y-2" style={{ background: "#0d1117", border: "1px solid #21262d" }}>
+                  <div className="grid grid-cols-2 gap-2">
+                    <div>
+                      <label className="text-xs mb-1 block" style={{ color: "#8b949e" }}>Name</label>
+                      <input value={sendName} onChange={e => setSendName(e.target.value)} placeholder="Recipient name" className="w-full rounded-lg px-2 py-1.5 text-xs" style={{ background: "#161b22", border: "1px solid #30373f", color: "#e6edf3" }} />
+                    </div>
+                    <div>
+                      <label className="text-xs mb-1 block" style={{ color: "#8b949e" }}>Email *</label>
+                      <input type="email" value={sendEmail} onChange={e => setSendEmail(e.target.value)} placeholder="email@example.com" className="w-full rounded-lg px-2 py-1.5 text-xs" style={{ background: "#161b22", border: "1px solid #30373f", color: "#e6edf3" }} />
+                    </div>
+                  </div>
+                  <div className="flex gap-2">
+                    <button onClick={() => sendRelease(r)} disabled={sendingReq || !sendEmail.trim()}
+                      className="px-3 py-1 rounded-lg text-xs font-semibold disabled:opacity-40"
+                      style={{ background: "#C9A84C", color: "#0d1117" }}>
+                      {sendingReq ? "Sending…" : "Send Email"}
+                    </button>
+                    <button onClick={() => setSendingId(null)} className="px-3 py-1 rounded-lg text-xs" style={{ color: "#8b949e", border: "1px solid #30373f" }}>Cancel</button>
+                  </div>
+                </div>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ─── Sub Card ─────────────────────────────────────────────────────────────────
 function PayForm({ subId, companyId, clientId, payment, onSave, onCancel }: {
   subId: string; companyId: string; clientId: string;
@@ -243,12 +440,15 @@ function PayForm({ subId, companyId, clientId, payment, onSave, onCancel }: {
 
 function SubCard({
   sub, companyId, clientId, estimateDivisions,
-  onUpdate, onDelete,
+  onUpdate, onDelete, lienReleases, onReleaseCreated, onReleaseDeleted,
 }: {
   sub: ClientSub; companyId: string; clientId: string;
   estimateDivisions: EstimateDivision[];
   onUpdate: (updated: ClientSub) => void;
   onDelete: (id: string) => void;
+  lienReleases: LienRelease[];
+  onReleaseCreated: (r: LienRelease) => void;
+  onReleaseDeleted: (id: string) => void;
 }) {
   const contractTotal = sub.scopeItems.length > 0
     ? sub.scopeItems.reduce((s, i) => s + i.amount, 0)
@@ -269,6 +469,7 @@ function SubCard({
 
   const [showPayForm, setShowPayForm] = useState(false);
   const [editingPayId, setEditingPayId] = useState<string | null>(null);
+  const [releasePanel, setReleasePanel] = useState<{ payId: string; type: "PARTIAL" | "FINAL" } | null>(null);
 
   async function saveInfo() {
     setSavingInfo(true);
@@ -526,18 +727,51 @@ function SubCard({
               );
             }
             return (
-              <div key={p.id} className="flex items-center justify-between gap-2 rounded-xl px-3 py-2" style={{ background: "#0d1117", border: "1px solid #21262d" }}>
-                <div className="flex items-center gap-2 flex-1 min-w-0 flex-wrap">
-                  <span className="text-xs font-bold px-2 py-0.5 rounded" style={{ background: isCr ? "#f8514922" : "#22c55e22", color: isCr ? "#f85149" : "#22c55e", border: `1px solid ${isCr ? "#f8514933" : "#22c55e33"}` }}>{METHOD_LABELS[p.method] ?? p.method}</span>
-                  <span className="text-xs font-bold" style={{ color: isCr ? "#f85149" : "#22c55e" }}>{isCr ? "-" : ""}${fmt(Math.abs(p.amount))}</span>
-                  <span className="text-xs" style={{ color: "#8b949e" }}>{new Date(p.paidAt + "T00:00:00").toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}</span>
-                  {p.checkNumber && <span className="text-xs" style={{ color: "#8b949e" }}>#{p.checkNumber}</span>}
-                  {p.notes && <span className="text-xs truncate" style={{ color: "#8b949e" }}>{p.notes}</span>}
+              <div key={p.id} className="rounded-xl overflow-hidden" style={{ border: "1px solid #21262d" }}>
+                <div className="flex items-center justify-between gap-2 px-3 py-2" style={{ background: "#0d1117" }}>
+                  <div className="flex items-center gap-2 flex-1 min-w-0 flex-wrap">
+                    <span className="text-xs font-bold px-2 py-0.5 rounded" style={{ background: isCr ? "#f8514922" : "#22c55e22", color: isCr ? "#f85149" : "#22c55e", border: `1px solid ${isCr ? "#f8514933" : "#22c55e33"}` }}>{METHOD_LABELS[p.method] ?? p.method}</span>
+                    <span className="text-xs font-bold" style={{ color: isCr ? "#f85149" : "#22c55e" }}>{isCr ? "-" : ""}${fmt(Math.abs(p.amount))}</span>
+                    <span className="text-xs" style={{ color: "#8b949e" }}>{new Date(p.paidAt + "T00:00:00").toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}</span>
+                    {p.checkNumber && <span className="text-xs" style={{ color: "#8b949e" }}>#{p.checkNumber}</span>}
+                    {p.notes && <span className="text-xs truncate" style={{ color: "#8b949e" }}>{p.notes}</span>}
+                  </div>
+                  <div className="flex items-center gap-1 shrink-0">
+                    <button onClick={() => setEditingPayId(p.id)} className="text-xs px-2 py-0.5 rounded" style={{ color: "#C9A84C", background: "#C9A84C11" }}>Edit</button>
+                    <button onClick={() => deletePayment(p.id)} className="w-6 h-6 rounded flex items-center justify-center" style={{ color: "#f85149" }}><TrashIcon size={11} /></button>
+                  </div>
                 </div>
-                <div className="flex items-center gap-1 shrink-0">
-                  <button onClick={() => setEditingPayId(p.id)} className="text-xs px-2 py-0.5 rounded" style={{ color: "#C9A84C", background: "#C9A84C11" }}>Edit</button>
-                  <button onClick={() => deletePayment(p.id)} className="w-6 h-6 rounded flex items-center justify-center" style={{ color: "#f85149" }}><TrashIcon size={11} /></button>
-                </div>
+                {!isCr && (
+                  <div className="flex items-center gap-2 px-3 py-1.5" style={{ background: "#080c14", borderTop: "1px solid #21262d44" }}>
+                    <span className="text-xs" style={{ color: "#4d5566" }}>Release:</span>
+                    <button
+                      onClick={() => setReleasePanel(prev => prev?.payId === p.id && prev.type === "PARTIAL" ? null : { payId: p.id, type: "PARTIAL" })}
+                      className="text-xs px-2 py-0.5 rounded font-semibold"
+                      style={{ color: "#60a5fa", background: releasePanel?.payId === p.id && releasePanel.type === "PARTIAL" ? "#1e3a5f" : "#60a5fa11", border: "1px solid #60a5fa33" }}>
+                      Partial Release
+                    </button>
+                    <button
+                      onClick={() => setReleasePanel(prev => prev?.payId === p.id && prev.type === "FINAL" ? null : { payId: p.id, type: "FINAL" })}
+                      className="text-xs px-2 py-0.5 rounded font-semibold"
+                      style={{ color: "#22c55e", background: releasePanel?.payId === p.id && releasePanel.type === "FINAL" ? "#0d2318" : "#22c55e11", border: "1px solid #22c55e33" }}>
+                      Final Release
+                    </button>
+                  </div>
+                )}
+                {releasePanel?.payId === p.id && !isCr && (
+                  <ReleasePanel
+                    companyId={companyId}
+                    clientId={clientId}
+                    subName={sub.subName}
+                    defaultAmount={fmt(Math.abs(p.amount))}
+                    defaultDate={p.paidAt}
+                    type={releasePanel.type}
+                    onClose={() => setReleasePanel(null)}
+                    releases={lienReleases.filter(r => r.subName === sub.subName)}
+                    onCreated={onReleaseCreated}
+                    onDeleted={onReleaseDeleted}
+                  />
+                )}
               </div>
             );
           })}
@@ -608,6 +842,7 @@ export default function ClientFinancialsTab({
   const [suppliers, setSuppliers] = useState<Supplier[]>([]);
   const [materials, setMaterials] = useState<MaterialPurchase[]>([]);
   const [estimateDivisions, setEstimateDivisions] = useState<EstimateDivision[]>([]);
+  const [lienReleases, setLienReleases] = useState<LienRelease[]>([]);
   const [loading, setLoading] = useState(true);
 
   // Add sub form
@@ -631,21 +866,23 @@ export default function ClientFinancialsTab({
   const [savingMat, setSavingMat] = useState(false);
 
   const load = useCallback(async () => {
-    const [subsRes, allSubsRes, suppliersRes, matsRes, itemsRes] = await Promise.all([
+    const [subsRes, allSubsRes, suppliersRes, matsRes, itemsRes, lienRes] = await Promise.all([
       fetch(`/api/${companyId}/clients/${clientId}/financials/subs`),
       fetch(`/api/${companyId}/subs`),
       fetch(`/api/${companyId}/suppliers`),
       fetch(`/api/${companyId}/clients/${clientId}/financials/materials`),
       fetch(`/api/${companyId}/clients/${clientId}/estimate-items`),
+      fetch(`/api/${companyId}/clients/${clientId}/lien-releases`),
     ]);
-    const [subs, allSubsList, suppliersList, matsList, itemsList] = await Promise.all([
-      subsRes.json(), allSubsRes.json(), suppliersRes.json(), matsRes.json(), itemsRes.json(),
+    const [subs, allSubsList, suppliersList, matsList, itemsList, lienList] = await Promise.all([
+      subsRes.json(), allSubsRes.json(), suppliersRes.json(), matsRes.json(), itemsRes.json(), lienRes.json(),
     ]);
     setClientSubs(subs);
     setAllSubs(Array.isArray(allSubsList) ? allSubsList.sort((a: SubContractor, b: SubContractor) => a.name.localeCompare(b.name)) : []);
     setSuppliers(Array.isArray(suppliersList) ? suppliersList : []);
     setMaterials(Array.isArray(matsList) ? matsList : []);
     setEstimateDivisions(Array.isArray(itemsList) ? itemsList : []);
+    setLienReleases(Array.isArray(lienList) ? lienList : []);
     setLoading(false);
   }, [companyId, clientId]);
 
@@ -711,6 +948,18 @@ export default function ClientFinancialsTab({
   async function deleteMaterial(id: string) {
     await fetch(`/api/${companyId}/clients/${clientId}/financials/materials?id=${id}`, { method: "DELETE" });
     setMaterials(prev => prev.filter(p => p.id !== id));
+  }
+
+  function handleReleaseCreated(r: LienRelease) {
+    setLienReleases(prev => {
+      const idx = prev.findIndex(x => x.id === r.id);
+      if (idx >= 0) return prev.map((x, i) => i === idx ? r : x);
+      return [r, ...prev];
+    });
+  }
+
+  function handleReleaseDeleted(id: string) {
+    setLienReleases(prev => prev.filter(r => r.id !== id));
   }
 
   // Computed totals
@@ -875,6 +1124,9 @@ ${rows}
               estimateDivisions={estimateDivisions}
               onUpdate={updated => setClientSubs(prev => prev.map(s => s.id === updated.id ? updated : s))}
               onDelete={id => setClientSubs(prev => prev.filter(s => s.id !== id))}
+              lienReleases={lienReleases.filter(r => r.subName === sub.subName)}
+              onReleaseCreated={handleReleaseCreated}
+              onReleaseDeleted={handleReleaseDeleted}
             />
           ))}
         </div>

@@ -21,7 +21,6 @@ import ChangeOrdersTab from "@/components/clients/ChangeOrdersTab";
 import ClientScheduleTab from "@/components/clients/ClientScheduleTab";
 import ClientCommsTab from "@/components/clients/ClientCommsTab";
 import ClientDocumentsTab from "@/components/clients/ClientDocumentsTab";
-import LienReleasesTab from "@/components/clients/LienReleasesTab";
 import TodayTaskCard, { FollowUpItem } from "@/components/today/TodayTaskCard";
 
 export default async function ClientDetailPage({
@@ -126,11 +125,6 @@ export default async function ClientDetailPage({
     orderBy: { createdAt: "desc" },
   });
 
-  const lienReleases = await prisma.lienRelease.findMany({
-    where: { clientId: params.clientId, companyId: params.companyId, archivedAt: null },
-    orderBy: { createdAt: "desc" },
-  });
-
   const clientNotes = await prisma.clientNote.findMany({
     where: { clientId: params.clientId, companyId: params.companyId },
     orderBy: { createdAt: "desc" },
@@ -182,7 +176,6 @@ export default async function ClientDetailPage({
     { key: "files", label: `Files${clientFiles.length > 0 ? ` (${clientFiles.length})` : ""}` },
     { key: "nurturing", label: "Nurturing" },
     { key: "comms", label: `Comms${clientEmails.length > 0 ? ` (${clientEmails.length})` : ""}` },
-    { key: "lien-releases", label: `Release of Liens${lienReleases.length > 0 ? ` (${lienReleases.length})` : ""}` },
   ];
 
   return (
@@ -534,27 +527,6 @@ export default async function ClientDetailPage({
             originalFileUrl: `/api/${params.companyId}/clients/${params.clientId}/documents/${d.id}/file`,
             signatureToken: d.signatureToken,
             createdAt: d.createdAt.toISOString(),
-          }))}
-        />
-      )}
-
-      {activeTab === "lien-releases" && (
-        <LienReleasesTab
-          companyId={params.companyId}
-          clientId={params.clientId}
-          initialReleases={lienReleases.map(r => ({
-            id: r.id,
-            type: r.type as "PARTIAL" | "FINAL",
-            subName: r.subName,
-            recipientEmail: r.recipientEmail,
-            amount: r.amount,
-            throughDate: r.throughDate,
-            legalDescription: r.legalDescription,
-            signatureToken: r.signatureToken,
-            signedAt: r.signedAt?.toISOString() ?? null,
-            signedByName: r.signedByName,
-            emailSentAt: r.emailSentAt?.toISOString() ?? null,
-            createdAt: r.createdAt.toISOString(),
           }))}
         />
       )}
