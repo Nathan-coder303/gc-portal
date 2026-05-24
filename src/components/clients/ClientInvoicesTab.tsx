@@ -323,7 +323,7 @@ export default function ClientInvoicesTab({
     setSendTo(clientEmail ?? "");
     setSendCc("mikebaruh@gmail.com");
     setSendBcc("");
-    setSendSubject(`Invoice #${inv.invoiceNumber} - ${inv.phase}${est?.estimateNumber ? ` - Est. #${est.estimateNumber}` : ""}`);
+    setSendSubject(`Invoice #${inv.invoiceNumber} - ${inv.phase}`);
     setSendBody(`Dear ${clientName},\n\nPlease find below your invoice for the ${inv.phase} phase of your project. We appreciate your continued trust in MIBH Construction and look forward to delivering exceptional results.\n\nPayment can be made via Zelle to mikebaruh@gmail.com or by check payable to MIBH Construction. Please include Invoice #${inv.invoiceNumber} in the memo.\n\nDon't hesitate to reach out if you have any questions.`);
     setSendResult(null);
     setPreviewOpen(false);
