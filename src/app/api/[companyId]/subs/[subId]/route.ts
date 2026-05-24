@@ -10,6 +10,8 @@ export async function PATCH(req: NextRequest, { params }: { params: { companyId:
   const data: Record<string, unknown> = {};
   if ("isFavorite" in body) {
     data.isFavorite = body.isFavorite;
+  } else if ("emailOnly" in body) {
+    data.email = body.email ?? null;
   } else {
     data.name = body.name;
     data.contactName = body.contactName ?? null;

@@ -167,19 +167,21 @@ function DivisionPicker({ value, onChange, bg = "#0d1117" }: { value: string; on
 
 // ─── Release Panel ────────────────────────────────────────────────────────────
 function ReleasePanel({
-  companyId, clientId, subName, defaultAmount, defaultDate, type, onClose,
-  releases, onCreated, onDeleted,
+  companyId, clientId, subName, subContractorId, initialEmail, defaultAmount, defaultDate, type, onClose,
+  releases, onCreated, onDeleted, onSubEmailSaved,
 }: {
   companyId: string; clientId: string; subName: string;
+  subContractorId: string | null; initialEmail: string;
   defaultAmount: string; defaultDate: string;
   type: "PARTIAL" | "FINAL";
   onClose: () => void;
   releases: LienRelease[];
   onCreated: (r: LienRelease) => void;
   onDeleted: (id: string) => void;
+  onSubEmailSaved: (subContractorId: string, email: string) => void;
 }) {
   const [rlSubName, setRlSubName] = useState(subName);
-  const [rlEmail, setRlEmail] = useState("");
+  const [rlEmail, setRlEmail] = useState(initialEmail);
   const [rlAmount, setRlAmount] = useState(defaultAmount);
   const [rlDate, setRlDate] = useState(defaultDate);
   const [rlLegal, setRlLegal] = useState("");
@@ -198,14 +200,25 @@ function ReleasePanel({
     if (!rlSubName.trim() || !rlLegal.trim()) return;
     setCreating(true);
     try {
-      const res = await fetch(`/api/${companyId}/clients/${clientId}/lien-releases`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ type, subName: rlSubName.trim(), recipientEmail: rlEmail.trim() || null, amount: rlAmount.trim() || null, throughDate: rlDate || null, legalDescription: rlLegal.trim() }),
-      });
-      if (res.ok) {
-        const data = await res.json();
+      const email = rlEmail.trim() || null;
+      const [releaseRes] = await Promise.all([
+        fetch(`/api/${companyId}/clients/${clientId}/lien-releases`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ type, subName: rlSubName.trim(), recipientEmail: email, amount: rlAmount.trim() || null, throughDate: rlDate || null, legalDescription: rlLegal.trim() }),
+        }),
+        subContractorId && email && email !== initialEmail
+          ? fetch(`/api/${companyId}/subs/${subContractorId}`, {
+              method: "PATCH",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ emailOnly: true, email }),
+            })
+          : Promise.resolve(null),
+      ]);
+      if (releaseRes.ok) {
+        const data = await releaseRes.json();
         onCreated({ ...data, emailSentAt: null });
+        if (subContractorId && email && email !== initialEmail) onSubEmailSaved(subContractorId, email);
         setRlLegal("");
         setShowForm(false);
       }
@@ -440,7 +453,7 @@ function PayForm({ subId, companyId, clientId, payment, onSave, onCancel }: {
 
 function SubCard({
   sub, companyId, clientId, estimateDivisions,
-  onUpdate, onDelete, lienReleases, onReleaseCreated, onReleaseDeleted,
+  onUpdate, onDelete, lienReleases, onReleaseCreated, onReleaseDeleted, subEmail, onSubEmailSaved,
 }: {
   sub: ClientSub; companyId: string; clientId: string;
   estimateDivisions: EstimateDivision[];
@@ -449,6 +462,8 @@ function SubCard({
   lienReleases: LienRelease[];
   onReleaseCreated: (r: LienRelease) => void;
   onReleaseDeleted: (id: string) => void;
+  subEmail: string;
+  onSubEmailSaved: (subContractorId: string, email: string) => void;
 }) {
   const contractTotal = sub.scopeItems.length > 0
     ? sub.scopeItems.reduce((s, i) => s + i.amount, 0)
@@ -763,13 +778,16 @@ function SubCard({
                     companyId={companyId}
                     clientId={clientId}
                     subName={sub.subName}
-                    defaultAmount={fmt(Math.abs(p.amount))}
+                    subContractorId={sub.subContractorId}
+                    initialEmail={subEmail}
+                    defaultAmount="10.00"
                     defaultDate={p.paidAt}
                     type={releasePanel.type}
                     onClose={() => setReleasePanel(null)}
                     releases={lienReleases.filter(r => r.subName === sub.subName)}
                     onCreated={onReleaseCreated}
                     onDeleted={onReleaseDeleted}
+                    onSubEmailSaved={onSubEmailSaved}
                   />
                 )}
               </div>
@@ -962,6 +980,10 @@ export default function ClientFinancialsTab({
     setLienReleases(prev => prev.filter(r => r.id !== id));
   }
 
+  function handleSubEmailSaved(subContractorId: string, email: string) {
+    setAllSubs(prev => prev.map(s => s.id === subContractorId ? { ...s, email } : s));
+  }
+
   // Computed totals
   const totalContracted = clientSubs.reduce((s, sub) => s + (sub.scopeItems.length > 0 ? sub.scopeItems.reduce((ss, i) => ss + i.amount, 0) : sub.contractAmount), 0);
   const totalLaborPaid = clientSubs.reduce((s, sub) => s + sub.payments.reduce((ps, p) => ps + p.amount, 0), 0);
@@ -1127,6 +1149,8 @@ ${rows}
               lienReleases={lienReleases.filter(r => r.subName === sub.subName)}
               onReleaseCreated={handleReleaseCreated}
               onReleaseDeleted={handleReleaseDeleted}
+              subEmail={allSubs.find(s => s.id === sub.subContractorId)?.email ?? ""}
+              onSubEmailSaved={handleSubEmailSaved}
             />
           ))}
         </div>
