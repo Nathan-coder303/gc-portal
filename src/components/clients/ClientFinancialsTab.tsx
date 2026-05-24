@@ -989,6 +989,27 @@ export default function ClientFinancialsTab({
     setAllSubs(prev => prev.map(s => s.id === subContractorId ? { ...s, email } : s));
   }
 
+  // Remaining scope items: estimate line items not yet assigned to any sub
+  const assignedItemNames = useMemo(() => new Set(clientSubs.flatMap(sub => sub.scopeItems.map(i => i.name))), [clientSubs]);
+  const remainingByDiv = useMemo(() =>
+    estimateDivisions
+      .map(div => ({ ...div, items: div.items.filter(i => !assignedItemNames.has(i.name)) }))
+      .filter(div => div.items.length > 0),
+    [estimateDivisions, assignedItemNames]
+  );
+  const totalRemaining = remainingByDiv.reduce((s, d) => s + d.items.length, 0);
+
+  async function addItemToSub(sub: ClientSub, item: EstimateLineItem) {
+    const res = await fetch(`/api/${companyId}/clients/${clientId}/financials/subs/${sub.id}/scope`, {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ items: [{ csiCode: item.csiCode, name: item.name, salePrice: item.salePrice, amount: 0 }] }),
+    });
+    if (res.ok) {
+      const data = await res.json();
+      setClientSubs(prev => prev.map(s => s.id === sub.id ? { ...s, contractAmount: data.contractAmount, scopeItems: [...s.scopeItems, ...data.items] } : s));
+    }
+  }
+
   // Computed totals
   const totalContracted = clientSubs.reduce((s, sub) => s + (sub.scopeItems.length > 0 ? sub.scopeItems.reduce((ss, i) => ss + i.amount, 0) : sub.contractAmount), 0);
   const totalLaborPaid = clientSubs.reduce((s, sub) => s + sub.payments.reduce((ps, p) => ps + p.amount, 0), 0);
@@ -1093,6 +1114,58 @@ ${rows}
           🖨 Print Statement
         </button>
       </div>
+
+      {/* ── Scope of Work Remaining ── */}
+      {estimateDivisions.length > 0 && (
+        <div className="space-y-3">
+          <div className="flex items-center gap-2">
+            <h2 className="text-sm font-bold uppercase tracking-widest" style={{ color: "#8b949e" }}>Scope Remaining</h2>
+            {totalRemaining > 0 ? (
+              <span className="text-xs font-bold px-2 py-0.5 rounded-full" style={{ background: "#f8514922", color: "#f85149", border: "1px solid #f8514944" }}>{totalRemaining}</span>
+            ) : (
+              <span className="text-xs font-bold px-2 py-0.5 rounded-full" style={{ background: "#22c55e22", color: "#22c55e", border: "1px solid #22c55e44" }}>✓ All assigned</span>
+            )}
+          </div>
+          {totalRemaining > 0 && (
+            <div className="rounded-2xl overflow-hidden" style={{ border: "1px solid #21262d" }}>
+              {remainingByDiv.map((div, di) => (
+                <div key={div.divisionId}>
+                  {/* Division header */}
+                  <div className="px-4 py-2 text-xs font-bold uppercase tracking-widest" style={{ background: "#0d1117", color: "#C9A84C", borderBottom: "1px solid #21262d" }}>
+                    {div.csiCode ? `${div.csiCode.slice(0, 2)} · ` : ""}{div.divisionName}
+                  </div>
+                  {div.items.map((item, ii) => (
+                    <div key={item.id} className="flex items-center gap-3 px-4 py-2.5" style={{ background: ii % 2 === 0 ? "#0d1117" : "#111820", borderBottom: di < remainingByDiv.length - 1 || ii < div.items.length - 1 ? "1px solid #21262d22" : undefined }}>
+                      <div className="flex-1 min-w-0">
+                        <span className="text-sm" style={{ color: "#e6edf3" }}>{item.name}</span>
+                        {item.salePrice > 0 && (
+                          <span className="ml-2 text-xs" style={{ color: "#8b949e" }}>${fmt(item.salePrice)}</span>
+                        )}
+                      </div>
+                      {clientSubs.length > 0 && (
+                        <div className="flex items-center gap-1 shrink-0 flex-wrap justify-end">
+                          <span className="text-xs" style={{ color: "#4d5566" }}>Add to:</span>
+                          {clientSubs.map(sub => (
+                            <button
+                              key={sub.id}
+                              onClick={() => addItemToSub(sub, item)}
+                              className="text-xs px-2 py-0.5 rounded-full font-semibold shrink-0 transition-colors"
+                              style={{ background: "#C9A84C18", color: "#C9A84C", border: "1px solid #C9A84C33" }}
+                              title={`Add "${item.name}" to ${sub.subName}`}
+                            >
+                              {sub.subName}
+                            </button>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
 
       {/* ── Section 1: Subcontractors ── */}
       <div className="space-y-4">
