@@ -22,7 +22,7 @@ function bodyToHtml(text: string): string {
     .replace(/</g, "&lt;")
     .replace(/>/g, "&gt;");
   const paragraphs = escaped.split(/\n\n+/).map(p => `<p>${p.replace(/\n/g, "<br/>")}</p>`).join("");
-  return `<!DOCTYPE html><html><body style="font-family:Arial,sans-serif;font-size:14px;color:#222;line-height:1.7;max-width:600px;margin:0 auto;padding:24px;">${paragraphs}</body></html>`;
+  return `<!DOCTYPE html><html><body style="font-family:Arial,sans-serif;font-size:14px;color:#222;line-height:1.7;margin:0;padding:16px 0;">${paragraphs}</body></html>`;
 }
 
 export async function POST(
