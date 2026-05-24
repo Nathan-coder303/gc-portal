@@ -162,6 +162,13 @@ export async function POST(
   const outerBoundary = `----=_Mixed_${Date.now()}`;
   const innerBoundary = `----=_Alt_${Date.now()}`;
 
+  const plainText = bodyText
+    ? bodyText
+    : `Invoice #${invoice.invoiceNumber} - ${invoice.phase} - $${Number(invoice.amount).toFixed(2)}\r\n\r\nZelle: mikebaruh@gmail.com | Phone: 305-746-7307`;
+
+  const plainB64 = Buffer.from(plainText, "utf-8").toString("base64");
+  const htmlB64 = Buffer.from(html, "utf-8").toString("base64");
+
   const mime = [
     `To: ${to}`,
     ...(cc ? [`Cc: ${cc}`] : []),
@@ -176,19 +183,19 @@ export async function POST(
     "",
     `--${innerBoundary}`,
     "Content-Type: text/plain; charset=UTF-8",
-    "Content-Transfer-Encoding: quoted-printable",
+    "Content-Transfer-Encoding: base64",
     "",
-    bodyText ? bodyText : `Invoice #${invoice.invoiceNumber} - ${invoice.phase} - $${Number(invoice.amount).toFixed(2)}\r\n\r\nZelle: mikebaruh@gmail.com | Phone: 305-746-7307`,
+    plainB64,
     "",
     `--${innerBoundary}`,
     "Content-Type: text/html; charset=UTF-8",
-    "Content-Transfer-Encoding: quoted-printable",
+    "Content-Transfer-Encoding: base64",
     "",
-    html,
+    htmlB64,
     "",
     `--${innerBoundary}--`,
     "",
-    // ── Estimate PDF attachment ──
+    // ── Invoice PDF attachment ──
     `--${outerBoundary}`,
     `Content-Type: application/pdf; name="${pdfFilename}"`,
     "Content-Transfer-Encoding: base64",
