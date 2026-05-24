@@ -99,10 +99,13 @@ export function buildInvoiceHtml(opts: {
   .pay-row .pk { color: #78716c; width: 70px; font-size: 10px; }
   .pay-row .pv { font-weight: 700; }
   .ph-row { display: flex; justify-content: space-between; align-items: center; padding: 4px 6px; background: #f9fafb; border-radius: 4px; margin-bottom: 3px; font-size: 11px; }
+  .custom-body { font-size: 13px; color: #222; line-height: 1.7; white-space: pre-wrap; margin-bottom: 20px; padding-bottom: 16px; border-bottom: 1px solid #e5e7eb; }
   @media print { body { padding: 12px; } }
 </style>
 </head>
 <body>
+
+${opts.customBody ? `<div class="custom-body">${opts.customBody.replace(/\n/g, "<br/>")}</div>` : ""}
 
 <!-- Header -->
 <div class="header-bar">

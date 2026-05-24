@@ -1,24 +1,17 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { renderTemplatePdf } from "@/lib/estimates/templatePdf";
+import { renderInvoicePdf, InvoicePdfLine } from "@/lib/invoicePdf";
+import { buildInvoiceHtml, InvoiceDivisionLine } from "@/lib/invoiceHtml";
 
 export const runtime = "nodejs";
 export const maxDuration = 30;
 
-async function resolvePrivateCoverUrl(blobUrl: string | null): Promise<string | null> {
-  if (!blobUrl) return null;
-  try {
-    const res = await fetch(blobUrl, {
-      headers: { Authorization: `Bearer ${process.env.BLOB_READ_WRITE_TOKEN}` },
-    });
-    if (!res.ok) return null;
-    const ab = await res.arrayBuffer();
-    const mt = res.headers.get("content-type") ?? "image/jpeg";
-    return `data:${mt};base64,${Buffer.from(ab).toString("base64")}`;
-  } catch {
-    return null;
-  }
+function itemTotal(item: { defaultQty: unknown; defaultUnitCost: unknown; defaultMarkupPct: unknown }): number {
+  const qty = Number(item.defaultQty ?? 0);
+  const cost = Number(item.defaultUnitCost ?? 0);
+  const markup = Number(item.defaultMarkupPct ?? 0);
+  return qty * cost * (1 + markup / 100);
 }
 
 export async function GET(
@@ -51,6 +44,8 @@ export async function GET(
             },
           },
         },
+        payments: { orderBy: { paidDate: "asc" } },
+        lines: { orderBy: { sortOrder: "asc" } },
       },
     }),
     prisma.company.findFirst({ where: { id: params.companyId } }),
@@ -58,89 +53,72 @@ export async function GET(
 
   if (!invoice || !company) return NextResponse.json({ error: "Not found" }, { status: 404 });
 
-  const companyLogoDataUrl = company.logoUrl ? await resolvePrivateCoverUrl(company.logoUrl) : null;
-
-  const divisions = invoice.estimate.divisions.map((d) => ({
-    id: d.id,
-    csiCode: d.csiCode,
-    name: d.name,
-    manualTotal: d.manualTotal ? Number(d.manualTotal) : null,
-    groups: d.groups.map((g) => ({
-      id: g.id,
-      name: g.name,
-      items: g.items.map((i) => ({
-        id: i.id,
-        name: i.name,
-        detail: i.detail,
-        unit: i.unit,
-        csiCode: i.csiCode ?? null,
-        defaultQty: i.defaultQty ? Number(i.defaultQty) : null,
-        defaultUnitCost: i.defaultUnitCost ? Number(i.defaultUnitCost) : null,
-        defaultMarkupPct: i.defaultMarkupPct ? Number(i.defaultMarkupPct) : null,
-        visibleInPdf: i.visibleInPdf,
-        notes: i.notes,
-      })),
-    })),
-    items: d.items.map((i) => ({
-      id: i.id,
-      name: i.name,
-      detail: i.detail,
-      unit: i.unit,
-      csiCode: i.csiCode ?? null,
-      defaultQty: i.defaultQty ? Number(i.defaultQty) : null,
-      defaultUnitCost: i.defaultUnitCost ? Number(i.defaultUnitCost) : null,
-      defaultMarkupPct: i.defaultMarkupPct ? Number(i.defaultMarkupPct) : null,
-      visibleInPdf: i.visibleInPdf,
-      notes: i.notes,
-    })),
-  }));
-
-  const buffer = await renderTemplatePdf({
-    companyName: company.name,
-    branding: {
-      name: company.name || undefined,
-      address: company.address || undefined,
-      phone: company.phone || undefined,
-      email: company.email || undefined,
-      licenses: company.licenses || undefined,
-      tagline: company.tagline || undefined,
-      website: company.website || undefined,
-      contactName: company.contactName || undefined,
-      logoSrc: companyLogoDataUrl || undefined,
-    },
-    template: {
-      name: invoice.estimate.name,
-      description: invoice.estimate.description,
-      estimateNumber: invoice.estimate.estimateNumber,
-      estimateDate: invoice.estimate.estimateDate,
-    },
-    client: invoice.client
-      ? {
-          name: invoice.client.name,
-          address: invoice.client.address,
-          city: invoice.client.city,
-          state: invoice.client.state,
-          zip: invoice.client.zip,
-          phone: invoice.client.phone,
-          email: invoice.client.email,
-        }
+  const clientAddress = [
+    invoice.client.address,
+    invoice.client.city && invoice.client.state
+      ? `${invoice.client.city}, ${invoice.client.state} ${invoice.client.zip ?? ""}`.trim()
       : null,
+  ].filter(Boolean).join("\n");
+
+  let divisions: InvoicePdfLine[];
+  let gcFeeScheduledValue = 0;
+
+  if (invoice.lines.length > 0) {
+    const divMap = new Map<string, string>();
+    invoice.estimate.divisions.forEach((d, i) => {
+      const code = d.csiCode ? d.csiCode.slice(0, 2).padStart(2, "0") : String(i + 1).padStart(2, "0");
+      divMap.set(code, d.name);
+    });
+    const withHeaders: InvoicePdfLine[] = [];
+    let lastDivCode: string | null = null;
+    for (const l of invoice.lines) {
+      const rawNum = l.itemNumber;
+      const divCode = rawNum.includes(".") ? rawNum.split(".")[0].padStart(2, "0") : null;
+      if (divCode && divCode !== lastDivCode && divMap.has(divCode)) {
+        withHeaders.push({ isDivisionHeader: true, itemNumber: `DIV ${divCode}`, description: divMap.get(divCode)!, scheduledValue: 0 });
+        lastDivCode = divCode;
+      }
+      withHeaders.push({
+        itemNumber: rawNum,
+        description: l.description,
+        scheduledValue: Number(l.scheduledValue),
+        fromPrevious: Number(l.fromPrevious),
+        thisInvoice: Number(l.thisInvoice),
+        pctThisInvoice: Number(l.pctThisInvoice),
+      });
+    }
+    divisions = withHeaders;
+  } else {
+    const rawDivisions = invoice.estimate.divisions.map((d, i) => {
+      const rawCode = d.csiCode ? d.csiCode.slice(0, 2).trim() : null;
+      const itemNumber = rawCode ? `Div ${rawCode}` : `Div ${i + 1}`;
+      const total = d.manualTotal !== null && d.manualTotal !== undefined
+        ? Number(d.manualTotal)
+        : [...d.items, ...d.groups.flatMap(g => g.items)].reduce((s, it) => s + itemTotal(it), 0);
+      return { itemNumber, description: d.name, scheduledValue: total };
+    }).filter(l => l.scheduledValue > 0);
+    if (invoice.estimate.gcFeePercent) {
+      const rawTotal = rawDivisions.reduce((s, l) => s + l.scheduledValue, 0);
+      gcFeeScheduledValue = Math.round(rawTotal * Number(invoice.estimate.gcFeePercent) / 100 * 100) / 100;
+    }
+    divisions = rawDivisions;
+  }
+
+  const buffer = await renderInvoicePdf({
+    invoiceNumber: invoice.invoiceNumber,
+    phase: invoice.phase,
+    trigger: invoice.trigger,
+    pct: Number(invoice.pct),
+    amount: Number(invoice.amount),
+    estimateName: invoice.estimate.name,
+    clientName: invoice.client.name,
+    clientAddress: clientAddress || null,
+    dueDate: invoice.dueDate,
+    notes: invoice.notes,
+    payments: invoice.payments.map(p => ({ amount: Number(p.amount), method: p.method, paidDate: p.paidDate, notes: p.notes })),
     divisions,
-    showTerms: false,
-    paymentSchedule: null,
-    gcFeePercent: invoice.estimate.gcFeePercent ? Number(invoice.estimate.gcFeePercent) : null,
-    summaryGroups: null,
-    includeRoofUpgradesPage: false,
-    includeAdditionPages: false,
-    includeRetailPages: false,
-    includeCoverPage: false,
-    includeDivisionSummary: false,
-    clientCoverPhotoType: null,
-    clientCoverPhotoUrl: null,
-    clientCoverTitle: null,
-    progressPaymentPct: Number(invoice.pct),
-    progressPaymentPhase: invoice.phase,
-    progressInvoiceNumber: invoice.invoiceNumber,
+    gcFeeScheduledValue,
+    fromAddress: company.address ?? undefined,
   });
 
   const clientSlug = invoice.client.name.replace(/[^a-z0-9]/gi, "-");
