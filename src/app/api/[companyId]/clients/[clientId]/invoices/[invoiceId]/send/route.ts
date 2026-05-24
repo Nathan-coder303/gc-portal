@@ -2,7 +2,6 @@ import { NextRequest, NextResponse } from "next/server";
 import { google } from "googleapis";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { buildInvoiceHtml, InvoiceDivisionLine } from "@/lib/invoiceHtml";
 import { renderInvoicePdf, InvoicePdfLine } from "@/lib/invoicePdf";
 import { getGmailOAuth } from "@/lib/gmail";
 
@@ -12,9 +11,18 @@ export const maxDuration = 30;
 function sanitizeSubject(s: string): string {
   return s
     .replace(/[—–]/g, " - ")
-    .replace(/[‘’]/g, "'")
-    .replace(/[“”]/g, '"')
+    .replace(/['']/g, "'")
+    .replace(/[""]/g, '"')
     .replace(/[^\x20-\x7E]/g, "?");
+}
+
+function bodyToHtml(text: string): string {
+  const escaped = text
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;");
+  const paragraphs = escaped.split(/\n\n+/).map(p => `<p>${p.replace(/\n/g, "<br/>")}</p>`).join("");
+  return `<!DOCTYPE html><html><body style="font-family:Arial,sans-serif;font-size:14px;color:#222;line-height:1.7;max-width:600px;margin:0 auto;padding:24px;">${paragraphs}</body></html>`;
 }
 
 export async function POST(
@@ -59,7 +67,7 @@ export async function POST(
 
   if (!invoice || !company) return NextResponse.json({ error: "Invoice not found" }, { status: 404 });
 
-  // Build division lines for the email body — same logic as the preview route
+  // Build division lines for the PDF
   function itemTotal(item: { defaultQty: unknown; defaultUnitCost: unknown; defaultMarkupPct: unknown }): number {
     const qty = Number(item.defaultQty ?? 0);
     const cost = Number(item.defaultUnitCost ?? 0);
@@ -67,7 +75,7 @@ export async function POST(
     return qty * cost * (1 + markup / 100);
   }
 
-  let emailDivisions: InvoiceDivisionLine[];
+  let pdfDivisions: InvoicePdfLine[];
   let gcFeeScheduledValue = 0;
 
   if (invoice.lines.length > 0) {
@@ -76,7 +84,7 @@ export async function POST(
       const code = d.csiCode ? d.csiCode.slice(0, 2).padStart(2, "0") : String(i + 1).padStart(2, "0");
       divMap.set(code, d.name);
     });
-    const withHeaders: InvoiceDivisionLine[] = [];
+    const withHeaders: InvoicePdfLine[] = [];
     let lastDivCode: string | null = null;
     for (const l of invoice.lines) {
       const rawNum = l.itemNumber;
@@ -94,7 +102,7 @@ export async function POST(
         pctThisInvoice: Number(l.pctThisInvoice),
       });
     }
-    emailDivisions = withHeaders;
+    pdfDivisions = withHeaders;
   } else {
     const rawDivisions = invoice.estimate.divisions.map((d, i) => {
       const rawCode = d.csiCode ? d.csiCode.slice(0, 2).trim() : null;
@@ -108,7 +116,7 @@ export async function POST(
       const rawTotal = rawDivisions.reduce((s, l) => s + l.scheduledValue, 0);
       gcFeeScheduledValue = Math.round(rawTotal * Number(invoice.estimate.gcFeePercent) / 100 * 100) / 100;
     }
-    emailDivisions = rawDivisions;
+    pdfDivisions = rawDivisions;
   }
 
   const clientAddress = [
@@ -118,24 +126,7 @@ export async function POST(
       : null,
   ].filter(Boolean).join("\n");
 
-  const html = buildInvoiceHtml({
-    invoiceNumber: invoice.invoiceNumber,
-    phase: invoice.phase,
-    trigger: invoice.trigger,
-    pct: invoice.pct,
-    amount: Number(invoice.amount),
-    estimateName: invoice.estimate.name,
-    clientName: invoice.client.name,
-    clientAddress: clientAddress || null,
-    dueDate: invoice.dueDate,
-    notes: invoice.notes,
-    customBody: bodyText ?? null,
-    payments: invoice.payments.map(p => ({ amount: p.amount, method: p.method, paidDate: p.paidDate, notes: p.notes })),
-    divisions: emailDivisions,
-    gcFeeScheduledValue,
-  });
-
-  // Generate invoice-format PDF (Schedule of Values layout matching the preview)
+  // Generate invoice PDF
   const invoicePdf = await renderInvoicePdf({
     invoiceNumber: invoice.invoiceNumber,
     phase: invoice.phase,
@@ -148,7 +139,7 @@ export async function POST(
     dueDate: invoice.dueDate,
     notes: invoice.notes,
     payments: invoice.payments.map(p => ({ amount: Number(p.amount), method: p.method, paidDate: p.paidDate, notes: p.notes })),
-    divisions: emailDivisions as InvoicePdfLine[],
+    divisions: pdfDivisions,
     gcFeeScheduledValue,
     fromAddress: company.address ?? undefined,
   });
@@ -158,16 +149,15 @@ export async function POST(
   const pdfFilename = `Invoice-${invoice.invoiceNumber}-${phaseSlug}-${invoice.pct}pct-${clientSlug}.pdf`;
   const pdfBase64 = invoicePdf.toString("base64");
 
-  // Build MIME: multipart/mixed wrapping (HTML body + PDF attachment)
+  // Email body — compose text only, invoice details are in the PDF
+  const plainText = bodyText ?? "";
+  const htmlBody = bodyText ? bodyToHtml(bodyText) : "<html><body></body></html>";
+
   const outerBoundary = `----=_Mixed_${Date.now()}`;
   const innerBoundary = `----=_Alt_${Date.now()}`;
 
-  const plainText = bodyText
-    ? bodyText
-    : `Invoice #${invoice.invoiceNumber} - ${invoice.phase} - $${Number(invoice.amount).toFixed(2)}\r\n\r\nZelle: mikebaruh@gmail.com | Phone: 305-746-7307`;
-
   const plainB64 = Buffer.from(plainText, "utf-8").toString("base64");
-  const htmlB64 = Buffer.from(html, "utf-8").toString("base64");
+  const htmlB64 = Buffer.from(htmlBody, "utf-8").toString("base64");
 
   const mime = [
     `To: ${to}`,
@@ -177,7 +167,6 @@ export async function POST(
     "MIME-Version: 1.0",
     `Content-Type: multipart/mixed; boundary="${outerBoundary}"`,
     "",
-    // ── Body (plain + HTML) ──
     `--${outerBoundary}`,
     `Content-Type: multipart/alternative; boundary="${innerBoundary}"`,
     "",
@@ -195,7 +184,6 @@ export async function POST(
     "",
     `--${innerBoundary}--`,
     "",
-    // ── Invoice PDF attachment ──
     `--${outerBoundary}`,
     `Content-Type: application/pdf; name="${pdfFilename}"`,
     "Content-Transfer-Encoding: base64",
