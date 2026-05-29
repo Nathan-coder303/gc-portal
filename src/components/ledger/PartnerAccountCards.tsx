@@ -212,7 +212,6 @@ function AccountCard({
     } finally { setAddSaving(false); }
   }
 
-  const [previewHtml, setPreviewHtml] = useState<string | null>(null);
   const [editingBalance, setEditingBalance] = useState(false);
   const [balanceInput, setBalanceInput] = useState(String(beginningBalance));
   const [savingBalance, setSavingBalance] = useState(false);
@@ -322,12 +321,16 @@ function AccountCard({
     </body></html>`;
   }
 
-  function handlePreview() { setPreviewHtml(buildStatementHtml()); }
-  function handlePrint() {
-    const html = buildStatementHtml();
+  function handlePreview() {
     const win = window.open("", "_blank");
     if (!win) return;
-    win.document.write(html);
+    win.document.write(buildStatementHtml());
+    win.document.close();
+  }
+  function handlePrint() {
+    const win = window.open("", "_blank");
+    if (!win) return;
+    win.document.write(buildStatementHtml());
     win.document.close();
   }
   function handleDownload() {
@@ -551,21 +554,6 @@ return (
 
       </>}
 
-      {/* Preview modal */}
-      {previewHtml && (
-        <div style={{ position: "fixed", inset: 0, zIndex: 60, background: "rgba(0,0,0,0.8)", display: "flex", alignItems: "center", justifyContent: "center", padding: 16 }}
-          onClick={() => setPreviewHtml(null)}>
-          <div style={{ background: "#fff", borderRadius: 12, width: "100%", maxWidth: 780, height: "85vh", display: "flex", flexDirection: "column", overflow: "hidden" }}
-            onClick={(e) => e.stopPropagation()}>
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "12px 16px", borderBottom: "1px solid #e5e7eb" }}>
-              <span style={{ fontWeight: 700, fontSize: 14, color: "#111" }}>{title} Statement</span>
-              <button onClick={() => setPreviewHtml(null)} style={{ background: "transparent", border: "none", fontSize: 22, cursor: "pointer", color: "#666", lineHeight: 1 }}>×</button>
-            </div>
-            <iframe srcDoc={previewHtml} style={{ flex: 1, border: "none", width: "100%" }} />
-          </div>
-        </div>
-      )}
-
     </div>
   );
 }
@@ -639,12 +627,17 @@ function MasterCard({
     { label: "Bank Account", value: -bankAccount, editable: true },
   ];
 
-  const [previewMasterHtml, setPreviewMasterHtml] = useState<string | null>(null);
+
 
   function buildMasterHtml() {
     return `<!DOCTYPE html><html><head><title>Mike Master Statement</title><style>body{font-family:Arial,sans-serif;padding:40px;color:#111;max-width:600px;margin:0 auto}h1{font-size:20px;margin:0}p{color:#666;font-size:12px;margin:4px 0 28px}table{width:100%;border-collapse:collapse;font-size:13px}th{text-align:left;border-bottom:2px solid #000;padding:8px 6px;font-size:11px;text-transform:uppercase}td{padding:7px 6px;border-bottom:1px solid #e5e7eb}td:last-child{text-align:right;font-family:monospace}.total td{font-weight:700;border-top:2px solid #000;border-bottom:none}.actions{margin-top:24px;display:flex;gap:10px}button{padding:8px 20px;border:none;border-radius:6px;cursor:pointer;font-size:13px;font-weight:600}.print-btn{background:#C9A84C;color:#000}@media print{.actions{display:none}}</style></head><body><h1>Mike Master Summary</h1><p>Generated ${new Date().toLocaleDateString("en-US",{month:"long",day:"numeric",year:"numeric"})}</p><table><thead><tr><th>Item</th><th style="text-align:right">Amount</th></tr></thead><tbody>${rows.map(r=>`<tr><td>${r.label}</td><td style="color:${r.value>=0?"#166534":"#991b1b"}">${r.value>=0?"+":"-"}$${fmt(Math.abs(r.value))}</td></tr>`).join("")}<tr class="total"><td>Net Total</td><td>$${fmt(total)}</td></tr></tbody></table><div class="actions"><button class="print-btn" onclick="window.print()">🖨 Print / Save PDF</button></div></body></html>`;
   }
-  function handleMasterPreview() { setPreviewMasterHtml(buildMasterHtml()); }
+  function handleMasterPreview() {
+    const win = window.open("", "_blank");
+    if (!win) return;
+    win.document.write(buildMasterHtml());
+    win.document.close();
+  }
   function handleMasterPrint() {
     const win = window.open("", "_blank");
     if (!win) return;
@@ -741,21 +734,6 @@ function MasterCard({
       </div>
 
       </>}
-
-      {/* Preview modal */}
-      {previewMasterHtml && (
-        <div style={{ position: "fixed", inset: 0, zIndex: 60, background: "rgba(0,0,0,0.8)", display: "flex", alignItems: "center", justifyContent: "center", padding: 16 }}
-          onClick={() => setPreviewMasterHtml(null)}>
-          <div style={{ background: "#fff", borderRadius: 12, width: "100%", maxWidth: 680, height: "85vh", display: "flex", flexDirection: "column", overflow: "hidden" }}
-            onClick={(e) => e.stopPropagation()}>
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "12px 16px", borderBottom: "1px solid #e5e7eb" }}>
-              <span style={{ fontWeight: 700, fontSize: 14, color: "#111" }}>Mike Master Statement</span>
-              <button onClick={() => setPreviewMasterHtml(null)} style={{ background: "transparent", border: "none", fontSize: 22, cursor: "pointer", color: "#666", lineHeight: 1 }}>×</button>
-            </div>
-            <iframe srcDoc={previewMasterHtml} style={{ flex: 1, border: "none", width: "100%" }} />
-          </div>
-        </div>
-      )}
 
     </div>
   );
