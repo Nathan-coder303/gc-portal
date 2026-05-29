@@ -307,7 +307,7 @@ return (
       {/* Balance */}
       <div className="rounded-lg p-3" style={{ background: "#1e2736", border: `1px solid ${GOLD}44` }}>
         <div className="text-[10px] mb-1" style={{ color: "#8b949e" }}>Current Balance</div>
-        <div className="text-3xl font-bold" style={{ color: balance >= 0 ? "#4ade80" : "#f87171" }}>
+        <div style={{ fontSize: "2rem", fontWeight: 700, lineHeight: 1.1, color: balance >= 0 ? "#4ade80" : "#f87171" }}>
           ${fmt(balance)}
         </div>
         <div className="flex gap-3 mt-1.5 text-[10px]" style={{ color: "#8b949e" }}>
@@ -612,7 +612,7 @@ function MasterCard({
 
       <div className="rounded-lg p-3" style={{ background: "#1e2736", border: `1px solid ${GOLD}44` }}>
         <div className="text-[10px] mb-1" style={{ color: "#8b949e" }}>Net Total</div>
-        <div className="text-3xl font-bold" style={{ color: total >= 0 ? "#4ade80" : "#f87171" }}>
+        <div style={{ fontSize: "2rem", fontWeight: 700, lineHeight: 1.1, color: total >= 0 ? "#4ade80" : "#f87171" }}>
           {total < 0 ? "−" : ""}${fmt(Math.abs(total))}
         </div>
       </div>
