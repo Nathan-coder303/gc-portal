@@ -175,9 +175,10 @@ model Client {
   coverPhotoType String?   // "FLAT_ROOFS" | "ADDITIONS" | "CUSTOM"
   coverPhotoUrl  String?   // Vercel Blob URL for CUSTOM uploads
   coverTitle     String?   // Custom title shown on PDF cover page
-  isCommercial   Boolean   @default(false)
-  status         String    @default("PROSPECT") // "PROSPECT" | "ACTIVE"
-  sortOrder      Int       @default(0)
+  isCommercial      Boolean   @default(false)
+  status            String    @default("PROSPECT") // "PROSPECT" | "ACTIVE"
+  sortOrder         Int       @default(0)
+  legalDescription  String?   // Property legal description for lien releases
   templates      EstimateTemplate[]
   subBids        SubBid[]
   files          ClientFile[]
@@ -710,6 +711,7 @@ model PartnerAccountEntry {
   description String
   amount      Decimal  @db.Decimal(14, 2)
   entryType   String   // "CREDIT" or "DEBIT"
+  method      String?  // "Check" | "ACH" | "Wire" | "Zelle" | "Credit Card" | "Cash" | "Other"
   date          DateTime @db.Date
   createdAt     DateTime @default(now())
   createdBy     String

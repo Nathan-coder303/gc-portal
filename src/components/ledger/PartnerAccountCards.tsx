@@ -30,11 +30,14 @@ import { CSS } from "@dnd-kit/utilities";
 const GOLD = "#C9A84C";
 const INPUT_STYLE = { background: "#1e2736", border: "1px solid #30373f", color: "#e6edf3" };
 
+const PAYMENT_METHODS = ["Check", "ACH", "Wire", "Zelle", "Credit Card", "Cash", "Other"];
+
 type Entry = {
   id: string;
   description: string;
   amount: number;
   entryType: "CREDIT" | "DEBIT";
+  method?: string | null;
   date: string;
 };
 
@@ -65,20 +68,21 @@ function EditableEntry({
 }: {
   entry: Entry;
   isAdmin: boolean;
-  onSave: (id: string, data: { description: string; amount: number; date: string }) => Promise<void | { success: boolean }>;
+  onSave: (id: string, data: { description: string; amount: number; date: string; method?: string }) => Promise<void | { success: boolean }>;
   onDelete: (id: string) => Promise<void | { success: boolean }>;
 }) {
   const [editing, setEditing] = useState(false);
   const [desc, setDesc] = useState(entry.description);
   const [amount, setAmount] = useState(String(entry.amount));
   const [date, setDate] = useState(entry.date);
+  const [method, setMethod] = useState(entry.method ?? "");
   const [saving, setSaving] = useState(false);
   const [deleting, setDeleting] = useState(false);
 
   async function save() {
     setSaving(true);
     try {
-      await onSave(entry.id, { description: desc, amount: parseFloat(amount), date });
+      await onSave(entry.id, { description: desc, amount: parseFloat(amount), date, method: method || undefined });
       setEditing(false);
     } finally {
       setSaving(false);
@@ -102,8 +106,14 @@ function EditableEntry({
           <input type="number" value={amount} onChange={(e) => setAmount(e.target.value)}
             placeholder="Amount" className="w-full rounded px-2 py-1.5 text-xs focus:outline-none"
             style={INPUT_STYLE} />
-          <input type="date" value={date} onChange={(e) => setDate(e.target.value)}
+          <select value={method} onChange={(e) => setMethod(e.target.value)}
             className="w-full rounded px-2 py-1.5 text-xs focus:outline-none"
+            style={INPUT_STYLE}>
+            <option value="">Payment method</option>
+            {PAYMENT_METHODS.map(m => <option key={m} value={m}>{m}</option>)}
+          </select>
+          <input type="date" value={date} onChange={(e) => setDate(e.target.value)}
+            className="w-full rounded px-2 py-1.5 text-xs focus:outline-none col-span-2"
             style={INPUT_STYLE} />
         </div>
         <div className="flex gap-2">
@@ -122,7 +132,10 @@ function EditableEntry({
     <div className="flex items-center justify-between rounded-lg px-2 py-2 gap-2" style={{ background: "#161b22" }}>
       <div className="flex-1 min-w-0">
         <div className="text-xs font-medium truncate" style={{ color: "#e6edf3" }}>{entry.description}</div>
-        <div className="text-[10px]" style={{ color: "#8b949e" }}>{fmtDate(entry.date)}</div>
+        <div className="text-[10px] flex items-center gap-1.5" style={{ color: "#8b949e" }}>
+          <span>{fmtDate(entry.date)}</span>
+          {entry.method && <span className="px-1 rounded" style={{ background: "#1e2736", color: "#8b949e" }}>{entry.method}</span>}
+        </div>
       </div>
       <span className="text-xs font-mono font-semibold shrink-0"
         style={{ color: entry.entryType === "CREDIT" ? "#4ade80" : "#f87171" }}>
@@ -166,7 +179,7 @@ function AccountCard({
   onUpdateBeginning: (amount: number) => Promise<void | { success: boolean }>;
   onSave: (id: string, data: { description: string; amount: number; date: string }) => Promise<void | { success: boolean }>;
   onDelete: (id: string) => Promise<void | { success: boolean }>;
-  onAdd?: (data: { description: string; amount: number; entryType: "CREDIT" | "DEBIT"; date: string }) => Promise<Entry>;
+  onAdd?: (data: { description: string; amount: number; entryType: "CREDIT" | "DEBIT"; method?: string; date: string }) => Promise<Entry>;
   isAdmin: boolean;
   showDragHandle?: boolean;
   dragHandleProps?: React.HTMLAttributes<HTMLDivElement>;
@@ -180,6 +193,7 @@ function AccountCard({
   const [addDesc, setAddDesc] = useState("");
   const [addAmount, setAddAmount] = useState("");
   const [addType, setAddType] = useState<"CREDIT" | "DEBIT">("CREDIT");
+  const [addMethod, setAddMethod] = useState("");
   const [addDate, setAddDate] = useState(() => new Date().toISOString().slice(0, 10));
   const [addSaving, setAddSaving] = useState(false);
 
@@ -188,9 +202,9 @@ function AccountCard({
     if (!addDesc.trim() || !amt || amt <= 0) return;
     setAddSaving(true);
     try {
-      const entry = await onAdd!({ description: addDesc.trim(), amount: amt, entryType: addType, date: addDate });
+      const entry = await onAdd!({ description: addDesc.trim(), amount: amt, entryType: addType, method: addMethod || undefined, date: addDate });
       setLocalEntries(prev => [...prev, entry]);
-      setAddDesc(""); setAddAmount(""); setAddType("CREDIT");
+      setAddDesc(""); setAddAmount(""); setAddType("CREDIT"); setAddMethod("");
       setAddDate(new Date().toISOString().slice(0, 10));
       setShowAddForm(false);
       setTxOpen(true);
@@ -409,6 +423,13 @@ return (
                 {addType}
               </button>
             </div>
+            <select
+              value={addMethod} onChange={e => setAddMethod(e.target.value)}
+              className="w-full rounded px-2 py-1.5 text-xs focus:outline-none" style={INPUT_STYLE}
+            >
+              <option value="">Payment method (optional)</option>
+              {PAYMENT_METHODS.map(m => <option key={m} value={m}>{m}</option>)}
+            </select>
             <input
               type="date" value={addDate} onChange={e => setAddDate(e.target.value)}
               className="w-full rounded px-2 py-1.5 text-xs focus:outline-none" style={INPUT_STYLE}
@@ -767,7 +788,7 @@ export default function PartnerAccountCards({
   }
 
   function makeSave() {
-    return (id: string, data: { description: string; amount: number; date: string }) =>
+    return (id: string, data: { description: string; amount: number; date: string; method?: string }) =>
       updatePartnerAccountEntry(id, data, companyId, projectId).then(() => {});
   }
 
@@ -797,7 +818,7 @@ export default function PartnerAccountCards({
           onDelete={(id) => deletePartnerAccountEntry(id, companyId, projectId)}
           onAdd={async (data) => {
             const result = await addPartnerAccountEntry({ projectId, companyId, accountType: "PARTNER", partnerId: p.id, ...data });
-            return { id: result.id, ...data };
+            return { id: result.id, ...data, method: data.method ?? null };
           }}
           showDragHandle={true}
           dragHandleProps={dragHandleProps}
@@ -848,7 +869,7 @@ export default function PartnerAccountCards({
         onDelete={(id) => deletePartnerAccountEntry(id, companyId, projectId)}
         onAdd={async (data) => {
           const result = await addPartnerAccountEntry({ projectId, companyId, accountType: "LLC", ...data });
-          return { id: result.id, ...data };
+          return { id: result.id, ...data, method: data.method ?? null };
         }}
         showDragHandle={true}
         dragHandleProps={dragHandleProps}

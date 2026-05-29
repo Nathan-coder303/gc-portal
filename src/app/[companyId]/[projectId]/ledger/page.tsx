@@ -105,16 +105,16 @@ export default async function LedgerPage({
   // Partner account dashboard data
   const llcBeginningBalance = Number(project?.llcBeginningBalance ?? 0);
 
-  const partnerEntriesMap: Record<string, { id: string; description: string; amount: number; entryType: "CREDIT" | "DEBIT"; date: string }[]> = {};
+  const partnerEntriesMap: Record<string, { id: string; description: string; amount: number; entryType: "CREDIT" | "DEBIT"; method?: string | null; date: string }[]> = {};
   for (const p of viewPartners) {
     partnerEntriesMap[p.id] = accountEntries
       .filter((e) => e.accountType === "PARTNER" && e.partnerId === p.id)
-      .map((e) => ({ id: e.id, description: e.description, amount: Number(e.amount), entryType: e.entryType as "CREDIT" | "DEBIT", date: e.date.toISOString().split("T")[0] }));
+      .map((e) => ({ id: e.id, description: e.description, amount: Number(e.amount), entryType: e.entryType as "CREDIT" | "DEBIT", method: e.method ?? null, date: e.date.toISOString().split("T")[0] }));
   }
 
   const llcEntries = accountEntries
     .filter((e) => e.accountType === "LLC")
-    .map((e) => ({ id: e.id, description: e.description, amount: Number(e.amount), entryType: e.entryType as "CREDIT" | "DEBIT", date: e.date.toISOString().split("T")[0] }));
+    .map((e) => ({ id: e.id, description: e.description, amount: Number(e.amount), entryType: e.entryType as "CREDIT" | "DEBIT", method: e.method ?? null, date: e.date.toISOString().split("T")[0] }));
 
   // Capital journal lines grouped by partner — serialize dates to strings for client component
   const capitalLinesByPartner: Record<string, { entryId: string; date: string; memo: string; debit: number; credit: number }[]> = {};

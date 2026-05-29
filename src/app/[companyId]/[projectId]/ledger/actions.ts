@@ -620,6 +620,7 @@ export async function addPartnerAccountEntry(data: {
   description: string;
   amount: number;
   entryType: "CREDIT" | "DEBIT";
+  method?: string;
   date: string;
 }) {
   const session = await auth();
@@ -635,6 +636,7 @@ export async function addPartnerAccountEntry(data: {
       description: data.description,
       amount: data.amount,
       entryType: data.entryType,
+      method: data.method ?? null,
       date: new Date(data.date),
       createdBy: session.user.id,
     },
@@ -655,7 +657,7 @@ export async function deletePartnerAccountEntry(id: string, companyId: string, p
 
 export async function updatePartnerAccountEntry(
   id: string,
-  data: { description: string; amount: number; date: string },
+  data: { description: string; amount: number; date: string; method?: string },
   companyId: string,
   projectId: string,
 ) {
@@ -664,7 +666,7 @@ export async function updatePartnerAccountEntry(
   requirePermission(session, "partner:edit");
   const entry = await prisma.partnerAccountEntry.update({
     where: { id },
-    data: { description: data.description, amount: data.amount, date: new Date(data.date) },
+    data: { description: data.description, amount: data.amount, date: new Date(data.date), method: data.method ?? null },
   });
   // Cascade date and amount to the linked counterpart entry
   if (entry.linkedEntryId) {
