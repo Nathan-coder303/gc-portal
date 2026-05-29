@@ -252,38 +252,70 @@ function AccountCard({
 
     const rows = allLines.map((l) => {
       const d = new Date(l.date + "T00:00:00").toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
-      const desc = l.memo + (l.method ? ` <span style="color:#888;font-size:11px">(${l.method})</span>` : "");
+      const desc = l.memo + (l.method ? ` <span class="method">(${l.method})</span>` : "");
       return `<tr>
-        <td style="white-space:nowrap">${d}</td>
+        <td class="date">${d}</td>
         <td>${desc}</td>
-        <td style="text-align:right;font-family:monospace;color:#991b1b">${fmtCell(l.debit)}</td>
-        <td style="text-align:right;font-family:monospace;color:#166534">${fmtCell(l.credit)}</td>
+        <td class="num red">${fmtCell(l.debit)}</td>
+        <td class="num green">${fmtCell(l.credit)}</td>
       </tr>`;
     }).join("");
 
-    const css = `body{font-family:Arial,sans-serif;padding:40px;color:#111;max-width:760px;margin:0 auto}h1{font-size:20px;margin:0 0 2px}p{color:#666;font-size:12px;margin:0 0 24px}table{width:100%;border-collapse:collapse;font-size:13px}th{text-align:left;border-bottom:2px solid #000;padding:8px 6px;font-size:11px;text-transform:uppercase;letter-spacing:.05em}th.num{text-align:right}td{padding:7px 6px;border-bottom:1px solid #e5e7eb;vertical-align:top}.subtotal td{font-weight:600;border-top:1px solid #ccc;border-bottom:none;background:#f9fafb}.net td{font-weight:700;font-size:14px;border-top:2px solid #000;border-bottom:none}.actions{margin-top:24px}button{padding:8px 20px;border:none;border-radius:6px;cursor:pointer;font-size:13px;font-weight:600;background:#C9A84C;color:#000}@media print{.actions{display:none}}`;
+    const css = `
+      @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;600&display=swap');
+      *{box-sizing:border-box}
+      body{font-family:'Inter',sans-serif;padding:44px 48px;color:#1a1a1a;max-width:800px;margin:0 auto;font-size:13px;line-height:1.5}
+      .header{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:28px;padding-bottom:20px;border-bottom:2px solid #C9A84C}
+      .header-left h1{font-size:22px;font-weight:700;margin:0 0 2px;letter-spacing:-0.3px}
+      .header-left .sub{color:#666;font-size:12px}
+      .header-right{text-align:right;font-size:11px;color:#888}
+      table{width:100%;border-collapse:collapse;margin-top:4px}
+      thead tr{border-bottom:2px solid #1a1a1a}
+      th{padding:9px 8px;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:#555}
+      th.num{text-align:right}
+      td{padding:8px 8px;border-bottom:1px solid #f0f0f0;vertical-align:top;color:#222}
+      td.date{white-space:nowrap;color:#555;font-size:12px;width:100px}
+      td.num{text-align:right;font-family:'IBM Plex Mono','Courier New',monospace;font-size:12.5px;font-weight:500;white-space:nowrap;width:120px}
+      td.red{color:#b91c1c}
+      td.green{color:#15803d}
+      .method{color:#999;font-size:11px;font-style:italic}
+      .beg td{background:#fafafa;font-weight:600;border-bottom:1px solid #e0e0e0}
+      .subtotal td{font-weight:600;border-top:1px solid #d0d0d0;border-bottom:none;background:#f7f7f7;font-size:12.5px}
+      .net td{font-weight:700;font-size:14px;border-top:2px solid #1a1a1a;border-bottom:none;padding-top:10px}
+      .net .num{font-size:15px;font-family:'IBM Plex Mono','Courier New',monospace}
+      .actions{margin-top:28px}
+      button{padding:9px 22px;border:none;border-radius:6px;cursor:pointer;font-family:'Inter',sans-serif;font-size:13px;font-weight:600;background:#C9A84C;color:#000;letter-spacing:.01em}
+      @media print{.actions{display:none}body{padding:24px}}
+    `;
 
-    return `<!DOCTYPE html><html><head><title>${title} Statement</title><style>${css}</style></head><body>
-      <h1>${title}</h1>
-      <p>Account Statement · Generated ${new Date().toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" })}</p>
+    return `<!DOCTYPE html><html><head><meta charset="UTF-8"><title>${title} Statement</title><style>${css}</style></head><body>
+      <div class="header">
+        <div class="header-left">
+          <h1>${title}</h1>
+          <div class="sub">Account Statement</div>
+        </div>
+        <div class="header-right">
+          Generated<br>${new Date().toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" })}
+        </div>
+      </div>
       <table>
         <thead><tr>
-          <th style="width:100px">Date</th>
+          <th>Date</th>
           <th>Description</th>
-          <th class="num" style="width:110px">Debit</th>
-          <th class="num" style="width:110px">Credit</th>
+          <th class="num">Debit</th>
+          <th class="num">Credit</th>
         </tr></thead>
         <tbody>
-          <tr><td></td><td><strong>Beginning Balance</strong></td><td></td><td style="text-align:right;font-family:monospace;font-weight:600">$${fmt(beginningBalance)}</td></tr>
+          <tr class="beg"><td class="date"></td><td>Beginning Balance</td><td class="num"></td><td class="num green">$${fmt(beginningBalance)}</td></tr>
           ${rows}
           <tr class="subtotal">
             <td colspan="2">Column Totals</td>
-            <td style="text-align:right;font-family:monospace;color:#991b1b">$${fmt(totalDebits)}</td>
-            <td style="text-align:right;font-family:monospace;color:#166534">$${fmt(totalCredits)}</td>
+            <td class="num red">$${fmt(totalDebits)}</td>
+            <td class="num green">$${fmt(totalCredits)}</td>
           </tr>
           <tr class="net">
             <td colspan="3">Net Balance</td>
-            <td style="text-align:right;font-family:monospace;color:${netBalance >= 0 ? "#166534" : "#991b1b"}">$${fmt(netBalance)}</td>
+            <td class="num ${netBalance >= 0 ? "green" : "red"}">$${fmt(netBalance)}</td>
           </tr>
         </tbody>
       </table>
