@@ -249,22 +249,25 @@ function AccountCard({
 
 return (
     <div className="rounded-xl p-4 flex flex-col gap-3" style={{ background: "#0d1117", border: "1px solid #30373f" }}>
-      {/* Header — click left side to expand/collapse */}
-      <div className="flex items-center justify-between gap-2">
-        <button className="flex-1 flex items-center gap-2 text-left min-w-0" onClick={() => setExpanded(o => !o)}>
-          <span className="text-xs shrink-0" style={{ color: "#8b949e" }}>{expanded ? "▲" : "▼"}</span>
-          <div className="min-w-0">
-            <div className="text-[10px] font-semibold uppercase tracking-wider" style={{ color: "#8b949e" }}>{subtitle}</div>
-            <div className="flex items-center gap-2 flex-wrap">
-              <span className="text-sm font-bold" style={{ color: "#e6edf3" }}>{title}</span>
-              {!expanded && (
-                <span className="text-xs font-mono font-semibold" style={{ color: balance >= 0 ? "#4ade80" : "#f87171" }}>
-                  ${fmt(balance)}
-                </span>
-              )}
-            </div>
+      {/* Header */}
+      <div className="flex items-center gap-2">
+        {/* Drag handle — top left */}
+        {showDragHandle && (
+          <div {...(dragHandleProps ?? {})} className="cursor-grab active:cursor-grabbing px-1 py-0.5 rounded text-sm select-none shrink-0" style={{ color: "#8b949e", touchAction: "none" }}>⠿</div>
+        )}
+        {/* Title — click to expand/collapse */}
+        <button className="flex-1 text-left min-w-0" onClick={() => setExpanded(o => !o)}>
+          <div className="text-[10px] font-semibold uppercase tracking-wider" style={{ color: "#8b949e" }}>{subtitle}</div>
+          <div className="flex items-center gap-2 flex-wrap">
+            <span className="text-sm font-bold" style={{ color: "#e6edf3" }}>{title}</span>
+            {!expanded && (
+              <span className="text-xs font-mono font-semibold" style={{ color: balance >= 0 ? "#4ade80" : "#f87171" }}>
+                ${fmt(balance)}
+              </span>
+            )}
           </div>
         </button>
+        {/* Action buttons */}
         <div className="flex items-center gap-1 shrink-0">
           <button onClick={handlePreview} title="Preview statement" className="text-[10px] px-1.5 py-0.5 rounded font-semibold" style={{ color: "#8b949e", background: "#30373f" }}>👁</button>
           <button onClick={handleDownload} title="Download statement" className="text-[10px] px-1.5 py-0.5 rounded font-semibold" style={{ color: "#8b949e", background: "#30373f" }}>⬇</button>
@@ -275,10 +278,11 @@ return (
           {isAdmin && onArchive && (
             <button onClick={onArchive} title="Remove partner card" className="text-[10px] px-1.5 py-0.5 rounded font-semibold" style={{ color: "#f85149", background: "#f8514911", border: "1px solid #f8514933" }}>✕</button>
           )}
-          {showDragHandle && (
-            <div {...(dragHandleProps ?? {})} className="cursor-grab active:cursor-grabbing px-1 py-0.5 rounded text-sm select-none" style={{ color: "#8b949e", touchAction: "none" }}>⠿</div>
-          )}
         </div>
+        {/* Expand/collapse arrow — top right */}
+        <button onClick={() => setExpanded(o => !o)} className="shrink-0 px-1 py-0.5 rounded" style={{ color: "#8b949e" }}>
+          {expanded ? "▲" : "▼"}
+        </button>
       </div>
 
       {expanded && <>
@@ -549,29 +553,33 @@ function MasterCard({
 
   return (
     <div className="rounded-xl p-4 flex flex-col gap-3" style={{ background: "#0d1117", border: `1px solid ${GOLD}` }}>
-      <div className="flex items-center justify-between gap-2">
-        <button className="flex-1 flex items-center gap-2 text-left min-w-0" onClick={() => setExpanded(o => !o)}>
-          <span className="text-xs shrink-0" style={{ color: "#8b949e" }}>{expanded ? "▲" : "▼"}</span>
-          <div className="min-w-0">
-            <div className="text-[10px] font-semibold uppercase tracking-wider" style={{ color: GOLD }}>Master Summary</div>
-            <div className="flex items-center gap-2 flex-wrap">
-              <span className="text-sm font-bold" style={{ color: "#e6edf3" }}>Mike Master</span>
-              {!expanded && (
-                <span className="text-xs font-mono font-semibold" style={{ color: total >= 0 ? "#4ade80" : "#f87171" }}>
-                  {total < 0 ? "−" : ""}${fmt(Math.abs(total))}
-                </span>
-              )}
-            </div>
+      <div className="flex items-center gap-2">
+        {/* Drag handle — top left */}
+        {showDragHandle && (
+          <div {...(dragHandleProps ?? {})} className="cursor-grab active:cursor-grabbing px-1 py-0.5 rounded text-sm select-none shrink-0" style={{ color: "#8b949e", touchAction: "none" }}>⠿</div>
+        )}
+        {/* Title — click to expand/collapse */}
+        <button className="flex-1 text-left min-w-0" onClick={() => setExpanded(o => !o)}>
+          <div className="text-[10px] font-semibold uppercase tracking-wider" style={{ color: GOLD }}>Master Summary</div>
+          <div className="flex items-center gap-2 flex-wrap">
+            <span className="text-sm font-bold" style={{ color: "#e6edf3" }}>Mike Master</span>
+            {!expanded && (
+              <span className="text-xs font-mono font-semibold" style={{ color: total >= 0 ? "#4ade80" : "#f87171" }}>
+                {total < 0 ? "−" : ""}${fmt(Math.abs(total))}
+              </span>
+            )}
           </div>
         </button>
+        {/* Action buttons */}
         <div className="flex items-center gap-1 shrink-0">
           <button onClick={handleMasterPreview} title="Preview statement" className="text-[10px] px-1.5 py-0.5 rounded font-semibold" style={{ color: "#8b949e", background: "#30373f" }}>👁</button>
           <button onClick={handleMasterDownload} title="Download statement" className="text-[10px] px-1.5 py-0.5 rounded font-semibold" style={{ color: "#8b949e", background: "#30373f" }}>⬇</button>
           <button onClick={handleMasterPrint} title="Print statement" className="text-[10px] px-1.5 py-0.5 rounded font-semibold" style={{ color: GOLD, background: "#C9A84C11", border: `1px solid ${GOLD}44` }}>🖨</button>
-          {showDragHandle && (
-            <div {...(dragHandleProps ?? {})} className="cursor-grab active:cursor-grabbing px-1 py-0.5 rounded text-sm select-none" style={{ color: "#8b949e", touchAction: "none" }}>⠿</div>
-          )}
         </div>
+        {/* Expand/collapse arrow — top right */}
+        <button onClick={() => setExpanded(o => !o)} className="shrink-0 px-1 py-0.5 rounded" style={{ color: "#8b949e" }}>
+          {expanded ? "▲" : "▼"}
+        </button>
       </div>
 
       {expanded && <>
