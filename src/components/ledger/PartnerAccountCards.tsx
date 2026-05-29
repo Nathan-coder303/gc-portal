@@ -262,9 +262,8 @@ function AccountCard({
     }).join("");
 
     const css = `
-      @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;600&display=swap');
       *{box-sizing:border-box}
-      body{font-family:'Inter',sans-serif;padding:44px 48px;color:#1a1a1a;max-width:800px;margin:0 auto;font-size:13px;line-height:1.5}
+      body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI','Helvetica Neue',Arial,sans-serif;padding:44px 48px;color:#1a1a1a;max-width:800px;margin:0 auto;font-size:13px;line-height:1.5}
       .header{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:28px;padding-bottom:20px;border-bottom:2px solid #C9A84C}
       .header-left h1{font-size:22px;font-weight:700;margin:0 0 2px;letter-spacing:-0.3px}
       .header-left .sub{color:#666;font-size:12px}
@@ -275,16 +274,16 @@ function AccountCard({
       th.num{text-align:right}
       td{padding:8px 8px;border-bottom:1px solid #f0f0f0;vertical-align:top;color:#222}
       td.date{white-space:nowrap;color:#555;font-size:12px;width:100px}
-      td.num{text-align:right;font-family:'IBM Plex Mono','Courier New',monospace;font-size:12.5px;font-weight:500;white-space:nowrap;width:120px}
+      td.num{text-align:right;font-family:'SF Mono','Fira Code','Consolas','Menlo',monospace;font-size:12.5px;font-variant-numeric:tabular-nums;white-space:nowrap;width:120px}
       td.red{color:#b91c1c}
       td.green{color:#15803d}
       .method{color:#999;font-size:11px;font-style:italic}
       .beg td{background:#fafafa;font-weight:600;border-bottom:1px solid #e0e0e0}
       .subtotal td{font-weight:600;border-top:1px solid #d0d0d0;border-bottom:none;background:#f7f7f7;font-size:12.5px}
       .net td{font-weight:700;font-size:14px;border-top:2px solid #1a1a1a;border-bottom:none;padding-top:10px}
-      .net .num{font-size:15px;font-family:'IBM Plex Mono','Courier New',monospace}
+      .net .num{font-size:15px;font-family:'SF Mono','Fira Code','Consolas','Menlo',monospace}
       .actions{margin-top:28px}
-      button{padding:9px 22px;border:none;border-radius:6px;cursor:pointer;font-family:'Inter',sans-serif;font-size:13px;font-weight:600;background:#C9A84C;color:#000;letter-spacing:.01em}
+      button{padding:9px 22px;border:none;border-radius:6px;cursor:pointer;font-size:13px;font-weight:600;background:#C9A84C;color:#000;letter-spacing:.01em}
       @media print{.actions{display:none}body{padding:24px}}
     `;
 
