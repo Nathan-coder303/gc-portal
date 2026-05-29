@@ -203,6 +203,7 @@ function AccountCard({
   const [savingBalance, setSavingBalance] = useState(false);
   const [journalOpen, setJournalOpen] = useState(false);
   const [txOpen, setTxOpen] = useState(true);
+  const [expanded, setExpanded] = useState(false);
 
   const credits = localEntries.filter((e) => e.entryType === "CREDIT").reduce((s, e) => s + e.amount, 0);
   const debits = localEntries.filter((e) => e.entryType === "DEBIT").reduce((s, e) => s + e.amount, 0);
@@ -248,13 +249,23 @@ function AccountCard({
 
 return (
     <div className="rounded-xl p-4 flex flex-col gap-3" style={{ background: "#0d1117", border: "1px solid #30373f" }}>
-      {/* Header */}
-      <div className="flex items-start justify-between">
-        <div>
-          <div className="text-[10px] font-semibold uppercase tracking-wider mb-0.5" style={{ color: "#8b949e" }}>{subtitle}</div>
-          <div className="text-sm font-bold" style={{ color: "#e6edf3" }}>{title}</div>
-        </div>
-        <div className="flex items-center gap-1">
+      {/* Header — click left side to expand/collapse */}
+      <div className="flex items-center justify-between gap-2">
+        <button className="flex-1 flex items-center gap-2 text-left min-w-0" onClick={() => setExpanded(o => !o)}>
+          <span className="text-xs shrink-0" style={{ color: "#8b949e" }}>{expanded ? "▲" : "▼"}</span>
+          <div className="min-w-0">
+            <div className="text-[10px] font-semibold uppercase tracking-wider" style={{ color: "#8b949e" }}>{subtitle}</div>
+            <div className="flex items-center gap-2 flex-wrap">
+              <span className="text-sm font-bold" style={{ color: "#e6edf3" }}>{title}</span>
+              {!expanded && (
+                <span className="text-xs font-mono font-semibold" style={{ color: balance >= 0 ? "#4ade80" : "#f87171" }}>
+                  ${fmt(balance)}
+                </span>
+              )}
+            </div>
+          </div>
+        </button>
+        <div className="flex items-center gap-1 shrink-0">
           <button onClick={handlePreview} title="Preview statement" className="text-[10px] px-1.5 py-0.5 rounded font-semibold" style={{ color: "#8b949e", background: "#30373f" }}>👁</button>
           <button onClick={handleDownload} title="Download statement" className="text-[10px] px-1.5 py-0.5 rounded font-semibold" style={{ color: "#8b949e", background: "#30373f" }}>⬇</button>
           <button onClick={handlePrint} title="Print statement" className="text-[10px] px-1.5 py-0.5 rounded font-semibold" style={{ color: GOLD, background: "#C9A84C11", border: `1px solid ${GOLD}44` }}>🖨</button>
@@ -269,6 +280,8 @@ return (
           )}
         </div>
       </div>
+
+      {expanded && <>
 
       {/* Balance */}
       <div className="rounded-lg p-3" style={{ background: "#1e2736", border: `1px solid ${GOLD}44` }}>
@@ -421,6 +434,8 @@ return (
         )}
       </div>
 
+      </>}
+
       {/* Preview modal */}
       {previewHtml && (
         <div style={{ position: "fixed", inset: 0, zIndex: 60, background: "rgba(0,0,0,0.8)", display: "flex", alignItems: "center", justifyContent: "center", padding: 16 }}
@@ -475,6 +490,7 @@ function MasterCard({
   const [editingBank, setEditingBank] = useState(false);
   const [bankInput, setBankInput] = useState("150000");
   const [open, setOpen] = useState(true);
+  const [expanded, setExpanded] = useState(false);
 
   useEffect(() => {
     const saved = localStorage.getItem(`master-bank-account-${projectId}`);
@@ -533,22 +549,32 @@ function MasterCard({
 
   return (
     <div className="rounded-xl p-4 flex flex-col gap-3" style={{ background: "#0d1117", border: `1px solid ${GOLD}` }}>
-      <div className="flex items-start justify-between">
-        <div>
-          <div className="text-[10px] font-semibold uppercase tracking-wider mb-0.5" style={{ color: GOLD }}>Master Summary</div>
-          <div className="text-sm font-bold" style={{ color: "#e6edf3" }}>Mike Master</div>
-        </div>
-        <div className="flex items-center gap-1">
+      <div className="flex items-center justify-between gap-2">
+        <button className="flex-1 flex items-center gap-2 text-left min-w-0" onClick={() => setExpanded(o => !o)}>
+          <span className="text-xs shrink-0" style={{ color: "#8b949e" }}>{expanded ? "▲" : "▼"}</span>
+          <div className="min-w-0">
+            <div className="text-[10px] font-semibold uppercase tracking-wider" style={{ color: GOLD }}>Master Summary</div>
+            <div className="flex items-center gap-2 flex-wrap">
+              <span className="text-sm font-bold" style={{ color: "#e6edf3" }}>Mike Master</span>
+              {!expanded && (
+                <span className="text-xs font-mono font-semibold" style={{ color: total >= 0 ? "#4ade80" : "#f87171" }}>
+                  {total < 0 ? "−" : ""}${fmt(Math.abs(total))}
+                </span>
+              )}
+            </div>
+          </div>
+        </button>
+        <div className="flex items-center gap-1 shrink-0">
           <button onClick={handleMasterPreview} title="Preview statement" className="text-[10px] px-1.5 py-0.5 rounded font-semibold" style={{ color: "#8b949e", background: "#30373f" }}>👁</button>
           <button onClick={handleMasterDownload} title="Download statement" className="text-[10px] px-1.5 py-0.5 rounded font-semibold" style={{ color: "#8b949e", background: "#30373f" }}>⬇</button>
           <button onClick={handleMasterPrint} title="Print statement" className="text-[10px] px-1.5 py-0.5 rounded font-semibold" style={{ color: GOLD, background: "#C9A84C11", border: `1px solid ${GOLD}44` }}>🖨</button>
           {showDragHandle && (
-            <div {...(dragHandleProps ?? {})} className="cursor-grab active:cursor-grabbing px-1 py-0.5 rounded text-sm select-none" style={{ color: "#8b949e", touchAction: "none" }}>
-              ⠿
-            </div>
+            <div {...(dragHandleProps ?? {})} className="cursor-grab active:cursor-grabbing px-1 py-0.5 rounded text-sm select-none" style={{ color: "#8b949e", touchAction: "none" }}>⠿</div>
           )}
         </div>
       </div>
+
+      {expanded && <>
 
       <div className="rounded-lg p-3" style={{ background: "#1e2736", border: `1px solid ${GOLD}44` }}>
         <div className="text-[10px] mb-0.5" style={{ color: "#8b949e" }}>Net Total</div>
@@ -592,6 +618,8 @@ function MasterCard({
           </div>
         )}
       </div>
+
+      </>}
 
       {/* Preview modal */}
       {previewMasterHtml && (
