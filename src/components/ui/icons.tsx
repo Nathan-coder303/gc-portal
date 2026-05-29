@@ -262,6 +262,43 @@ export function ClipboardChartIcon({ size = 14 }: { size?: number }) {
   );
 }
 
+/** Printer */
+export function PrinterIcon({ size = 14 }: { size?: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+      <polyline points="6 9 6 2 18 2 18 9"/>
+      <path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/>
+      <rect x="6" y="14" width="12" height="8"/>
+      <line x1="9" y1="18" x2="15" y2="18" strokeWidth="1.2"/>
+      <line x1="9" y1="21" x2="13" y2="21" strokeWidth="1.2"/>
+    </svg>
+  );
+}
+
+/** Six-dot grip — drag handle */
+export function GripIcon({ size = 14 }: { size?: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="currentColor">
+      <circle cx="9" cy="7"  r="1.6"/>
+      <circle cx="15" cy="7"  r="1.6"/>
+      <circle cx="9" cy="12" r="1.6"/>
+      <circle cx="15" cy="12" r="1.6"/>
+      <circle cx="9" cy="17" r="1.6"/>
+      <circle cx="15" cy="17" r="1.6"/>
+    </svg>
+  );
+}
+
+/** X — close / remove */
+export function XIcon({ size = 14 }: { size?: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+      <line x1="18" y1="6" x2="6" y2="18"/>
+      <line x1="6" y1="6" x2="18" y2="18"/>
+    </svg>
+  );
+}
+
 /** PDF document + envelope — PDF / Send */
 export function PdfMailIcon({ size = 14 }: { size?: number }) {
   const w = Math.round(size * 1.5);

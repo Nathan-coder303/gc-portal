@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { EyeIcon, DownloadArrowIcon, PrinterIcon, EnvelopeIcon, XIcon, GripIcon, PencilIcon } from "@/components/ui/icons";
 import {
   updatePartnerBeginningBalance,
   updateLlcBeginningBalance,
@@ -144,11 +145,11 @@ function EditableEntry({
       {isAdmin && (
         <div className="flex gap-1 shrink-0">
           <button onClick={() => setEditing(true)}
-            className="text-[10px] px-1.5 py-0.5 rounded"
-            style={{ color: GOLD, background: "#C9A84C11" }}>✎</button>
+            className="p-1 rounded"
+            style={{ color: GOLD, background: "#C9A84C11" }}><PencilIcon size={12} /></button>
           <button onClick={del} disabled={deleting}
-            className="text-[10px] px-1.5 py-0.5 rounded disabled:opacity-50"
-            style={{ color: "#f87171", background: "#2d1b1b" }}>{deleting ? "..." : "✕"}</button>
+            className="p-1 rounded disabled:opacity-50"
+            style={{ color: "#f87171", background: "#2d1b1b" }}>{deleting ? "…" : <XIcon size={12} />}</button>
         </div>
       )}
     </div>
@@ -267,7 +268,9 @@ return (
       <div className="flex items-center gap-2">
         {/* Drag handle — top left */}
         {showDragHandle && (
-          <div {...(dragHandleProps ?? {})} className="cursor-grab active:cursor-grabbing px-1 py-0.5 rounded text-sm select-none shrink-0" style={{ color: "#8b949e", touchAction: "none" }}>⠿</div>
+          <div {...(dragHandleProps ?? {})} className="cursor-grab active:cursor-grabbing p-1 rounded select-none shrink-0" style={{ color: "#8b949e", touchAction: "none" }}>
+            <GripIcon size={14} />
+          </div>
         )}
         {/* Title — click to expand/collapse */}
         <button className="flex-1 text-left min-w-0" onClick={() => setExpanded(o => !o)}>
@@ -275,7 +278,7 @@ return (
           <div className="flex items-center gap-2 flex-wrap">
             <span className="text-sm font-bold" style={{ color: "#e6edf3" }}>{title}</span>
             {!expanded && (
-              <span className="text-xs font-mono font-semibold" style={{ color: balance >= 0 ? "#4ade80" : "#f87171" }}>
+              <span className="text-base font-bold" style={{ color: balance >= 0 ? "#4ade80" : "#f87171" }}>
                 ${fmt(balance)}
               </span>
             )}
@@ -283,18 +286,18 @@ return (
         </button>
         {/* Action buttons */}
         <div className="flex items-center gap-1 shrink-0">
-          <button onClick={handlePreview} title="Preview statement" className="text-[10px] px-1.5 py-0.5 rounded font-semibold" style={{ color: "#8b949e", background: "#30373f" }}>👁</button>
-          <button onClick={handleDownload} title="Download statement" className="text-[10px] px-1.5 py-0.5 rounded font-semibold" style={{ color: "#8b949e", background: "#30373f" }}>⬇</button>
-          <button onClick={handlePrint} title="Print statement" className="text-[10px] px-1.5 py-0.5 rounded font-semibold" style={{ color: GOLD, background: "#C9A84C11", border: `1px solid ${GOLD}44` }}>🖨</button>
+          <button onClick={handlePreview} title="Preview statement" className="p-1.5 rounded" style={{ color: "#8b949e", background: "#30373f" }}><EyeIcon size={13} /></button>
+          <button onClick={handleDownload} title="Download statement" className="p-1.5 rounded" style={{ color: "#8b949e", background: "#30373f" }}><DownloadArrowIcon size={13} /></button>
+          <button onClick={handlePrint} title="Print statement" className="p-1.5 rounded" style={{ color: GOLD, background: "#C9A84C11", border: `1px solid ${GOLD}44` }}><PrinterIcon size={13} /></button>
           {onEmailStatement && (
-            <button onClick={() => onEmailStatement(buildStatementHtml())} title="Email statement to partner" className="text-[10px] px-1.5 py-0.5 rounded font-semibold" style={{ color: "#58a6ff", background: "#58a6ff11", border: "1px solid #58a6ff33" }}>✉</button>
+            <button onClick={() => onEmailStatement(buildStatementHtml())} title="Email statement to partner" className="p-1.5 rounded" style={{ color: "#58a6ff", background: "#58a6ff11", border: "1px solid #58a6ff33" }}><EnvelopeIcon size={13} /></button>
           )}
           {isAdmin && onArchive && (
-            <button onClick={onArchive} title="Remove partner card" className="text-[10px] px-1.5 py-0.5 rounded font-semibold" style={{ color: "#f85149", background: "#f8514911", border: "1px solid #f8514933" }}>✕</button>
+            <button onClick={onArchive} title="Remove partner card" className="p-1.5 rounded" style={{ color: "#f85149", background: "#f8514911", border: "1px solid #f8514933" }}><XIcon size={13} /></button>
           )}
         </div>
         {/* Expand/collapse arrow — top right */}
-        <button onClick={() => setExpanded(o => !o)} className="shrink-0 px-1 py-0.5 rounded" style={{ color: "#8b949e" }}>
+        <button onClick={() => setExpanded(o => !o)} className="shrink-0 px-1 py-0.5 rounded text-xs" style={{ color: "#8b949e" }}>
           {expanded ? "▲" : "▼"}
         </button>
       </div>
@@ -303,11 +306,11 @@ return (
 
       {/* Balance */}
       <div className="rounded-lg p-3" style={{ background: "#1e2736", border: `1px solid ${GOLD}44` }}>
-        <div className="text-[10px] mb-0.5" style={{ color: "#8b949e" }}>Current Balance</div>
-        <div className="text-xl font-bold font-mono" style={{ color: balance >= 0 ? "#4ade80" : "#f87171" }}>
+        <div className="text-[10px] mb-1" style={{ color: "#8b949e" }}>Current Balance</div>
+        <div className="text-3xl font-bold" style={{ color: balance >= 0 ? "#4ade80" : "#f87171" }}>
           ${fmt(balance)}
         </div>
-        <div className="flex gap-3 mt-1 text-[10px]" style={{ color: "#8b949e" }}>
+        <div className="flex gap-3 mt-1.5 text-[10px]" style={{ color: "#8b949e" }}>
           <span style={{ color: "#4ade80" }}>+${fmt(credits)} credits</span>
           <span style={{ color: "#f87171" }}>−${fmt(debits)} debits</span>
         </div>
@@ -577,7 +580,9 @@ function MasterCard({
       <div className="flex items-center gap-2">
         {/* Drag handle — top left */}
         {showDragHandle && (
-          <div {...(dragHandleProps ?? {})} className="cursor-grab active:cursor-grabbing px-1 py-0.5 rounded text-sm select-none shrink-0" style={{ color: "#8b949e", touchAction: "none" }}>⠿</div>
+          <div {...(dragHandleProps ?? {})} className="cursor-grab active:cursor-grabbing p-1 rounded select-none shrink-0" style={{ color: "#8b949e", touchAction: "none" }}>
+            <GripIcon size={14} />
+          </div>
         )}
         {/* Title — click to expand/collapse */}
         <button className="flex-1 text-left min-w-0" onClick={() => setExpanded(o => !o)}>
@@ -585,7 +590,7 @@ function MasterCard({
           <div className="flex items-center gap-2 flex-wrap">
             <span className="text-sm font-bold" style={{ color: "#e6edf3" }}>Mike Master</span>
             {!expanded && (
-              <span className="text-xs font-mono font-semibold" style={{ color: total >= 0 ? "#4ade80" : "#f87171" }}>
+              <span className="text-base font-bold" style={{ color: total >= 0 ? "#4ade80" : "#f87171" }}>
                 {total < 0 ? "−" : ""}${fmt(Math.abs(total))}
               </span>
             )}
@@ -593,12 +598,12 @@ function MasterCard({
         </button>
         {/* Action buttons */}
         <div className="flex items-center gap-1 shrink-0">
-          <button onClick={handleMasterPreview} title="Preview statement" className="text-[10px] px-1.5 py-0.5 rounded font-semibold" style={{ color: "#8b949e", background: "#30373f" }}>👁</button>
-          <button onClick={handleMasterDownload} title="Download statement" className="text-[10px] px-1.5 py-0.5 rounded font-semibold" style={{ color: "#8b949e", background: "#30373f" }}>⬇</button>
-          <button onClick={handleMasterPrint} title="Print statement" className="text-[10px] px-1.5 py-0.5 rounded font-semibold" style={{ color: GOLD, background: "#C9A84C11", border: `1px solid ${GOLD}44` }}>🖨</button>
+          <button onClick={handleMasterPreview} title="Preview statement" className="p-1.5 rounded" style={{ color: "#8b949e", background: "#30373f" }}><EyeIcon size={13} /></button>
+          <button onClick={handleMasterDownload} title="Download statement" className="p-1.5 rounded" style={{ color: "#8b949e", background: "#30373f" }}><DownloadArrowIcon size={13} /></button>
+          <button onClick={handleMasterPrint} title="Print statement" className="p-1.5 rounded" style={{ color: GOLD, background: "#C9A84C11", border: `1px solid ${GOLD}44` }}><PrinterIcon size={13} /></button>
         </div>
         {/* Expand/collapse arrow — top right */}
-        <button onClick={() => setExpanded(o => !o)} className="shrink-0 px-1 py-0.5 rounded" style={{ color: "#8b949e" }}>
+        <button onClick={() => setExpanded(o => !o)} className="shrink-0 px-1 py-0.5 rounded text-xs" style={{ color: "#8b949e" }}>
           {expanded ? "▲" : "▼"}
         </button>
       </div>
@@ -606,8 +611,8 @@ function MasterCard({
       {expanded && <>
 
       <div className="rounded-lg p-3" style={{ background: "#1e2736", border: `1px solid ${GOLD}44` }}>
-        <div className="text-[10px] mb-0.5" style={{ color: "#8b949e" }}>Net Total</div>
-        <div className="text-xl font-bold font-mono" style={{ color: total >= 0 ? "#4ade80" : "#f87171" }}>
+        <div className="text-[10px] mb-1" style={{ color: "#8b949e" }}>Net Total</div>
+        <div className="text-3xl font-bold" style={{ color: total >= 0 ? "#4ade80" : "#f87171" }}>
           {total < 0 ? "−" : ""}${fmt(Math.abs(total))}
         </div>
       </div>
