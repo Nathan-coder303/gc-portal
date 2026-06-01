@@ -170,6 +170,7 @@ export default function ClientSubsTab({ companyId, clientId, estimates, initialS
   const [editForm, setEditForm] = useState<{ subId: string; subName: string; cost: string }>({ subId: "", subName: "", cost: "" });
   const [showNewSub, setShowNewSub] = useState(false);
   const [newSubTarget, setNewSubTarget] = useState<string | null>(null); // pending key to assign new sub to
+  const [searchQuery, setSearchQuery] = useState("");
 
   const activeEstimate = estimates[0] ?? null;
 
@@ -308,6 +309,29 @@ export default function ClientSubsTab({ companyId, clientId, estimates, initialS
     setEditingId(null);
   }
 
+  const filteredAssignments = useMemo(() => {
+    if (!searchQuery.trim()) return assignments;
+    const q = searchQuery.toLowerCase();
+    return assignments.filter(a => a.label.toLowerCase().includes(q));
+  }, [assignments, searchQuery]);
+
+  const filteredDivisions = useMemo(() => {
+    if (!activeEstimate) return [];
+    if (!searchQuery.trim()) return activeEstimate.divisions;
+    const q = searchQuery.toLowerCase();
+    const result: Division[] = [];
+    for (const div of activeEstimate.divisions) {
+      const divMatch = div.name.toLowerCase().includes(q) || (div.csiCode ?? "").toLowerCase().includes(q);
+      const matchingItems = div.items.filter(item => item.name.toLowerCase().includes(q));
+      if (divMatch) {
+        result.push(div);
+      } else if (matchingItems.length > 0) {
+        result.push({ ...div, items: matchingItems });
+      }
+    }
+    return result;
+  }, [activeEstimate, searchQuery]);
+
   const totalCost = assignments.reduce((s, a) => s + (a.cost ?? 0), 0);
   const totalSale = assignments.reduce((s, a) => s + (a.salePrice ?? 0), 0);
   const totalProfit = totalSale - totalCost;
@@ -333,6 +357,27 @@ export default function ClientSubsTab({ companyId, clientId, estimates, initialS
 
   return (
     <div className="flex flex-col gap-6">
+      {/* Search bar */}
+      <div className="relative">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#555" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"
+          style={{ position: "absolute", left: 10, top: "50%", transform: "translateY(-50%)", pointerEvents: "none" }}>
+          <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
+        </svg>
+        <input
+          type="text"
+          placeholder="Search divisions or scope items…"
+          value={searchQuery}
+          onChange={e => setSearchQuery(e.target.value)}
+          style={{ ...INPUT, paddingLeft: 32, paddingRight: searchQuery ? 32 : 10 }}
+        />
+        {searchQuery && (
+          <button onClick={() => setSearchQuery("")}
+            style={{ position: "absolute", right: 8, top: "50%", transform: "translateY(-50%)", color: "#555", background: "none", border: "none", cursor: "pointer", fontSize: 16, lineHeight: 1 }}>
+            ✕
+          </button>
+        )}
+      </div>
+
       {/* Totals bar */}
       {assignments.length > 0 && (
         <div className="flex gap-4 flex-wrap">
@@ -362,7 +407,9 @@ export default function ClientSubsTab({ companyId, clientId, estimates, initialS
               </tr>
             </thead>
             <tbody>
-              {assignments.map((a, i) => {
+              {filteredAssignments.length === 0 ? (
+                <tr><td colSpan={6} className="px-4 py-4 text-xs text-center" style={{ color: "#555" }}>No assigned subs match your search.</td></tr>
+              ) : filteredAssignments.map((a, i) => {
                 const profit = (a.salePrice ?? 0) - (a.cost ?? 0);
                 return (
                   <tr key={a.id} style={{ background: i % 2 === 0 ? "#161b22" : "#111519", borderTop: "1px solid #21262d" }}>
@@ -437,7 +484,11 @@ export default function ClientSubsTab({ companyId, clientId, estimates, initialS
             Assign from: {activeEstimate.name}
           </div>
 
-          {activeEstimate.divisions.map(div => {
+          {filteredDivisions.length === 0 && searchQuery.trim() ? (
+            <div className="rounded-xl px-4 py-6 text-center text-xs" style={{ background: "#161b22", border: "1px solid #30373f", color: "#555" }}>
+              No divisions or items match &ldquo;{searchQuery}&rdquo;
+            </div>
+          ) : filteredDivisions.map(div => {
             const divKey = div.id;
             const divAssigned = assignedKeys.has(divKey);
             const divChecked = checked.has(divKey);
