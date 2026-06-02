@@ -182,6 +182,9 @@ model Client {
   sortOrder         Int       @default(0)
   legalDescription         String?   // Property legal description for lien releases
   dailyLogEmailEnabled     Boolean   @default(false)
+  portalShowMessages       Boolean   @default(true)
+  portalShowDailyPhotos    Boolean   @default(true)
+  portalShowDocuments      Boolean   @default(true)
   templates      EstimateTemplate[]
   subBids        SubBid[]
   files          ClientFile[]

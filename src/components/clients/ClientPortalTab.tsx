@@ -3,8 +3,8 @@ import { useState, useEffect, useRef } from "react";
 import { TrashIcon } from "@/components/ui/icons";
 
 type PortalUser = { id: string; email: string; name: string; createdAt: string };
-type Photo = { id: string; caption: string | null; fileName: string; fileSize: number; uploadedAt: string };
 type Doc   = { id: string; category: string; label: string; fileName: string; fileSize: number; uploadedAt: string };
+type Settings = { portalShowMessages: boolean; portalShowDailyPhotos: boolean; portalShowDocuments: boolean };
 
 const DOC_CATEGORIES = [
   { value: "PERMIT_CARD",        label: "Permit Card" },
@@ -28,27 +28,54 @@ function fmt(bytes: number) {
 
 const PORTAL_URL = "https://gc-portal-two.vercel.app";
 
+const BG = "#0d1117";
+const CARD = "#161b22";
+const BORDER = "#30373f";
+const GOLD = "#C9A84C";
+const MUTED = "#8b949e";
+const TEXT = "#e6edf3";
+
+function Toggle({ value, onChange, label }: { value: boolean; onChange: (v: boolean) => void; label: string }) {
+  return (
+    <label className="flex items-center justify-between cursor-pointer select-none py-2.5 px-3 rounded-xl" style={{ background: BG, border: `1px solid ${BORDER}` }}>
+      <span className="text-sm" style={{ color: TEXT }}>{label}</span>
+      <div className="flex items-center gap-2 shrink-0 ml-4">
+        <span className="text-xs" style={{ color: value ? "#22c55e" : MUTED }}>{value ? "Visible" : "Hidden"}</span>
+        <div
+          className="w-10 h-5 rounded-full relative transition-colors cursor-pointer"
+          style={{ background: value ? "#22c55e" : BORDER }}
+          onClick={() => onChange(!value)}
+        >
+          <div
+            className="w-4 h-4 rounded-full absolute top-[2px] transition-all bg-white"
+            style={{ left: value ? "22px" : "2px" }}
+          />
+        </div>
+      </div>
+    </label>
+  );
+}
+
 export default function ClientPortalTab({
   companyId, clientId, clientName, clientEmail,
 }: {
   companyId: string; clientId: string; clientName: string; clientEmail: string | null;
 }) {
   const [portalUser, setPortalUser] = useState<PortalUser | null>(null);
-  const [photos, setPhotos] = useState<Photo[]>([]);
   const [docs, setDocs] = useState<Doc[]>([]);
+  const [settings, setSettings] = useState<Settings>({
+    portalShowMessages: true,
+    portalShowDailyPhotos: true,
+    portalShowDocuments: true,
+  });
   const [loading, setLoading] = useState(true);
+  const [savingSettings, setSavingSettings] = useState(false);
 
   // Credentials form
   const [credEmail, setCredEmail] = useState(clientEmail ?? "");
   const [credPassword, setCredPassword] = useState("");
   const [credSaving, setCredSaving] = useState(false);
   const [credMsg, setCredMsg] = useState<{ ok: boolean; text: string } | null>(null);
-
-  // Photo upload
-  const photoInputRef = useRef<HTMLInputElement>(null);
-  const [photoCaption, setPhotoCaption] = useState("");
-  const [photoUploading, setPhotoUploading] = useState(false);
-  const [photoDragOver, setPhotoDragOver] = useState(false);
 
   // Doc upload
   const docInputRef = useRef<HTMLInputElement>(null);
@@ -63,15 +90,27 @@ export default function ClientPortalTab({
   useEffect(() => {
     Promise.all([
       fetch(`/api/${companyId}/clients/${clientId}/portal/credentials`).then(r => r.json()),
-      fetch(`/api/${companyId}/clients/${clientId}/portal/photos`).then(r => r.json()),
       fetch(`/api/${companyId}/clients/${clientId}/portal/docs`).then(r => r.json()),
-    ]).then(([cred, ph, dc]) => {
+      fetch(`/api/${companyId}/clients/${clientId}/portal/settings`).then(r => r.json()),
+    ]).then(([cred, dc, sett]) => {
       setPortalUser(cred.portalUser ?? null);
-      setPhotos(Array.isArray(ph) ? ph : []);
       setDocs(Array.isArray(dc) ? dc : []);
+      if (sett && !sett.error) setSettings(sett);
       if (cred.portalUser) setCredEmail(cred.portalUser.email);
     }).finally(() => setLoading(false));
   }, [companyId, clientId]);
+
+  async function toggleSetting(key: keyof Settings, value: boolean) {
+    const next = { ...settings, [key]: value };
+    setSettings(next);
+    setSavingSettings(true);
+    await fetch(`/api/${companyId}/clients/${clientId}/portal/settings`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ [key]: value }),
+    });
+    setSavingSettings(false);
+  }
 
   async function saveCredentials() {
     if (!credEmail.trim() || !credPassword.trim()) return;
@@ -98,29 +137,6 @@ export default function ClientPortalTab({
     await fetch(`/api/${companyId}/clients/${clientId}/portal/credentials`, { method: "DELETE" });
     setPortalUser(null);
     setCredMsg({ ok: true, text: "Access revoked." });
-  }
-
-  async function uploadPhotos(files: FileList | File[]) {
-    const arr = Array.from(files);
-    if (arr.length === 0) return;
-    setPhotoUploading(true);
-    for (const file of arr) {
-      const fd = new FormData();
-      fd.append("file", file);
-      if (photoCaption.trim()) fd.append("caption", photoCaption.trim());
-      const res = await fetch(`/api/${companyId}/clients/${clientId}/portal/photos`, { method: "POST", body: fd });
-      if (res.ok) {
-        const photo = await res.json();
-        setPhotos(prev => [photo, ...prev]);
-      }
-    }
-    setPhotoCaption("");
-    setPhotoUploading(false);
-  }
-
-  async function deletePhoto(id: string) {
-    await fetch(`/api/${companyId}/clients/${clientId}/portal/photos?id=${id}`, { method: "DELETE" });
-    setPhotos(prev => prev.filter(p => p.id !== id));
   }
 
   async function uploadDoc(file: File) {
@@ -158,7 +174,8 @@ We are pleased to give you access to your dedicated Client Portal, where you can
 
 ─── WHAT YOU CAN DO ───
 
-📸 View & download project photos in real time
+💬 Message your contractor directly
+📸 View & download site photos from daily logs
 📄 Access permit cards, applications, and legal documents
 📥 Download any file directly to your device
 🔒 Secure — only accessible with your login
@@ -176,16 +193,17 @@ Founder/CEO | MIBH Construction
 📱 305.746.7307 | mike@mibhconstruction.com`;
   }
 
-  if (loading) return <p className="text-sm py-8 text-center" style={{ color: "#8b949e" }}>Loading…</p>;
+  if (loading) return <p className="text-sm py-8 text-center" style={{ color: MUTED }}>Loading…</p>;
 
-  const inputStyle = { background: "#0d1117", border: "1px solid #30373f", color: "#e6edf3" };
+  const inputStyle = { background: BG, border: `1px solid ${BORDER}`, color: TEXT };
 
   return (
     <div className="space-y-8">
+
       {/* ── Section 1: Access Credentials ── */}
-      <div className="rounded-2xl p-5 space-y-4" style={{ background: "#161b22", border: "1px solid #30373f" }}>
+      <div className="rounded-2xl p-5 space-y-4" style={{ background: CARD, border: `1px solid ${BORDER}` }}>
         <div className="flex items-center justify-between">
-          <h2 className="text-sm font-bold uppercase tracking-widest" style={{ color: "#C9A84C" }}>Client Portal Access</h2>
+          <h2 className="text-sm font-bold uppercase tracking-widest" style={{ color: GOLD }}>Client Portal Access</h2>
           {portalUser && (
             <span className="text-xs px-2 py-0.5 rounded-full font-semibold" style={{ background: "#22c55e22", color: "#22c55e", border: "1px solid #22c55e44" }}>
               Active
@@ -196,8 +214,8 @@ Founder/CEO | MIBH Construction
         {portalUser && (
           <div className="rounded-xl px-4 py-3 text-sm space-y-1" style={{ background: "#0a1a0f", border: "1px solid #22c55e33" }}>
             <div style={{ color: "#22c55e" }}>Portal access is active</div>
-            <div className="text-xs" style={{ color: "#8b949e" }}>Login: <span style={{ color: "#e6edf3" }}>{portalUser.email}</span></div>
-            <div className="text-xs" style={{ color: "#8b949e" }}>
+            <div className="text-xs" style={{ color: MUTED }}>Login: <span style={{ color: TEXT }}>{portalUser.email}</span></div>
+            <div className="text-xs" style={{ color: MUTED }}>
               Link: <span style={{ color: "#58a6ff" }}>{PORTAL_URL}/client-portal/{clientId}</span>
             </div>
           </div>
@@ -205,7 +223,7 @@ Founder/CEO | MIBH Construction
 
         <div className="grid grid-cols-2 gap-3">
           <div className="col-span-2 sm:col-span-1">
-            <label className="block text-xs font-semibold mb-1" style={{ color: "#8b949e" }}>Login Email</label>
+            <label className="block text-xs font-semibold mb-1" style={{ color: MUTED }}>Login Email</label>
             <input
               type="email"
               value={credEmail}
@@ -216,7 +234,7 @@ Founder/CEO | MIBH Construction
             />
           </div>
           <div className="col-span-2 sm:col-span-1">
-            <label className="block text-xs font-semibold mb-1" style={{ color: "#8b949e" }}>
+            <label className="block text-xs font-semibold mb-1" style={{ color: MUTED }}>
               {portalUser ? "New Password (leave blank to keep)" : "Password"}
             </label>
             <input
@@ -239,7 +257,7 @@ Founder/CEO | MIBH Construction
             onClick={saveCredentials}
             disabled={credSaving || !credEmail.trim() || (!credPassword.trim() && !portalUser)}
             className="px-4 py-2 rounded-xl text-sm font-bold disabled:opacity-50"
-            style={{ background: "#C9A84C", color: "#0d1117" }}
+            style={{ background: GOLD, color: "#0d1117" }}
           >
             {credSaving ? "Saving…" : portalUser ? "Update Access" : "Create Portal Access"}
           </button>
@@ -264,92 +282,39 @@ Founder/CEO | MIBH Construction
         </div>
       </div>
 
-      {/* ── Section 2: Photos ── */}
-      <div className="space-y-3">
-        <h2 className="text-sm font-bold uppercase tracking-widest" style={{ color: "#C9A84C" }}>Project Photos</h2>
-
-        {/* Drop zone */}
-        <div
-          onDragOver={e => { e.preventDefault(); setPhotoDragOver(true); }}
-          onDragLeave={() => setPhotoDragOver(false)}
-          onDrop={e => { e.preventDefault(); setPhotoDragOver(false); if (e.dataTransfer.files.length) uploadPhotos(e.dataTransfer.files); }}
-          onClick={() => photoInputRef.current?.click()}
-          className="rounded-xl flex flex-col items-center justify-center gap-2 cursor-pointer transition-colors"
-          style={{
-            border: `2px dashed ${photoDragOver ? "#C9A84C" : "#30373f"}`,
-            background: photoDragOver ? "#C9A84C11" : "#0d1117",
-            padding: "20px 16px",
-          }}
-        >
-          <span className="text-2xl">📷</span>
-          <span className="text-sm font-semibold" style={{ color: "#C9A84C" }}>
-            {photoUploading ? "Uploading…" : "Click or drag photos here"}
-          </span>
-          <span className="text-xs" style={{ color: "#484f58" }}>Supports multiple files</span>
-          <input
-            ref={photoInputRef}
-            type="file"
-            accept="image/*"
-            multiple
-            className="hidden"
-            onChange={e => { if (e.target.files?.length) { uploadPhotos(e.target.files); e.target.value = ""; } }}
-          />
+      {/* ── Section 2: Portal Section Visibility ── */}
+      <div className="rounded-2xl p-5 space-y-3" style={{ background: CARD, border: `1px solid ${BORDER}` }}>
+        <div className="flex items-center justify-between">
+          <h2 className="text-sm font-bold uppercase tracking-widest" style={{ color: GOLD }}>What Client Sees</h2>
+          {savingSettings && <span className="text-xs" style={{ color: MUTED }}>Saving…</span>}
         </div>
-
-        {/* Caption row */}
-        <div className="flex gap-3 items-center">
-          <div className="flex-1">
-            <input
-              value={photoCaption}
-              onChange={e => setPhotoCaption(e.target.value)}
-              className="w-full rounded-lg px-3 py-2 text-sm"
-              style={inputStyle}
-              placeholder="Caption for next upload (optional)"
-            />
-          </div>
-          <button
-            onClick={() => photoInputRef.current?.click()}
-            disabled={photoUploading}
-            className="px-4 py-2 rounded-xl text-sm font-bold disabled:opacity-50 shrink-0"
-            style={{ background: "#C9A84C22", color: "#C9A84C", border: "1px solid #C9A84C44" }}
-          >
-            {photoUploading ? "Uploading…" : "+ Upload Photo"}
-          </button>
-        </div>
-
-        {photos.length === 0 ? (
-          <p className="text-sm" style={{ color: "#484f58" }}>No photos uploaded yet.</p>
-        ) : (
-          <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-            {photos.map(p => (
-              <div key={p.id} className="rounded-xl overflow-hidden" style={{ background: "#161b22", border: "1px solid #30373f" }}>
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img
-                  src={`/api/client-portal/${clientId}/photos/${p.id}`}
-                  alt={p.caption ?? p.fileName}
-                  className="w-full object-cover"
-                  style={{ aspectRatio: "4/3" }}
-                />
-                <div className="px-3 py-2 flex items-center justify-between gap-2">
-                  <span className="text-xs truncate" style={{ color: "#8b949e" }}>{p.caption || p.fileName}</span>
-                  <button onClick={() => deletePhoto(p.id)} className="shrink-0" style={{ color: "#ef4444" }}>
-                    <TrashIcon size={12} />
-                  </button>
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
+        <p className="text-xs" style={{ color: MUTED }}>
+          Toggle which sections appear in the client portal. Changes take effect immediately.
+        </p>
+        <Toggle
+          value={settings.portalShowMessages}
+          onChange={v => toggleSetting("portalShowMessages", v)}
+          label="Messages — direct chat with contractor"
+        />
+        <Toggle
+          value={settings.portalShowDailyPhotos}
+          onChange={v => toggleSetting("portalShowDailyPhotos", v)}
+          label="Photo Gallery — all site photos from daily logs"
+        />
+        <Toggle
+          value={settings.portalShowDocuments}
+          onChange={v => toggleSetting("portalShowDocuments", v)}
+          label="Documents — permits, NOC, and uploaded files"
+        />
       </div>
 
       {/* ── Section 3: Documents ── */}
       <div className="space-y-3">
         <h2 className="text-sm font-bold uppercase tracking-widest" style={{ color: "#3b82f6" }}>Documents</h2>
 
-        {/* Upload row */}
         <div className="flex gap-3 flex-wrap items-end">
           <div>
-            <label className="block text-xs font-semibold mb-1" style={{ color: "#8b949e" }}>Category</label>
+            <label className="block text-xs font-semibold mb-1" style={{ color: MUTED }}>Category</label>
             <select
               value={docCategory}
               onChange={e => setDocCategory(e.target.value)}
@@ -360,7 +325,7 @@ Founder/CEO | MIBH Construction
             </select>
           </div>
           <div className="flex-1 min-w-[160px]">
-            <label className="block text-xs font-semibold mb-1" style={{ color: "#8b949e" }}>Document Label</label>
+            <label className="block text-xs font-semibold mb-1" style={{ color: MUTED }}>Document Label</label>
             <input
               value={docLabel}
               onChange={e => setDocLabel(e.target.value)}
@@ -386,13 +351,13 @@ Founder/CEO | MIBH Construction
         ) : (
           <div className="space-y-2">
             {docs.map(d => (
-              <div key={d.id} className="flex items-center justify-between px-4 py-3 rounded-xl" style={{ background: "#161b22", border: "1px solid #30373f" }}>
+              <div key={d.id} className="flex items-center justify-between px-4 py-3 rounded-xl" style={{ background: CARD, border: `1px solid ${BORDER}` }}>
                 <div className="min-w-0">
                   <div className="flex items-center gap-2">
                     <span className="text-xs font-bold px-1.5 py-0.5 rounded" style={{ background: `${CAT_COLORS[d.category]}22`, color: CAT_COLORS[d.category] }}>
                       {DOC_CATEGORIES.find(c => c.value === d.category)?.label ?? d.category}
                     </span>
-                    <span className="text-sm font-semibold truncate" style={{ color: "#e6edf3" }}>{d.label}</span>
+                    <span className="text-sm font-semibold truncate" style={{ color: TEXT }}>{d.label}</span>
                   </div>
                   <div className="text-xs mt-0.5" style={{ color: "#484f58" }}>{d.fileName} · {fmt(d.fileSize)}</div>
                 </div>
@@ -419,32 +384,32 @@ Founder/CEO | MIBH Construction
       {/* ── Email Template Modal ── */}
       {showEmailTpl && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ background: "rgba(0,0,0,0.8)" }}>
-          <div className="w-full max-w-lg rounded-2xl p-6 space-y-4" style={{ background: "#161b22", border: "1px solid #30373f", maxHeight: "90vh", overflowY: "auto" }}>
+          <div className="w-full max-w-lg rounded-2xl p-6 space-y-4" style={{ background: CARD, border: `1px solid ${BORDER}`, maxHeight: "90vh", overflowY: "auto" }}>
             <div className="flex items-center justify-between">
-              <h3 className="text-sm font-bold" style={{ color: "#e6edf3" }}>Portal Credentials Email</h3>
-              <button onClick={() => setShowEmailTpl(false)} style={{ color: "#8b949e", fontSize: 20, lineHeight: 1 }}>×</button>
+              <h3 className="text-sm font-bold" style={{ color: TEXT }}>Portal Credentials Email</h3>
+              <button onClick={() => setShowEmailTpl(false)} style={{ color: MUTED, fontSize: 20, lineHeight: 1 }}>×</button>
             </div>
 
             <div>
-              <label className="block text-xs font-semibold mb-1" style={{ color: "#8b949e" }}>Password to show in email</label>
+              <label className="block text-xs font-semibold mb-1" style={{ color: MUTED }}>Password to show in email</label>
               <input
                 type="text"
                 value={emailPassword}
                 onChange={e => setEmailPassword(e.target.value)}
                 placeholder="Enter the password you set"
                 className="w-full rounded-lg px-3 py-2 text-sm"
-                style={{ background: "#0d1117", border: "1px solid #30373f", color: "#e6edf3" }}
+                style={inputStyle}
               />
             </div>
 
             <div>
-              <label className="block text-xs font-semibold mb-1" style={{ color: "#8b949e" }}>Email body (copy & paste)</label>
+              <label className="block text-xs font-semibold mb-1" style={{ color: MUTED }}>Email body (copy & paste)</label>
               <textarea
-                rows={16}
+                rows={18}
                 readOnly
                 value={buildEmailTemplate(emailPassword)}
                 className="w-full rounded-lg px-3 py-2 text-xs font-mono"
-                style={{ background: "#0d1117", border: "1px solid #30373f", color: "#e6edf3", resize: "vertical" }}
+                style={{ ...inputStyle, resize: "vertical" }}
                 onClick={e => (e.target as HTMLTextAreaElement).select()}
               />
             </div>
@@ -455,7 +420,7 @@ Founder/CEO | MIBH Construction
                 setShowEmailTpl(false);
               }}
               className="w-full py-2.5 rounded-xl text-sm font-bold"
-              style={{ background: "#C9A84C", color: "#0d1117" }}
+              style={{ background: GOLD, color: "#0d1117" }}
             >
               Copy to Clipboard & Close
             </button>
