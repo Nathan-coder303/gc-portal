@@ -1,7 +1,31 @@
 "use client";
 
 import { useState, useTransition, useEffect, useRef } from "react";
-import { STANDARD_TEMPLATE_DIVISIONS } from "@/lib/standardTemplateData";
+import { STANDARD_TEMPLATE_DIVISIONS, BATHROOM_TEMPLATE_DIVISIONS, KITCHEN_TEMPLATE_DIVISIONS } from "@/lib/standardTemplateData";
+
+// Flat lookup from all templates
+const _ALL_DIVS = [...STANDARD_TEMPLATE_DIVISIONS, ...BATHROOM_TEMPLATE_DIVISIONS, ...KITCHEN_TEMPLATE_DIVISIONS];
+
+// "26" → "Electrical"
+const CSI_DIVISION_LOOKUP: Record<string, string> = {};
+for (const d of _ALL_DIVS) {
+  const p = d.csiCode.replace(/\s/g, "").substring(0, 2);
+  if (!CSI_DIVISION_LOOKUP[p]) CSI_DIVISION_LOOKUP[p] = d.name;
+}
+
+// "262726" → "Wiring Devices"
+const CSI_ITEM_LOOKUP: Record<string, string> = {};
+for (const d of _ALL_DIVS) {
+  for (const item of d.items) {
+    const k = item.csiCode.replace(/\s/g, "");
+    if (!CSI_ITEM_LOOKUP[k]) CSI_ITEM_LOOKUP[k] = item.name;
+  }
+}
+
+function formatCSI(raw: string): string {
+  const digits = raw.replace(/\D/g, "");
+  return digits.match(/.{1,2}/g)?.join(" ") ?? "";
+}
 import SendChangeOrderEmailButton from "@/components/clients/SendChangeOrderEmailButton";
 
 const CSI_PREFIXES = ["02","03","04","05","06","07","08","09","10","11","12","13","14","21","22","23","26","27","28","31","32","33"];
@@ -312,6 +336,19 @@ function ChangeOrderEditor({
   }
 
   function handleChange(idx: number, field: keyof COItem, value: string) {
+    if (field === "csiCode") {
+      const formatted = formatCSI(value);
+      const digits = formatted.replace(/\s/g, "");
+      const divPrefix = digits.substring(0, 2);
+      setItems(prev => prev.map((it, i) => {
+        if (i !== idx) return it;
+        const newDiv = divPrefix && CSI_DIVISION_LOOKUP[divPrefix] ? CSI_DIVISION_LOOKUP[divPrefix] : it.divisionName;
+        const lookedUp = digits.length >= 4 ? CSI_ITEM_LOOKUP[digits] : undefined;
+        const newName = lookedUp && !it.name ? lookedUp : it.name;
+        return { ...it, csiCode: formatted, divisionName: newDiv, name: newName };
+      }));
+      return;
+    }
     setItems(prev => prev.map((it, i) => i === idx ? { ...it, [field]: value } : it));
   }
 

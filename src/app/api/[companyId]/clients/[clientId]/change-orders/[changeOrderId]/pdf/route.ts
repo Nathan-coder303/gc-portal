@@ -2,6 +2,14 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { renderTemplatePdf } from "@/lib/estimates/templatePdf";
+import { STANDARD_TEMPLATE_DIVISIONS, BATHROOM_TEMPLATE_DIVISIONS, KITCHEN_TEMPLATE_DIVISIONS } from "@/lib/standardTemplateData";
+
+const _ALL = [...STANDARD_TEMPLATE_DIVISIONS, ...BATHROOM_TEMPLATE_DIVISIONS, ...KITCHEN_TEMPLATE_DIVISIONS];
+const DIV_NAME_LOOKUP: Record<string, string> = {};
+for (const d of _ALL) {
+  const p = d.csiCode.replace(/\s/g, "").substring(0, 2);
+  if (!DIV_NAME_LOOKUP[p]) DIV_NAME_LOOKUP[p] = d.name;
+}
 
 export const runtime = "nodejs";
 export const maxDuration = 30;
@@ -10,21 +18,27 @@ function resolveItems(items: { id: string; csiCode: string | null; divisionName:
   const divMap = new Map<string, { id: string; csiCode: string | null; name: string; groups: never[]; items: { id: string; name: string; detail: string | null; unit: string | null; csiCode: string | null; defaultQty: number | null; defaultUnitCost: number | null; defaultMarkupPct: number | null; visibleInPdf: boolean; notes: string | null }[] }>();
 
   for (const it of items) {
-    if (!divMap.has(it.divisionName)) {
-      divMap.set(it.divisionName, {
-        id: it.divisionName,
-        csiCode: it.csiCode ?? null,
-        name: it.divisionName,
+    const cleanCode = (it.csiCode ?? "").replace(/\s/g, "");
+    const divPrefix = cleanCode.substring(0, 2);
+    const mapKey = divPrefix || it.divisionName;
+    const divName = (divPrefix && DIV_NAME_LOOKUP[divPrefix]) ? DIV_NAME_LOOKUP[divPrefix] : it.divisionName;
+    const divCsiCode = divPrefix ? `${divPrefix} 00 00` : null;
+
+    if (!divMap.has(mapKey)) {
+      divMap.set(mapKey, {
+        id: mapKey,
+        csiCode: divCsiCode,
+        name: divName,
         groups: [],
         items: [],
       });
     }
-    divMap.get(it.divisionName)!.items.push({
+    divMap.get(mapKey)!.items.push({
       id: it.id,
       name: it.name,
       detail: null,
       unit: it.unit ?? null,
-      csiCode: it.csiCode ?? null,
+      csiCode: null,
       defaultQty: it.qty != null ? Number(it.qty) : null,
       defaultUnitCost: it.unitCost != null ? Number(it.unitCost) : null,
       defaultMarkupPct: it.markupPct != null ? Number(it.markupPct) : null,
