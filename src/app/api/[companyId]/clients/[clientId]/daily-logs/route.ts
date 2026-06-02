@@ -1,8 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { renderDailyLogPdf } from "@/lib/daily-log-pdf";
+import { getGmailOAuth } from "@/lib/gmail";
+import { google } from "googleapis";
 
 export const runtime = "nodejs";
+export const maxDuration = 30;
 
 export async function GET(
   req: NextRequest,
@@ -27,6 +31,15 @@ export async function POST(
   if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const body = await req.json();
+
+  const client = await prisma.client.findFirst({
+    where: { id: params.clientId, companyId: params.companyId },
+    select: {
+      name: true, address: true, email: true, emailList: true, dailyLogEmailEnabled: true,
+      company: { select: { name: true, address: true, phone: true, email: true } },
+    },
+  });
+  if (!client) return NextResponse.json({ error: "Client not found" }, { status: 404 });
 
   const log = await prisma.dailyLog.create({
     data: {
@@ -69,6 +82,76 @@ export async function POST(
       createdBy: session.user?.name ?? session.user?.email ?? null,
     },
   });
+
+  // Auto-send email if enabled
+  if (client.dailyLogEmailEnabled) {
+    const emails = (client.emailList as string[] | null)?.filter(Boolean) ?? [];
+    const to = emails.length > 0 ? emails.join(", ") : client.email;
+    if (to) {
+      try {
+        const company = {
+          name: client.company.name,
+          address: client.company.address ?? "",
+          phone: client.company.phone ?? "",
+          email: client.company.email ?? "",
+        };
+        const pdfBuffer = await renderDailyLogPdf(log, company, { name: client.name, address: client.address });
+        const date = new Date(log.arrivalDate).toISOString().slice(0, 10);
+        const clientSlug = client.name.replace(/[^a-z0-9]/gi, "-");
+        const filename = `Daily-Log-${clientSlug}-${date}.pdf`;
+        const dateStr = new Date(log.arrivalDate).toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric", year: "numeric" });
+        const emailSubject = `Daily Log — ${client.name} — ${dateStr}`;
+        const emailBody = `Please find attached the daily log for ${dateStr}.`;
+
+        const oauth2Client = await getGmailOAuth(params.companyId);
+        const gmail = google.gmail({ version: "v1", auth: oauth2Client });
+        const profile = await gmail.users.getProfile({ userId: "me" });
+        const fromEmail = profile.data.emailAddress ?? "me";
+
+        const boundary = `----=_Part_${Date.now()}`;
+        const pdfBase64 = pdfBuffer.toString("base64");
+        const mimeLines = [
+          `From: ${fromEmail}`,
+          `To: ${to}`,
+          `Subject: ${emailSubject}`,
+          `MIME-Version: 1.0`,
+          `Content-Type: multipart/mixed; boundary="${boundary}"`,
+          ``,
+          `--${boundary}`,
+          `Content-Type: text/plain; charset=UTF-8`,
+          ``,
+          emailBody,
+          ``,
+          `--${boundary}`,
+          `Content-Type: application/pdf; name="${filename}"`,
+          `Content-Transfer-Encoding: base64`,
+          `Content-Disposition: attachment; filename="${filename}"`,
+          ``,
+          pdfBase64,
+          `--${boundary}--`,
+        ];
+        const raw = Buffer.from(mimeLines.join("\r\n")).toString("base64url");
+        await gmail.users.messages.send({ userId: "me", requestBody: { raw } });
+
+        await prisma.clientEmail.create({
+          data: {
+            clientId: params.clientId,
+            companyId: params.companyId,
+            fromEmail,
+            to,
+            subject: emailSubject,
+            body: emailBody,
+            sentBy: session.user?.name ?? session.user?.email ?? null,
+            context: "daily-log",
+            attachments: JSON.stringify([filename]),
+          },
+        });
+      } catch (err) {
+        console.error("Daily log auto-send failed:", err);
+        // Non-fatal — log still created
+      }
+    }
+  }
 
   return NextResponse.json(log, { status: 201 });
 }

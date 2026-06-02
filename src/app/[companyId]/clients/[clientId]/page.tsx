@@ -137,12 +137,18 @@ export default async function ClientDetailPage({
     orderBy: { counterSignedAt: "desc" },
   });
 
-  const dailyLogs = activeTab === "daily-logs"
-    ? await prisma.dailyLog.findMany({
-        where: { clientId: params.clientId, companyId: params.companyId },
-        orderBy: { arrivalDate: "desc" },
-      })
-    : [];
+  const [dailyLogs, dailyLogClient] = activeTab === "daily-logs"
+    ? await Promise.all([
+        prisma.dailyLog.findMany({
+          where: { clientId: params.clientId, companyId: params.companyId },
+          orderBy: { arrivalDate: "desc" },
+        }),
+        prisma.client.findFirst({
+          where: { id: params.clientId },
+          select: { dailyLogEmailEnabled: true },
+        }),
+      ])
+    : [[], null];
 
   const [clientFollowUps, clientInvoices, changeOrders, clientScheduleTasks, clientEmails] = await Promise.all([
     prisma.followUp.findMany({
@@ -548,7 +554,9 @@ export default async function ClientDetailPage({
           companyId={params.companyId}
           clientId={params.clientId}
           clientName={safeClient.name}
+          clientEmail={clientEmailAll}
           canEdit={canEdit}
+          initialDailyLogEmailEnabled={dailyLogClient?.dailyLogEmailEnabled ?? false}
           initialLogs={dailyLogs.map(l => ({
             ...l,
             arrivalDate: l.arrivalDate.toISOString(),

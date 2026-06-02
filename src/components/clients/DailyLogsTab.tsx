@@ -1052,24 +1052,87 @@ function LogCard({ log, onClick }: { log: DailyLog; onClick: () => void }) {
   );
 }
 
+// ── Send Email Modal ─────────────────────────────────────────────────────────
+
+function SendLogEmailModal({
+  companyId, clientId, logId, clientEmail, onClose,
+}: { companyId: string; clientId: string; logId: string; clientEmail: string | null; onClose: () => void }) {
+  const [to, setTo] = useState(clientEmail ?? "");
+  const [sending, setSending] = useState(false);
+  const [result, setResult] = useState<{ ok: boolean; msg: string } | null>(null);
+
+  async function send() {
+    if (!to.trim()) return;
+    setSending(true);
+    try {
+      const res = await fetch(`/api/${companyId}/clients/${clientId}/daily-logs/${logId}/send-email`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ to: to.trim() }),
+      });
+      const data = await res.json();
+      setResult(res.ok ? { ok: true, msg: "Email sent!" } : { ok: false, msg: data.error ?? "Send failed" });
+    } catch { setResult({ ok: false, msg: "Network error" }); }
+    finally { setSending(false); }
+  }
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ background: "rgba(0,0,0,0.7)" }}>
+      <div className="w-full max-w-sm rounded-2xl p-6 space-y-4" style={{ background: CARD, border: `1px solid ${BORDER}` }}>
+        <p className="text-sm font-bold" style={{ color: TEXT }}>Send Daily Log PDF</p>
+        <div>
+          <label className="text-xs font-semibold block mb-1" style={{ color: MUTED }}>To</label>
+          <input value={to} onChange={e => setTo(e.target.value)} placeholder="client@email.com"
+            className="w-full rounded-lg px-3 py-2 text-sm"
+            style={{ background: BG, border: `1px solid ${BORDER}`, color: TEXT, outline: "none" }} />
+        </div>
+        {result && (
+          <p className="text-xs p-2 rounded-lg" style={{ background: result.ok ? "#0d2a1a" : "#2a1010", color: result.ok ? "#22c55e" : "#ef4444" }}>
+            {result.msg}
+          </p>
+        )}
+        <div className="flex gap-2">
+          <button onClick={onClose} className="flex-1 py-2 rounded-lg text-sm"
+            style={{ background: "#1e2736", color: MUTED, border: `1px solid ${BORDER}` }}>
+            {result?.ok ? "Close" : "Cancel"}
+          </button>
+          {!result?.ok && (
+            <button onClick={send} disabled={sending || !to.trim()} className="flex-1 py-2 rounded-lg text-sm font-bold disabled:opacity-50"
+              style={{ background: GOLD, color: "#0d1117" }}>
+              {sending ? "Sending…" : "Send"}
+            </button>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ── Main component ────────────────────────────────────────────────────────────
 
 export default function DailyLogsTab({
   companyId,
   clientId,
   clientName,
+  clientEmail,
   initialLogs,
+  initialDailyLogEmailEnabled,
   canEdit,
 }: {
   companyId: string;
   clientId: string;
   clientName: string;
+  clientEmail?: string | null;
   initialLogs: DailyLog[];
+  initialDailyLogEmailEnabled?: boolean;
   canEdit: boolean;
 }) {
   const [logs, setLogs] = useState<DailyLog[]>(initialLogs);
   const [editing, setEditing] = useState<DailyLog | null | "new">(null);
   const [search, setSearch] = useState("");
+  const [autoSend, setAutoSend] = useState(initialDailyLogEmailEnabled ?? false);
+  const [togglingAutoSend, setTogglingAutoSend] = useState(false);
+  const [sendingLogId, setSendingLogId] = useState<string | null>(null);
 
   function handleSaved(log: DailyLog) {
     setLogs(prev => {
@@ -1084,6 +1147,19 @@ export default function DailyLogsTab({
     if (!confirm("Delete this daily log?")) return;
     await fetch(`/api/${companyId}/clients/${clientId}/daily-logs/${id}`, { method: "DELETE" });
     setLogs(prev => prev.filter(l => l.id !== id));
+  }
+
+  async function toggleAutoSend() {
+    setTogglingAutoSend(true);
+    const next = !autoSend;
+    try {
+      await fetch(`/api/${companyId}/clients/${clientId}/daily-log-settings`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ dailyLogEmailEnabled: next }),
+      });
+      setAutoSend(next);
+    } finally { setTogglingAutoSend(false); }
   }
 
   if (editing !== null) {
@@ -1112,14 +1188,36 @@ export default function DailyLogsTab({
 
   return (
     <div className="space-y-4">
-      {/* Header */}
-      <div className="flex items-center gap-3">
-        <div className="relative flex-1">
+      {sendingLogId && (
+        <SendLogEmailModal
+          companyId={companyId}
+          clientId={clientId}
+          logId={sendingLogId}
+          clientEmail={clientEmail ?? null}
+          onClose={() => setSendingLogId(null)}
+        />
+      )}
+
+      {/* Header row */}
+      <div className="flex flex-wrap items-center gap-3">
+        <div className="relative flex-1 min-w-[160px]">
           <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm" style={{ color: MUTED }}>🔍</span>
           <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search daily logs…"
             className="w-full rounded-xl pl-8 pr-3 py-2 text-sm"
             style={{ background: CARD, border: `1px solid ${BORDER}`, color: TEXT, outline: "none" }} />
         </div>
+
+        {/* Auto-send toggle */}
+        <button onClick={toggleAutoSend} disabled={togglingAutoSend}
+          className="flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-semibold shrink-0 transition-all disabled:opacity-50"
+          style={{ background: autoSend ? "#0d2a1a" : CARD, border: `1px solid ${autoSend ? "#22c55e66" : BORDER}`, color: autoSend ? "#22c55e" : MUTED }}>
+          <span className={`w-7 h-4 rounded-full flex items-center transition-colors ${autoSend ? "justify-end" : "justify-start"}`}
+            style={{ background: autoSend ? "#22c55e" : "#30373f", padding: "2px" }}>
+            <span className="w-3 h-3 rounded-full bg-white block" />
+          </span>
+          Auto-send to client
+        </button>
+
         {canEdit && (
           <button onClick={() => setEditing("new")}
             className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-bold shrink-0 transition-opacity hover:opacity-80"
@@ -1128,6 +1226,12 @@ export default function DailyLogsTab({
           </button>
         )}
       </div>
+
+      {autoSend && (
+        <p className="text-xs px-3 py-2 rounded-lg" style={{ background: "#0d2a1a", color: "#22c55e", border: "1px solid #22c55e33" }}>
+          Auto-send is ON — each saved log will be emailed to {clientEmail ?? "the client"} automatically.
+        </p>
+      )}
 
       {/* Log list */}
       {filtered.length === 0 ? (
@@ -1138,18 +1242,39 @@ export default function DailyLogsTab({
         </div>
       ) : (
         <div className="space-y-2">
-          {filtered.map(log => (
-            <div key={log.id} className="relative group">
-              <LogCard log={log} onClick={() => setEditing(log)} />
-              {canEdit && (
-                <button onClick={() => handleDelete(log.id)}
-                  className="absolute top-3 right-3 opacity-0 group-hover:opacity-100 text-xs px-2 py-0.5 rounded transition-opacity"
-                  style={{ color: "#ef4444", background: "#2a1010", border: "1px solid #ef444433" }}>
-                  Delete
-                </button>
-              )}
-            </div>
-          ))}
+          {filtered.map(log => {
+            const pdfBase = `/api/${companyId}/clients/${clientId}/daily-logs/${log.id}/pdf`;
+            return (
+              <div key={log.id} className="rounded-xl overflow-hidden" style={{ border: `1px solid ${BORDER}` }}>
+                <LogCard log={log} onClick={() => setEditing(log)} />
+                {/* Action bar */}
+                <div className="flex items-center gap-2 px-4 py-2" style={{ background: "#0d1117", borderTop: `1px solid ${BORDER}` }}>
+                  <a href={pdfBase} target="_blank" rel="noreferrer"
+                    className="text-xs px-3 py-1.5 rounded-lg font-semibold transition-opacity hover:opacity-80"
+                    style={{ background: "#1e2736", color: MUTED, border: `1px solid ${BORDER}` }}>
+                    View PDF
+                  </a>
+                  <a href={`${pdfBase}?download=1`} download
+                    className="text-xs px-3 py-1.5 rounded-lg font-semibold transition-opacity hover:opacity-80"
+                    style={{ background: "#1e2736", color: MUTED, border: `1px solid ${BORDER}` }}>
+                    Download
+                  </a>
+                  <button onClick={() => setSendingLogId(log.id)}
+                    className="text-xs px-3 py-1.5 rounded-lg font-semibold transition-opacity hover:opacity-80"
+                    style={{ background: GOLD + "22", color: GOLD, border: `1px solid ${GOLD}44` }}>
+                    Send
+                  </button>
+                  {canEdit && (
+                    <button onClick={() => handleDelete(log.id)}
+                      className="ml-auto text-xs px-2 py-1 rounded transition-opacity hover:opacity-80"
+                      style={{ color: "#ef4444", background: "#2a1010", border: "1px solid #ef444433" }}>
+                      Delete
+                    </button>
+                  )}
+                </div>
+              </div>
+            );
+          })}
         </div>
       )}
     </div>
