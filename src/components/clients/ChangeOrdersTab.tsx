@@ -571,7 +571,7 @@ function ChangeOrderPdfModal({
           <div>
             <h2 className="text-base font-bold" style={{ color: "#e6edf3" }}>PDF Options</h2>
             <p className="text-xs mt-0.5" style={{ color: "#8b949e" }}>
-              {orderNumber ? `CO ${orderNumber} — ` : ""}{orderTitle} · {clientName}
+              {orderNumber ? `${orderNumber} — ` : ""}{orderTitle} · {clientName}
             </p>
           </div>
           <button onClick={onClose} className="text-xl" style={{ color: "#8b949e" }}>✕</button>
@@ -753,7 +753,7 @@ function CODetailModal({
           </svg>
         </button>
         <span className="flex-1 text-center font-semibold text-sm" style={{ color: "#e6edf3" }}>
-          {order.orderNumber ? `CO ${order.orderNumber}` : "Change Order"}
+          {order.orderNumber ?? "Change Order"}
         </span>
         {canEdit && (
           <button onClick={onEdit} className="flex items-center justify-center w-8 h-8 rounded-lg" style={{ background: "#1e2736", color: GOLD }}>
@@ -999,7 +999,7 @@ export default function ChangeOrdersTab({
       .map(n => parseInt(n!.replace(/\D/g, ""), 10))
       .filter(n => !isNaN(n));
     const max = nums.length > 0 ? Math.max(...nums) : 0;
-    return String(max + 1).padStart(3, "0");
+    return `CO-${String(max + 1).padStart(3, "0")}`;
   }
   const [pdfOrder, setPdfOrder] = useState<ChangeOrder | null>(null);
   const [viewingOrder, setViewingOrder] = useState<ChangeOrder | null>(null);

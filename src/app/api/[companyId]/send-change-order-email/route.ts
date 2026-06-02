@@ -153,7 +153,7 @@ export async function POST(
 
     const boundary = `----=_Part_${Date.now()}`;
     const clientSlug = changeOrder.client ? `-${changeOrder.client.name.replace(/[^a-z0-9]/gi, "-")}` : "";
-    const coSlug = changeOrder.orderNumber ? `CO-${changeOrder.orderNumber}` : "ChangeOrder";
+    const coSlug = changeOrder.orderNumber ?? "ChangeOrder";
     const filename = `${coSlug}${clientSlug}.pdf`;
     const pdfBase64 = buffer.toString("base64");
 
