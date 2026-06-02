@@ -127,6 +127,14 @@ function ItemRow({
   onChange: (idx: number, field: keyof COItem, value: string) => void;
   onDelete: (idx: number) => void;
 }) {
+  const descRef = useRef<HTMLTextAreaElement>(null);
+  useEffect(() => {
+    const el = descRef.current;
+    if (!el) return;
+    el.style.height = "auto";
+    el.style.height = `${el.scrollHeight}px`;
+  }, [item.description]);
+
   const qty = parseFloat(item.qty) || 0;
   const cost = parseFloat(item.unitCost) || 0;
   const markup = parseFloat(item.markupPct) || 0;
@@ -189,13 +197,9 @@ function ItemRow({
         </button>
       </div>
       <textarea
+        ref={descRef}
         value={item.description}
         onChange={e => onChange(index, "description", e.target.value)}
-        onInput={e => {
-          const el = e.currentTarget;
-          el.style.height = "auto";
-          el.style.height = `${el.scrollHeight}px`;
-        }}
         rows={1}
         className="w-full rounded px-2 py-1 text-xs mb-2"
         style={{ ...inputStyle, color: "#8b949e", resize: "none", overflow: "hidden", lineHeight: "1.5" }}
