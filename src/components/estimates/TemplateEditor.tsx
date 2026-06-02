@@ -309,7 +309,7 @@ function ItemRow({ item, divisionId, groupId, canEdit }: { item: Item; divisionI
         name: item.name,
         csiCode: item.csiCode,
         detail: null,
-        unit: item.unit,
+        unit: null,
         defaultQty: null,
         defaultUnitCost: null,
         defaultLaborCost: null,

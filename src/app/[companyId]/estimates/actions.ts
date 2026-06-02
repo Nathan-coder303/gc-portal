@@ -681,7 +681,7 @@ export async function resetTemplateDivisionItems(divisionId: string) {
   });
   await prisma.estimateTemplateItem.updateMany({
     where: { divisionId, archivedAt: null },
-    data: { defaultQty: null, defaultUnitCost: null, defaultLaborCost: null, defaultMaterialCost: null, defaultMarkupPct: null },
+    data: { unit: null, defaultQty: null, defaultUnitCost: null, defaultLaborCost: null, defaultMaterialCost: null, defaultMarkupPct: null },
   });
   if (division?.templateId) await touchTemplate(division.templateId, session.user.id);
   revalidatePath(`/${session.user.companyId}/estimates`);
@@ -757,7 +757,7 @@ export async function listClients() {
   return clients;
 }
 
-export async function upsertClient(data: { id?: string; name: string; address?: string; city?: string; state?: string; zip?: string; emailList?: string[]; phone?: string }) {
+export async function upsertClient(data: { id?: string; name: string; address?: string; city?: string; state?: string; zip?: string; emailList?: string[]; phone?: string; legalDescription?: string }) {
   const session = await auth();
   if (!session) throw new Error("Unauthorized");
   requirePermission(session, "estimateTemplate:edit");
@@ -772,6 +772,7 @@ export async function upsertClient(data: { id?: string; name: string; address?: 
     email: cleanEmails[0] ?? null,
     emailList: cleanEmails.length > 0 ? cleanEmails : Prisma.JsonNull,
     phone: data.phone?.trim() || null,
+    legalDescription: data.legalDescription?.trim() || null,
   };
 
   if (data.id) {
