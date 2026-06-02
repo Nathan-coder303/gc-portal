@@ -96,24 +96,50 @@ export async function POST(
           email: client.company.email ?? "",
         };
         const pdfBuffer = await renderDailyLogPdf(log, company, { name: client.name, address: client.address });
-        const date = new Date(log.arrivalDate).toISOString().slice(0, 10);
+        const logDate = new Date(log.arrivalDate);
+        const date = logDate.toISOString().slice(0, 10);
         const clientSlug = client.name.replace(/[^a-z0-9]/gi, "-");
         const filename = `Daily-Log-${clientSlug}-${date}.pdf`;
-        const dateStr = new Date(log.arrivalDate).toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric", year: "numeric" });
-        const emailSubject = `Daily Log — ${client.name} — ${dateStr}`;
-        const emailBody = `Please find attached the daily log for ${dateStr}.`;
+        const friendlyDate = logDate.toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric", year: "numeric" });
+        const emailSubject = `Daily Log - ${client.name} - ${logDate.toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" })}`;
 
         const oauth2Client = await getGmailOAuth(params.companyId);
         const gmail = google.gmail({ version: "v1", auth: oauth2Client });
-        const profile = await gmail.users.getProfile({ userId: "me" });
+        const [profile, sendAsList] = await Promise.all([
+          gmail.users.getProfile({ userId: "me" }),
+          gmail.users.settings.sendAs.list({ userId: "me" }),
+        ]);
         const fromEmail = profile.data.emailAddress ?? "me";
+        const defaultSendAs = sendAsList.data.sendAs?.find((s) => s.isDefault) ?? sendAsList.data.sendAs?.[0];
+        const signature = defaultSendAs?.signature
+          ? defaultSendAs.signature
+              .replace(/<br\s*\/?>/gi, "\n")
+              .replace(/<[^>]+>/g, "")
+              .replace(/&amp;/g, "&")
+              .replace(/&lt;/g, "<")
+              .replace(/&gt;/g, ">")
+              .replace(/&nbsp;/g, " ")
+              .trim()
+          : "";
 
+        const emailBody = [
+          `Hi ${client.name},`,
+          ``,
+          `Please find attached your Daily Log for ${friendlyDate}.`,
+          ``,
+          `This report summarizes the work performed, personnel on site, materials, equipment, and any site conditions noted for the day. Please review it at your convenience and don't hesitate to reach out if you have any questions.`,
+          ``,
+          `We appreciate your continued trust in us and remain committed to keeping you informed every step of the way.`,
+          ...(signature ? [``, signature] : []),
+        ].join("\n");
+
+        const encodedSubject = `=?UTF-8?B?${Buffer.from(emailSubject, "utf8").toString("base64")}?=`;
         const boundary = `----=_Part_${Date.now()}`;
         const pdfBase64 = pdfBuffer.toString("base64");
         const mimeLines = [
           `From: ${fromEmail}`,
           `To: ${to}`,
-          `Subject: ${emailSubject}`,
+          `Subject: ${encodedSubject}`,
           `MIME-Version: 1.0`,
           `Content-Type: multipart/mixed; boundary="${boundary}"`,
           ``,
@@ -148,7 +174,6 @@ export async function POST(
         });
       } catch (err) {
         console.error("Daily log auto-send failed:", err);
-        // Non-fatal — log still created
       }
     }
   }

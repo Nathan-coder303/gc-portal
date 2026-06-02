@@ -2,6 +2,7 @@ import { auth } from "@/lib/auth";
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { signOut } from "@/lib/auth";
+import PortalMessages from "@/components/portal/PortalMessages";
 
 export const dynamic = "force-dynamic";
 
@@ -157,6 +158,14 @@ export default async function ClientPortalPage({ params }: { params: { clientId:
               })}
             </div>
           )}
+        </section>
+
+        {/* ── Messages ── */}
+        <section>
+          <h2 className="text-sm font-bold uppercase tracking-widest mb-4" style={{ color: "#C9A84C" }}>
+            Messages
+          </h2>
+          <PortalMessages clientId={client.id} />
         </section>
 
         <div className="text-center text-xs pb-8" style={{ color: "#30373f" }}>

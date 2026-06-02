@@ -20,6 +20,7 @@ import NurturingEmailTab from "@/components/clients/NurturingEmailTab";
 import ChangeOrdersTab from "@/components/clients/ChangeOrdersTab";
 import ClientScheduleTab from "@/components/clients/ClientScheduleTab";
 import DailyLogsTab from "@/components/clients/DailyLogsTab";
+import MessagesTab from "@/components/clients/MessagesTab";
 import ClientCommsTab from "@/components/clients/ClientCommsTab";
 import ClientDocumentsTab from "@/components/clients/ClientDocumentsTab";
 import TodayTaskCard, { FollowUpItem } from "@/components/today/TodayTaskCard";
@@ -150,6 +151,10 @@ export default async function ClientDetailPage({
       ])
     : [[], null];
 
+  const unreadMessages = await prisma.clientMessage.count({
+    where: { clientId: params.clientId, companyId: params.companyId, senderType: "CLIENT", readByContractor: false },
+  });
+
   const [clientFollowUps, clientInvoices, changeOrders, clientScheduleTasks, clientEmails] = await Promise.all([
     prisma.followUp.findMany({
       where: { clientId: params.clientId, companyId: params.companyId },
@@ -191,6 +196,7 @@ export default async function ClientDetailPage({
     { key: "nurturing", label: "Nurturing" },
     { key: "comms", label: `Comms${clientEmails.length > 0 ? ` (${clientEmails.length})` : ""}` },
     { key: "daily-logs", label: "Daily Logs" },
+    { key: "messages", label: `Messages${unreadMessages > 0 ? ` (${unreadMessages})` : ""}` },
   ];
 
   return (
@@ -563,6 +569,15 @@ export default async function ClientDetailPage({
             createdAt: l.createdAt.toISOString(),
             updatedAt: l.updatedAt.toISOString(),
           }))}
+        />
+      )}
+
+      {activeTab === "messages" && (
+        <MessagesTab
+          companyId={params.companyId}
+          clientId={params.clientId}
+          clientName={safeClient.name}
+          clientEmail={clientEmailAll}
         />
       )}
 

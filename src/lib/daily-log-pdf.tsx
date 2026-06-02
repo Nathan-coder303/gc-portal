@@ -135,6 +135,7 @@ function DailyLogDocument({ log, company, client, photoDataUrls }: { log: DailyL
   const logoPath = path.join(process.cwd(), "public", "logo.png");
   const date = new Date(log.arrivalDate);
   const dateStr = date.toLocaleDateString("en-US", { weekday: "long", year: "numeric", month: "long", day: "numeric" });
+  const arrivalTimeStr = date.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", hour12: true });
   const subs = parseJson<{ name: string; company: string; trade: string }[]>(log.subsOnJobsite, []);
   const matDelivered = parseJson<{ item: string; qty: string; supplier?: string }[]>(log.materialDelivered, []);
   const matUsed = parseJson<{ item: string; qty: string }[]>(log.materialUsed, []);
@@ -202,7 +203,11 @@ function DailyLogDocument({ log, company, client, photoDataUrls }: { log: DailyL
               <Text style={s.infoValue}>{log.workCompletedPct}%</Text>
             </View>
           )}
-          {(log.departureTime) && (
+          <View style={s.infoBox}>
+            <Text style={s.infoLabel}>Arrival</Text>
+            <Text style={s.infoValue}>{arrivalTimeStr}</Text>
+          </View>
+          {log.departureTime && (
             <View style={s.infoBox}>
               <Text style={s.infoLabel}>Departure</Text>
               <Text style={s.infoValue}>{log.departureTime}</Text>

@@ -82,6 +82,7 @@ model Company {
   subContractors    SubContractor[]
   payApps           PayApp[]
   dailyLogs         DailyLog[]
+  clientMessages    ClientMessage[]
   googleRefreshToken String?
   scopesOfWork      ScopeOfWork[]
   coverNames        Json?          // { [blobUrl]: string }
@@ -202,6 +203,25 @@ model Client {
   portalDocs        ClientPortalDocument[]
   payApps           PayApp[]
   dailyLogs         DailyLog[]
+  messages          ClientMessage[]
+}
+
+model ClientMessage {
+  id          String    @id @default(cuid())
+  companyId   String
+  company     Company   @relation(fields: [companyId], references: [id])
+  clientId    String
+  client      Client    @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  content     String    @db.Text
+  attachments String?   @db.Text   // JSON: [{id,name,url,mimeType}]
+  senderType  String               // "CONTRACTOR" | "CLIENT"
+  senderName  String
+  readByClient     Boolean  @default(false)
+  readByContractor Boolean  @default(false)
+  reminderSent     Boolean  @default(false)
+  createdAt   DateTime  @default(now())
+  @@index([clientId])
+  @@index([companyId])
 }
 
 model ClientSub {
