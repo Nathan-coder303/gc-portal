@@ -840,7 +840,7 @@ function LogEditor({
   };
 
   return (
-    <div className="flex flex-col h-full" style={{ background: BG }}>
+    <div className="flex flex-col" style={{ background: BG, minHeight: "100%" }}>
       {/* Header */}
       <div className="flex items-center justify-between px-4 py-3 shrink-0"
         style={{ background: "#161b22", borderBottom: `1px solid ${BORDER}` }}>
@@ -859,37 +859,25 @@ function LogEditor({
         </button>
       </div>
 
-      {/* Desktop top tabs */}
-      <div className="hidden md:flex gap-1 px-4 pt-3 pb-0 shrink-0 overflow-x-auto">
+      {/* Tab bar — top on both mobile and desktop */}
+      <div className="flex shrink-0 overflow-x-auto scrollbar-none"
+        style={{ background: "#161b22", borderBottom: `1px solid ${BORDER}` }}>
         {SECTIONS.map(s => (
           <button key={s.key} onClick={() => setSection(s.key)}
-            className="px-4 py-2 rounded-t-lg text-sm font-semibold whitespace-nowrap transition-all"
+            className="flex-1 min-w-[56px] py-2.5 text-center whitespace-nowrap transition-all"
             style={{
-              background: section === s.key ? CARD : "transparent",
-              color: section === s.key ? GOLD : MUTED,
               borderBottom: section === s.key ? `2px solid ${GOLD}` : "2px solid transparent",
+              color: section === s.key ? GOLD : MUTED,
             }}>
-            {s.label}
+            <p className="text-[11px] font-semibold">{s.label}</p>
           </button>
         ))}
       </div>
 
       {/* Content */}
-      <div className="flex-1 overflow-y-auto px-4 py-4 pb-24 md:pb-4">
+      <div className="px-4 py-4">
         {error && <p className="text-sm mb-3 p-3 rounded-lg" style={{ background: "#2a1010", color: "#ef4444", border: "1px solid #ef444444" }}>{error}</p>}
         {sectionContent[section]}
-      </div>
-
-      {/* Mobile bottom tab bar */}
-      <div className="flex md:hidden fixed bottom-0 left-0 right-0 z-50"
-        style={{ background: "#161b22", borderTop: `1px solid ${BORDER}` }}>
-        {SECTIONS.map(s => (
-          <button key={s.key} onClick={() => setSection(s.key)}
-            className="flex-1 py-2.5 text-center transition-all"
-            style={{ borderBottom: section === s.key ? `2px solid ${GOLD}` : "2px solid transparent" }}>
-            <p className="text-[10px] font-semibold" style={{ color: section === s.key ? GOLD : MUTED }}>{s.label}</p>
-          </button>
-        ))}
       </div>
     </div>
   );
@@ -985,16 +973,14 @@ export default function DailyLogsTab({
 
   if (editing !== null) {
     return (
-      <div className="fixed inset-0 z-40 flex flex-col md:relative md:inset-auto md:z-auto" style={{ background: BG }}>
-        <LogEditor
-          companyId={companyId}
-          clientId={clientId}
-          clientName={clientName}
-          initial={editing === "new" ? null : editing}
-          onSave={handleSaved}
-          onCancel={() => setEditing(null)}
-        />
-      </div>
+      <LogEditor
+        companyId={companyId}
+        clientId={clientId}
+        clientName={clientName}
+        initial={editing === "new" ? null : editing}
+        onSave={handleSaved}
+        onCancel={() => setEditing(null)}
+      />
     );
   }
 
