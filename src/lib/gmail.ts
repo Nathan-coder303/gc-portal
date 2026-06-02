@@ -12,18 +12,26 @@ export function makeOAuthClient(refreshToken: string) {
 }
 
 export async function getGmailOAuth(companyId?: string) {
-  // Prefer the DB-stored refresh token (updated via /api/google-oauth/callback)
+  const envToken = process.env.GOOGLE_REFRESH_TOKEN;
+
+  // Try DB-stored token first, fall back to env var if it fails
   if (companyId) {
     const company = await prisma.company.findUnique({
       where: { id: companyId },
       select: { googleRefreshToken: true },
     });
     if (company?.googleRefreshToken) {
-      return makeOAuthClient(company.googleRefreshToken);
+      const client = makeOAuthClient(company.googleRefreshToken);
+      try {
+        // Validate by refreshing — if token is stale this throws
+        await client.getAccessToken();
+        return client;
+      } catch {
+        // DB token invalid — fall through to env var
+      }
     }
   }
-  // Fall back to env var
-  const envToken = process.env.GOOGLE_REFRESH_TOKEN;
+
   if (!envToken) throw new Error("Gmail not configured — no refresh token");
   return makeOAuthClient(envToken);
 }
