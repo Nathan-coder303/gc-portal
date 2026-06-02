@@ -533,27 +533,18 @@ function ChangeOrderPdfModal({
   clientName: string;
   onClose: () => void;
 }) {
-  const [includeDivisionSummary, setIncludeDivisionSummary] = useState(false);
-  const [forcedBreakCsiPrefixes, setForcedBreakCsiPrefixes] = useState<string[]>([]);
-  const initialized = useRef(false);
-
-  // Read from localStorage after mount (client-only, avoids SSR/closure issues)
-  useEffect(() => {
+  function loadOpts() {
     try {
       const raw = localStorage.getItem(`co-pdf-opts-${clientId}`);
-      if (raw) {
-        const saved = JSON.parse(raw) as { divSummary: boolean; breaks: string[] };
-        setIncludeDivisionSummary(saved.divSummary ?? false);
-        setForcedBreakCsiPrefixes(saved.breaks ?? []);
-      }
+      if (raw) return JSON.parse(raw) as { divSummary: boolean; breaks: string[] };
     } catch { /* ignore */ }
-    initialized.current = true;
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+    return null;
+  }
 
-  // Write on change, but only after the read effect has run
+  const [includeDivisionSummary, setIncludeDivisionSummary] = useState<boolean>(() => loadOpts()?.divSummary ?? false);
+  const [forcedBreakCsiPrefixes, setForcedBreakCsiPrefixes] = useState<string[]>(() => loadOpts()?.breaks ?? []);
+
   useEffect(() => {
-    if (!initialized.current) return;
     localStorage.setItem(`co-pdf-opts-${clientId}`, JSON.stringify({ divSummary: includeDivisionSummary, breaks: forcedBreakCsiPrefixes }));
   }, [clientId, includeDivisionSummary, forcedBreakCsiPrefixes]);
 
