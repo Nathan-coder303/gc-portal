@@ -953,6 +953,7 @@ type ExecutedContract = {
   counterSignedAt: string;
   executedPdfUrl: string;
   executedEmailSentAt?: string | null;
+  type?: "estimate" | "doc" | "change_order";
 };
 
 type ClientDoc = {
@@ -1115,8 +1116,9 @@ export default function ChangeOrdersTab({
 
   const pendingDocs = clientDocs.filter(d => !d.counterSignedAt);
   const executedDocs = clientDocs.filter(d => !!d.counterSignedAt);
+  const approvedCos = orders.filter(o => o.status === "APPROVED" && o.signedAt);
   const allExecuted = [
-    ...(contracts ?? []),
+    ...(contracts ?? []).map(c => ({ ...c, type: "estimate" as const })),
     ...executedDocs.map(d => ({
       id: d.id,
       name: d.name,
@@ -1124,6 +1126,16 @@ export default function ChangeOrdersTab({
       counterSignedAt: d.counterSignedAt!,
       executedPdfUrl: d.countersignedFileUrl!,
       executedEmailSentAt: null as string | null,
+      type: "doc" as const,
+    })),
+    ...approvedCos.map(o => ({
+      id: o.id,
+      name: o.title,
+      estimateNumber: o.orderNumber,
+      counterSignedAt: o.signedAt!,
+      executedPdfUrl: `/api/${companyId}/clients/${clientId}/change-orders/${o.id}/pdf`,
+      executedEmailSentAt: null as string | null,
+      type: "change_order" as const,
     })),
   ].sort((a, b) => new Date(b.counterSignedAt).getTime() - new Date(a.counterSignedAt).getTime());
 
@@ -1234,24 +1246,32 @@ export default function ChangeOrdersTab({
 
       {/* ── Executed Contracts section ── */}
       <div>
-        <h3 className="text-sm font-bold mb-3" style={{ color: "#e6edf3" }}>Executed Contracts</h3>
+        <h3 className="text-sm font-bold mb-3" style={{ color: "#e6edf3" }}>Executed Contracts & Change Orders</h3>
         {allExecuted.length === 0 ? (
           <div className="rounded-xl p-6 text-center" style={{ background: "#1e2736", border: "1px solid #30373f" }}>
-            <p className="text-sm" style={{ color: "#8b949e" }}>No executed contracts yet — fully signed estimates and uploaded contracts will appear here automatically.</p>
+            <p className="text-sm" style={{ color: "#8b949e" }}>No executed contracts yet — fully signed estimates, approved change orders, and uploaded contracts will appear here automatically.</p>
           </div>
         ) : (
           <div className="space-y-2">
-            {allExecuted.map(c => (
+            {allExecuted.map(c => {
+              const label = c.type === "change_order"
+                ? `${c.estimateNumber ? `${c.estimateNumber} — ` : ""}${c.name}`
+                : `${c.estimateNumber ? `Estimate #${c.estimateNumber} — ` : ""}${c.name}`;
+              const dateLabel = c.type === "change_order" ? "Client approved" : "Executed";
+              return (
               <div key={c.id} className="flex items-center justify-between gap-3 rounded-xl px-4 py-3"
                 style={{ background: "#1e2736", border: "1px solid #30373f" }}>
                 <div className="min-w-0">
-                  <p className="text-sm font-semibold truncate" style={{ color: "#e6edf3" }}>
-                    {c.estimateNumber ? `Estimate #${c.estimateNumber} — ` : ""}{c.name}
-                  </p>
+                  <div className="flex items-center gap-2">
+                    {c.type === "change_order" && (
+                      <span className="text-[10px] font-bold px-1.5 py-0.5 rounded" style={{ background: "#1e2a3a", color: "#58a6ff", border: "1px solid #1f6feb44" }}>CO</span>
+                    )}
+                    <p className="text-sm font-semibold truncate" style={{ color: "#e6edf3" }}>{label}</p>
+                  </div>
                   <p className="text-xs mt-0.5" style={{ color: "#8b949e" }}>
-                    Executed {new Date(c.counterSignedAt).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
+                    {dateLabel} {new Date(c.counterSignedAt).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
                   </p>
-                  {c.executedEmailSentAt ? (
+                  {c.type !== "change_order" && (c.executedEmailSentAt ? (
                     <p className="text-xs mt-1 flex items-center gap-1" style={{ color: "#22c55e" }}>
                       ✓ Emailed to client {new Date(c.executedEmailSentAt).toLocaleString("en-US", { month: "short", day: "numeric", year: "numeric", hour: "numeric", minute: "2-digit", timeZone: "America/New_York", timeZoneName: "short" })}
                     </p>
@@ -1259,7 +1279,7 @@ export default function ChangeOrdersTab({
                     <p className="text-xs mt-1 flex items-center gap-1" style={{ color: "#f59e0b" }}>
                       ⚠ Email not confirmed sent
                     </p>
-                  )}
+                  ))}
                 </div>
                 <a href={c.executedPdfUrl} target="_blank" rel="noopener noreferrer"
                   className="shrink-0 text-xs font-semibold px-3 py-1.5 rounded-lg"
@@ -1267,7 +1287,8 @@ export default function ChangeOrdersTab({
                   ⬇ Download
                 </a>
               </div>
-            ))}
+              );
+            })}
           </div>
         )}
       </div>
