@@ -292,18 +292,20 @@ function ChangeOrderEditor({
   companyId,
   clientId,
   initial,
+  defaultOrderNumber,
   onSave,
   onClose,
 }: {
   companyId: string;
   clientId: string;
   initial: ChangeOrder | null;
+  defaultOrderNumber?: string;
   onSave: (order: ChangeOrder) => void;
   onClose: () => void;
 }) {
   const [isPending, startTransition] = useTransition();
   const [title, setTitle] = useState(initial?.title ?? "");
-  const [orderNumber, setOrderNumber] = useState(initial?.orderNumber ?? "");
+  const [orderNumber, setOrderNumber] = useState(initial?.orderNumber ?? defaultOrderNumber ?? "");
   const [notes, setNotes] = useState(initial?.notes ?? "");
   const [error, setError] = useState("");
 
@@ -998,6 +1000,16 @@ export default function ChangeOrdersTab({
 }) {
   const [orders, setOrders] = useState<ChangeOrder[]>(initialOrders);
   const [editing, setEditing] = useState<ChangeOrder | null | "new">(null);
+
+  function nextCoNumber(): string {
+    const nums = orders
+      .map(o => o.orderNumber)
+      .filter(Boolean)
+      .map(n => parseInt(n!.replace(/\D/g, ""), 10))
+      .filter(n => !isNaN(n));
+    const max = nums.length > 0 ? Math.max(...nums) : 0;
+    return String(max + 1).padStart(3, "0");
+  }
   const [pdfOrder, setPdfOrder] = useState<ChangeOrder | null>(null);
   const [viewingOrder, setViewingOrder] = useState<ChangeOrder | null>(null);
   const [isPending, startTransition] = useTransition();
@@ -1511,6 +1523,7 @@ export default function ChangeOrdersTab({
           companyId={companyId}
           clientId={clientId}
           initial={editing === "new" ? null : editing}
+          defaultOrderNumber={editing === "new" ? nextCoNumber() : undefined}
           onSave={handleSaved}
           onClose={() => setEditing(null)}
         />
