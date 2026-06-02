@@ -116,10 +116,20 @@ export async function POST(
       clientCoverTitle: changeOrder.client?.coverTitle ?? null,
     });
 
-    const oauth2Client = await getGmailOAuth(params.companyId);
+    let oauth2Client;
+    try {
+      oauth2Client = await getGmailOAuth(params.companyId);
+    } catch (err) {
+      return NextResponse.json({ error: "Gmail auth failed", detail: String(err), step: "getOAuth" }, { status: 500 });
+    }
     const gmail = google.gmail({ version: "v1", auth: oauth2Client });
 
-    const profile = await gmail.users.getProfile({ userId: "me" });
+    let profile;
+    try {
+      profile = await gmail.users.getProfile({ userId: "me" });
+    } catch (err) {
+      return NextResponse.json({ error: "Gmail getProfile failed", detail: String(err), step: "getProfile" }, { status: 500 });
+    }
     const fromEmail = profile.data.emailAddress ?? "me";
 
     const boundary = `----=_Part_${Date.now()}`;
@@ -160,7 +170,7 @@ export async function POST(
       await gmail.users.messages.send({ userId: "me", requestBody: { raw } });
     } catch (err) {
       console.error("Gmail send error:", err);
-      return NextResponse.json({ error: "Failed to send email", detail: String(err) }, { status: 500 });
+      return NextResponse.json({ error: "Failed to send email", detail: String(err), step: "gmailSend", fromEmail }, { status: 500 });
     }
 
     // Log to Communications
