@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef, useCallback } from "react";
+import { put } from "@vercel/blob/client";
 
 type Attachment = { id: string; name: string; url: string; mimeType: string };
 type Message = {
@@ -44,6 +45,7 @@ export default function MessagesTab({
   const [files, setFiles] = useState<File[]>([]);
   const [notifyClient, setNotifyClient] = useState(true);
   const [sending, setSending] = useState(false);
+  const [uploadError, setUploadError] = useState<string | null>(null);
   const [sendingWelcome, setSendingWelcome] = useState(false);
   const [welcomeResult, setWelcomeResult] = useState<{ ok: boolean; msg: string } | null>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
@@ -68,17 +70,43 @@ export default function MessagesTab({
   async function send() {
     if (!content.trim() && files.length === 0) return;
     setSending(true);
-    const fd = new FormData();
-    fd.append("content", content.trim());
-    fd.append("notifyClient", String(notifyClient));
-    for (const f of files) fd.append("files", f);
-    const res = await fetch(`/api/${companyId}/clients/${clientId}/messages`, { method: "POST", body: fd });
-    if (res.ok) {
-      const msg = await res.json();
-      setMessages(prev => [...prev, msg]);
-      setContent("");
-      setFiles([]);
-      textareaRef.current?.focus();
+    setUploadError(null);
+    try {
+      // Upload each file client-side to bypass serverless 4.5MB body limit
+      const attachments: { id: string; name: string; url: string; mimeType: string }[] = [];
+      for (const file of files) {
+        const tokenRes = await fetch(`/api/${companyId}/clients/${clientId}/messages/upload-token`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ filename: file.name }),
+        });
+        if (!tokenRes.ok) throw new Error("Failed to get upload token");
+        const { token, pathname } = await tokenRes.json() as { token: string; pathname: string };
+        const blob = await put(pathname, file, { access: "private", token });
+        attachments.push({
+          id: `${Date.now()}-${Math.random().toString(36).slice(2)}`,
+          name: file.name,
+          url: blob.url,
+          mimeType: file.type || "application/octet-stream",
+        });
+      }
+
+      const res = await fetch(`/api/${companyId}/clients/${clientId}/messages`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ content: content.trim(), notifyClient, attachments }),
+      });
+      if (res.ok) {
+        const msg = await res.json();
+        setMessages(prev => [...prev, msg]);
+        setContent("");
+        setFiles([]);
+        textareaRef.current?.focus();
+      } else {
+        setUploadError("Failed to send message");
+      }
+    } catch (err) {
+      setUploadError(err instanceof Error ? err.message : "Upload failed");
     }
     setSending(false);
   }
@@ -202,6 +230,11 @@ export default function MessagesTab({
 
       {/* Compose */}
       <div className="shrink-0 px-3 pt-2 pb-3 space-y-2" style={{ background: CARD, borderTop: `1px solid ${BORDER}` }}>
+        {uploadError && (
+          <p className="text-xs px-2 py-1.5 rounded-lg" style={{ background: "#2a1010", color: "#ef4444", border: "1px solid #ef444433" }}>
+            {uploadError}
+          </p>
+        )}
         {files.length > 0 && (
           <div className="flex flex-wrap gap-1.5">
             {files.map((f, i) => (

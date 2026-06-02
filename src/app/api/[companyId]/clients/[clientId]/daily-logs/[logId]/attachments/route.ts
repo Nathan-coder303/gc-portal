@@ -41,30 +41,41 @@ export async function POST(
   });
   if (!log) return NextResponse.json({ error: "Not found" }, { status: 404 });
 
-  const formData = await req.formData();
-  const file = formData.get("file") as File | null;
-  if (!file) return NextResponse.json({ error: "No file" }, { status: 400 });
-  if (file.size > 50 * 1024 * 1024) return NextResponse.json({ error: "Max 50MB" }, { status: 400 });
+  let newAttachment: Attachment;
 
-  let blob;
-  try {
-    blob = await put(
-      `daily-logs/${params.logId}/${Date.now()}-${file.name}`,
-      file,
-      { access: "private" }
-    );
-  } catch (err) {
-    console.error("Blob upload failed:", err);
-    return NextResponse.json({ error: `Upload failed: ${String(err)}` }, { status: 500 });
+  const ct = req.headers.get("content-type") ?? "";
+  if (ct.includes("application/json")) {
+    // Client already uploaded to blob — just register metadata
+    const body = await req.json() as { name: string; url: string; size: number; mimeType: string };
+    newAttachment = {
+      id: `${Date.now()}-${Math.random().toString(36).slice(2)}`,
+      name: body.name,
+      url: body.url,
+      size: body.size,
+      mimeType: body.mimeType || "application/octet-stream",
+    };
+  } else {
+    // Legacy: server-side upload (small files only)
+    const formData = await req.formData();
+    const file = formData.get("file") as File | null;
+    if (!file) return NextResponse.json({ error: "No file" }, { status: 400 });
+    if (file.size > 50 * 1024 * 1024) return NextResponse.json({ error: "Max 50MB" }, { status: 400 });
+
+    let blob;
+    try {
+      blob = await put(`daily-logs/${params.logId}/${Date.now()}-${file.name}`, file, { access: "private" });
+    } catch (err) {
+      console.error("Blob upload failed:", err);
+      return NextResponse.json({ error: `Upload failed: ${String(err)}` }, { status: 500 });
+    }
+    newAttachment = {
+      id: `${Date.now()}-${Math.random().toString(36).slice(2)}`,
+      name: file.name,
+      url: blob.url,
+      size: file.size,
+      mimeType: file.type || "application/octet-stream",
+    };
   }
-
-  const newAttachment: Attachment = {
-    id: `${Date.now()}-${Math.random().toString(36).slice(2)}`,
-    name: file.name,
-    url: blob.url,
-    size: file.size,
-    mimeType: file.type || "application/octet-stream",
-  };
 
   const existing = parseAttachments(log.attachments);
   const updated = [...existing, newAttachment];

@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useRef, useCallback, useEffect } from "react";
+import { put } from "@vercel/blob/client";
 
 const GOLD = "#C9A84C";
 const BG = "#0d1117";
@@ -646,35 +647,6 @@ type Attachment = { id: string; name: string; url: string; size: number; mimeTyp
 
 type UploadingFile = { name: string; pct: number };
 
-function uploadWithProgress(
-  url: string,
-  fd: FormData,
-  onProgress: (pct: number) => void,
-): Promise<{ ok: boolean; data: unknown }> {
-  return new Promise((resolve) => {
-    const xhr = new XMLHttpRequest();
-    xhr.open("POST", url);
-    xhr.upload.onprogress = (e) => {
-      if (e.lengthComputable) {
-        const raw = Math.round((e.loaded / e.total) * 100);
-        // snap to nearest 10
-        const snapped = Math.min(Math.floor(raw / 10) * 10, 90);
-        onProgress(snapped);
-      }
-    };
-    xhr.onload = () => {
-      onProgress(100);
-      try {
-        resolve({ ok: xhr.status >= 200 && xhr.status < 300, data: JSON.parse(xhr.responseText) });
-      } catch {
-        resolve({ ok: false, data: { error: "Invalid response" } });
-      }
-    };
-    xhr.onerror = () => resolve({ ok: false, data: { error: "Network error" } });
-    xhr.send(fd);
-  });
-}
-
 function FilesSection({ companyId, clientId, logId }: { companyId: string; clientId: string; logId?: string }) {
   const [attachments, setAttachments] = useState<Attachment[]>([]);
   const [uploading, setUploading] = useState<UploadingFile[]>([]);
@@ -692,14 +664,38 @@ function FilesSection({ companyId, clientId, logId }: { companyId: string; clien
     setError("");
     for (const file of Array.from(files)) {
       setUploading(prev => [...prev, { name: file.name, pct: 0 }]);
-      const fd = new FormData();
-      fd.append("file", file);
-      const { ok, data } = await uploadWithProgress(baseUrl, fd, (pct) => {
-        setUploading(prev => prev.map(u => u.name === file.name ? { ...u, pct } : u));
-      });
-      setUploading(prev => prev.filter(u => u.name !== file.name));
-      if (!ok) { setError((data as { error?: string }).error ?? "Upload failed"); }
-      else { setAttachments(prev => [...prev, data as Attachment]); }
+      try {
+        // Get a client token so the browser uploads directly to Vercel Blob
+        const tokenRes = await fetch(`${baseUrl}/upload-token`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ filename: file.name }),
+        });
+        if (!tokenRes.ok) throw new Error("Could not get upload token");
+        const { token, pathname } = await tokenRes.json() as { token: string; pathname: string };
+
+        const blob = await put(pathname, file, {
+          access: "private",
+          token,
+          onUploadProgress: ({ percentage }) => {
+            setUploading(prev => prev.map(u => u.name === file.name ? { ...u, pct: Math.min(Math.round(percentage), 95) } : u));
+          },
+        });
+
+        // Register the uploaded file's metadata with the server
+        const metaRes = await fetch(baseUrl, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ name: file.name, url: blob.url, size: file.size, mimeType: file.type || "application/octet-stream" }),
+        });
+        if (!metaRes.ok) throw new Error("Failed to save attachment");
+        const saved = await metaRes.json() as Attachment;
+        setAttachments(prev => [...prev, saved]);
+      } catch (err) {
+        setError(err instanceof Error ? err.message : "Upload failed");
+      } finally {
+        setUploading(prev => prev.filter(u => u.name !== file.name));
+      }
     }
   }
 

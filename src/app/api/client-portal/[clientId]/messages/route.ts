@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { put } from "@vercel/blob";
+import { sendPushover } from "@/lib/pushover";
 
 export const runtime = "nodejs";
 
@@ -43,17 +44,25 @@ export async function POST(
   });
   if (!client) return NextResponse.json({ error: "Not found" }, { status: 404 });
 
-  const formData = await req.formData();
-  const content = (formData.get("content") as string) ?? "";
-  const files = formData.getAll("files") as File[];
+  let content = "";
+  let attachments: { id: string; name: string; url: string; mimeType: string }[] = [];
 
-  const attachments: { id: string; name: string; url: string; mimeType: string }[] = [];
-  for (const file of files) {
-    if (file.size > 0) {
-      try {
-        const blob = await put(`messages/${params.clientId}/${Date.now()}-${file.name}`, file, { access: "private" });
-        attachments.push({ id: `${Date.now()}-${Math.random().toString(36).slice(2)}`, name: file.name, url: blob.url, mimeType: file.type || "application/octet-stream" });
-      } catch (err) { console.error("attachment upload failed:", err); }
+  const ct = req.headers.get("content-type") ?? "";
+  if (ct.includes("application/json")) {
+    const body = await req.json() as { content?: string; attachments?: typeof attachments };
+    content = body.content ?? "";
+    attachments = body.attachments ?? [];
+  } else {
+    const formData = await req.formData();
+    content = (formData.get("content") as string) ?? "";
+    const files = formData.getAll("files") as File[];
+    for (const file of files) {
+      if (file.size > 0) {
+        try {
+          const blob = await put(`messages/${params.clientId}/${Date.now()}-${file.name}`, file, { access: "private" });
+          attachments.push({ id: `${Date.now()}-${Math.random().toString(36).slice(2)}`, name: file.name, url: blob.url, mimeType: file.type || "application/octet-stream" });
+        } catch (err) { console.error("attachment upload failed:", err); }
+      }
     }
   }
 
@@ -67,6 +76,22 @@ export async function POST(
       senderName: session.user.name ?? client.name,
       readByClient: true,
     },
+  });
+
+  const preview = content.slice(0, 100) + (content.length > 100 ? "…" : "");
+  const hasAttachments = attachments.length > 0;
+  const notifMessage = [
+    preview || null,
+    hasAttachments ? `📎 ${attachments.length} attachment${attachments.length > 1 ? "s" : ""}` : null,
+  ].filter(Boolean).join("\n") || "(no text)";
+
+  const portalBase = process.env.PORTAL_BASE_URL ?? "https://portal.mibhconstruction.com";
+  await sendPushover({
+    title: `Message from ${client.name}`,
+    message: notifMessage,
+    url: `${portalBase}/client-portal/${params.clientId}`,
+    urlTitle: "Open Portal",
+    priority: 1,
   });
 
   return NextResponse.json(message, { status: 201 });

@@ -44,7 +44,7 @@ const s = StyleSheet.create({
   gridItem: { flex: 1, backgroundColor: CARD, borderRadius: 6, borderWidth: 1, borderColor: BORDER, padding: 8 },
   // Photo grid
   photoGrid: { flexDirection: "row", flexWrap: "wrap", gap: 6 },
-  photoCell: { width: "31.5%", borderRadius: 6, borderWidth: 1.5, borderColor: GOLD, overflow: "hidden", backgroundColor: CARD },
+  photoCell: { width: "31.5%", borderRadius: 6, borderWidth: 1.5, borderColor: "#ffffff", overflow: "hidden", backgroundColor: CARD },
   photoImg: { width: "100%", height: 120 },
   photoName: { fontSize: 6.5, color: MUTED, textAlign: "center", paddingVertical: 3, paddingHorizontal: 2 },
   // List item

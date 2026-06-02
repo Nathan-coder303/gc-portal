@@ -38,19 +38,28 @@ export async function POST(
   const session = await auth();
   if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-  const formData = await req.formData();
-  const content = (formData.get("content") as string) ?? "";
-  const notifyClient = formData.get("notifyClient") === "true";
-  const files = formData.getAll("files") as File[];
+  let content = "";
+  let notifyClient = true;
+  let attachments: { id: string; name: string; url: string; mimeType: string }[] = [];
 
-  // Upload attachments
-  const attachments: { id: string; name: string; url: string; mimeType: string }[] = [];
-  for (const file of files) {
-    if (file.size > 0) {
-      try {
-        const blob = await put(`messages/${params.clientId}/${Date.now()}-${file.name}`, file, { access: "private" });
-        attachments.push({ id: `${Date.now()}-${Math.random().toString(36).slice(2)}`, name: file.name, url: blob.url, mimeType: file.type || "application/octet-stream" });
-      } catch (err) { console.error("attachment upload failed:", err); }
+  const ct = req.headers.get("content-type") ?? "";
+  if (ct.includes("application/json")) {
+    const body = await req.json() as { content?: string; notifyClient?: boolean; attachments?: typeof attachments };
+    content = body.content ?? "";
+    notifyClient = body.notifyClient ?? true;
+    attachments = body.attachments ?? [];
+  } else {
+    const formData = await req.formData();
+    content = (formData.get("content") as string) ?? "";
+    notifyClient = formData.get("notifyClient") === "true";
+    const files = formData.getAll("files") as File[];
+    for (const file of files) {
+      if (file.size > 0) {
+        try {
+          const blob = await put(`messages/${params.clientId}/${Date.now()}-${file.name}`, file, { access: "private" });
+          attachments.push({ id: `${Date.now()}-${Math.random().toString(36).slice(2)}`, name: file.name, url: blob.url, mimeType: file.type || "application/octet-stream" });
+        } catch (err) { console.error("attachment upload failed:", err); }
+      }
     }
   }
 

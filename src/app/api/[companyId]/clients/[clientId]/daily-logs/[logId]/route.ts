@@ -49,7 +49,6 @@ export async function PATCH(
       equipmentDamaged: body.equipmentDamaged ?? null,
       equipmentDamageNotes: body.equipmentDamageNotes ?? null,
       signatureData: body.signatureData ?? null,
-      attachments: body.attachments ? JSON.stringify(body.attachments) : null,
     },
   });
 
