@@ -42,6 +42,11 @@ const s = StyleSheet.create({
   // Grid
   grid2: { flexDirection: "row", gap: 10 },
   gridItem: { flex: 1, backgroundColor: CARD, borderRadius: 6, borderWidth: 1, borderColor: BORDER, padding: 8 },
+  // Photo grid
+  photoGrid: { flexDirection: "row", flexWrap: "wrap", gap: 6 },
+  photoCell: { width: "31.5%", borderRadius: 6, borderWidth: 1.5, borderColor: GOLD, overflow: "hidden", backgroundColor: CARD },
+  photoImg: { width: "100%", height: 120 },
+  photoName: { fontSize: 6.5, color: MUTED, textAlign: "center", paddingVertical: 3, paddingHorizontal: 2 },
   // List item
   listItem: { flexDirection: "row", marginBottom: 4 },
   bullet: { width: 12, color: GOLD, fontSize: 8.5 },
@@ -102,6 +107,7 @@ type DailyLogData = {
   equipmentDamaged: string | null;
   equipmentDamageNotes: string | null;
   createdBy: string | null;
+  attachments?: string | null;
 };
 
 type CompanyInfo = { name: string; address: string; phone: string; email: string; licenses?: string };
@@ -125,7 +131,7 @@ function Section({ title, children }: { title: string; children: React.ReactNode
   );
 }
 
-function DailyLogDocument({ log, company, client }: { log: DailyLogData; company: CompanyInfo; client: ClientInfo }) {
+function DailyLogDocument({ log, company, client, photoDataUrls }: { log: DailyLogData; company: CompanyInfo; client: ClientInfo; photoDataUrls?: { name: string; dataUrl: string }[] }) {
   const logoPath = path.join(process.cwd(), "public", "logo.png");
   const date = new Date(log.arrivalDate);
   const dateStr = date.toLocaleDateString("en-US", { weekday: "long", year: "numeric", month: "long", day: "numeric" });
@@ -361,6 +367,22 @@ function DailyLogDocument({ log, company, client }: { log: DailyLogData; company
           </Section>
         )}
 
+        {/* Site Photos */}
+        {photoDataUrls && photoDataUrls.length > 0 && (
+          <View style={s.section} break>
+            <Text style={s.sectionTitle}>Site Photos</Text>
+            <View style={s.photoGrid}>
+              {photoDataUrls.map((p, i) => (
+                <View key={i} style={s.photoCell}>
+                  {/* eslint-disable-next-line jsx-a11y/alt-text */}
+                  <Image src={p.dataUrl} style={s.photoImg} />
+                  <Text style={s.photoName}>{p.name.length > 30 ? p.name.slice(0, 28) + "…" : p.name}</Text>
+                </View>
+              ))}
+            </View>
+          </View>
+        )}
+
         {/* Footer */}
         <View style={s.footer} fixed>
           <Text style={s.footerText}>{company.name} · Daily Log · {dateStr}</Text>
@@ -371,11 +393,40 @@ function DailyLogDocument({ log, company, client }: { log: DailyLogData; company
   );
 }
 
+async function fetchPhotoAsDataUrl(blobUrl: string, mimeType: string): Promise<string | null> {
+  try {
+    const res = await fetch(blobUrl, {
+      headers: { Authorization: `Bearer ${process.env.BLOB_READ_WRITE_TOKEN}` },
+    });
+    if (!res.ok) return null;
+    const ab = await res.arrayBuffer();
+    const mt = mimeType || res.headers.get("content-type") || "image/jpeg";
+    return `data:${mt};base64,${Buffer.from(ab).toString("base64")}`;
+  } catch {
+    return null;
+  }
+}
+
 export async function renderDailyLogPdf(
   log: DailyLogData,
   company: CompanyInfo,
   client: ClientInfo,
 ): Promise<Buffer> {
-  const buf = await renderToBuffer(<DailyLogDocument log={log} company={company} client={client} />);
+  // Fetch image attachments and convert to base64 for react-pdf
+  type RawAttachment = { id: string; name: string; url: string; mimeType: string };
+  const rawAttachments = parseJson<RawAttachment[]>(log.attachments ?? null, []);
+  const imageAttachments = rawAttachments.filter(a => a.mimeType?.startsWith("image/"));
+
+  const photoDataUrls: { name: string; dataUrl: string }[] = [];
+  await Promise.all(
+    imageAttachments.map(async (a) => {
+      const dataUrl = await fetchPhotoAsDataUrl(a.url, a.mimeType);
+      if (dataUrl) photoDataUrls.push({ name: a.name, dataUrl });
+    })
+  );
+
+  const buf = await renderToBuffer(
+    <DailyLogDocument log={log} company={company} client={client} photoDataUrls={photoDataUrls} />
+  );
   return Buffer.from(buf);
 }
