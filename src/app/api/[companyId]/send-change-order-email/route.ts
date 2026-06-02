@@ -116,11 +116,16 @@ export async function POST(
       clientCoverTitle: changeOrder.client?.coverTitle ?? null,
     });
 
+    const envToken = process.env.GOOGLE_REFRESH_TOKEN;
+    const envClientId = process.env.GOOGLE_CLIENT_ID;
+    const tokenPrefix = envToken?.slice(0, 12) ?? "MISSING";
+    const clientIdPrefix = envClientId?.slice(0, 20) ?? "MISSING";
+
     let oauth2Client;
     try {
       oauth2Client = await getGmailOAuth(params.companyId);
     } catch (err) {
-      return NextResponse.json({ error: "Gmail auth failed", detail: String(err), step: "getOAuth" }, { status: 500 });
+      return NextResponse.json({ error: "Gmail auth failed", detail: String(err), step: "getOAuth", tokenPrefix, clientIdPrefix }, { status: 500 });
     }
     const gmail = google.gmail({ version: "v1", auth: oauth2Client });
 
@@ -128,7 +133,7 @@ export async function POST(
     try {
       profile = await gmail.users.getProfile({ userId: "me" });
     } catch (err) {
-      return NextResponse.json({ error: "Gmail getProfile failed", detail: String(err), step: "getProfile" }, { status: 500 });
+      return NextResponse.json({ error: "Gmail getProfile failed", detail: String(err), step: "getProfile", tokenPrefix, clientIdPrefix }, { status: 500 });
     }
     const fromEmail = profile.data.emailAddress ?? "me";
 
@@ -170,7 +175,7 @@ export async function POST(
       await gmail.users.messages.send({ userId: "me", requestBody: { raw } });
     } catch (err) {
       console.error("Gmail send error:", err);
-      return NextResponse.json({ error: "Failed to send email", detail: String(err), step: "gmailSend", fromEmail }, { status: 500 });
+      return NextResponse.json({ error: "Failed to send email", detail: String(err), step: "gmailSend", fromEmail, tokenPrefix, clientIdPrefix }, { status: 500 });
     }
 
     // Log to Communications
