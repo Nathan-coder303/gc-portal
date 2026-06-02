@@ -25,7 +25,9 @@ export async function GET(
   const attachment = attachments.find(a => a.id === params.attachmentId);
   if (!attachment) return new NextResponse("Not found", { status: 404 });
 
-  const res = await fetch(attachment.url);
+  const res = await fetch(attachment.url, {
+    headers: { Authorization: `Bearer ${process.env.BLOB_READ_WRITE_TOKEN}` },
+  });
   if (!res.ok) return new NextResponse("Failed to fetch file", { status: 502 });
 
   const contentType = attachment.mimeType || res.headers.get("content-type") || "application/octet-stream";

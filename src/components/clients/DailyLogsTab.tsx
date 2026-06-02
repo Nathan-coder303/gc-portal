@@ -784,8 +784,7 @@ function FilesSection({ companyId, clientId, logId }: { companyId: string; clien
           {attachments.map(a => {
             const isImage = a.mimeType.startsWith("image/");
             const isPdf = a.mimeType.includes("pdf");
-            // Use direct blob URL for display (public blobs)
-            const displayUrl = a.url;
+            const displayUrl = `${baseUrl}/${a.id}`;
             return (
               <div key={a.id} className="flex items-center gap-3 p-3 rounded-xl"
                 style={{ background: CARD, border: `1px solid ${BORDER}` }}>

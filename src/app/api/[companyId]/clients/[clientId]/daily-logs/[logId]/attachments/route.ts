@@ -51,7 +51,7 @@ export async function POST(
     blob = await put(
       `daily-logs/${params.logId}/${Date.now()}-${file.name}`,
       file,
-      { access: "public" }
+      { access: "private" }
     );
   } catch (err) {
     console.error("Blob upload failed:", err);
