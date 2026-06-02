@@ -1628,7 +1628,7 @@ function TemplatePdfDocument({ companyName, template, client, divisions, showTer
         ) : (
           // ── Blank form awaiting signatures ───────────────────────────────
           <View style={styles.sigRow}>
-            <View style={styles.sigBlock}>
+            <View style={[styles.sigBlock, hideContractorSignature ? { flex: 0, width: "50%" } : {}]}>
               <Text style={styles.sigPartyLabel}>Customer</Text>
               {clientSignatureData
                 // eslint-disable-next-line jsx-a11y/alt-text
