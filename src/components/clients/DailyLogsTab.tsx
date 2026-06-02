@@ -456,7 +456,7 @@ function PeopleSection({ form, set }: { form: LogForm; set: (k: keyof LogForm, v
               <p className="text-xs" style={{ color: MUTED }}>{[s.company, s.trade].filter(Boolean).join(" · ")}</p>
             </div>
           )}
-          renderAddForm={(draft, setDraft, _) => (
+          renderAddForm={(draft, setDraft) => (
             <div className="space-y-2">
               <TextInput value={draft.name} onChange={v => setDraft({ ...draft, name: v })} placeholder="Name" />
               <TextInput value={draft.company} onChange={v => setDraft({ ...draft, company: v })} placeholder="Company" />
@@ -485,7 +485,7 @@ function NotesSection({ form, set }: { form: LogForm; set: (k: keyof LogForm, v:
               <p className="text-xs" style={{ color: MUTED }}>{n.addedBy}{n.content ? ` — ${n.content.slice(0, 60)}` : ""}</p>
             </div>
           )}
-          renderAddForm={(draft, setDraft, _) => (
+          renderAddForm={(draft, setDraft) => (
             <div className="space-y-2">
               <TextInput value={draft.addedBy} onChange={v => setDraft({ ...draft, addedBy: v })} placeholder="Added By" />
               <TextInput value={draft.title} onChange={v => setDraft({ ...draft, title: v })} placeholder="Title" />
@@ -511,7 +511,7 @@ function NotesSection({ form, set }: { form: LogForm; set: (k: keyof LogForm, v:
               </span>
             </div>
           )}
-          renderAddForm={(draft, setDraft, _) => (
+          renderAddForm={(draft, setDraft) => (
             <div className="space-y-2">
               <TextInput value={draft.type} onChange={v => setDraft({ ...draft, type: v })} placeholder="Inspection Type" />
               <Select value={draft.status} onChange={v => setDraft({ ...draft, status: v })} options={["Passed", "Failed", "Pending", "Scheduled"]} />
@@ -533,7 +533,7 @@ function NotesSection({ form, set }: { form: LogForm; set: (k: keyof LogForm, v:
               <p className="text-xs" style={{ color: MUTED }}>Leader: {n.leader} · {n.attendees} attendees · {n.status}</p>
             </div>
           )}
-          renderAddForm={(draft, setDraft, _) => (
+          renderAddForm={(draft, setDraft) => (
             <div className="space-y-2">
               <TextInput value={draft.name} onChange={v => setDraft({ ...draft, name: v })} placeholder="Meeting Name" />
               <TextInput value={draft.leader} onChange={v => setDraft({ ...draft, leader: v })} placeholder="Leader" />
@@ -565,7 +565,7 @@ function MaterialSection({ form, set }: { form: LogForm; set: (k: keyof LogForm,
           onRemove={i => set("materialDelivered", form.materialDelivered.filter((_, idx) => idx !== i))}
           blankItem={{ item: "", qty: "", supplier: "" }}
           renderItem={n => <p className="text-xs" style={{ color: TEXT }}>{n.item}{n.qty ? ` — ${n.qty}` : ""}{n.supplier ? ` (${n.supplier})` : ""}</p>}
-          renderAddForm={(draft, setDraft, _) => (
+          renderAddForm={(draft, setDraft) => (
             <div className="space-y-2">
               <TextInput value={draft.item} onChange={v => setDraft({ ...draft, item: v })} placeholder="Item / Material" />
               <TextInput value={draft.qty} onChange={v => setDraft({ ...draft, qty: v })} placeholder="Quantity" />
@@ -583,7 +583,7 @@ function MaterialSection({ form, set }: { form: LogForm; set: (k: keyof LogForm,
           onRemove={i => set("materialUsed", form.materialUsed.filter((_, idx) => idx !== i))}
           blankItem={{ item: "", qty: "" }}
           renderItem={n => <p className="text-xs" style={{ color: TEXT }}>{n.item}{n.qty ? ` — ${n.qty}` : ""}</p>}
-          renderAddForm={(draft, setDraft, _) => (
+          renderAddForm={(draft, setDraft) => (
             <div className="space-y-2">
               <TextInput value={draft.item} onChange={v => setDraft({ ...draft, item: v })} placeholder="Item / Material" />
               <TextInput value={draft.qty} onChange={v => setDraft({ ...draft, qty: v })} placeholder="Quantity" />
@@ -613,7 +613,7 @@ function EquipmentSection({ form, set }: { form: LogForm; set: (k: keyof LogForm
           onRemove={i => set("equipmentUsed", form.equipmentUsed.filter((_, idx) => idx !== i))}
           blankItem={{ item: "", qty: "" }}
           renderItem={n => <p className="text-xs" style={{ color: TEXT }}>{n.item}{n.qty ? ` — ${n.qty}` : ""}</p>}
-          renderAddForm={(draft, setDraft, _) => (
+          renderAddForm={(draft, setDraft) => (
             <div className="space-y-2">
               <TextInput value={draft.item} onChange={v => setDraft({ ...draft, item: v })} placeholder="Equipment Name" />
               <TextInput value={draft.qty} onChange={v => setDraft({ ...draft, qty: v })} placeholder="Quantity" />
@@ -630,7 +630,7 @@ function EquipmentSection({ form, set }: { form: LogForm; set: (k: keyof LogForm
           onRemove={i => set("equipmentDelivered", form.equipmentDelivered.filter((_, idx) => idx !== i))}
           blankItem={{ item: "", qty: "" }}
           renderItem={n => <p className="text-xs" style={{ color: TEXT }}>{n.item}{n.qty ? ` — ${n.qty}` : ""}</p>}
-          renderAddForm={(draft, setDraft, _) => (
+          renderAddForm={(draft, setDraft) => (
             <div className="space-y-2">
               <TextInput value={draft.item} onChange={v => setDraft({ ...draft, item: v })} placeholder="Equipment Name" />
               <TextInput value={draft.qty} onChange={v => setDraft({ ...draft, qty: v })} placeholder="Quantity" />
