@@ -19,6 +19,7 @@ import ClientInvoicesTab from "@/components/clients/ClientInvoicesTab";
 import NurturingEmailTab from "@/components/clients/NurturingEmailTab";
 import ChangeOrdersTab from "@/components/clients/ChangeOrdersTab";
 import ClientScheduleTab from "@/components/clients/ClientScheduleTab";
+import DailyLogsTab from "@/components/clients/DailyLogsTab";
 import ClientCommsTab from "@/components/clients/ClientCommsTab";
 import ClientDocumentsTab from "@/components/clients/ClientDocumentsTab";
 import TodayTaskCard, { FollowUpItem } from "@/components/today/TodayTaskCard";
@@ -136,6 +137,13 @@ export default async function ClientDetailPage({
     orderBy: { counterSignedAt: "desc" },
   });
 
+  const dailyLogs = activeTab === "daily-logs"
+    ? await prisma.dailyLog.findMany({
+        where: { clientId: params.clientId, companyId: params.companyId },
+        orderBy: { arrivalDate: "desc" },
+      })
+    : [];
+
   const [clientFollowUps, clientInvoices, changeOrders, clientScheduleTasks, clientEmails] = await Promise.all([
     prisma.followUp.findMany({
       where: { clientId: params.clientId, companyId: params.companyId },
@@ -176,6 +184,7 @@ export default async function ClientDetailPage({
     { key: "files", label: `Files${clientFiles.length > 0 ? ` (${clientFiles.length})` : ""}` },
     { key: "nurturing", label: "Nurturing" },
     { key: "comms", label: `Comms${clientEmails.length > 0 ? ` (${clientEmails.length})` : ""}` },
+    { key: "daily-logs", label: "Daily Logs" },
   ];
 
   return (
@@ -530,6 +539,21 @@ export default async function ClientDetailPage({
             originalFileUrl: `/api/${params.companyId}/clients/${params.clientId}/documents/${d.id}/file`,
             signatureToken: d.signatureToken,
             createdAt: d.createdAt.toISOString(),
+          }))}
+        />
+      )}
+
+      {activeTab === "daily-logs" && (
+        <DailyLogsTab
+          companyId={params.companyId}
+          clientId={params.clientId}
+          clientName={safeClient.name}
+          canEdit={canEdit}
+          initialLogs={dailyLogs.map(l => ({
+            ...l,
+            arrivalDate: l.arrivalDate.toISOString(),
+            createdAt: l.createdAt.toISOString(),
+            updatedAt: l.updatedAt.toISOString(),
           }))}
         />
       )}

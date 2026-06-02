@@ -81,6 +81,7 @@ model Company {
   changeOrders      ChangeOrder[]
   subContractors    SubContractor[]
   payApps           PayApp[]
+  dailyLogs         DailyLog[]
   googleRefreshToken String?
   scopesOfWork      ScopeOfWork[]
   coverNames        Json?          // { [blobUrl]: string }
@@ -199,6 +200,7 @@ model Client {
   portalPhotos      ClientPortalPhoto[]
   portalDocs        ClientPortalDocument[]
   payApps           PayApp[]
+  dailyLogs         DailyLog[]
 }
 
 model ClientSub {
@@ -1267,4 +1269,61 @@ model SubAssignment {
 
   @@index([clientId])
   @@index([companyId])
+}
+
+model DailyLog {
+  id          String   @id @default(cuid())
+  companyId   String
+  company     Company  @relation(fields: [companyId], references: [id])
+  clientId    String
+  client      Client   @relation(fields: [clientId], references: [id], onDelete: Cascade)
+
+  arrivalDate           DateTime
+  departureTime         String?
+  status                String    @default("IN_PROGRESS")
+  siteCondition         String?
+
+  weatherCondition      String?
+  temperature           String?
+  weatherNote           String?
+  weatherDelay          Boolean   @default(false)
+  scheduleDelay         Boolean   @default(false)
+
+  jobsiteConditionNotes String?
+  tasksPerformed        String?
+
+  employeesOnSite       String?
+  visitorsOnSite        Boolean   @default(false)
+  employeeWorkNotes     String?
+  subsOnJobsite         String?   @db.Text
+
+  materialNotes         String?
+  materialDelivered     String?   @db.Text
+  materialUsed          String?   @db.Text
+
+  equipmentNotes        String?
+  equipmentUsed         String?   @db.Text
+  equipmentDelivered    String?   @db.Text
+
+  projectNotes          String?   @db.Text
+  inspections           String?   @db.Text
+  safetyMeetings        String?   @db.Text
+
+  siteAuditConducted    Boolean   @default(false)
+  areasOfConcern        String?
+  workCompletedPct      String?
+  estimatedCompletion   String?
+  groundConditions      String?
+  crewsPresent          String?
+  equipmentDamaged      String?
+  equipmentDamageNotes  String?
+  signatureData         String?   @db.Text
+  attachments           String?   @db.Text
+
+  createdBy   String?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@index([companyId])
+  @@index([clientId])
 }

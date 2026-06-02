@@ -1,0 +1,1056 @@
+"use client";
+
+import { useState, useRef, useCallback } from "react";
+
+const GOLD = "#C9A84C";
+const BG = "#0d1117";
+const CARD = "#161b22";
+const BORDER = "#30373f";
+const TEXT = "#e6edf3";
+const MUTED = "#8b949e";
+
+type Sub = { name: string; company: string; trade: string };
+type ListItem = { item: string; qty: string; supplier?: string };
+type Note = { addedBy: string; title: string; content: string };
+type Inspection = { type: string; status: string };
+type Meeting = { name: string; leader: string; attendees: string; status: string };
+
+type LogForm = {
+  arrivalDate: string;
+  arrivalTime: string;
+  departureTime: string;
+  status: string;
+  siteCondition: string;
+  weatherCondition: string;
+  temperature: string;
+  weatherNote: string;
+  weatherDelay: boolean;
+  scheduleDelay: boolean;
+  jobsiteConditionNotes: string;
+  tasksPerformed: string;
+  employeesOnSite: string;
+  visitorsOnSite: boolean;
+  employeeWorkNotes: string;
+  subsOnJobsite: Sub[];
+  materialNotes: string;
+  materialDelivered: ListItem[];
+  materialUsed: ListItem[];
+  equipmentNotes: string;
+  equipmentUsed: ListItem[];
+  equipmentDelivered: ListItem[];
+  projectNotes: Note[];
+  inspections: Inspection[];
+  safetyMeetings: Meeting[];
+  siteAuditConducted: boolean;
+  areasOfConcern: string;
+  workCompletedPct: string;
+  estimatedCompletion: string;
+  groundConditions: string;
+  crewsPresent: string[];
+  equipmentDamaged: string;
+  equipmentDamageNotes: string;
+  signatureData: string;
+};
+
+type DailyLog = {
+  id: string;
+  arrivalDate: string;
+  departureTime: string | null;
+  status: string;
+  siteCondition: string | null;
+  weatherCondition: string | null;
+  temperature: string | null;
+  weatherNote: string | null;
+  weatherDelay: boolean;
+  scheduleDelay: boolean;
+  jobsiteConditionNotes: string | null;
+  tasksPerformed: string | null;
+  employeesOnSite: string | null;
+  visitorsOnSite: boolean;
+  employeeWorkNotes: string | null;
+  subsOnJobsite: string | null;
+  materialNotes: string | null;
+  materialDelivered: string | null;
+  materialUsed: string | null;
+  equipmentNotes: string | null;
+  equipmentUsed: string | null;
+  equipmentDelivered: string | null;
+  projectNotes: string | null;
+  inspections: string | null;
+  safetyMeetings: string | null;
+  siteAuditConducted: boolean;
+  areasOfConcern: string | null;
+  workCompletedPct: string | null;
+  estimatedCompletion: string | null;
+  groundConditions: string | null;
+  crewsPresent: string | null;
+  equipmentDamaged: string | null;
+  equipmentDamageNotes: string | null;
+  signatureData: string | null;
+  createdBy: string | null;
+  createdAt: string;
+};
+
+const SECTIONS = [
+  { key: "details", label: "Details" },
+  { key: "people", label: "People" },
+  { key: "notes", label: "Notes" },
+  { key: "mtl", label: "MTL" },
+  { key: "equip", label: "EQUIP" },
+  { key: "files", label: "Files" },
+  { key: "custom", label: "Custom" },
+] as const;
+type Section = typeof SECTIONS[number]["key"];
+
+const WEATHER_OPTIONS = ["Sunny", "Partly Cloudy", "Cloudy", "Overcast", "Rainy", "Stormy", "Foggy", "Snowy", "Windy"];
+const SITE_CONDITIONS = ["Clean", "Average", "Poor", "Hazardous"];
+const GROUND_CONDITIONS = ["Dry", "Damp", "Wet", "Muddy", "Frozen", "Sandy"];
+const STATUS_OPTIONS = [
+  { value: "IN_PROGRESS", label: "In Progress" },
+  { value: "COMPLETE", label: "Complete" },
+  { value: "ON_HOLD", label: "On Hold" },
+];
+const CREWS = ["Framing", "Electrical", "Plumbing", "Roofing", "HVAC", "Drywall", "Painting", "Flooring", "Trim", "Concrete", "Landscaping", "Other"];
+
+function blankForm(): LogForm {
+  const now = new Date();
+  const pad = (n: number) => String(n).padStart(2, "0");
+  return {
+    arrivalDate: now.toISOString().split("T")[0],
+    arrivalTime: `${pad(now.getHours())}:${pad(now.getMinutes())}`,
+    departureTime: "",
+    status: "IN_PROGRESS",
+    siteCondition: "",
+    weatherCondition: "",
+    temperature: "",
+    weatherNote: "",
+    weatherDelay: false,
+    scheduleDelay: false,
+    jobsiteConditionNotes: "",
+    tasksPerformed: "",
+    employeesOnSite: "",
+    visitorsOnSite: false,
+    employeeWorkNotes: "",
+    subsOnJobsite: [],
+    materialNotes: "",
+    materialDelivered: [],
+    materialUsed: [],
+    equipmentNotes: "",
+    equipmentUsed: [],
+    equipmentDelivered: [],
+    projectNotes: [],
+    inspections: [],
+    safetyMeetings: [],
+    siteAuditConducted: false,
+    areasOfConcern: "",
+    workCompletedPct: "",
+    estimatedCompletion: "",
+    groundConditions: "",
+    crewsPresent: [],
+    equipmentDamaged: "NO",
+    equipmentDamageNotes: "",
+    signatureData: "",
+  };
+}
+
+function logToForm(log: DailyLog): LogForm {
+  const d = new Date(log.arrivalDate);
+  const pad = (n: number) => String(n).padStart(2, "0");
+  const parseJson = <T,>(s: string | null, fallback: T): T => {
+    if (!s) return fallback;
+    try { return JSON.parse(s) as T; } catch { return fallback; }
+  };
+  return {
+    arrivalDate: d.toISOString().split("T")[0],
+    arrivalTime: `${pad(d.getHours())}:${pad(d.getMinutes())}`,
+    departureTime: log.departureTime ?? "",
+    status: log.status,
+    siteCondition: log.siteCondition ?? "",
+    weatherCondition: log.weatherCondition ?? "",
+    temperature: log.temperature ?? "",
+    weatherNote: log.weatherNote ?? "",
+    weatherDelay: log.weatherDelay,
+    scheduleDelay: log.scheduleDelay,
+    jobsiteConditionNotes: log.jobsiteConditionNotes ?? "",
+    tasksPerformed: log.tasksPerformed ?? "",
+    employeesOnSite: log.employeesOnSite ?? "",
+    visitorsOnSite: log.visitorsOnSite,
+    employeeWorkNotes: log.employeeWorkNotes ?? "",
+    subsOnJobsite: parseJson<Sub[]>(log.subsOnJobsite, []),
+    materialNotes: log.materialNotes ?? "",
+    materialDelivered: parseJson<ListItem[]>(log.materialDelivered, []),
+    materialUsed: parseJson<ListItem[]>(log.materialUsed, []),
+    equipmentNotes: log.equipmentNotes ?? "",
+    equipmentUsed: parseJson<ListItem[]>(log.equipmentUsed, []),
+    equipmentDelivered: parseJson<ListItem[]>(log.equipmentDelivered, []),
+    projectNotes: parseJson<Note[]>(log.projectNotes, []),
+    inspections: parseJson<Inspection[]>(log.inspections, []),
+    safetyMeetings: parseJson<Meeting[]>(log.safetyMeetings, []),
+    siteAuditConducted: log.siteAuditConducted,
+    areasOfConcern: log.areasOfConcern ?? "",
+    workCompletedPct: log.workCompletedPct ?? "",
+    estimatedCompletion: log.estimatedCompletion ?? "",
+    groundConditions: log.groundConditions ?? "",
+    crewsPresent: parseJson<string[]>(log.crewsPresent, []),
+    equipmentDamaged: log.equipmentDamaged ?? "NO",
+    equipmentDamageNotes: log.equipmentDamageNotes ?? "",
+    signatureData: log.signatureData ?? "",
+  };
+}
+
+function formToPayload(f: LogForm) {
+  const [y, m, d] = f.arrivalDate.split("-").map(Number);
+  const [h, min] = f.arrivalTime.split(":").map(Number);
+  const arrivalDate = new Date(y, m - 1, d, h || 0, min || 0).toISOString();
+  return {
+    arrivalDate,
+    departureTime: f.departureTime || null,
+    status: f.status,
+    siteCondition: f.siteCondition || null,
+    weatherCondition: f.weatherCondition || null,
+    temperature: f.temperature || null,
+    weatherNote: f.weatherNote || null,
+    weatherDelay: f.weatherDelay,
+    scheduleDelay: f.scheduleDelay,
+    jobsiteConditionNotes: f.jobsiteConditionNotes || null,
+    tasksPerformed: f.tasksPerformed || null,
+    employeesOnSite: f.employeesOnSite || null,
+    visitorsOnSite: f.visitorsOnSite,
+    employeeWorkNotes: f.employeeWorkNotes || null,
+    subsOnJobsite: f.subsOnJobsite,
+    materialNotes: f.materialNotes || null,
+    materialDelivered: f.materialDelivered,
+    materialUsed: f.materialUsed,
+    equipmentNotes: f.equipmentNotes || null,
+    equipmentUsed: f.equipmentUsed,
+    equipmentDelivered: f.equipmentDelivered,
+    projectNotes: f.projectNotes,
+    inspections: f.inspections,
+    safetyMeetings: f.safetyMeetings,
+    siteAuditConducted: f.siteAuditConducted,
+    areasOfConcern: f.areasOfConcern || null,
+    workCompletedPct: f.workCompletedPct || null,
+    estimatedCompletion: f.estimatedCompletion || null,
+    groundConditions: f.groundConditions || null,
+    crewsPresent: f.crewsPresent,
+    equipmentDamaged: f.equipmentDamaged || null,
+    equipmentDamageNotes: f.equipmentDamageNotes || null,
+    signatureData: f.signatureData || null,
+  };
+}
+
+// ── Shared field components ───────────────────────────────────────────────────
+
+function FieldLabel({ children }: { children: React.ReactNode }) {
+  return <p className="text-xs font-semibold uppercase tracking-widest mb-1.5" style={{ color: MUTED }}>{children}</p>;
+}
+
+function TextInput({ value, onChange, placeholder }: { value: string; onChange: (v: string) => void; placeholder?: string }) {
+  return (
+    <input type="text" value={value} onChange={e => onChange(e.target.value)} placeholder={placeholder}
+      className="w-full rounded-lg px-3 py-2 text-sm"
+      style={{ background: "#0d1117", border: `1px solid ${BORDER}`, color: TEXT, outline: "none" }} />
+  );
+}
+
+function TextArea({ value, onChange, rows = 3, placeholder }: { value: string; onChange: (v: string) => void; rows?: number; placeholder?: string }) {
+  return (
+    <textarea value={value} onChange={e => onChange(e.target.value)} rows={rows} placeholder={placeholder}
+      className="w-full rounded-lg px-3 py-2 text-sm resize-none"
+      style={{ background: "#0d1117", border: `1px solid ${BORDER}`, color: TEXT, outline: "none" }} />
+  );
+}
+
+function Select({ value, onChange, options, placeholder }: { value: string; onChange: (v: string) => void; options: string[] | { value: string; label: string }[]; placeholder?: string }) {
+  return (
+    <select value={value} onChange={e => onChange(e.target.value)}
+      className="w-full rounded-lg px-3 py-2 text-sm"
+      style={{ background: "#0d1117", border: `1px solid ${BORDER}`, color: value ? TEXT : MUTED, outline: "none" }}>
+      {placeholder && <option value="">{placeholder}</option>}
+      {options.map(o => {
+        const val = typeof o === "string" ? o : o.value;
+        const lbl = typeof o === "string" ? o : o.label;
+        return <option key={val} value={val}>{lbl}</option>;
+      })}
+    </select>
+  );
+}
+
+function Toggle({ value, onChange }: { value: boolean; onChange: (v: boolean) => void }) {
+  return (
+    <div className="flex gap-2">
+      {["Yes", "No"].map(opt => (
+        <button key={opt} onClick={() => onChange(opt === "Yes")}
+          className="px-4 py-1.5 rounded-full text-sm font-semibold transition-all"
+          style={{
+            background: (opt === "Yes") === value ? GOLD : "#1e2736",
+            color: (opt === "Yes") === value ? "#0d1117" : MUTED,
+            border: `1px solid ${(opt === "Yes") === value ? GOLD : BORDER}`,
+          }}>
+          {opt}
+        </button>
+      ))}
+    </div>
+  );
+}
+
+function SectionCard({ children }: { children: React.ReactNode }) {
+  return (
+    <div className="rounded-xl p-4 space-y-4" style={{ background: CARD, border: `1px solid ${BORDER}` }}>
+      {children}
+    </div>
+  );
+}
+
+function AddableList<T extends object>({
+  label, items, onAdd, onRemove, renderItem, blankItem, renderAddForm,
+}: {
+  label: string;
+  items: T[];
+  onAdd: (item: T) => void;
+  onRemove: (i: number) => void;
+  renderItem: (item: T, i: number) => React.ReactNode;
+  blankItem: T;
+  renderAddForm?: (draft: T, setDraft: (v: T) => void, onSubmit: () => void) => React.ReactNode;
+}) {
+  const [open, setOpen] = useState(false);
+  const [draft, setDraft] = useState<T>(blankItem);
+
+  function submit() {
+    onAdd(draft);
+    setDraft(blankItem);
+    setOpen(false);
+  }
+
+  return (
+    <div>
+      <div className="flex items-center justify-between mb-2">
+        <p className="text-sm font-semibold" style={{ color: TEXT }}>{label}</p>
+        <button onClick={() => setOpen(o => !o)}
+          className="w-7 h-7 rounded-full flex items-center justify-center text-lg font-bold"
+          style={{ background: "#1e2736", color: GOLD, border: `1px solid ${BORDER}` }}>+</button>
+      </div>
+      {items.map((item, i) => (
+        <div key={i} className="flex items-start justify-between gap-2 rounded-lg px-3 py-2 mb-1"
+          style={{ background: "#0d1117", border: `1px solid ${BORDER}` }}>
+          <div className="flex-1 min-w-0">{renderItem(item, i)}</div>
+          <button onClick={() => onRemove(i)} className="text-xs shrink-0" style={{ color: "#ef4444" }}>✕</button>
+        </div>
+      ))}
+      {open && renderAddForm && (
+        <div className="rounded-lg p-3 space-y-2 mt-1" style={{ background: "#0d1117", border: `1px solid ${GOLD}44` }}>
+          {renderAddForm(draft, setDraft, submit)}
+          <div className="flex gap-2 pt-1">
+            <button onClick={submit} className="flex-1 py-1.5 rounded-lg text-xs font-bold"
+              style={{ background: GOLD, color: "#0d1117" }}>Add</button>
+            <button onClick={() => setOpen(false)} className="px-3 py-1.5 rounded-lg text-xs"
+              style={{ background: "#1e2736", color: MUTED, border: `1px solid ${BORDER}` }}>Cancel</button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ── Section renderers ─────────────────────────────────────────────────────────
+
+function DetailsSection({ form, set }: { form: LogForm; set: (k: keyof LogForm, v: LogForm[keyof LogForm]) => void }) {
+  return (
+    <div className="space-y-4">
+      <SectionCard>
+        <p className="text-xs font-bold uppercase tracking-widest" style={{ color: GOLD }}>Details</p>
+        <div>
+          <FieldLabel>Arrival Date / Time</FieldLabel>
+          <div className="flex gap-2">
+            <input type="date" value={form.arrivalDate} onChange={e => set("arrivalDate", e.target.value)}
+              className="flex-1 rounded-lg px-3 py-2 text-sm"
+              style={{ background: "#0d1117", border: `1px solid ${BORDER}`, color: TEXT, outline: "none" }} />
+            <input type="time" value={form.arrivalTime} onChange={e => set("arrivalTime", e.target.value)}
+              className="w-32 rounded-lg px-3 py-2 text-sm"
+              style={{ background: "#0d1117", border: `1px solid ${BORDER}`, color: TEXT, outline: "none" }} />
+          </div>
+        </div>
+        <div>
+          <FieldLabel>Departure Time</FieldLabel>
+          <input type="time" value={form.departureTime} onChange={e => set("departureTime", e.target.value)}
+            className="w-full rounded-lg px-3 py-2 text-sm"
+            style={{ background: "#0d1117", border: `1px solid ${BORDER}`, color: TEXT, outline: "none" }} />
+        </div>
+        <div>
+          <FieldLabel>Log Status</FieldLabel>
+          <Select value={form.status} onChange={v => set("status", v)} options={STATUS_OPTIONS} />
+        </div>
+        <div>
+          <FieldLabel>Site Condition</FieldLabel>
+          <Select value={form.siteCondition} onChange={v => set("siteCondition", v)} options={SITE_CONDITIONS} placeholder="Select condition" />
+        </div>
+      </SectionCard>
+
+      <SectionCard>
+        <p className="text-xs font-bold uppercase tracking-widest" style={{ color: GOLD }}>Weather</p>
+        <div>
+          <FieldLabel>Condition</FieldLabel>
+          <Select value={form.weatherCondition} onChange={v => set("weatherCondition", v)} options={WEATHER_OPTIONS} placeholder="Select weather" />
+        </div>
+        <div>
+          <FieldLabel>Temperature (°F)</FieldLabel>
+          <TextInput value={form.temperature} onChange={v => set("temperature", v)} placeholder="e.g. 78" />
+        </div>
+        <div>
+          <FieldLabel>Weather Note</FieldLabel>
+          <TextArea value={form.weatherNote} onChange={v => set("weatherNote", v)} rows={2} />
+        </div>
+        <div className="flex items-center justify-between">
+          <p className="text-sm font-medium" style={{ color: TEXT }}>Any Weather Delays?</p>
+          <Toggle value={form.weatherDelay} onChange={v => set("weatherDelay", v)} />
+        </div>
+        <div className="flex items-center justify-between">
+          <p className="text-sm font-medium" style={{ color: TEXT }}>Any Schedule Delays?</p>
+          <Toggle value={form.scheduleDelay} onChange={v => set("scheduleDelay", v)} />
+        </div>
+      </SectionCard>
+
+      <SectionCard>
+        <div>
+          <FieldLabel>Jobsite Condition Notes</FieldLabel>
+          <TextArea value={form.jobsiteConditionNotes} onChange={v => set("jobsiteConditionNotes", v)} rows={3} />
+        </div>
+        <div>
+          <FieldLabel>Tasks Performed</FieldLabel>
+          <TextArea value={form.tasksPerformed} onChange={v => set("tasksPerformed", v)} rows={4} placeholder="Describe the work performed today..." />
+        </div>
+      </SectionCard>
+    </div>
+  );
+}
+
+function PeopleSection({ form, set }: { form: LogForm; set: (k: keyof LogForm, v: LogForm[keyof LogForm]) => void }) {
+  return (
+    <div className="space-y-4">
+      <SectionCard>
+        <p className="text-xs font-bold uppercase tracking-widest" style={{ color: GOLD }}>People on Site</p>
+        <div>
+          <FieldLabel>Employees on Site</FieldLabel>
+          <TextArea value={form.employeesOnSite} onChange={v => set("employeesOnSite", v)} rows={3} placeholder="Names separated by commas or new lines..." />
+        </div>
+        <div className="flex items-center justify-between">
+          <p className="text-sm font-medium" style={{ color: TEXT }}>Any Visitors on Site?</p>
+          <Toggle value={form.visitorsOnSite} onChange={v => set("visitorsOnSite", v)} />
+        </div>
+        <div>
+          <FieldLabel>Employee Work Notes</FieldLabel>
+          <TextArea value={form.employeeWorkNotes} onChange={v => set("employeeWorkNotes", v)} rows={3} />
+        </div>
+      </SectionCard>
+
+      <SectionCard>
+        <AddableList<Sub>
+          label="Subs on Jobsite"
+          items={form.subsOnJobsite}
+          onAdd={item => set("subsOnJobsite", [...form.subsOnJobsite, item])}
+          onRemove={i => set("subsOnJobsite", form.subsOnJobsite.filter((_, idx) => idx !== i))}
+          blankItem={{ name: "", company: "", trade: "" }}
+          renderItem={s => (
+            <div>
+              <p className="text-xs font-semibold" style={{ color: TEXT }}>{s.name}</p>
+              <p className="text-xs" style={{ color: MUTED }}>{[s.company, s.trade].filter(Boolean).join(" · ")}</p>
+            </div>
+          )}
+          renderAddForm={(draft, setDraft, _) => (
+            <div className="space-y-2">
+              <TextInput value={draft.name} onChange={v => setDraft({ ...draft, name: v })} placeholder="Name" />
+              <TextInput value={draft.company} onChange={v => setDraft({ ...draft, company: v })} placeholder="Company" />
+              <TextInput value={draft.trade} onChange={v => setDraft({ ...draft, trade: v })} placeholder="Trade" />
+            </div>
+          )}
+        />
+      </SectionCard>
+    </div>
+  );
+}
+
+function NotesSection({ form, set }: { form: LogForm; set: (k: keyof LogForm, v: LogForm[keyof LogForm]) => void }) {
+  return (
+    <div className="space-y-4">
+      <SectionCard>
+        <AddableList<Note>
+          label="Project Notes"
+          items={form.projectNotes}
+          onAdd={item => set("projectNotes", [...form.projectNotes, item])}
+          onRemove={i => set("projectNotes", form.projectNotes.filter((_, idx) => idx !== i))}
+          blankItem={{ addedBy: "", title: "", content: "" }}
+          renderItem={n => (
+            <div>
+              <p className="text-xs font-semibold" style={{ color: TEXT }}>{n.title}</p>
+              <p className="text-xs" style={{ color: MUTED }}>{n.addedBy}{n.content ? ` — ${n.content.slice(0, 60)}` : ""}</p>
+            </div>
+          )}
+          renderAddForm={(draft, setDraft, _) => (
+            <div className="space-y-2">
+              <TextInput value={draft.addedBy} onChange={v => setDraft({ ...draft, addedBy: v })} placeholder="Added By" />
+              <TextInput value={draft.title} onChange={v => setDraft({ ...draft, title: v })} placeholder="Title" />
+              <TextArea value={draft.content} onChange={v => setDraft({ ...draft, content: v })} rows={2} placeholder="Note content..." />
+            </div>
+          )}
+        />
+      </SectionCard>
+
+      <SectionCard>
+        <AddableList<Inspection>
+          label="Jobsite Inspections"
+          items={form.inspections}
+          onAdd={item => set("inspections", [...form.inspections, item])}
+          onRemove={i => set("inspections", form.inspections.filter((_, idx) => idx !== i))}
+          blankItem={{ type: "", status: "Passed" }}
+          renderItem={n => (
+            <div className="flex items-center justify-between">
+              <p className="text-xs font-semibold" style={{ color: TEXT }}>{n.type}</p>
+              <span className="text-xs px-2 py-0.5 rounded-full font-semibold"
+                style={{ background: n.status === "Passed" ? "#0d2a1a" : "#2a1010", color: n.status === "Passed" ? "#22c55e" : "#ef4444", border: `1px solid ${n.status === "Passed" ? "#22c55e44" : "#ef444444"}` }}>
+                {n.status}
+              </span>
+            </div>
+          )}
+          renderAddForm={(draft, setDraft, _) => (
+            <div className="space-y-2">
+              <TextInput value={draft.type} onChange={v => setDraft({ ...draft, type: v })} placeholder="Inspection Type" />
+              <Select value={draft.status} onChange={v => setDraft({ ...draft, status: v })} options={["Passed", "Failed", "Pending", "Scheduled"]} />
+            </div>
+          )}
+        />
+      </SectionCard>
+
+      <SectionCard>
+        <AddableList<Meeting>
+          label="Safety Meetings"
+          items={form.safetyMeetings}
+          onAdd={item => set("safetyMeetings", [...form.safetyMeetings, item])}
+          onRemove={i => set("safetyMeetings", form.safetyMeetings.filter((_, idx) => idx !== i))}
+          blankItem={{ name: "", leader: "", attendees: "", status: "Completed" }}
+          renderItem={n => (
+            <div>
+              <p className="text-xs font-semibold" style={{ color: TEXT }}>{n.name}</p>
+              <p className="text-xs" style={{ color: MUTED }}>Leader: {n.leader} · {n.attendees} attendees · {n.status}</p>
+            </div>
+          )}
+          renderAddForm={(draft, setDraft, _) => (
+            <div className="space-y-2">
+              <TextInput value={draft.name} onChange={v => setDraft({ ...draft, name: v })} placeholder="Meeting Name" />
+              <TextInput value={draft.leader} onChange={v => setDraft({ ...draft, leader: v })} placeholder="Leader" />
+              <TextInput value={draft.attendees} onChange={v => setDraft({ ...draft, attendees: v })} placeholder="# of Attendees" />
+              <Select value={draft.status} onChange={v => setDraft({ ...draft, status: v })} options={["Completed", "Scheduled", "Cancelled"]} />
+            </div>
+          )}
+        />
+      </SectionCard>
+    </div>
+  );
+}
+
+function MaterialSection({ form, set }: { form: LogForm; set: (k: keyof LogForm, v: LogForm[keyof LogForm]) => void }) {
+  return (
+    <div className="space-y-4">
+      <SectionCard>
+        <div>
+          <FieldLabel>Material Notes</FieldLabel>
+          <TextArea value={form.materialNotes} onChange={v => set("materialNotes", v)} rows={3} />
+        </div>
+      </SectionCard>
+
+      <SectionCard>
+        <AddableList<ListItem>
+          label="Material Items Delivered"
+          items={form.materialDelivered}
+          onAdd={item => set("materialDelivered", [...form.materialDelivered, item])}
+          onRemove={i => set("materialDelivered", form.materialDelivered.filter((_, idx) => idx !== i))}
+          blankItem={{ item: "", qty: "", supplier: "" }}
+          renderItem={n => <p className="text-xs" style={{ color: TEXT }}>{n.item}{n.qty ? ` — ${n.qty}` : ""}{n.supplier ? ` (${n.supplier})` : ""}</p>}
+          renderAddForm={(draft, setDraft, _) => (
+            <div className="space-y-2">
+              <TextInput value={draft.item} onChange={v => setDraft({ ...draft, item: v })} placeholder="Item / Material" />
+              <TextInput value={draft.qty} onChange={v => setDraft({ ...draft, qty: v })} placeholder="Quantity" />
+              <TextInput value={draft.supplier ?? ""} onChange={v => setDraft({ ...draft, supplier: v })} placeholder="Supplier" />
+            </div>
+          )}
+        />
+      </SectionCard>
+
+      <SectionCard>
+        <AddableList<ListItem>
+          label="Material Items Used"
+          items={form.materialUsed}
+          onAdd={item => set("materialUsed", [...form.materialUsed, item])}
+          onRemove={i => set("materialUsed", form.materialUsed.filter((_, idx) => idx !== i))}
+          blankItem={{ item: "", qty: "" }}
+          renderItem={n => <p className="text-xs" style={{ color: TEXT }}>{n.item}{n.qty ? ` — ${n.qty}` : ""}</p>}
+          renderAddForm={(draft, setDraft, _) => (
+            <div className="space-y-2">
+              <TextInput value={draft.item} onChange={v => setDraft({ ...draft, item: v })} placeholder="Item / Material" />
+              <TextInput value={draft.qty} onChange={v => setDraft({ ...draft, qty: v })} placeholder="Quantity" />
+            </div>
+          )}
+        />
+      </SectionCard>
+    </div>
+  );
+}
+
+function EquipmentSection({ form, set }: { form: LogForm; set: (k: keyof LogForm, v: LogForm[keyof LogForm]) => void }) {
+  return (
+    <div className="space-y-4">
+      <SectionCard>
+        <div>
+          <FieldLabel>Equipment Notes</FieldLabel>
+          <TextArea value={form.equipmentNotes} onChange={v => set("equipmentNotes", v)} rows={3} />
+        </div>
+      </SectionCard>
+
+      <SectionCard>
+        <AddableList<ListItem>
+          label="Equipment Items Used"
+          items={form.equipmentUsed}
+          onAdd={item => set("equipmentUsed", [...form.equipmentUsed, item])}
+          onRemove={i => set("equipmentUsed", form.equipmentUsed.filter((_, idx) => idx !== i))}
+          blankItem={{ item: "", qty: "" }}
+          renderItem={n => <p className="text-xs" style={{ color: TEXT }}>{n.item}{n.qty ? ` — ${n.qty}` : ""}</p>}
+          renderAddForm={(draft, setDraft, _) => (
+            <div className="space-y-2">
+              <TextInput value={draft.item} onChange={v => setDraft({ ...draft, item: v })} placeholder="Equipment Name" />
+              <TextInput value={draft.qty} onChange={v => setDraft({ ...draft, qty: v })} placeholder="Quantity" />
+            </div>
+          )}
+        />
+      </SectionCard>
+
+      <SectionCard>
+        <AddableList<ListItem>
+          label="Equipment Items Delivered"
+          items={form.equipmentDelivered}
+          onAdd={item => set("equipmentDelivered", [...form.equipmentDelivered, item])}
+          onRemove={i => set("equipmentDelivered", form.equipmentDelivered.filter((_, idx) => idx !== i))}
+          blankItem={{ item: "", qty: "" }}
+          renderItem={n => <p className="text-xs" style={{ color: TEXT }}>{n.item}{n.qty ? ` — ${n.qty}` : ""}</p>}
+          renderAddForm={(draft, setDraft, _) => (
+            <div className="space-y-2">
+              <TextInput value={draft.item} onChange={v => setDraft({ ...draft, item: v })} placeholder="Equipment Name" />
+              <TextInput value={draft.qty} onChange={v => setDraft({ ...draft, qty: v })} placeholder="Quantity" />
+            </div>
+          )}
+        />
+      </SectionCard>
+    </div>
+  );
+}
+
+function FilesSection({ companyId, clientId, logId }: { companyId: string; clientId: string; logId?: string }) {
+  return (
+    <div className="space-y-4">
+      <SectionCard>
+        <p className="text-xs font-bold uppercase tracking-widest mb-2" style={{ color: GOLD }}>Attachments</p>
+        <p className="text-sm" style={{ color: MUTED }}>File attachments can be added after saving the log. Save first, then attach files.</p>
+        {logId && (
+          <a href={`/api/${companyId}/clients/${clientId}/daily-logs/${logId}`} className="text-xs" style={{ color: GOLD }}>
+            Log saved — attachment support coming soon
+          </a>
+        )}
+      </SectionCard>
+    </div>
+  );
+}
+
+function CustomSection({ form, set }: { form: LogForm; set: (k: keyof LogForm, v: LogForm[keyof LogForm]) => void }) {
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const drawing = useRef(false);
+  const lastPos = useRef<{ x: number; y: number } | null>(null);
+
+  function getPos(e: MouseEvent | TouchEvent, canvas: HTMLCanvasElement) {
+    const rect = canvas.getBoundingClientRect();
+    const scaleX = canvas.width / rect.width;
+    const scaleY = canvas.height / rect.height;
+    if ("touches" in e) {
+      const t = e.touches[0];
+      return { x: (t.clientX - rect.left) * scaleX, y: (t.clientY - rect.top) * scaleY };
+    }
+    return { x: ((e as MouseEvent).clientX - rect.left) * scaleX, y: ((e as MouseEvent).clientY - rect.top) * scaleY };
+  }
+
+  return (
+    <div className="space-y-4">
+      <SectionCard>
+        <p className="text-xs font-bold uppercase tracking-widest" style={{ color: GOLD }}>Site Audit</p>
+        <div className="flex items-center justify-between">
+          <p className="text-sm font-medium" style={{ color: TEXT }}>Site audit conducted before leaving?</p>
+          <Toggle value={form.siteAuditConducted} onChange={v => set("siteAuditConducted", v)} />
+        </div>
+        <div>
+          <FieldLabel>Areas of Concern</FieldLabel>
+          <TextArea value={form.areasOfConcern} onChange={v => set("areasOfConcern", v)} rows={3} placeholder="List any areas that need attention..." />
+        </div>
+      </SectionCard>
+
+      <SectionCard>
+        <p className="text-xs font-bold uppercase tracking-widest" style={{ color: GOLD }}>Progress</p>
+        <div>
+          <FieldLabel>% of Work Completed (Whole Project)</FieldLabel>
+          <TextInput value={form.workCompletedPct} onChange={v => set("workCompletedPct", v)} placeholder="0–100" />
+        </div>
+        <div>
+          <FieldLabel>Estimated Completion Date</FieldLabel>
+          <input type="date" value={form.estimatedCompletion} onChange={e => set("estimatedCompletion", e.target.value)}
+            className="w-full rounded-lg px-3 py-2 text-sm"
+            style={{ background: "#0d1117", border: `1px solid ${BORDER}`, color: TEXT, outline: "none" }} />
+        </div>
+        <div>
+          <FieldLabel>Ground Conditions</FieldLabel>
+          <Select value={form.groundConditions} onChange={v => set("groundConditions", v)} options={GROUND_CONDITIONS} placeholder="Select condition" />
+        </div>
+      </SectionCard>
+
+      <SectionCard>
+        <p className="text-xs font-bold uppercase tracking-widest" style={{ color: GOLD }}>Crews Present</p>
+        <div className="flex flex-wrap gap-2">
+          {CREWS.map(crew => {
+            const on = form.crewsPresent.includes(crew);
+            return (
+              <button key={crew} onClick={() => {
+                const next = on ? form.crewsPresent.filter(c => c !== crew) : [...form.crewsPresent, crew];
+                set("crewsPresent", next);
+              }}
+                className="px-3 py-1 rounded-lg text-xs font-semibold transition-all"
+                style={{ background: on ? GOLD : "#1e2736", color: on ? "#0d1117" : MUTED, border: `1px solid ${on ? GOLD : BORDER}` }}>
+                {crew}
+              </button>
+            );
+          })}
+        </div>
+      </SectionCard>
+
+      <SectionCard>
+        <p className="text-xs font-bold uppercase tracking-widest" style={{ color: GOLD }}>Equipment Status</p>
+        <p className="text-sm font-medium mb-2" style={{ color: TEXT }}>Was any equipment damaged or in need of repair?</p>
+        <div className="flex gap-3">
+          {["YES", "NO", "OTHER"].map(opt => (
+            <button key={opt} onClick={() => set("equipmentDamaged", opt)}
+              className="px-4 py-1.5 rounded-full text-sm font-semibold transition-all"
+              style={{
+                background: form.equipmentDamaged === opt ? GOLD : "#1e2736",
+                color: form.equipmentDamaged === opt ? "#0d1117" : MUTED,
+                border: `1px solid ${form.equipmentDamaged === opt ? GOLD : BORDER}`,
+              }}>
+              {opt.charAt(0) + opt.slice(1).toLowerCase()}
+            </button>
+          ))}
+        </div>
+        {form.equipmentDamaged === "OTHER" && (
+          <div className="mt-2">
+            <TextInput value={form.equipmentDamageNotes} onChange={v => set("equipmentDamageNotes", v)} placeholder="Describe damage or repair needed..." />
+          </div>
+        )}
+      </SectionCard>
+
+      <SectionCard>
+        <p className="text-xs font-bold uppercase tracking-widest mb-2" style={{ color: GOLD }}>Supervisor Signature</p>
+        {form.signatureData ? (
+          <div>
+            <img src={form.signatureData} alt="Signature" className="w-full rounded-lg" style={{ border: `1px solid ${BORDER}`, background: "#fff" }} />
+            <button onClick={() => set("signatureData", "")} className="mt-2 text-xs" style={{ color: "#ef4444" }}>Clear Signature</button>
+          </div>
+        ) : (
+          <div>
+            <div className="rounded-xl overflow-hidden" style={{ border: `2px solid ${BORDER}`, background: "#fff", touchAction: "none" }}>
+              <canvas ref={canvasRef} width={600} height={140} className="w-full" style={{ cursor: "crosshair", display: "block" }}
+                onMouseDown={e => { drawing.current = true; lastPos.current = getPos(e.nativeEvent, canvasRef.current!); e.preventDefault(); }}
+                onMouseMove={e => {
+                  if (!drawing.current || !canvasRef.current) return;
+                  const ctx = canvasRef.current.getContext("2d")!;
+                  const pos = getPos(e.nativeEvent, canvasRef.current);
+                  if (lastPos.current) { ctx.beginPath(); ctx.moveTo(lastPos.current.x, lastPos.current.y); ctx.lineTo(pos.x, pos.y); ctx.strokeStyle = "#1e293b"; ctx.lineWidth = 2.5; ctx.lineCap = "round"; ctx.stroke(); }
+                  lastPos.current = pos; e.preventDefault();
+                }}
+                onMouseUp={() => { drawing.current = false; if (canvasRef.current) set("signatureData", canvasRef.current.toDataURL("image/png")); }}
+                onMouseLeave={() => { drawing.current = false; if (canvasRef.current) set("signatureData", canvasRef.current.toDataURL("image/png")); }}
+                onTouchStart={e => { drawing.current = true; lastPos.current = getPos(e.nativeEvent, canvasRef.current!); e.preventDefault(); }}
+                onTouchMove={e => {
+                  if (!drawing.current || !canvasRef.current) return;
+                  const ctx = canvasRef.current.getContext("2d")!;
+                  const pos = getPos(e.nativeEvent, canvasRef.current);
+                  if (lastPos.current) { ctx.beginPath(); ctx.moveTo(lastPos.current.x, lastPos.current.y); ctx.lineTo(pos.x, pos.y); ctx.strokeStyle = "#1e293b"; ctx.lineWidth = 2.5; ctx.lineCap = "round"; ctx.stroke(); }
+                  lastPos.current = pos; e.preventDefault();
+                }}
+                onTouchEnd={() => { drawing.current = false; if (canvasRef.current) set("signatureData", canvasRef.current.toDataURL("image/png")); }}
+              />
+            </div>
+            <p className="text-xs mt-1 text-center" style={{ color: MUTED }}>Draw signature above</p>
+          </div>
+        )}
+      </SectionCard>
+    </div>
+  );
+}
+
+// ── Log Editor ────────────────────────────────────────────────────────────────
+
+function LogEditor({
+  companyId, clientId, clientName, initial, onSave, onCancel,
+}: {
+  companyId: string;
+  clientId: string;
+  clientName: string;
+  initial: DailyLog | null;
+  onSave: (log: DailyLog) => void;
+  onCancel: () => void;
+}) {
+  const [section, setSection] = useState<Section>("details");
+  const [form, setForm] = useState<LogForm>(initial ? logToForm(initial) : blankForm());
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState("");
+
+  const setField = useCallback(<K extends keyof LogForm>(k: K, v: LogForm[K]) => {
+    setForm(f => ({ ...f, [k]: v }));
+  }, []);
+
+  async function handleSave() {
+    setSaving(true);
+    setError("");
+    try {
+      const payload = formToPayload(form);
+      const url = initial
+        ? `/api/${companyId}/clients/${clientId}/daily-logs/${initial.id}`
+        : `/api/${companyId}/clients/${clientId}/daily-logs`;
+      const res = await fetch(url, {
+        method: initial ? "PATCH" : "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+      const data = await res.json();
+      if (!res.ok) { setError(data.error ?? "Save failed"); return; }
+      onSave(data);
+    } catch { setError("Network error"); }
+    finally { setSaving(false); }
+  }
+
+  const sectionContent = {
+    details: <DetailsSection form={form} set={setField} />,
+    people: <PeopleSection form={form} set={setField} />,
+    notes: <NotesSection form={form} set={setField} />,
+    mtl: <MaterialSection form={form} set={setField} />,
+    equip: <EquipmentSection form={form} set={setField} />,
+    files: <FilesSection companyId={companyId} clientId={clientId} logId={initial?.id} />,
+    custom: <CustomSection form={form} set={setField} />,
+  };
+
+  return (
+    <div className="flex flex-col h-full" style={{ background: BG }}>
+      {/* Header */}
+      <div className="flex items-center justify-between px-4 py-3 shrink-0"
+        style={{ background: "#161b22", borderBottom: `1px solid ${BORDER}` }}>
+        <button onClick={onCancel} className="text-sm font-medium px-3 py-1.5 rounded-lg"
+          style={{ color: MUTED, background: "#1e2736", border: `1px solid ${BORDER}` }}>
+          Cancel
+        </button>
+        <div className="text-center">
+          <p className="text-sm font-bold" style={{ color: TEXT }}>Daily Log</p>
+          <p className="text-xs" style={{ color: MUTED }}>{clientName}</p>
+        </div>
+        <button onClick={handleSave} disabled={saving}
+          className="text-sm font-bold px-3 py-1.5 rounded-lg disabled:opacity-50"
+          style={{ background: GOLD, color: "#0d1117" }}>
+          {saving ? "Saving…" : "Save"}
+        </button>
+      </div>
+
+      {/* Desktop top tabs */}
+      <div className="hidden md:flex gap-1 px-4 pt-3 pb-0 shrink-0 overflow-x-auto">
+        {SECTIONS.map(s => (
+          <button key={s.key} onClick={() => setSection(s.key)}
+            className="px-4 py-2 rounded-t-lg text-sm font-semibold whitespace-nowrap transition-all"
+            style={{
+              background: section === s.key ? CARD : "transparent",
+              color: section === s.key ? GOLD : MUTED,
+              borderBottom: section === s.key ? `2px solid ${GOLD}` : "2px solid transparent",
+            }}>
+            {s.label}
+          </button>
+        ))}
+      </div>
+
+      {/* Content */}
+      <div className="flex-1 overflow-y-auto px-4 py-4 pb-24 md:pb-4">
+        {error && <p className="text-sm mb-3 p-3 rounded-lg" style={{ background: "#2a1010", color: "#ef4444", border: "1px solid #ef444444" }}>{error}</p>}
+        {sectionContent[section]}
+      </div>
+
+      {/* Mobile bottom tab bar */}
+      <div className="flex md:hidden fixed bottom-0 left-0 right-0 z-50"
+        style={{ background: "#161b22", borderTop: `1px solid ${BORDER}` }}>
+        {SECTIONS.map(s => (
+          <button key={s.key} onClick={() => setSection(s.key)}
+            className="flex-1 py-2.5 text-center transition-all"
+            style={{ borderBottom: section === s.key ? `2px solid ${GOLD}` : "2px solid transparent" }}>
+            <p className="text-[10px] font-semibold" style={{ color: section === s.key ? GOLD : MUTED }}>{s.label}</p>
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+// ── Log Card (list view) ──────────────────────────────────────────────────────
+
+function statusBadge(status: string) {
+  const map: Record<string, { bg: string; color: string; label: string }> = {
+    IN_PROGRESS: { bg: "#2a1f00", color: "#f59e0b", label: "In Progress" },
+    COMPLETE: { bg: "#0d2a1a", color: "#22c55e", label: "Complete" },
+    ON_HOLD: { bg: "#1a1a2e", color: "#8b949e", label: "On Hold" },
+  };
+  const s = map[status] ?? map.IN_PROGRESS;
+  return (
+    <span className="text-xs font-semibold px-2 py-0.5 rounded-full"
+      style={{ background: s.bg, color: s.color, border: `1px solid ${s.color}44` }}>
+      {s.label}
+    </span>
+  );
+}
+
+function LogCard({ log, onClick }: { log: DailyLog; onClick: () => void }) {
+  const date = new Date(log.arrivalDate);
+  const dateStr = date.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
+  const dayStr = date.toLocaleDateString("en-US", { weekday: "long" });
+
+  return (
+    <button onClick={onClick} className="w-full text-left rounded-xl p-4 transition-all hover:border-opacity-60"
+      style={{ background: CARD, border: `1px solid ${BORDER}` }}>
+      <div className="flex items-start justify-between gap-3 mb-2">
+        <div>
+          <p className="text-base font-bold" style={{ color: TEXT }}>{dateStr}</p>
+          <p className="text-xs" style={{ color: MUTED }}>{dayStr}</p>
+        </div>
+        {statusBadge(log.status)}
+      </div>
+      {log.tasksPerformed && (
+        <p className="text-sm mb-2 line-clamp-2" style={{ color: "#c9d1d9" }}>{log.tasksPerformed}</p>
+      )}
+      <div className="flex flex-wrap gap-3 mt-1">
+        {log.weatherCondition && (
+          <span className="text-xs" style={{ color: MUTED }}>
+            🌤 {log.weatherCondition}{log.temperature ? ` · ${log.temperature}°F` : ""}
+          </span>
+        )}
+        {log.employeesOnSite && (
+          <span className="text-xs" style={{ color: MUTED }}>
+            👷 {log.employeesOnSite.split(/[,\n]/).filter(Boolean).length} on site
+          </span>
+        )}
+        {log.weatherDelay && <span className="text-xs" style={{ color: "#f59e0b" }}>⚠ Weather delay</span>}
+        {log.scheduleDelay && <span className="text-xs" style={{ color: "#ef4444" }}>⚠ Schedule delay</span>}
+        {log.createdBy && <span className="text-xs" style={{ color: MUTED }}>By {log.createdBy}</span>}
+      </div>
+    </button>
+  );
+}
+
+// ── Main component ────────────────────────────────────────────────────────────
+
+export default function DailyLogsTab({
+  companyId,
+  clientId,
+  clientName,
+  initialLogs,
+  canEdit,
+}: {
+  companyId: string;
+  clientId: string;
+  clientName: string;
+  initialLogs: DailyLog[];
+  canEdit: boolean;
+}) {
+  const [logs, setLogs] = useState<DailyLog[]>(initialLogs);
+  const [editing, setEditing] = useState<DailyLog | null | "new">(null);
+  const [search, setSearch] = useState("");
+
+  function handleSaved(log: DailyLog) {
+    setLogs(prev => {
+      const idx = prev.findIndex(l => l.id === log.id);
+      if (idx >= 0) { const next = [...prev]; next[idx] = log; return next; }
+      return [log, ...prev];
+    });
+    setEditing(null);
+  }
+
+  async function handleDelete(id: string) {
+    if (!confirm("Delete this daily log?")) return;
+    await fetch(`/api/${companyId}/clients/${clientId}/daily-logs/${id}`, { method: "DELETE" });
+    setLogs(prev => prev.filter(l => l.id !== id));
+  }
+
+  if (editing !== null) {
+    return (
+      <div className="fixed inset-0 z-40 flex flex-col md:relative md:inset-auto md:z-auto" style={{ background: BG }}>
+        <LogEditor
+          companyId={companyId}
+          clientId={clientId}
+          clientName={clientName}
+          initial={editing === "new" ? null : editing}
+          onSave={handleSaved}
+          onCancel={() => setEditing(null)}
+        />
+      </div>
+    );
+  }
+
+  const filtered = logs.filter(l => {
+    if (!search) return true;
+    const q = search.toLowerCase();
+    return (
+      (l.tasksPerformed ?? "").toLowerCase().includes(q) ||
+      new Date(l.arrivalDate).toLocaleDateString().includes(q) ||
+      (l.status ?? "").toLowerCase().includes(q) ||
+      (l.employeesOnSite ?? "").toLowerCase().includes(q)
+    );
+  });
+
+  return (
+    <div className="space-y-4">
+      {/* Header */}
+      <div className="flex items-center gap-3">
+        <div className="relative flex-1">
+          <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm" style={{ color: MUTED }}>🔍</span>
+          <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search daily logs…"
+            className="w-full rounded-xl pl-8 pr-3 py-2 text-sm"
+            style={{ background: CARD, border: `1px solid ${BORDER}`, color: TEXT, outline: "none" }} />
+        </div>
+        {canEdit && (
+          <button onClick={() => setEditing("new")}
+            className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-bold shrink-0 transition-opacity hover:opacity-80"
+            style={{ background: GOLD, color: "#0d1117" }}>
+            + New Log
+          </button>
+        )}
+      </div>
+
+      {/* Log list */}
+      {filtered.length === 0 ? (
+        <div className="rounded-xl p-10 text-center" style={{ background: CARD, border: `1px solid ${BORDER}` }}>
+          <p className="text-2xl mb-2">📋</p>
+          <p className="text-sm font-semibold mb-1" style={{ color: TEXT }}>{search ? "No logs match your search" : "No daily logs yet"}</p>
+          <p className="text-xs" style={{ color: MUTED }}>{search ? "Try a different search" : "Tap '+ New Log' to create the first one"}</p>
+        </div>
+      ) : (
+        <div className="space-y-2">
+          {filtered.map(log => (
+            <div key={log.id} className="relative group">
+              <LogCard log={log} onClick={() => setEditing(log)} />
+              {canEdit && (
+                <button onClick={() => handleDelete(log.id)}
+                  className="absolute top-3 right-3 opacity-0 group-hover:opacity-100 text-xs px-2 py-0.5 rounded transition-opacity"
+                  style={{ color: "#ef4444", background: "#2a1010", border: "1px solid #ef444433" }}>
+                  Delete
+                </button>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
