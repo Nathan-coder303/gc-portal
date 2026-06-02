@@ -257,6 +257,7 @@ type TemplatePdfProps = {
   scopeTitle?: string | null;
   branding?: Partial<CompanyBranding> | null;
   hideEstimateLabel?: boolean;
+  hideContractorSignature?: boolean;
   changeOrderNotes?: string | null;
   progressPaymentPct?: number | null;
   progressPaymentPhase?: string | null;
@@ -1492,7 +1493,7 @@ function ScopeOfWorkPage({ title, body, client }: { title: string; body: string;
   );
 }
 
-function TemplatePdfDocument({ companyName, template, client, divisions, showTerms, termsContent, paymentSchedule, gcFeePercent, summaryGroups, clientSignatureData, clientSignedByName, clientSignedAt, contractorSignatureData, contractorSignedAt, includeRoofUpgradesPage, includeCoverPage, includeAdditionPages, includePermitPages, includeRetailPages, includeDivisionSummary, insertPageOffset, insulationType, clientCoverPhotoType, clientCoverPhotoUrl, clientCoverTitle, forcedBreakCsiPrefixes = [], forcedBreakTerms = false, scopeOfWork, scopeTitle, hideEstimateLabel = false, changeOrderNotes }: TemplatePdfProps) {
+function TemplatePdfDocument({ companyName, template, client, divisions, showTerms, termsContent, paymentSchedule, gcFeePercent, summaryGroups, clientSignatureData, clientSignedByName, clientSignedAt, contractorSignatureData, contractorSignedAt, includeRoofUpgradesPage, includeCoverPage, includeAdditionPages, includePermitPages, includeRetailPages, includeDivisionSummary, insertPageOffset, insulationType, clientCoverPhotoType, clientCoverPhotoUrl, clientCoverTitle, forcedBreakCsiPrefixes = [], forcedBreakTerms = false, scopeOfWork, scopeTitle, hideEstimateLabel = false, changeOrderNotes, hideContractorSignature = false }: TemplatePdfProps) {
   const branding = useBranding();
   const grouped = groupDivisions(divisions);
 
@@ -1613,6 +1614,7 @@ function TemplatePdfDocument({ companyName, template, client, divisions, showTer
                 {clientSignedAt && <Text style={{ fontSize: 7.5, color: "#64748b" }}>Date &amp; Time: {clientSignedAt.toLocaleString("en-US", { month: "long", day: "numeric", year: "numeric", hour: "numeric", minute: "2-digit", timeZone: "America/New_York", timeZoneName: "short" })}</Text>}
               </View>
             )}
+            {!hideContractorSignature && (
             <View style={{ flex: 1, borderWidth: 1, borderColor: "#e2e8f0", borderRadius: 4, padding: 10, backgroundColor: "#f8fafc" }}>
               <Text style={{ fontSize: 7.5, fontFamily: "Helvetica-Bold", color: GOLD, marginBottom: 8, letterSpacing: 1 }}>CONTRACTOR</Text>
               {/* eslint-disable-next-line jsx-a11y/alt-text */}
@@ -1621,6 +1623,7 @@ function TemplatePdfDocument({ companyName, template, client, divisions, showTer
               <Text style={{ fontSize: 8, color: DARK, fontFamily: "Helvetica-Bold", marginBottom: 3 }}>Name: {branding.contactName}</Text>
               {contractorSignedAt && <Text style={{ fontSize: 7.5, color: "#64748b" }}>Date &amp; Time: {contractorSignedAt.toLocaleString("en-US", { month: "long", day: "numeric", year: "numeric", hour: "numeric", minute: "2-digit", timeZone: "America/New_York", timeZoneName: "short" })}</Text>}
             </View>
+            )}
           </View>
         ) : (
           // ── Blank form awaiting signatures ───────────────────────────────
@@ -1645,6 +1648,7 @@ function TemplatePdfDocument({ companyName, template, client, divisions, showTer
                 : <View style={{ height: 8 }} />}
               <Text style={styles.sigLineLabel}>Date &amp; Time</Text>
             </View>
+            {!hideContractorSignature && (
             <View style={styles.sigBlock}>
               <Text style={styles.sigPartyLabel}>Contractor</Text>
               <View style={[styles.sigLine, { marginBottom: 3, height: 32 }]} />
@@ -1658,6 +1662,7 @@ function TemplatePdfDocument({ companyName, template, client, divisions, showTer
               <View style={{ height: 8 }} />
               <Text style={styles.sigLineLabel}>Date &amp; Time</Text>
             </View>
+            )}
           </View>
         )}
       </View>

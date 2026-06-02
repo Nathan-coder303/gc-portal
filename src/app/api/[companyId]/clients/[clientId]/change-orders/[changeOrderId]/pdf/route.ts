@@ -136,6 +136,7 @@ export async function GET(
     includeAdditionPages: false,
     includeRetailPages: false,
     includeCoverPage: false,
+    hideContractorSignature: true,
     includeDivisionSummary,
     forcedBreakCsiPrefixes,
     clientCoverPhotoType: null,
