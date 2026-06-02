@@ -22,14 +22,14 @@ function resolveItems(items: { id: string; csiCode: string | null; divisionName:
     divMap.get(it.divisionName)!.items.push({
       id: it.id,
       name: it.name,
-      detail: it.description ?? null,
+      detail: null,
       unit: it.unit ?? null,
       csiCode: it.csiCode ?? null,
       defaultQty: it.qty != null ? Number(it.qty) : null,
       defaultUnitCost: it.unitCost != null ? Number(it.unitCost) : null,
       defaultMarkupPct: it.markupPct != null ? Number(it.markupPct) : null,
       visibleInPdf: true,
-      notes: null,
+      notes: it.description ?? null,
     });
   }
 
