@@ -145,6 +145,7 @@ function DailyLogDocument({ log, company, client }: { log: DailyLogData; company
       <Page size="LETTER" style={s.page}>
         {/* Header */}
         <View style={s.header}>
+          {/* eslint-disable-next-line jsx-a11y/alt-text */}
           <Image src={logoPath} style={s.logo} />
           <View style={s.companyBlock}>
             <Text style={s.companyName}>{company.name}</Text>
