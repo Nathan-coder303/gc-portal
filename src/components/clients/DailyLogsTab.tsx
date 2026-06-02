@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef, useCallback } from "react";
+import { useState, useRef, useCallback, useEffect } from "react";
 
 const GOLD = "#C9A84C";
 const BG = "#0d1117";
@@ -642,18 +642,133 @@ function EquipmentSection({ form, set }: { form: LogForm; set: (k: keyof LogForm
   );
 }
 
+type Attachment = { id: string; name: string; url: string; size: number; mimeType: string };
+
 function FilesSection({ companyId, clientId, logId }: { companyId: string; clientId: string; logId?: string }) {
+  const [attachments, setAttachments] = useState<Attachment[]>([]);
+  const [uploading, setUploading] = useState(false);
+  const [error, setError] = useState("");
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const baseUrl = logId ? `/api/${companyId}/clients/${clientId}/daily-logs/${logId}/attachments` : null;
+
+  useEffect(() => {
+    if (!baseUrl) return;
+    fetch(baseUrl).then(r => r.json()).then(setAttachments).catch(() => {});
+  }, [baseUrl]);
+
+  async function handleFiles(files: FileList | null) {
+    if (!files || !baseUrl) return;
+    setError("");
+    setUploading(true);
+    for (const file of Array.from(files)) {
+      try {
+        const fd = new FormData();
+        fd.append("file", file);
+        const res = await fetch(baseUrl, { method: "POST", body: fd });
+        const data = await res.json();
+        if (!res.ok) { setError(data.error ?? "Upload failed"); continue; }
+        setAttachments(prev => [...prev, data]);
+      } catch { setError("Upload failed"); }
+    }
+    setUploading(false);
+  }
+
+  async function handleDelete(id: string) {
+    if (!baseUrl || !confirm("Remove this attachment?")) return;
+    await fetch(`${baseUrl}?id=${id}`, { method: "DELETE" });
+    setAttachments(prev => prev.filter(a => a.id !== id));
+  }
+
+  function fmtSize(bytes: number) {
+    if (bytes < 1024) return `${bytes} B`;
+    if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+    return `${(bytes / 1024 / 1024).toFixed(1)} MB`;
+  }
+
+  if (!logId) {
+    return (
+      <div className="space-y-4">
+        <SectionCard>
+          <p className="text-xs font-bold uppercase tracking-widest mb-2" style={{ color: GOLD }}>Attachments</p>
+          <p className="text-sm" style={{ color: MUTED }}>Save the log first, then you can attach photos and files.</p>
+        </SectionCard>
+      </div>
+    );
+  }
+
   return (
-    <div className="space-y-4">
-      <SectionCard>
-        <p className="text-xs font-bold uppercase tracking-widest mb-2" style={{ color: GOLD }}>Attachments</p>
-        <p className="text-sm" style={{ color: MUTED }}>File attachments can be added after saving the log. Save first, then attach files.</p>
-        {logId && (
-          <a href={`/api/${companyId}/clients/${clientId}/daily-logs/${logId}`} className="text-xs" style={{ color: GOLD }}>
-            Log saved — attachment support coming soon
-          </a>
-        )}
-      </SectionCard>
+    <div className="space-y-3">
+      <div className="flex items-center justify-between">
+        <p className="text-xs font-bold uppercase tracking-widest" style={{ color: GOLD }}>
+          Attachments {attachments.length > 0 && <span style={{ color: MUTED }}>({attachments.length})</span>}
+        </p>
+        <button
+          onClick={() => fileInputRef.current?.click()}
+          disabled={uploading}
+          className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold disabled:opacity-50 transition-opacity hover:opacity-80"
+          style={{ background: GOLD, color: "#0d1117" }}>
+          {uploading ? "Uploading…" : "+ Add"}
+        </button>
+        <input
+          ref={fileInputRef}
+          type="file"
+          multiple
+          accept="image/*,application/pdf,.pdf,.doc,.docx,.xls,.xlsx,.txt,.csv"
+          className="hidden"
+          onChange={e => handleFiles(e.target.files)}
+        />
+      </div>
+
+      {error && <p className="text-xs p-2 rounded-lg" style={{ background: "#2a1010", color: "#ef4444" }}>{error}</p>}
+
+      {attachments.length === 0 && !uploading && (
+        <button
+          onClick={() => fileInputRef.current?.click()}
+          className="w-full rounded-xl p-8 text-center border-2 border-dashed transition-colors hover:border-opacity-80"
+          style={{ borderColor: BORDER, background: CARD }}>
+          <p className="text-2xl mb-2">📎</p>
+          <p className="text-sm font-semibold mb-1" style={{ color: TEXT }}>No attachments yet</p>
+          <p className="text-xs" style={{ color: MUTED }}>Tap to add photos, PDFs, or documents</p>
+        </button>
+      )}
+
+      {attachments.length > 0 && (
+        <div className="space-y-2">
+          {attachments.map(a => {
+            const isImage = a.mimeType.startsWith("image/");
+            const isPdf = a.mimeType.includes("pdf");
+            const proxyUrl = `${baseUrl}/${a.id}`;
+            return (
+              <div key={a.id} className="flex items-center gap-3 p-3 rounded-xl"
+                style={{ background: CARD, border: `1px solid ${BORDER}` }}>
+                {isImage ? (
+                  <a href={proxyUrl} target="_blank" rel="noreferrer" className="shrink-0">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img src={proxyUrl} alt={a.name} className="w-12 h-12 rounded-lg object-cover" />
+                  </a>
+                ) : (
+                  <div className="w-12 h-12 rounded-lg flex items-center justify-center shrink-0 text-xl"
+                    style={{ background: isPdf ? "#2a1a10" : "#1a1a2e" }}>
+                    {isPdf ? "📄" : "📁"}
+                  </div>
+                )}
+                <div className="flex-1 min-w-0">
+                  <a href={proxyUrl} target="_blank" rel="noreferrer"
+                    className="text-sm font-medium truncate block hover:underline" style={{ color: TEXT }}>
+                    {a.name}
+                  </a>
+                  <p className="text-xs" style={{ color: MUTED }}>{fmtSize(a.size)}</p>
+                </div>
+                <button onClick={() => handleDelete(a.id)}
+                  className="shrink-0 text-xs px-2 py-1 rounded transition-opacity hover:opacity-80"
+                  style={{ color: "#ef4444", background: "#2a1010", border: "1px solid #ef444433" }}>
+                  Remove
+                </button>
+              </div>
+            );
+          })}
+        </div>
+      )}
     </div>
   );
 }
