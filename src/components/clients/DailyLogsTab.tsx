@@ -737,14 +737,16 @@ function FilesSection({ companyId, clientId, logId }: { companyId: string; clien
           {attachments.map(a => {
             const isImage = a.mimeType.startsWith("image/");
             const isPdf = a.mimeType.includes("pdf");
+            // Use direct blob URL for display (public blobs), proxy only for download
+            const displayUrl = a.url;
             const proxyUrl = `${baseUrl}/${a.id}`;
             return (
               <div key={a.id} className="flex items-center gap-3 p-3 rounded-xl"
                 style={{ background: CARD, border: `1px solid ${BORDER}` }}>
                 {isImage ? (
-                  <a href={proxyUrl} target="_blank" rel="noreferrer" className="shrink-0">
+                  <a href={displayUrl} target="_blank" rel="noreferrer" className="shrink-0">
                     {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img src={proxyUrl} alt={a.name} className="w-12 h-12 rounded-lg object-cover" />
+                    <img src={displayUrl} alt={a.name} className="w-12 h-12 rounded-lg object-cover" />
                   </a>
                 ) : (
                   <div className="w-12 h-12 rounded-lg flex items-center justify-center shrink-0 text-xl"
@@ -753,7 +755,7 @@ function FilesSection({ companyId, clientId, logId }: { companyId: string; clien
                   </div>
                 )}
                 <div className="flex-1 min-w-0">
-                  <a href={proxyUrl} target="_blank" rel="noreferrer"
+                  <a href={displayUrl} target="_blank" rel="noreferrer"
                     className="text-sm font-medium truncate block hover:underline" style={{ color: TEXT }}>
                     {a.name}
                   </a>

@@ -46,11 +46,17 @@ export async function POST(
   if (!file) return NextResponse.json({ error: "No file" }, { status: 400 });
   if (file.size > 50 * 1024 * 1024) return NextResponse.json({ error: "Max 50MB" }, { status: 400 });
 
-  const blob = await put(
-    `daily-logs/${params.logId}/${Date.now()}-${file.name}`,
-    file,
-    { access: "private" }
-  );
+  let blob;
+  try {
+    blob = await put(
+      `daily-logs/${params.logId}/${Date.now()}-${file.name}`,
+      file,
+      { access: "public" }
+    );
+  } catch (err) {
+    console.error("Blob upload failed:", err);
+    return NextResponse.json({ error: `Upload failed: ${String(err)}` }, { status: 500 });
+  }
 
   const newAttachment: Attachment = {
     id: `${Date.now()}-${Math.random().toString(36).slice(2)}`,
