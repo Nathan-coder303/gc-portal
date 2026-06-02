@@ -4,7 +4,7 @@ import { TrashIcon } from "@/components/ui/icons";
 
 type PortalUser = { id: string; email: string; name: string; createdAt: string };
 type Doc   = { id: string; category: string; label: string; fileName: string; fileSize: number; uploadedAt: string };
-type Settings = { portalShowMessages: boolean; portalShowDailyPhotos: boolean; portalShowDocuments: boolean };
+type Settings = { portalShowMessages: boolean; portalShowDailyPhotos: boolean; portalShowDocuments: boolean; portalShowDailyLogs: boolean };
 
 const DOC_CATEGORIES = [
   { value: "PERMIT_CARD",        label: "Permit Card" },
@@ -67,6 +67,7 @@ export default function ClientPortalTab({
     portalShowMessages: true,
     portalShowDailyPhotos: true,
     portalShowDocuments: true,
+    portalShowDailyLogs: true,
   });
   const [loading, setLoading] = useState(true);
   const [savingSettings, setSavingSettings] = useState(false);
@@ -305,6 +306,11 @@ Founder/CEO | MIBH Construction
           value={settings.portalShowDocuments}
           onChange={v => toggleSetting("portalShowDocuments", v)}
           label="Documents — permits, NOC, and uploaded files"
+        />
+        <Toggle
+          value={settings.portalShowDailyLogs}
+          onChange={v => toggleSetting("portalShowDailyLogs", v)}
+          label="Daily Logs — view logs with PDF download"
         />
       </div>
 

@@ -1102,11 +1102,25 @@ function LogCard({ log, onClick }: { log: DailyLog; onClick: () => void }) {
 // ── Send Email Modal ─────────────────────────────────────────────────────────
 
 function SendLogEmailModal({
-  companyId, clientId, logId, clientEmail, onClose,
-}: { companyId: string; clientId: string; logId: string; clientEmail: string | null; onClose: () => void }) {
-  const [to, setTo] = useState(clientEmail ?? "");
+  companyId, clientId, logId, onClose,
+}: { companyId: string; clientId: string; logId: string; onClose: () => void }) {
+  const [to, setTo] = useState("");
+  const [subject, setSubject] = useState("");
+  const [body, setBody] = useState("");
+  const [loading, setLoading] = useState(true);
   const [sending, setSending] = useState(false);
   const [result, setResult] = useState<{ ok: boolean; msg: string } | null>(null);
+
+  useEffect(() => {
+    fetch(`/api/${companyId}/clients/${clientId}/daily-logs/${logId}/send-email`)
+      .then(r => r.json())
+      .then(d => {
+        setTo(d.to ?? "");
+        setSubject(d.defaultSubject ?? "");
+        setBody(d.defaultBody ?? "");
+      })
+      .finally(() => setLoading(false));
+  }, [companyId, clientId, logId]);
 
   async function send() {
     if (!to.trim()) return;
@@ -1115,40 +1129,78 @@ function SendLogEmailModal({
       const res = await fetch(`/api/${companyId}/clients/${clientId}/daily-logs/${logId}/send-email`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ to: to.trim() }),
+        body: JSON.stringify({ to: to.trim(), subject, body }),
       });
       const data = await res.json();
-      setResult(res.ok ? { ok: true, msg: "Email sent!" } : { ok: false, msg: data.error ?? "Send failed" });
+      if (res.ok) {
+        setResult({ ok: true, msg: "Email sent!" });
+        setTimeout(() => onClose(), 1800);
+      } else {
+        setResult({ ok: false, msg: data.error ?? "Send failed" });
+      }
     } catch { setResult({ ok: false, msg: "Network error" }); }
     finally { setSending(false); }
   }
 
+  const inputStyle = { background: BG, border: `1px solid ${BORDER}`, color: TEXT, outline: "none" };
+
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ background: "rgba(0,0,0,0.7)" }}>
-      <div className="w-full max-w-sm rounded-2xl p-6 space-y-4" style={{ background: CARD, border: `1px solid ${BORDER}` }}>
-        <p className="text-sm font-bold" style={{ color: TEXT }}>Send Daily Log PDF</p>
-        <div>
-          <label className="text-xs font-semibold block mb-1" style={{ color: MUTED }}>To</label>
-          <input value={to} onChange={e => setTo(e.target.value)} placeholder="client@email.com"
-            className="w-full rounded-lg px-3 py-2 text-sm"
-            style={{ background: BG, border: `1px solid ${BORDER}`, color: TEXT, outline: "none" }} />
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ background: "rgba(0,0,0,0.75)" }}>
+      <div className="w-full max-w-lg rounded-2xl p-6 space-y-4 overflow-y-auto" style={{ background: CARD, border: `1px solid ${BORDER}`, maxHeight: "90vh" }}>
+        <div className="flex items-center justify-between">
+          <p className="text-base font-bold" style={{ color: TEXT }}>Send Daily Log PDF</p>
+          <button onClick={onClose} style={{ color: MUTED, fontSize: 20, lineHeight: 1 }}>×</button>
         </div>
+
+        {loading ? (
+          <p className="text-sm py-4 text-center" style={{ color: MUTED }}>Loading…</p>
+        ) : (
+          <>
+            <div>
+              <label className="text-xs font-semibold block mb-1" style={{ color: MUTED }}>To</label>
+              <input value={to} onChange={e => setTo(e.target.value)} placeholder="client@email.com"
+                className="w-full rounded-lg px-3 py-2 text-sm" style={inputStyle} />
+            </div>
+            <div>
+              <label className="text-xs font-semibold block mb-1" style={{ color: MUTED }}>Subject</label>
+              <input value={subject} onChange={e => setSubject(e.target.value)}
+                className="w-full rounded-lg px-3 py-2 text-sm" style={inputStyle} />
+            </div>
+            <div>
+              <label className="text-xs font-semibold block mb-1" style={{ color: MUTED }}>Message</label>
+              <textarea
+                value={body}
+                onChange={e => setBody(e.target.value)}
+                rows={12}
+                className="w-full rounded-lg px-3 py-2 text-sm font-mono"
+                style={{ ...inputStyle, resize: "vertical" }}
+              />
+            </div>
+          </>
+        )}
+
         {result && (
-          <p className="text-xs p-2 rounded-lg" style={{ background: result.ok ? "#0d2a1a" : "#2a1010", color: result.ok ? "#22c55e" : "#ef4444" }}>
+          <p className="text-sm font-medium px-3 py-2 rounded-lg" style={{ background: result.ok ? "#0d2a1a" : "#2a1010", color: result.ok ? "#22c55e" : "#ef4444" }}>
             {result.msg}
           </p>
         )}
-        <div className="flex gap-2">
-          <button onClick={onClose} className="flex-1 py-2 rounded-lg text-sm"
-            style={{ background: "#1e2736", color: MUTED, border: `1px solid ${BORDER}` }}>
-            {result?.ok ? "Close" : "Cancel"}
+
+        <div className="flex gap-3 pt-1">
+          <button
+            onClick={send}
+            disabled={sending || loading || !to.trim()}
+            className="flex-1 py-2.5 rounded-xl text-sm font-bold disabled:opacity-50"
+            style={{ background: GOLD, color: "#0d1117" }}
+          >
+            {sending ? "Sending…" : "Send Email + PDF"}
           </button>
-          {!result?.ok && (
-            <button onClick={send} disabled={sending || !to.trim()} className="flex-1 py-2 rounded-lg text-sm font-bold disabled:opacity-50"
-              style={{ background: GOLD, color: "#0d1117" }}>
-              {sending ? "Sending…" : "Send"}
-            </button>
-          )}
+          <button
+            onClick={onClose}
+            className="px-5 py-2.5 rounded-xl text-sm"
+            style={{ background: "#30373f", color: TEXT }}
+          >
+            Cancel
+          </button>
         </div>
       </div>
     </div>
@@ -1240,7 +1292,6 @@ export default function DailyLogsTab({
           companyId={companyId}
           clientId={clientId}
           logId={sendingLogId}
-          clientEmail={clientEmail ?? null}
           onClose={() => setSendingLogId(null)}
         />
       )}

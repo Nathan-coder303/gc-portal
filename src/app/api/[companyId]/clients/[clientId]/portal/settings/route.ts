@@ -13,7 +13,7 @@ export async function GET(
 
   const client = await prisma.client.findFirst({
     where: { id: params.clientId, companyId: params.companyId },
-    select: { portalShowMessages: true, portalShowDailyPhotos: true, portalShowDocuments: true },
+    select: { portalShowMessages: true, portalShowDailyPhotos: true, portalShowDocuments: true, portalShowDailyLogs: true },
   });
   if (!client) return NextResponse.json({ error: "Not found" }, { status: 404 });
 
@@ -31,9 +31,10 @@ export async function PATCH(
     portalShowMessages: boolean;
     portalShowDailyPhotos: boolean;
     portalShowDocuments: boolean;
+    portalShowDailyLogs: boolean;
   }>;
 
-  const allowed = ["portalShowMessages", "portalShowDailyPhotos", "portalShowDocuments"] as const;
+  const allowed = ["portalShowMessages", "portalShowDailyPhotos", "portalShowDocuments", "portalShowDailyLogs"] as const;
   const data: Record<string, boolean> = {};
   for (const key of allowed) {
     if (typeof body[key] === "boolean") data[key] = body[key] as boolean;
@@ -42,7 +43,7 @@ export async function PATCH(
   const client = await prisma.client.update({
     where: { id: params.clientId },
     data,
-    select: { portalShowMessages: true, portalShowDailyPhotos: true, portalShowDocuments: true },
+    select: { portalShowMessages: true, portalShowDailyPhotos: true, portalShowDocuments: true, portalShowDailyLogs: true },
   });
 
   return NextResponse.json(client);

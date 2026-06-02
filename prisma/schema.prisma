@@ -185,6 +185,7 @@ model Client {
   portalShowMessages       Boolean   @default(true)
   portalShowDailyPhotos    Boolean   @default(true)
   portalShowDocuments      Boolean   @default(true)
+  portalShowDailyLogs      Boolean   @default(true)
   templates      EstimateTemplate[]
   subBids        SubBid[]
   files          ClientFile[]

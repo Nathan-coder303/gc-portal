@@ -23,6 +23,49 @@ function stripHtmlSignature(html: string): string {
     .trim();
 }
 
+export async function GET(
+  _req: NextRequest,
+  { params }: { params: { companyId: string; clientId: string; logId: string } }
+) {
+  const session = await auth();
+  if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
+  const log = await prisma.dailyLog.findFirst({
+    where: { id: params.logId, clientId: params.clientId, companyId: params.companyId },
+    include: { client: { select: { name: true, email: true, emailList: true } } },
+  });
+  if (!log) return NextResponse.json({ error: "Not found" }, { status: 404 });
+
+  const emails = (log.client.emailList as string[] | null)?.filter(Boolean) ?? [];
+  const to = emails.length > 0 ? emails.join(", ") : log.client.email ?? "";
+
+  const logDate = new Date(log.arrivalDate);
+  const friendlyDate = logDate.toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric", year: "numeric" });
+  const defaultSubject = `Daily Log - ${log.client.name} - ${logDate.toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" })}`;
+
+  let signature = "";
+  try {
+    const oauth2Client = await getGmailOAuth(params.companyId);
+    const gmail = google.gmail({ version: "v1", auth: oauth2Client });
+    const sendAsList = await gmail.users.settings.sendAs.list({ userId: "me" });
+    const defaultSendAs = sendAsList.data.sendAs?.find((s) => s.isDefault) ?? sendAsList.data.sendAs?.[0];
+    if (defaultSendAs?.signature) signature = stripHtmlSignature(defaultSendAs.signature);
+  } catch { /* gmail not connected */ }
+
+  const defaultBody = [
+    `Hi ${log.client.name},`,
+    ``,
+    `Please find attached your Daily Log for ${friendlyDate}.`,
+    ``,
+    `This report summarizes the work performed, personnel on site, materials, equipment, and any site conditions noted for the day. Please review it at your convenience and don't hesitate to reach out if you have any questions.`,
+    ``,
+    `We appreciate your continued trust in us and remain committed to keeping you informed every step of the way.`,
+    ...(signature ? [``, signature] : []),
+  ].join("\n");
+
+  return NextResponse.json({ to, defaultSubject, defaultBody });
+}
+
 export async function POST(
   req: NextRequest,
   { params }: { params: { companyId: string; clientId: string; logId: string } }

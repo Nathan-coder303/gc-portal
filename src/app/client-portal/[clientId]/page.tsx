@@ -4,6 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { signOut } from "@/lib/auth";
 import PortalMessages from "@/components/portal/PortalMessages";
 import PortalPhotoGallery from "@/components/portal/PortalPhotoGallery";
+import PortalDailyLogs from "@/components/portal/PortalDailyLogs";
 
 export const dynamic = "force-dynamic";
 
@@ -34,6 +35,7 @@ export default async function ClientPortalPage({ params }: { params: { clientId:
   const showMessages    = client.portalShowMessages;
   const showDailyPhotos = client.portalShowDailyPhotos;
   const showDocuments   = client.portalShowDocuments;
+  const showDailyLogs   = client.portalShowDailyLogs;
 
   const docsByCategory: Record<string, typeof client.portalDocs> = {};
   for (const doc of client.portalDocs) {
@@ -149,8 +151,18 @@ export default async function ClientPortalPage({ params }: { params: { clientId:
           </section>
         )}
 
+        {/* ── Daily Logs ── */}
+        {showDailyLogs && (
+          <section>
+            <h2 className="text-sm font-bold uppercase tracking-widest mb-4" style={{ color: "#C9A84C" }}>
+              Daily Logs
+            </h2>
+            <PortalDailyLogs clientId={client.id} />
+          </section>
+        )}
+
         {/* Empty state */}
-        {!showMessages && !showDailyPhotos && !showDocuments && (
+        {!showMessages && !showDailyPhotos && !showDocuments && !showDailyLogs && (
           <div className="text-center py-20">
             <p className="text-sm" style={{ color: "#484f58" }}>Your portal content is being set up. Check back soon.</p>
           </div>
