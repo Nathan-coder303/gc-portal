@@ -188,11 +188,17 @@ function ItemRow({
           ×
         </button>
       </div>
-      <input
+      <textarea
         value={item.description}
         onChange={e => onChange(index, "description", e.target.value)}
+        onInput={e => {
+          const el = e.currentTarget;
+          el.style.height = "auto";
+          el.style.height = `${el.scrollHeight}px`;
+        }}
+        rows={1}
         className="w-full rounded px-2 py-1 text-xs mb-2"
-        style={{ ...inputStyle, color: "#8b949e" }}
+        style={{ ...inputStyle, color: "#8b949e", resize: "none", overflow: "hidden", lineHeight: "1.5" }}
         placeholder="Description (optional)"
       />
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 items-end">
@@ -394,9 +400,14 @@ function ChangeOrderEditor({
             <textarea
               value={notes}
               onChange={e => setNotes(e.target.value)}
+              onInput={e => {
+                const el = e.currentTarget;
+                el.style.height = "auto";
+                el.style.height = `${el.scrollHeight}px`;
+              }}
               rows={2}
-              className="w-full rounded-lg px-3 py-2 text-sm resize-none"
-              style={inputStyle}
+              className="w-full rounded-lg px-3 py-2 text-sm"
+              style={{ ...inputStyle, resize: "none", overflow: "hidden" }}
               placeholder="Reason for change order…"
             />
           </div>
