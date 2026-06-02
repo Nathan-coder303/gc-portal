@@ -1625,10 +1625,32 @@ function TemplatePdfDocument({ companyName, template, client, divisions, showTer
             </View>
             )}
           </View>
+        ) : hideContractorSignature ? (
+          // ── CO: client-only signature at half-page width ─────────────────
+          <View style={{ width: "50%", marginTop: 10 }}>
+            <Text style={styles.sigPartyLabel}>Customer</Text>
+            {clientSignatureData
+              // eslint-disable-next-line jsx-a11y/alt-text
+              ? <Image src={clientSignatureData} style={{ height: 32, marginBottom: 3, objectFit: "contain", objectPositionX: 0 }} />
+              : <View style={[styles.sigLine, { marginBottom: 3, height: 32 }]} />}
+            <Text style={styles.sigLineLabel}>Signature</Text>
+            <View style={{ height: 4 }} />
+            <View style={styles.sigLine} />
+            {clientSignedByName
+              ? <Text style={styles.sigPrefilled}>{clientSignedByName}</Text>
+              : <View style={{ height: 8 }} />}
+            <Text style={styles.sigLineLabel}>Name (Print)</Text>
+            <View style={{ height: 4 }} />
+            <View style={styles.sigLine} />
+            {clientSignedAt
+              ? <Text style={styles.sigPrefilled}>{clientSignedAt.toLocaleString("en-US", { month: "long", day: "numeric", year: "numeric", hour: "numeric", minute: "2-digit", timeZone: "America/New_York", timeZoneName: "short" })}</Text>
+              : <View style={{ height: 8 }} />}
+            <Text style={styles.sigLineLabel}>Date &amp; Time</Text>
+          </View>
         ) : (
           // ── Blank form awaiting signatures ───────────────────────────────
           <View style={styles.sigRow}>
-            <View style={[styles.sigBlock, hideContractorSignature ? { flex: 0, width: "50%" } : {}]}>
+            <View style={styles.sigBlock}>
               <Text style={styles.sigPartyLabel}>Customer</Text>
               {clientSignatureData
                 // eslint-disable-next-line jsx-a11y/alt-text
@@ -1648,7 +1670,6 @@ function TemplatePdfDocument({ companyName, template, client, divisions, showTer
                 : <View style={{ height: 8 }} />}
               <Text style={styles.sigLineLabel}>Date &amp; Time</Text>
             </View>
-            {!hideContractorSignature && (
             <View style={styles.sigBlock}>
               <Text style={styles.sigPartyLabel}>Contractor</Text>
               <View style={[styles.sigLine, { marginBottom: 3, height: 32 }]} />
@@ -1662,7 +1683,6 @@ function TemplatePdfDocument({ companyName, template, client, divisions, showTer
               <View style={{ height: 8 }} />
               <Text style={styles.sigLineLabel}>Date &amp; Time</Text>
             </View>
-            )}
           </View>
         )}
       </View>
