@@ -644,9 +644,40 @@ function EquipmentSection({ form, set }: { form: LogForm; set: (k: keyof LogForm
 
 type Attachment = { id: string; name: string; url: string; size: number; mimeType: string };
 
+type UploadingFile = { name: string; pct: number };
+
+function uploadWithProgress(
+  url: string,
+  fd: FormData,
+  onProgress: (pct: number) => void,
+): Promise<{ ok: boolean; data: unknown }> {
+  return new Promise((resolve) => {
+    const xhr = new XMLHttpRequest();
+    xhr.open("POST", url);
+    xhr.upload.onprogress = (e) => {
+      if (e.lengthComputable) {
+        const raw = Math.round((e.loaded / e.total) * 100);
+        // snap to nearest 10
+        const snapped = Math.min(Math.floor(raw / 10) * 10, 90);
+        onProgress(snapped);
+      }
+    };
+    xhr.onload = () => {
+      onProgress(100);
+      try {
+        resolve({ ok: xhr.status >= 200 && xhr.status < 300, data: JSON.parse(xhr.responseText) });
+      } catch {
+        resolve({ ok: false, data: { error: "Invalid response" } });
+      }
+    };
+    xhr.onerror = () => resolve({ ok: false, data: { error: "Network error" } });
+    xhr.send(fd);
+  });
+}
+
 function FilesSection({ companyId, clientId, logId }: { companyId: string; clientId: string; logId?: string }) {
   const [attachments, setAttachments] = useState<Attachment[]>([]);
-  const [uploading, setUploading] = useState(false);
+  const [uploading, setUploading] = useState<UploadingFile[]>([]);
   const [error, setError] = useState("");
   const fileInputRef = useRef<HTMLInputElement>(null);
   const baseUrl = logId ? `/api/${companyId}/clients/${clientId}/daily-logs/${logId}/attachments` : null;
@@ -659,18 +690,17 @@ function FilesSection({ companyId, clientId, logId }: { companyId: string; clien
   async function handleFiles(files: FileList | null) {
     if (!files || !baseUrl) return;
     setError("");
-    setUploading(true);
     for (const file of Array.from(files)) {
-      try {
-        const fd = new FormData();
-        fd.append("file", file);
-        const res = await fetch(baseUrl, { method: "POST", body: fd });
-        const data = await res.json();
-        if (!res.ok) { setError(data.error ?? "Upload failed"); continue; }
-        setAttachments(prev => [...prev, data]);
-      } catch { setError("Upload failed"); }
+      setUploading(prev => [...prev, { name: file.name, pct: 0 }]);
+      const fd = new FormData();
+      fd.append("file", file);
+      const { ok, data } = await uploadWithProgress(baseUrl, fd, (pct) => {
+        setUploading(prev => prev.map(u => u.name === file.name ? { ...u, pct } : u));
+      });
+      setUploading(prev => prev.filter(u => u.name !== file.name));
+      if (!ok) { setError((data as { error?: string }).error ?? "Upload failed"); }
+      else { setAttachments(prev => [...prev, data as Attachment]); }
     }
-    setUploading(false);
   }
 
   async function handleDelete(id: string) {
@@ -704,10 +734,9 @@ function FilesSection({ companyId, clientId, logId }: { companyId: string; clien
         </p>
         <button
           onClick={() => fileInputRef.current?.click()}
-          disabled={uploading}
-          className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold disabled:opacity-50 transition-opacity hover:opacity-80"
+          className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-opacity hover:opacity-80"
           style={{ background: GOLD, color: "#0d1117" }}>
-          {uploading ? "Uploading…" : "+ Add"}
+          + Add
         </button>
         <input
           ref={fileInputRef}
@@ -721,7 +750,25 @@ function FilesSection({ companyId, clientId, logId }: { companyId: string; clien
 
       {error && <p className="text-xs p-2 rounded-lg" style={{ background: "#2a1010", color: "#ef4444" }}>{error}</p>}
 
-      {attachments.length === 0 && !uploading && (
+      {/* Upload progress bars */}
+      {uploading.length > 0 && (
+        <div className="space-y-2">
+          {uploading.map(u => (
+            <div key={u.name} className="rounded-xl p-3" style={{ background: CARD, border: `1px solid ${BORDER}` }}>
+              <div className="flex items-center justify-between mb-1.5">
+                <p className="text-xs truncate max-w-[200px]" style={{ color: TEXT }}>{u.name}</p>
+                <p className="text-xs font-bold shrink-0 ml-2" style={{ color: GOLD }}>{u.pct}%</p>
+              </div>
+              <div className="h-1.5 rounded-full overflow-hidden" style={{ background: BORDER }}>
+                <div className="h-full rounded-full transition-all duration-300"
+                  style={{ width: `${u.pct}%`, background: u.pct === 100 ? "#22c55e" : GOLD }} />
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {attachments.length === 0 && uploading.length === 0 && (
         <button
           onClick={() => fileInputRef.current?.click()}
           className="w-full rounded-xl p-8 text-center border-2 border-dashed transition-colors hover:border-opacity-80"
