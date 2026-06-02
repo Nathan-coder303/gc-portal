@@ -3,19 +3,10 @@ import { google } from "googleapis";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { renderTemplatePdf } from "@/lib/estimates/templatePdf";
+import { getGmailOAuth } from "@/lib/gmail";
 
 export const runtime = "nodejs";
 export const maxDuration = 30;
-
-function getOAuthClient() {
-  const oauth2Client = new google.auth.OAuth2(
-    process.env.GOOGLE_CLIENT_ID,
-    process.env.GOOGLE_CLIENT_SECRET,
-    "urn:ietf:wg:oauth:2.0:oob"
-  );
-  oauth2Client.setCredentials({ refresh_token: process.env.GOOGLE_REFRESH_TOKEN });
-  return oauth2Client;
-}
 
 function buildDivisions(items: { id: string; csiCode: string | null; divisionName: string; name: string; description: string | null; qty: unknown; unit: string | null; unitCost: unknown; markupPct: unknown; sortOrder: number }[]) {
   const divMap = new Map<string, { id: string; csiCode: string | null; name: string; groups: never[]; items: { id: string; name: string; detail: string | null; unit: string | null; csiCode: string | null; defaultQty: number | null; defaultUnitCost: number | null; defaultMarkupPct: number | null; visibleInPdf: boolean; notes: string | null }[] }>();
@@ -125,7 +116,7 @@ export async function POST(
       clientCoverTitle: changeOrder.client?.coverTitle ?? null,
     });
 
-    const oauth2Client = getOAuthClient();
+    const oauth2Client = await getGmailOAuth(params.companyId);
     const gmail = google.gmail({ version: "v1", auth: oauth2Client });
 
     const profile = await gmail.users.getProfile({ userId: "me" });
