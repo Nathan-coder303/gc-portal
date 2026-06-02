@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { google } from "googleapis";
+import crypto from "crypto";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { renderTemplatePdf } from "@/lib/estimates/templatePdf";
@@ -107,6 +108,7 @@ export async function POST(
       paymentSchedule: null,
       gcFeePercent: null,
       summaryGroups: null,
+      hideContractorSignature: true,
       includeRoofUpgradesPage: page2 === "ROOF",
       includeAdditionPages: page2 === "ADDITION",
       includeRetailPages: page2 === "RETAIL",
@@ -137,6 +139,18 @@ export async function POST(
     }
     const fromEmail = profile.data.emailAddress ?? "me";
 
+    // Generate or reuse sign token
+    let signToken = changeOrder.signatureToken;
+    if (!signToken) {
+      signToken = crypto.randomBytes(32).toString("hex");
+      await prisma.changeOrder.update({
+        where: { id: changeOrderId },
+        data: { signatureToken: signToken },
+      });
+    }
+    const signUrl = `https://portal.mibhconstruction.com/sign-co/${signToken}`;
+    const fullEmailBody = `${emailBody}\n\n---\nApprove & sign this change order here: ${signUrl}`;
+
     const boundary = `----=_Part_${Date.now()}`;
     const clientSlug = changeOrder.client ? `-${changeOrder.client.name.replace(/[^a-z0-9]/gi, "-")}` : "";
     const coSlug = changeOrder.orderNumber ? `CO-${changeOrder.orderNumber}` : "ChangeOrder";
@@ -159,7 +173,7 @@ export async function POST(
       `--${boundary}`,
       `Content-Type: text/plain; charset=UTF-8`,
       ``,
-      emailBody,
+      fullEmailBody,
       ``,
       `--${boundary}`,
       `Content-Type: application/pdf; name="${filename}"`,

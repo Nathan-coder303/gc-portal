@@ -1121,6 +1121,7 @@ model ChangeOrder {
   orderNumber   String?
   status        String            @default("DRAFT") // DRAFT | SENT | APPROVED | REJECTED
   notes         String?
+  signatureToken String?          @unique
   signatureData String?           @db.Text
   signedAt      DateTime?
   signedByName  String?

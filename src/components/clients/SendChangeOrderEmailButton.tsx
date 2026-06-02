@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import CoverPagePickerModal, { CoverType, COVER_OPTIONS, PdfOptions, Page2Type } from "@/components/clients/CoverPagePickerModal";
 
 const MIKE_SIGNATURE = `Mike Baruh
@@ -45,9 +45,21 @@ export default function SendChangeOrderEmailButton({
 
   const defaultCover: CoverType = (clientCoverPhotoType as CoverType) ?? (isCommercial ? "ADDITIONS" : "FLAT_ROOFS");
 
+  function loadEmailOpts() {
+    try {
+      const raw = localStorage.getItem(`co-email-opts-${clientId}`);
+      if (raw) return JSON.parse(raw) as { coverType: CoverType; page2: Page2Type };
+    } catch { /* ignore */ }
+    return null;
+  }
+
   const [step, setStep] = useState<"cover" | "email" | null>(null);
-  const [coverType, setCoverType] = useState<CoverType>(defaultCover);
-  const [page2, setPage2] = useState<Page2Type>("NONE");
+  const [coverType, setCoverType] = useState<CoverType>(() => loadEmailOpts()?.coverType ?? defaultCover);
+  const [page2, setPage2] = useState<Page2Type>(() => loadEmailOpts()?.page2 ?? "NONE");
+
+  useEffect(() => {
+    localStorage.setItem(`co-email-opts-${clientId}`, JSON.stringify({ coverType, page2 }));
+  }, [clientId, coverType, page2]);
   const [to, setTo] = useState(clientEmail ?? "");
   const [cc, setCc] = useState("mikebaruh@gmail.com");
   const [bcc, setBcc] = useState("");
@@ -57,7 +69,6 @@ export default function SendChangeOrderEmailButton({
   const [result, setResult] = useState<{ ok: boolean; msg: string } | null>(null);
 
   function openCoverPicker() {
-    setCoverType(defaultCover);
     setResult(null);
     setStep("cover");
   }
