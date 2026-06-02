@@ -18,11 +18,13 @@ export async function PATCH(
   if (!existing) return NextResponse.json({ error: "Not found" }, { status: 404 });
 
   const body = await req.json();
-  const { title, orderNumber, status, notes, items } = body as {
+  const { title, orderNumber, status, notes, items, signatureData, signedByName } = body as {
     title?: string;
     orderNumber?: string;
     status?: string;
     notes?: string;
+    signatureData?: string;
+    signedByName?: string;
     items?: { id?: string; csiCode?: string; divisionName: string; name: string; description?: string; qty?: number; unit?: string; unitCost?: number; markupPct?: number; sortOrder?: number }[];
   };
 
@@ -54,6 +56,7 @@ export async function PATCH(
       ...(orderNumber !== undefined ? { orderNumber: orderNumber || null } : {}),
       ...(status !== undefined ? { status } : {}),
       ...(notes !== undefined ? { notes: notes || null } : {}),
+      ...(signatureData !== undefined ? { signatureData, signedAt: new Date(), signedByName: signedByName || null } : {}),
     },
     include: { items: { orderBy: { sortOrder: "asc" } } },
   });

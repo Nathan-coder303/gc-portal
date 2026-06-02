@@ -357,6 +357,9 @@ export default async function ClientDetailPage({
             orderNumber: co.orderNumber,
             status: co.status,
             notes: co.notes,
+            signatureData: co.signatureData ?? null,
+            signedAt: co.signedAt?.toISOString() ?? null,
+            signedByName: co.signedByName ?? null,
             createdAt: co.createdAt.toISOString(),
             items: co.items.map(it => ({
               id: it.id,

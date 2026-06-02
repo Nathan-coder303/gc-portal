@@ -1117,13 +1117,16 @@ model ChangeOrder {
   company     Company           @relation(fields: [companyId], references: [id])
   clientId    String
   client      Client            @relation(fields: [clientId], references: [id], onDelete: Cascade)
-  title       String
-  orderNumber String?
-  status      String            @default("DRAFT") // DRAFT | SENT | APPROVED | REJECTED
-  notes       String?
-  createdAt   DateTime          @default(now())
-  updatedAt   DateTime          @updatedAt
-  items       ChangeOrderItem[]
+  title         String
+  orderNumber   String?
+  status        String            @default("DRAFT") // DRAFT | SENT | APPROVED | REJECTED
+  notes         String?
+  signatureData String?           @db.Text
+  signedAt      DateTime?
+  signedByName  String?
+  createdAt     DateTime          @default(now())
+  updatedAt     DateTime          @updatedAt
+  items         ChangeOrderItem[]
 
   @@index([companyId])
   @@index([clientId])

@@ -51,6 +51,9 @@ type ChangeOrder = {
   orderNumber: string | null;
   status: string;
   notes: string | null;
+  signatureData: string | null;
+  signedAt: string | null;
+  signedByName: string | null;
   createdAt: string;
   items: {
     id: string;
@@ -641,6 +644,312 @@ function ChangeOrderPdfModal({
   );
 }
 
+// ── Mobile CO Detail View ────────────────────────────────────────────────────
+
+function CODetailModal({
+  order,
+  companyId,
+  clientId,
+  clientName,
+  canEdit,
+  onClose,
+  onEdit,
+  onSignatureSaved,
+}: {
+  order: ChangeOrder;
+  companyId: string;
+  clientId: string;
+  clientName: string;
+  canEdit: boolean;
+  onClose: () => void;
+  onEdit: () => void;
+  onSignatureSaved: (updated: ChangeOrder) => void;
+}) {
+  const [tab, setTab] = useState<"details" | "items">("details");
+  const [collectingSig, setCollectingSig] = useState(false);
+  const [sigHasDrawn, setSigHasDrawn] = useState(false);
+  const [sigSubmitting, setSigSubmitting] = useState(false);
+  const [sigName, setSigName] = useState("");
+  const sigCanvasRef = useRef<HTMLCanvasElement>(null);
+  const sigDrawing = useRef(false);
+  const sigLastPos = useRef<{ x: number; y: number } | null>(null);
+
+  const total = order.items.reduce((s, it) => {
+    const q = parseFloat(it.qty ?? "0") || 0;
+    const c = parseFloat(it.unitCost ?? "0") || 0;
+    const m = parseFloat(it.markupPct ?? "0") || 0;
+    return s + q * c * (1 + m / 100);
+  }, 0);
+
+  const sc = STATUS_COLORS[order.status] ?? STATUS_COLORS.DRAFT;
+
+  function getSigPos(e: MouseEvent | TouchEvent, canvas: HTMLCanvasElement) {
+    const r = canvas.getBoundingClientRect();
+    const sx = canvas.width / r.width, sy = canvas.height / r.height;
+    if ("touches" in e) {
+      const t = e.touches[0];
+      return { x: (t.clientX - r.left) * sx, y: (t.clientY - r.top) * sy };
+    }
+    return { x: ((e as MouseEvent).clientX - r.left) * sx, y: ((e as MouseEvent).clientY - r.top) * sy };
+  }
+  function sigStart(e: React.MouseEvent | React.TouchEvent) {
+    const c = sigCanvasRef.current; if (!c) return;
+    sigDrawing.current = true;
+    sigLastPos.current = getSigPos(e.nativeEvent as MouseEvent | TouchEvent, c);
+    e.preventDefault();
+  }
+  function sigMove(e: React.MouseEvent | React.TouchEvent) {
+    if (!sigDrawing.current) return;
+    const c = sigCanvasRef.current; if (!c) return;
+    const ctx = c.getContext("2d"); if (!ctx) return;
+    const pos = getSigPos(e.nativeEvent as MouseEvent | TouchEvent, c);
+    if (sigLastPos.current) {
+      ctx.beginPath(); ctx.moveTo(sigLastPos.current.x, sigLastPos.current.y);
+      ctx.lineTo(pos.x, pos.y);
+      ctx.strokeStyle = "#1e293b"; ctx.lineWidth = 2.5; ctx.lineCap = "round"; ctx.lineJoin = "round";
+      ctx.stroke();
+    }
+    sigLastPos.current = pos; setSigHasDrawn(true); e.preventDefault();
+  }
+  function sigStop() { sigDrawing.current = false; sigLastPos.current = null; }
+  function clearSig() {
+    sigCanvasRef.current?.getContext("2d")?.clearRect(0, 0, 600, 160);
+    setSigHasDrawn(false);
+  }
+
+  async function saveSig() {
+    const c = sigCanvasRef.current;
+    if (!c || !sigHasDrawn) return;
+    setSigSubmitting(true);
+    const data = c.toDataURL("image/png");
+    const res = await fetch(`/api/${companyId}/clients/${clientId}/change-orders/${order.id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ signatureData: data, signedByName: sigName.trim() || null }),
+    });
+    setSigSubmitting(false);
+    if (!res.ok) return;
+    const updated = await res.json();
+    onSignatureSaved({
+      ...order,
+      signatureData: updated.signatureData,
+      signedAt: updated.signedAt,
+      signedByName: updated.signedByName,
+    });
+    setCollectingSig(false);
+  }
+
+  const detailRows = [
+    ["Change Order #", order.orderNumber ?? "—"],
+    ["Date", new Date(order.createdAt).toLocaleDateString("en-US", { month: "2-digit", day: "2-digit", year: "numeric" })],
+    ["Title", order.title],
+    ["Status", order.status],
+    ["Items", String(order.items.length)],
+    ...(order.signedAt ? [["Signed", new Date(order.signedAt).toLocaleString("en-US", { month: "2-digit", day: "2-digit", year: "numeric", hour: "numeric", minute: "2-digit", hour12: true })]] : []),
+    ...(order.signedByName ? [["Signed By", order.signedByName]] : []),
+  ];
+
+  return (
+    <div className="fixed inset-0 z-50 flex flex-col" style={{ background: "#0d1117" }}>
+      {/* Header */}
+      <div className="flex items-center gap-3 px-4 py-3 shrink-0" style={{ background: "#161b22", borderBottom: "1px solid #21262d" }}>
+        <button onClick={onClose} className="flex items-center justify-center w-8 h-8 rounded-lg" style={{ background: "#1e2736", color: "#8b949e" }}>
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+            <polyline points="15 18 9 12 15 6"/>
+          </svg>
+        </button>
+        <span className="flex-1 text-center font-semibold text-sm" style={{ color: "#e6edf3" }}>
+          {order.orderNumber ? `CO ${order.orderNumber}` : "Change Order"}
+        </span>
+        {canEdit && (
+          <button onClick={onEdit} className="flex items-center justify-center w-8 h-8 rounded-lg" style={{ background: "#1e2736", color: GOLD }}>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
+              <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
+            </svg>
+          </button>
+        )}
+        <span className="text-xs px-2 py-1 rounded-full font-semibold" style={{ background: sc.bg, color: sc.color }}>{order.status}</span>
+      </div>
+
+      {/* Scrollable content */}
+      <div className="flex-1 overflow-y-auto" style={{ background: "#0d1117" }}>
+
+        {tab === "details" && (
+          <div className="pb-6">
+            {/* Details card */}
+            <div className="mx-4 mt-4 rounded-2xl overflow-hidden" style={{ background: "#161b22", border: "1px solid #21262d" }}>
+              <div className="px-4 py-2.5" style={{ background: "#1a2030", borderBottom: "1px solid #21262d" }}>
+                <span className="text-xs font-bold uppercase tracking-widest" style={{ color: "#8b949e" }}>Details</span>
+              </div>
+              {detailRows.map(([label, value], i) => (
+                <div key={label} className="flex items-center justify-between px-4 py-3"
+                  style={{ borderBottom: i < detailRows.length - 1 ? "1px solid #21262d" : "none" }}>
+                  <span className="text-xs" style={{ color: "#6e7681", minWidth: 110 }}>{label}</span>
+                  <span className="text-xs font-medium text-right flex-1" style={{ color: "#e6edf3" }}>{value}</span>
+                </div>
+              ))}
+            </div>
+
+            {/* Description */}
+            {order.notes && (
+              <div className="mx-4 mt-4">
+                <p className="text-xs font-bold uppercase tracking-widest mb-2 px-1" style={{ color: "#8b949e" }}>Description</p>
+                <div className="rounded-2xl px-4 py-3" style={{ background: "#161b22", border: "1px solid #21262d" }}>
+                  <p className="text-sm" style={{ color: "#e6edf3", lineHeight: 1.6 }}>{order.notes}</p>
+                </div>
+              </div>
+            )}
+
+            {/* Signature */}
+            <div className="mx-4 mt-4">
+              <p className="text-xs font-bold uppercase tracking-widest mb-2 px-1" style={{ color: "#8b949e" }}>Signature</p>
+              {order.signatureData ? (
+                <div className="rounded-2xl overflow-hidden" style={{ border: "1px solid #21262d" }}>
+                  <div className="p-4" style={{ background: "#ffffff" }}>
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img src={order.signatureData} alt="Signature" className="max-w-full" style={{ height: 80, objectFit: "contain" }} />
+                  </div>
+                  {order.signedAt && (
+                    <div className="px-4 py-2.5 flex items-center justify-between" style={{ background: "#161b22", borderTop: "1px solid #21262d" }}>
+                      <span className="text-xs" style={{ color: "#6e7681" }}>
+                        {order.signedByName && <><span style={{ color: "#e6edf3" }}>{order.signedByName}</span> · </>}
+                        {new Date(order.signedAt).toLocaleString("en-US", { month: "short", day: "numeric", year: "numeric", hour: "numeric", minute: "2-digit", hour12: true })}
+                      </span>
+                      <span className="text-xs px-2 py-0.5 rounded-full" style={{ background: "#0d2318", color: "#22c55e", border: "1px solid #22c55e33" }}>✓ Signed</span>
+                    </div>
+                  )}
+                </div>
+              ) : collectingSig ? (
+                <div className="rounded-2xl p-4 space-y-3" style={{ background: "#161b22", border: "1px solid #C9A84C44" }}>
+                  <input
+                    value={sigName}
+                    onChange={e => setSigName(e.target.value)}
+                    placeholder="Signer name (optional)"
+                    className="w-full rounded-lg px-3 py-2 text-sm"
+                    style={inputStyle}
+                  />
+                  <div className="rounded-xl overflow-hidden" style={{ border: "2px solid #30373f", background: "#ffffff", touchAction: "none" }}>
+                    <canvas ref={sigCanvasRef} width={600} height={160} className="w-full" style={{ cursor: "crosshair", display: "block" }}
+                      onMouseDown={sigStart} onMouseMove={sigMove} onMouseUp={sigStop} onMouseLeave={sigStop}
+                      onTouchStart={sigStart} onTouchMove={sigMove} onTouchEnd={sigStop} />
+                  </div>
+                  {!sigHasDrawn && <p className="text-xs text-center" style={{ color: "#484f58" }}>Draw signature above</p>}
+                  <div className="flex gap-2">
+                    <button onClick={saveSig} disabled={!sigHasDrawn || sigSubmitting}
+                      className="flex-1 py-2.5 rounded-xl text-sm font-bold disabled:opacity-40"
+                      style={{ background: GOLD, color: "#0d1117" }}>
+                      {sigSubmitting ? "Saving…" : "Save Signature"}
+                    </button>
+                    <button onClick={() => { setCollectingSig(false); clearSig(); }}
+                      className="px-4 rounded-xl text-sm"
+                      style={{ background: "#21262d", color: "#8b949e", border: "1px solid #30373f" }}>
+                      Cancel
+                    </button>
+                    <button onClick={clearSig} className="px-3 rounded-xl text-xs" style={{ background: "#21262d", color: "#8b949e", border: "1px solid #30373f" }}>Clear</button>
+                  </div>
+                </div>
+              ) : (
+                <div className="rounded-2xl px-4 py-3 flex items-center justify-between" style={{ background: "#161b22", border: "1px solid #21262d" }}>
+                  <span className="text-xs" style={{ color: "#484f58" }}>No signature collected</span>
+                  {canEdit && (
+                    <button onClick={() => { setCollectingSig(true); setTimeout(() => clearSig(), 50); }}
+                      className="text-xs px-3 py-1.5 rounded-lg font-semibold"
+                      style={{ background: "#C9A84C22", color: GOLD, border: "1px solid #C9A84C44" }}>
+                      + Collect Signature
+                    </button>
+                  )}
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
+        {tab === "items" && (
+          <div className="pb-6">
+            {/* Total */}
+            <div className="px-4 pt-5 pb-3">
+              <span className="text-2xl font-bold" style={{ color: "#e6edf3" }}>
+                Total: <span style={{ color: total < 0 ? "#f87171" : total === 0 ? "#e6edf3" : GOLD }}>${fmt(total)}</span>
+              </span>
+            </div>
+
+            {/* Items table */}
+            {order.items.length > 0 ? (
+              <div className="mx-4 rounded-2xl overflow-hidden" style={{ border: "1px solid #21262d" }}>
+                {/* Header */}
+                <div className="grid px-4 py-2" style={{ gridTemplateColumns: "1fr 48px 90px", background: "#1a2030", borderBottom: "1px solid #21262d" }}>
+                  <span className="text-xs font-bold" style={{ color: "#8b949e" }}>Name</span>
+                  <span className="text-xs font-bold text-center" style={{ color: "#8b949e" }}>QTY</span>
+                  <span className="text-xs font-bold text-right" style={{ color: "#8b949e" }}>Total</span>
+                </div>
+                {order.items.map((it, i) => {
+                  const q = parseFloat(it.qty ?? "0") || 0;
+                  const c = parseFloat(it.unitCost ?? "0") || 0;
+                  const m = parseFloat(it.markupPct ?? "0") || 0;
+                  const lineTotal = q * c * (1 + m / 100);
+                  return (
+                    <div key={it.id} style={{ borderTop: i > 0 ? "1px solid #21262d" : "none", background: i % 2 === 0 ? "#161b22" : "#111519" }}>
+                      <div className="grid px-4 py-2.5 items-start" style={{ gridTemplateColumns: "1fr 48px 90px" }}>
+                        <div>
+                          <span className="text-xs font-medium" style={{ color: "#e6edf3" }}>{it.name}</span>
+                          {it.csiCode && <span className="ml-1.5 text-xs font-mono" style={{ color: "#484f58" }}>{it.csiCode}</span>}
+                        </div>
+                        <span className="text-xs text-center" style={{ color: "#8b949e" }}>{it.qty ?? "—"}</span>
+                        <span className="text-xs text-right font-semibold" style={{ color: lineTotal < 0 ? "#f87171" : lineTotal > 0 ? GOLD : "#8b949e" }}>
+                          {it.unitCost ? `$${fmt(lineTotal)}` : "—"}
+                        </span>
+                      </div>
+                      {it.description && (
+                        <div className="px-4 pb-2.5">
+                          <p className="text-xs italic" style={{ color: "#6e7681" }}>{it.description}</p>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            ) : (
+              <div className="mx-4 rounded-2xl px-4 py-6 text-center" style={{ background: "#161b22", border: "1px solid #21262d" }}>
+                <p className="text-sm" style={{ color: "#484f58" }}>No items</p>
+              </div>
+            )}
+
+            {/* Summary */}
+            <div className="mx-4 mt-3 rounded-2xl overflow-hidden" style={{ border: "1px solid #21262d" }}>
+              {[
+                { label: "Sub Total", value: `$${fmt(total)}`, bold: true },
+                { label: "Grand Total", value: `$${fmt(total)}`, bold: true, gold: true },
+              ].map(({ label, value, bold, gold }, i) => (
+                <div key={label} className="flex items-center justify-between px-4 py-3"
+                  style={{ background: i % 2 === 0 ? "#161b22" : "#111519", borderTop: i > 0 ? "1px solid #21262d" : "none" }}>
+                  <span className={`text-sm ${bold ? "font-bold" : ""}`} style={{ color: bold ? "#e6edf3" : "#8b949e" }}>{label}</span>
+                  <span className={`text-sm ${bold ? "font-bold" : ""}`} style={{ color: gold ? GOLD : "#e6edf3" }}>{value}</span>
+                </div>
+              ))}
+            </div>
+
+            {/* Created footer */}
+            <p className="text-xs text-center italic mt-4 px-4" style={{ color: "#484f58" }}>
+              Created: {new Date(order.createdAt).toLocaleString("en-US", { month: "2-digit", day: "2-digit", year: "numeric", hour: "numeric", minute: "2-digit", hour12: true })}
+            </p>
+          </div>
+        )}
+      </div>
+
+      {/* Bottom tab bar */}
+      <div className="flex shrink-0" style={{ background: "#161b22", borderTop: "1px solid #21262d" }}>
+        {(["details", "items"] as const).map(t => (
+          <button key={t} onClick={() => setTab(t)} className="flex-1 py-3 text-sm font-semibold capitalize transition-colors"
+            style={{ color: tab === t ? GOLD : "#6e7681", borderTop: tab === t ? `2px solid ${GOLD}` : "2px solid transparent" }}>
+            {t === "details" ? "Details" : `Items (${order.items.length})`}
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 // ── Main tab component ───────────────────────────────────────────────────────
 
 type ExecutedContract = {
@@ -689,6 +998,7 @@ export default function ChangeOrdersTab({
   const [orders, setOrders] = useState<ChangeOrder[]>(initialOrders);
   const [editing, setEditing] = useState<ChangeOrder | null | "new">(null);
   const [pdfOrder, setPdfOrder] = useState<ChangeOrder | null>(null);
+  const [viewingOrder, setViewingOrder] = useState<ChangeOrder | null>(null);
   const [isPending, startTransition] = useTransition();
 
   // ── Client-signed doc upload ──
@@ -825,6 +1135,7 @@ export default function ChangeOrdersTab({
       }
       return [order, ...prev];
     });
+    setViewingOrder(prev => prev?.id === order.id ? order : prev);
     setEditing(null);
   }
 
@@ -1097,6 +1408,14 @@ export default function ChangeOrdersTab({
                   </div>
 
                   <div className="flex items-center gap-2 shrink-0 flex-wrap">
+                    {/* View detail */}
+                    <button
+                      onClick={() => setViewingOrder(order)}
+                      className="text-xs px-2 py-1 rounded-lg font-medium"
+                      style={{ background: "#1a2436", border: "1px solid #C9A84C44", color: GOLD }}
+                    >
+                      View
+                    </button>
                     {/* PDF options */}
                     <button
                       onClick={() => setPdfOrder(order)}
@@ -1206,6 +1525,23 @@ export default function ChangeOrdersTab({
           orderTitle={pdfOrder.title}
           clientName={clientName}
           onClose={() => setPdfOrder(null)}
+        />
+      )}
+
+      {/* Mobile CO detail view */}
+      {viewingOrder && (
+        <CODetailModal
+          order={viewingOrder}
+          companyId={companyId}
+          clientId={clientId}
+          clientName={clientName}
+          canEdit={canEdit}
+          onClose={() => setViewingOrder(null)}
+          onEdit={() => { setEditing(viewingOrder); setViewingOrder(null); }}
+          onSignatureSaved={updated => {
+            setOrders(prev => prev.map(o => o.id === updated.id ? { ...o, ...updated } : o));
+            setViewingOrder(updated);
+          }}
         />
       )}
     </div>
