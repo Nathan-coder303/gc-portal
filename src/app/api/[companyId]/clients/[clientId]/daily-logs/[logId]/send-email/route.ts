@@ -99,7 +99,9 @@ export async function POST(
     email: log.company.email ?? "",
   };
 
-  const { buffer: pdfBuffer, photoTotal, photoLoaded } = await renderDailyLogPdf(log, company, log.client);
+  const base = process.env.NEXTAUTH_URL ?? "https://gc-portal-two.vercel.app";
+  const attachmentBaseUrl = `${base}/api/${params.companyId}/clients/${params.clientId}/daily-logs/${params.logId}/attachments`;
+  const { buffer: pdfBuffer, photoTotal, photoLoaded } = await renderDailyLogPdf(log, company, log.client, attachmentBaseUrl);
 
   const logDate = new Date(log.arrivalDate);
   const date = logDate.toISOString().slice(0, 10);

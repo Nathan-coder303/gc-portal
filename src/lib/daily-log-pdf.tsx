@@ -1,4 +1,4 @@
-import { Document, Page, Text, View, StyleSheet, renderToBuffer, Image, Font } from "@react-pdf/renderer";
+import { Document, Page, Text, View, StyleSheet, renderToBuffer, Image, Font, Link } from "@react-pdf/renderer";
 import React from "react";
 import path from "path";
 import sharp from "sharp";
@@ -140,7 +140,7 @@ function Section({ title, children }: { title: string; children: React.ReactNode
   );
 }
 
-function DailyLogDocument({ log, company, client, photoDataUrls }: { log: DailyLogData; company: CompanyInfo; client: ClientInfo; photoDataUrls?: { name: string; dataUrl: string }[] }) {
+function DailyLogDocument({ log, company, client, photoDataUrls }: { log: DailyLogData; company: CompanyInfo; client: ClientInfo; photoDataUrls?: { name: string; dataUrl: string; proxyUrl?: string }[] }) {
   const logoPath = path.join(process.cwd(), "public", "logo.png");
   const date = new Date(log.arrivalDate);
   const TZ = "America/New_York";
@@ -389,8 +389,15 @@ function DailyLogDocument({ log, company, client, photoDataUrls }: { log: DailyL
             <View style={s.photoGrid}>
               {photoDataUrls.map((p, i) => (
                 <View key={i} style={s.photoCell}>
-                  {/* eslint-disable-next-line jsx-a11y/alt-text */}
-                  <Image src={p.dataUrl} style={s.photoImg} />
+                  {p.proxyUrl ? (
+                    <Link src={p.proxyUrl}>
+                      {/* eslint-disable-next-line jsx-a11y/alt-text */}
+                      <Image src={p.dataUrl} style={s.photoImg} />
+                    </Link>
+                  ) : (
+                    // eslint-disable-next-line jsx-a11y/alt-text
+                    <Image src={p.dataUrl} style={s.photoImg} />
+                  )}
                   <Text style={s.photoName}>{p.name.length > 30 ? p.name.slice(0, 28) + "…" : p.name}</Text>
                 </View>
               ))}
@@ -449,17 +456,22 @@ export async function renderDailyLogPdf(
   log: DailyLogData,
   company: CompanyInfo,
   client: ClientInfo,
+  attachmentBaseUrl?: string,
 ): Promise<{ buffer: Buffer; photoTotal: number; photoLoaded: number }> {
   type RawAttachment = { id: string; name: string; url: string; mimeType: string };
   const rawAttachments = parseJson<RawAttachment[]>(log.attachments ?? null, []);
   const imageAttachments = rawAttachments.filter(a => a.mimeType?.startsWith("image/"));
   const photoTotal = imageAttachments.length;
 
-  const photoDataUrls: { name: string; dataUrl: string }[] = [];
+  const photoDataUrls: { name: string; dataUrl: string; proxyUrl?: string }[] = [];
   await Promise.all(
     imageAttachments.map(async (a) => {
       const dataUrl = await fetchPhotoAsDataUrl(a.url);
-      if (dataUrl) photoDataUrls.push({ name: a.name, dataUrl });
+      if (dataUrl) photoDataUrls.push({
+        name: a.name,
+        dataUrl,
+        proxyUrl: attachmentBaseUrl ? `${attachmentBaseUrl}/${a.id}` : undefined,
+      });
     })
   );
   const photoLoaded = photoDataUrls.length;

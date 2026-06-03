@@ -26,7 +26,9 @@ export async function GET(
     email: log.company.email ?? "",
   };
 
-  const { buffer: pdfBuffer } = await renderDailyLogPdf(log, company, log.client);
+  const base = process.env.NEXTAUTH_URL ?? "https://gc-portal-two.vercel.app";
+  const attachmentBaseUrl = `${base}/api/${params.companyId}/clients/${params.clientId}/daily-logs/${params.logId}/attachments`;
+  const { buffer: pdfBuffer } = await renderDailyLogPdf(log, company, log.client, attachmentBaseUrl);
 
   const date = new Date(log.arrivalDate).toISOString().slice(0, 10);
   const clientSlug = log.client.name.replace(/[^a-z0-9]/gi, "-");
