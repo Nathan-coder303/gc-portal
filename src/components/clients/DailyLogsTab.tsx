@@ -1164,7 +1164,10 @@ function LogCard({ log, onClick }: { log: DailyLog; onClick: () => void }) {
 function SendLogEmailModal({
   companyId, clientId, logId, onClose,
 }: { companyId: string; clientId: string; logId: string; onClose: () => void }) {
+  const MY_EMAIL = "mikebaruh@gmail.com";
   const [to, setTo] = useState("");
+  const [cc, setCc] = useState(MY_EMAIL);
+  const [bcc, setBcc] = useState("");
   const [subject, setSubject] = useState("");
   const [body, setBody] = useState("");
   const [loading, setLoading] = useState(true);
@@ -1191,7 +1194,7 @@ function SendLogEmailModal({
       const res = await fetch(`/api/${companyId}/clients/${clientId}/daily-logs/${logId}/send-email`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ to: to.trim(), subject, body }),
+        body: JSON.stringify({ to: to.trim(), cc: cc.trim() || undefined, bcc: bcc.trim() || undefined, subject, body }),
       });
       const data = await res.json();
       if (res.ok) {
@@ -1225,6 +1228,16 @@ function SendLogEmailModal({
             <div>
               <label className="text-xs font-semibold block mb-1" style={{ color: MUTED }}>To</label>
               <input value={to} onChange={e => setTo(e.target.value)} placeholder="client@email.com"
+                className="w-full rounded-lg px-3 py-2 text-sm" style={inputStyle} />
+            </div>
+            <div>
+              <label className="text-xs font-semibold block mb-1" style={{ color: MUTED }}>CC</label>
+              <input value={cc} onChange={e => setCc(e.target.value)} placeholder="cc@email.com"
+                className="w-full rounded-lg px-3 py-2 text-sm" style={inputStyle} />
+            </div>
+            <div>
+              <label className="text-xs font-semibold block mb-1" style={{ color: MUTED }}>BCC</label>
+              <input value={bcc} onChange={e => setBcc(e.target.value)} placeholder="bcc@email.com (optional)"
                 className="w-full rounded-lg px-3 py-2 text-sm" style={inputStyle} />
             </div>
             <div>

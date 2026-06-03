@@ -80,7 +80,7 @@ export async function POST(
   const session = await auth();
   if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-  const { to, subject, body } = await req.json() as { to: string; subject?: string; body?: string };
+  const { to, cc, bcc, subject, body } = await req.json() as { to: string; cc?: string; bcc?: string; subject?: string; body?: string };
   if (!to) return NextResponse.json({ error: "to required" }, { status: 400 });
 
   const log = await prisma.dailyLog.findFirst({
@@ -136,6 +136,8 @@ export async function POST(
   const mimeLines = [
     `From: ${fromEmail}`,
     `To: ${to}`,
+    ...(cc ? [`Cc: ${cc}`] : []),
+    ...(bcc ? [`Bcc: ${bcc}`] : []),
     `Subject: ${encodeSubject(emailSubject)}`,
     `MIME-Version: 1.0`,
     `Content-Type: multipart/mixed; boundary="${boundary}"`,
