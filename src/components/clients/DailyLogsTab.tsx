@@ -262,6 +262,71 @@ function TextArea({ value, onChange, rows = 3, placeholder }: { value: string; o
   );
 }
 
+function BulletTextarea({ value, onChange, rows = 4, placeholder }: { value: string; onChange: (v: string) => void; rows?: number; placeholder?: string }) {
+  const ref = useRef<HTMLTextAreaElement>(null);
+
+  function handleKeyDown(e: React.KeyboardEvent<HTMLTextAreaElement>) {
+    const ta = ref.current;
+    if (!ta) return;
+    const { selectionStart: pos, selectionEnd: posEnd, value: v } = ta;
+    if (pos !== posEnd) return; // has selection — let browser handle
+
+    if (e.key === "Enter") {
+      e.preventDefault();
+      const lineStart = v.lastIndexOf("\n", pos - 1) + 1;
+      const hasBullets = v.includes("• ");
+
+      let newValue: string;
+      let newPos: number;
+
+      if (!hasBullets) {
+        // First Enter: convert all existing lines to bullets, add new bullet line
+        const beforeCursor = v.slice(0, pos);
+        const afterCursor = v.slice(pos);
+        const bulletsBefore = beforeCursor
+          .split("\n")
+          .map(l => (l ? `• ${l}` : l))
+          .join("\n");
+        newValue = bulletsBefore + "\n• " + afterCursor;
+        newPos = bulletsBefore.length + "\n• ".length;
+      } else {
+        // Already in bullet mode — insert a new bullet line
+        newValue = v.slice(0, pos) + "\n• " + v.slice(pos);
+        newPos = pos + "\n• ".length;
+      }
+
+      onChange(newValue);
+      requestAnimationFrame(() => ta.setSelectionRange(newPos, newPos));
+
+    } else if (e.key === "Backspace") {
+      const lineStart = v.lastIndexOf("\n", pos - 1) + 1;
+      // Cursor is right after "• " with nothing typed yet on this line
+      if (pos === lineStart + 2 && v.slice(lineStart, pos) === "• ") {
+        e.preventDefault();
+        // Remove the "• " and the preceding newline
+        const removeFrom = lineStart > 0 ? lineStart - 1 : 0;
+        const newValue = v.slice(0, removeFrom) + v.slice(pos);
+        const newPos = removeFrom;
+        onChange(newValue);
+        requestAnimationFrame(() => ta.setSelectionRange(newPos, newPos));
+      }
+    }
+  }
+
+  return (
+    <textarea
+      ref={ref}
+      value={value}
+      onChange={e => onChange(e.target.value)}
+      onKeyDown={handleKeyDown}
+      rows={rows}
+      placeholder={placeholder}
+      className="w-full rounded-lg px-3 py-2 text-sm resize-none"
+      style={{ background: "#0d1117", border: `1px solid ${BORDER}`, color: TEXT, outline: "none" }}
+    />
+  );
+}
+
 function Select({ value, onChange, options, placeholder }: { value: string; onChange: (v: string) => void; options: string[] | { value: string; label: string }[]; placeholder?: string }) {
   return (
     <select value={value} onChange={e => onChange(e.target.value)}
@@ -418,7 +483,7 @@ function DetailsSection({ form, set }: { form: LogForm; set: (k: keyof LogForm, 
         </div>
         <div>
           <FieldLabel>Tasks Performed</FieldLabel>
-          <TextArea value={form.tasksPerformed} onChange={v => set("tasksPerformed", v)} rows={4} placeholder="Describe the work performed today..." />
+          <BulletTextarea value={form.tasksPerformed} onChange={v => set("tasksPerformed", v)} rows={4} placeholder="Describe the work performed today..." />
         </div>
       </SectionCard>
     </div>

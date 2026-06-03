@@ -1,6 +1,7 @@
 import { Document, Page, Text, View, StyleSheet, renderToBuffer, Image, Font } from "@react-pdf/renderer";
 import React from "react";
 import path from "path";
+import sharp from "sharp";
 
 Font.registerHyphenationCallback((word) => [word]);
 
@@ -398,15 +399,16 @@ function DailyLogDocument({ log, company, client, photoDataUrls }: { log: DailyL
   );
 }
 
-async function fetchPhotoAsDataUrl(blobUrl: string, mimeType: string): Promise<string | null> {
+async function fetchPhotoAsDataUrl(blobUrl: string): Promise<string | null> {
   try {
     const res = await fetch(blobUrl, {
       headers: { Authorization: `Bearer ${process.env.BLOB_READ_WRITE_TOKEN}` },
     });
     if (!res.ok) return null;
-    const ab = await res.arrayBuffer();
-    const mt = mimeType || res.headers.get("content-type") || "image/jpeg";
-    return `data:${mt};base64,${Buffer.from(ab).toString("base64")}`;
+    const buf = Buffer.from(await res.arrayBuffer());
+    // Convert to JPEG via sharp — handles HEIC, CMYK, WEBP, PNG, etc.
+    const jpeg = await sharp(buf).rotate().jpeg({ quality: 85 }).toBuffer();
+    return `data:image/jpeg;base64,${jpeg.toString("base64")}`;
   } catch {
     return null;
   }
@@ -425,7 +427,7 @@ export async function renderDailyLogPdf(
   const photoDataUrls: { name: string; dataUrl: string }[] = [];
   await Promise.all(
     imageAttachments.map(async (a) => {
-      const dataUrl = await fetchPhotoAsDataUrl(a.url, a.mimeType);
+      const dataUrl = await fetchPhotoAsDataUrl(a.url);
       if (dataUrl) photoDataUrls.push({ name: a.name, dataUrl });
     })
   );
