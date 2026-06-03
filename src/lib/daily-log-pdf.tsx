@@ -44,9 +44,9 @@ const s = StyleSheet.create({
   grid2: { flexDirection: "row", gap: 10 },
   gridItem: { flex: 1, backgroundColor: CARD, borderRadius: 6, borderWidth: 1, borderColor: BORDER, padding: 8 },
   // Photo grid
-  photoGrid: { flexDirection: "row", flexWrap: "wrap", gap: 6 },
-  photoCell: { width: "31.5%", borderRadius: 6, borderWidth: 1.5, borderColor: "#ffffff", overflow: "hidden", backgroundColor: CARD },
-  photoImg: { width: "100%", height: 120 },
+  photoGrid: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
+  photoCell: { width: "48%", borderRadius: 6, borderWidth: 4, borderColor: "#ffffff", overflow: "hidden", backgroundColor: CARD },
+  photoImg: { width: "100%", height: 190 },
   photoName: { fontSize: 6.5, color: MUTED, textAlign: "center", paddingVertical: 3, paddingHorizontal: 2 },
   // List item
   listItem: { flexDirection: "row", marginBottom: 4 },
@@ -387,7 +387,7 @@ function DailyLogDocument({ log, company, client, photoDataUrls }: { log: DailyL
           <View style={s.section} break>
             <View style={{ flexDirection: "row", alignItems: "baseline", marginBottom: 6 }}>
               <Text style={[s.sectionTitle, { marginBottom: 0 }]}>Site Photos</Text>
-              <Text style={{ fontSize: 7, color: "#8b949e", marginLeft: 6 }}>(click on a photo to enlarge)</Text>
+              <Text style={[s.sectionTitle, { marginBottom: 0, marginLeft: 6, color: MUTED }]}>(click on a photo to enlarge)</Text>
             </View>
             <View style={s.photoGrid}>
               {photoDataUrls.map((p, i) => (

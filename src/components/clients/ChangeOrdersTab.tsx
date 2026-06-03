@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useTransition, useEffect, useRef } from "react";
+import { FormulaInput } from "@/components/FormulaInput";
 import { STANDARD_TEMPLATE_DIVISIONS, BATHROOM_TEMPLATE_DIVISIONS, KITCHEN_TEMPLATE_DIVISIONS } from "@/lib/standardTemplateData";
 
 // Flat lookup from all templates
@@ -146,11 +147,13 @@ function DivisionPicker({ onAdd }: { onAdd: (items: COItem[]) => void }) {
 function ItemRow({
   item,
   index,
+  coId,
   onChange,
   onDelete,
 }: {
   item: COItem;
   index: number;
+  coId?: string;
   onChange: (idx: number, field: keyof COItem, value: string) => void;
   onDelete: (idx: number) => void;
 }) {
@@ -235,10 +238,10 @@ function ItemRow({
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 items-end">
         <div>
           <label className="block text-xs mb-0.5" style={{ color: "#8b949e" }}>Qty</label>
-          <input
-            type="number"
+          <FormulaInput
+            storageKey={item.id ? `co:${item.id}:qty` : coId ? `co:${coId}:item:${index}:qty` : undefined}
             value={item.qty}
-            onChange={e => onChange(index, "qty", e.target.value)}
+            onChange={v => onChange(index, "qty", String(v))}
             className="w-full rounded px-2 py-1 text-sm"
             style={inputStyle}
             placeholder="0"
@@ -256,10 +259,10 @@ function ItemRow({
         </div>
         <div>
           <label className="block text-xs mb-0.5" style={{ color: "#8b949e" }}>Unit Cost ($)</label>
-          <input
-            type="number"
+          <FormulaInput
+            storageKey={item.id ? `co:${item.id}:unitCost` : coId ? `co:${coId}:item:${index}:unitCost` : undefined}
             value={item.unitCost}
-            onChange={e => onChange(index, "unitCost", e.target.value)}
+            onChange={v => onChange(index, "unitCost", String(v))}
             className="w-full rounded px-2 py-1 text-sm"
             style={inputStyle}
             placeholder="0"
@@ -268,10 +271,10 @@ function ItemRow({
         <div>
           <label className="block text-xs mb-0.5" style={{ color: "#8b949e" }}>Markup %</label>
           <div className="flex items-center gap-2">
-            <input
-              type="number"
+            <FormulaInput
+              storageKey={item.id ? `co:${item.id}:markup` : coId ? `co:${coId}:item:${index}:markup` : undefined}
               value={item.markupPct}
-              onChange={e => onChange(index, "markupPct", e.target.value)}
+              onChange={v => onChange(index, "markupPct", String(v))}
               className="w-full rounded px-2 py-1 text-sm"
               style={inputStyle}
               placeholder="15"
@@ -482,7 +485,7 @@ function ChangeOrderEditor({
           )}
 
           {items.map((item, idx) => (
-            <ItemRow key={idx} item={item} index={idx} onChange={handleChange} onDelete={handleDelete} />
+            <ItemRow key={idx} item={item} index={idx} coId={initial?.id} onChange={handleChange} onDelete={handleDelete} />
           ))}
 
           <button

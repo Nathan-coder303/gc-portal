@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { TrashIcon, PencilIcon, SaveIcon, StackedDocsIcon, DocPlusIcon, ClipboardChartIcon, PdfMailIcon } from "@/components/ui/icons";
 import CoverPagePickerModal, { PdfOptions, CoverType } from "@/components/clients/CoverPagePickerModal";
 import { lookupItemCsiCode, formatCsiCode, DIVISIONS } from "@/lib/divisions";
+import { FormulaInput } from "@/components/FormulaInput";
 import { DndContext, DragOverlay, useDroppable, useDraggable, closestCenter, PointerSensor, TouchSensor, useSensor, useSensors } from "@dnd-kit/core";
 import type { DragStartEvent, DragEndEvent } from "@dnd-kit/core";
 import { SortableContext, useSortable, verticalListSortingStrategy, arrayMove } from "@dnd-kit/sortable";
@@ -427,10 +428,10 @@ function ItemRow({ item, divisionId, groupId, canEdit }: { item: Item; divisionI
       <td className="px-2 py-1"><input className={INPUT} style={{ ...inputStyleSm, width: "80px", fontFamily: "monospace" }} value={form.csiCode} onChange={(e) => setForm({ ...form, csiCode: formatCsiCode(e.target.value) })} placeholder="CSI" /></td>
       <td className="px-2 py-1"><textarea className={INPUT} rows={2} style={{ ...inputStyleSm, resize: "none", lineHeight: "1.3", overflow: "hidden" }} value={form.name} ref={(el) => { if (el) { el.style.height = "auto"; el.style.height = el.scrollHeight + "px"; } }} onInput={(e) => { const el = e.currentTarget; el.style.height = "auto"; el.style.height = el.scrollHeight + "px"; }} onChange={(e) => { const n = e.target.value; const auto = lookupItemCsiCode(n); setForm({ ...form, name: n, csiCode: auto ?? form.csiCode, defaultQty: autoQtyT(n, form.unit, form.defaultQty) }); }} /></td>
       <td className="px-2 py-1"><DetailSelect value={form.detail} onChange={(v) => setForm({ ...form, detail: v })} /></td>
-      <td className="px-2 py-1"><input type="number" step="any" className={INPUT} style={{ ...inputStyle, width: "56px" }} value={form.defaultQty} onChange={(e) => setForm({ ...form, defaultQty: e.target.value })} /></td>
+      <td className="px-2 py-1"><FormulaInput storageKey={`tmpl:${item.id}:qty`} className={INPUT} style={{ ...inputStyle, width: "56px" }} value={form.defaultQty} onChange={(v) => setForm({ ...form, defaultQty: String(v) })} /></td>
       <td className="px-2 py-1"><UnitSelect value={form.unit} onChange={(v) => setForm({ ...form, unit: v, defaultQty: autoQtyT(form.name, v, form.defaultQty) })} /></td>
-      <td className="px-2 py-1"><input type="number" step="any" className={INPUT} style={{ ...inputStyle, width: "80px" }} value={form.defaultUnitCost} onChange={(e) => setForm({ ...form, defaultUnitCost: e.target.value })} /></td>
-      <td className="px-2 py-1"><input type="number" step="any" className={INPUT} style={{ ...inputStyle, width: "56px" }} value={form.defaultMarkupPct} onChange={(e) => setForm({ ...form, defaultMarkupPct: e.target.value })} /></td>
+      <td className="px-2 py-1"><FormulaInput storageKey={`tmpl:${item.id}:unitCost`} className={INPUT} style={{ ...inputStyle, width: "80px" }} value={form.defaultUnitCost} onChange={(v) => setForm({ ...form, defaultUnitCost: String(v) })} /></td>
+      <td className="px-2 py-1"><FormulaInput storageKey={`tmpl:${item.id}:markup`} className={INPUT} style={{ ...inputStyle, width: "56px" }} value={form.defaultMarkupPct} onChange={(v) => setForm({ ...form, defaultMarkupPct: String(v) })} /></td>
       <td className="px-2 py-1 text-xs font-semibold text-right" style={{ color: "#C9A84C" }}>{previewTotal > 0 ? `$${fmt(previewTotal)}` : "—"}</td>
       <td className="px-2 py-1"><input className={INPUT} style={inputStyleSm} value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} placeholder="notes" /></td>
       <td className="px-2 py-1">
@@ -508,10 +509,10 @@ function AddTemplateItemRow({ divisionId, groupId, canEdit }: { divisionId: stri
       <td className="px-2 py-1"><input className={INPUT} style={{ ...inputStyleSm, width: "80px", fontFamily: "monospace" }} value={form.csiCode} onChange={(e) => setForm({ ...form, csiCode: formatCsiCode(e.target.value) })} placeholder="CSI" /></td>
       <td className="px-2 py-1"><textarea autoFocus className={INPUT} rows={2} style={{ ...inputStyleSm, resize: "none", lineHeight: "1.3", overflow: "hidden" }} value={form.name} ref={(el) => { if (el) { el.style.height = "auto"; el.style.height = el.scrollHeight + "px"; } }} onInput={(e) => { const el = e.currentTarget; el.style.height = "auto"; el.style.height = el.scrollHeight + "px"; }} onChange={(e) => { const n = e.target.value; const auto = lookupItemCsiCode(n); setForm({ ...form, name: n, csiCode: auto ?? form.csiCode, defaultQty: autoQtyT(n, form.unit, form.defaultQty) }); }} placeholder="Item name" /></td>
       <td className="px-2 py-1"><DetailSelect value={form.detail} onChange={(v) => setForm({ ...form, detail: v })} /></td>
-      <td className="px-2 py-1"><input type="number" step="any" className={INPUT} style={{ ...inputStyle, width: "56px" }} value={form.defaultQty} onChange={(e) => setForm({ ...form, defaultQty: e.target.value })} /></td>
+      <td className="px-2 py-1"><FormulaInput className={INPUT} style={{ ...inputStyle, width: "56px" }} value={form.defaultQty} onChange={(v) => setForm({ ...form, defaultQty: String(v) })} /></td>
       <td className="px-2 py-1"><UnitSelect value={form.unit} onChange={(v) => setForm({ ...form, unit: v, defaultQty: autoQtyT(form.name, v, form.defaultQty) })} /></td>
-      <td className="px-2 py-1"><input type="number" step="any" className={INPUT} style={{ ...inputStyle, width: "80px" }} value={form.defaultUnitCost} onChange={(e) => setForm({ ...form, defaultUnitCost: e.target.value })} /></td>
-      <td className="px-2 py-1"><input type="number" step="any" className={INPUT} style={{ ...inputStyle, width: "56px" }} value={form.defaultMarkupPct} onChange={(e) => setForm({ ...form, defaultMarkupPct: e.target.value })} /></td>
+      <td className="px-2 py-1"><FormulaInput className={INPUT} style={{ ...inputStyle, width: "80px" }} value={form.defaultUnitCost} onChange={(v) => setForm({ ...form, defaultUnitCost: String(v) })} /></td>
+      <td className="px-2 py-1"><FormulaInput className={INPUT} style={{ ...inputStyle, width: "56px" }} value={form.defaultMarkupPct} onChange={(v) => setForm({ ...form, defaultMarkupPct: String(v) })} /></td>
       <td />
       <td className="px-2 py-1"><input className={INPUT} style={inputStyleSm} value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} placeholder="notes" /></td>
       <td className="px-2 py-1">

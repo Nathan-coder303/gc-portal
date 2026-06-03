@@ -30,6 +30,7 @@ import {
   type ItemLike,
 } from "@/lib/estimates/totals";
 import { lookupItemCsiCode, formatCsiCode, DIVISIONS } from "@/lib/divisions";
+import { FormulaInput } from "@/components/FormulaInput";
 
 type Item = ItemLike & { id: string; name: string; csiCode: string | null; detail: string | null; unit: string | null; vendor: string | null; notes: string | null; sortOrder: number };
 type Group = { id: string; name: string; items: Item[] };
@@ -192,16 +193,16 @@ function ItemRowEdit({
       </td>
       <td className="px-2 py-1"><DetailSelect value={form.detail} onChange={(v) => setForm({ ...form, detail: v })} /></td>
       <td className="px-2 py-1">
-        <input type="number" step="any" className="w-16 border border-slate-300 rounded px-2 py-1 text-xs text-right" value={form.qty} onChange={(e) => setForm({ ...form, qty: Number(e.target.value) })} />
+        <FormulaInput storageKey={`pae:${item.id}:qty`} className="w-16 border border-slate-300 rounded px-2 py-1 text-xs text-right" value={form.qty} onChange={(v) => setForm({ ...form, qty: v })} />
       </td>
       <td className="px-2 py-1">
         <input className="w-16 border border-slate-300 rounded px-2 py-1 text-xs text-center" value={form.unit} onChange={(e) => { const u = e.target.value; setForm({ ...form, unit: u, qty: autoQty(form.name, u, form.qty) }); }} placeholder="unit" />
       </td>
       <td className="px-2 py-1">
-        <input type="number" step="any" className="w-20 border border-slate-300 rounded px-2 py-1 text-xs text-right" value={form.unitCost} onChange={(e) => setForm({ ...form, unitCost: Number(e.target.value) })} />
+        <FormulaInput storageKey={`pae:${item.id}:unitCost`} className="w-20 border border-slate-300 rounded px-2 py-1 text-xs text-right" value={form.unitCost} onChange={(v) => setForm({ ...form, unitCost: v })} />
       </td>
       <td className="px-2 py-1">
-        <input type="number" step="any" className="w-16 border border-slate-300 rounded px-2 py-1 text-xs text-right" value={form.markupPct} onChange={(e) => setForm({ ...form, markupPct: Number(e.target.value) })} />
+        <FormulaInput storageKey={`pae:${item.id}:markup`} className="w-16 border border-slate-300 rounded px-2 py-1 text-xs text-right" value={form.markupPct} onChange={(v) => setForm({ ...form, markupPct: v })} />
       </td>
       <td className="px-2 py-1 text-xs font-semibold text-slate-700 text-right">
         ${fmt(previewTotal)}
@@ -281,16 +282,16 @@ function AddItemRow({ divisionId, groupId, canEdit }: { divisionId: string; grou
       </td>
       <td className="px-2 py-1"><DetailSelect value={form.detail} onChange={(v) => setForm({ ...form, detail: v })} /></td>
       <td className="px-2 py-1">
-        <input type="number" step="any" className="w-16 border border-slate-300 rounded px-2 py-1 text-xs text-right" value={form.qty} onChange={(e) => setForm({ ...form, qty: e.target.value })} />
+        <FormulaInput className="w-16 border border-slate-300 rounded px-2 py-1 text-xs text-right" value={form.qty} onChange={(v) => setForm({ ...form, qty: v })} />
       </td>
       <td className="px-2 py-1">
         <input className="w-16 border border-slate-300 rounded px-2 py-1 text-xs text-center" value={form.unit} onChange={(e) => { const u = e.target.value; setForm({ ...form, unit: u, qty: autoQty(form.name, u, form.qty) }); }} placeholder="unit" />
       </td>
       <td className="px-2 py-1">
-        <input type="number" step="any" className="w-20 border border-slate-300 rounded px-2 py-1 text-xs text-right" value={form.unitCost} onChange={(e) => setForm({ ...form, unitCost: e.target.value })} />
+        <FormulaInput className="w-20 border border-slate-300 rounded px-2 py-1 text-xs text-right" value={form.unitCost} onChange={(v) => setForm({ ...form, unitCost: v })} />
       </td>
       <td className="px-2 py-1">
-        <input type="number" step="any" className="w-16 border border-slate-300 rounded px-2 py-1 text-xs text-right" value={form.markupPct} onChange={(e) => setForm({ ...form, markupPct: e.target.value })} />
+        <FormulaInput className="w-16 border border-slate-300 rounded px-2 py-1 text-xs text-right" value={form.markupPct} onChange={(v) => setForm({ ...form, markupPct: v })} />
       </td>
       <td />
       <td className="px-2 py-1 hidden sm:table-cell">

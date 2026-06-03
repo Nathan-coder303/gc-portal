@@ -1,5 +1,6 @@
 "use client";
 import { useState, useMemo } from "react";
+import { FormulaInput } from "@/components/FormulaInput";
 
 type Sub = {
   id: string;
@@ -424,8 +425,8 @@ export default function ClientSubsTab({ companyId, clientId, estimates, initialS
                           />
                         </td>
                         <td className="px-3 py-2">
-                          <input type="number" placeholder="0" value={editForm.cost}
-                            onChange={e => setEditForm(f => ({ ...f, cost: e.target.value }))}
+                          <FormulaInput storageKey={`sub:${a.id}:cost`} placeholder="0" value={editForm.cost}
+                            onChange={v => setEditForm(f => ({ ...f, cost: String(v) }))}
                             style={{ ...INPUT, width: 90 }} />
                         </td>
                         <td className="px-3 py-2 text-xs font-medium" style={{ color: "#22c55e" }}>{a.salePrice != null ? $(a.salePrice) : "—"}</td>
@@ -528,8 +529,8 @@ export default function ClientSubsTab({ companyId, clientId, estimates, initialS
                     </div>
                     <div className="flex flex-col gap-1">
                       <label className="text-xs" style={{ color: "#555" }}>Cost ($)</label>
-                      <input type="number" placeholder="0" value={divPending.cost}
-                        onChange={e => updatePending(divKey, { cost: e.target.value })}
+                      <FormulaInput placeholder="0" value={divPending.cost}
+                        onChange={v => updatePending(divKey, { cost: String(v) })}
                         style={{ ...INPUT, width: 100 }} />
                     </div>
                     {divPending.salePrice != null && (
@@ -598,8 +599,8 @@ export default function ClientSubsTab({ companyId, clientId, estimates, initialS
                               </div>
                               <div className="flex flex-col gap-1">
                                 <label className="text-xs" style={{ color: "#555" }}>Cost ($)</label>
-                                <input type="number" placeholder="0" value={itemPending.cost}
-                                  onChange={e => updatePending(itemKey, { cost: e.target.value })}
+                                <FormulaInput placeholder="0" value={itemPending.cost}
+                                  onChange={v => updatePending(itemKey, { cost: String(v) })}
                                   style={{ ...INPUT, width: 100 }} />
                               </div>
                               {itemPending.salePrice != null && (
