@@ -178,12 +178,18 @@ function DailyLogDocument({ log, company, client, photoDataUrls }: { log: DailyL
           </View>
           <View style={s.titleBlock}>
             <Text style={s.titleLabel}>DAILY LOG</Text>
-            <Text style={s.titleSub}>{dateStr}</Text>
-            <Text style={s.titleSub}>{client.name}</Text>
           </View>
         </View>
 
-        {/* Status + key info */}
+        {/* Centered "Prepared For" block */}
+        <View style={{ alignItems: "center", marginBottom: 12 }}>
+          <Text style={{ fontSize: 8, color: MUTED, fontFamily: "Helvetica-Bold", textTransform: "uppercase", letterSpacing: 1 }}>Daily Log Prepared For:</Text>
+          <Text style={{ fontSize: 11, color: WHITE, fontFamily: "Helvetica-Bold", marginTop: 3 }}>{client.name}</Text>
+          {client.address && <Text style={{ fontSize: 8.5, color: MUTED, marginTop: 2 }}>{client.address}</Text>}
+          <Text style={{ fontSize: 14, color: GOLD, fontFamily: "Helvetica-Bold", marginTop: 6, letterSpacing: 0.5 }}>{dateStr}</Text>
+        </View>
+
+        {/* Status badges */}
         <View style={s.badgeRow}>
           <Text style={[s.badge, { backgroundColor: st.backgroundColor, color: st.color }]}>
             {statusLabel(log.status)}
