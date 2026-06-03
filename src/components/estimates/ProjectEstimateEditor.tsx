@@ -282,16 +282,16 @@ function AddItemRow({ divisionId, groupId, canEdit }: { divisionId: string; grou
       </td>
       <td className="px-2 py-1"><DetailSelect value={form.detail} onChange={(v) => setForm({ ...form, detail: v })} /></td>
       <td className="px-2 py-1">
-        <FormulaInput className="w-16 border border-slate-300 rounded px-2 py-1 text-xs text-right" value={form.qty} onChange={(v) => setForm({ ...form, qty: v })} />
+        <FormulaInput className="w-16 border border-slate-300 rounded px-2 py-1 text-xs text-right" value={form.qty} onChange={(v) => setForm({ ...form, qty: String(v) })} />
       </td>
       <td className="px-2 py-1">
         <input className="w-16 border border-slate-300 rounded px-2 py-1 text-xs text-center" value={form.unit} onChange={(e) => { const u = e.target.value; setForm({ ...form, unit: u, qty: autoQty(form.name, u, form.qty) }); }} placeholder="unit" />
       </td>
       <td className="px-2 py-1">
-        <FormulaInput className="w-20 border border-slate-300 rounded px-2 py-1 text-xs text-right" value={form.unitCost} onChange={(v) => setForm({ ...form, unitCost: v })} />
+        <FormulaInput className="w-20 border border-slate-300 rounded px-2 py-1 text-xs text-right" value={form.unitCost} onChange={(v) => setForm({ ...form, unitCost: String(v) })} />
       </td>
       <td className="px-2 py-1">
-        <FormulaInput className="w-16 border border-slate-300 rounded px-2 py-1 text-xs text-right" value={form.markupPct} onChange={(v) => setForm({ ...form, markupPct: v })} />
+        <FormulaInput className="w-16 border border-slate-300 rounded px-2 py-1 text-xs text-right" value={form.markupPct} onChange={(v) => setForm({ ...form, markupPct: String(v) })} />
       </td>
       <td />
       <td className="px-2 py-1 hidden sm:table-cell">
