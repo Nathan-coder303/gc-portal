@@ -70,7 +70,7 @@ export default function PortalMessages({ clientId }: { clientId: string }) {
           id: `${Date.now()}-${Math.random().toString(36).slice(2)}`,
           name: file.name,
           url: blob.url,
-          mimeType: file.type || "application/octet-stream",
+          mimeType: file.type || (file.name.match(/\.(heic|heif)$/i) ? "image/jpeg" : "application/octet-stream"),
         });
       }
 
@@ -172,12 +172,28 @@ export default function PortalMessages({ clientId }: { clientId: string }) {
           </p>
         )}
         {files.length > 0 && (
-          <div className="flex flex-wrap gap-1.5">
+          <div className="flex flex-wrap gap-2">
             {files.map((f, i) => (
-              <span key={i} className="flex items-center gap-1 px-2 py-1 rounded-lg text-xs" style={{ background: BG, border: `1px solid ${BORDER}`, color: TEXT }}>
-                {f.name}
-                <button onClick={() => setFiles(p => p.filter((_, j) => j !== i))} style={{ color: MUTED }}>×</button>
-              </span>
+              <div key={i} className="relative group">
+                {f.type.startsWith("image/") || f.name.match(/\.(heic|heif|jpg|jpeg|png|gif|webp)$/i) ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img
+                    src={URL.createObjectURL(f)}
+                    alt={f.name}
+                    className="rounded-lg object-cover"
+                    style={{ width: 56, height: 56, border: `1px solid ${BORDER}` }}
+                  />
+                ) : (
+                  <span className="flex items-center gap-1 px-2 py-1 rounded-lg text-xs" style={{ background: BG, border: `1px solid ${BORDER}`, color: TEXT }}>
+                    📎 {f.name}
+                  </span>
+                )}
+                <button
+                  onClick={() => setFiles(p => p.filter((_, j) => j !== i))}
+                  className="absolute -top-1 -right-1 w-4 h-4 rounded-full text-[10px] font-bold flex items-center justify-center"
+                  style={{ background: "#ef4444", color: "#fff" }}
+                >×</button>
+              </div>
             ))}
           </div>
         )}
@@ -193,14 +209,24 @@ export default function PortalMessages({ clientId }: { clientId: string }) {
             style={{ background: BG, border: `1px solid ${BORDER}`, color: TEXT, outline: "none" }}
           />
           <div className="flex flex-col gap-1 shrink-0">
-            <button
-              onClick={() => fileRef.current?.click()}
-              className="w-9 h-9 rounded-lg flex items-center justify-center"
+            <label
+              className="w-9 h-9 rounded-lg flex items-center justify-center cursor-pointer"
               style={{ background: BG, border: `1px solid ${BORDER}`, color: MUTED }}
               title="Attach file"
             >
               📎
-            </button>
+              <input
+                ref={fileRef}
+                type="file"
+                multiple
+                accept="image/*,image/heic,image/heif,.pdf,.doc,.docx,.xlsx,.xls"
+                style={{ position: "absolute", width: 1, height: 1, opacity: 0, overflow: "hidden" }}
+                onChange={e => {
+                  if (e.target.files && e.target.files.length > 0) setFiles(p => [...p, ...Array.from(e.target.files!)]);
+                  e.target.value = "";
+                }}
+              />
+            </label>
             <button
               onClick={send}
               disabled={sending || (!content.trim() && files.length === 0)}
@@ -211,16 +237,6 @@ export default function PortalMessages({ clientId }: { clientId: string }) {
             </button>
           </div>
         </div>
-        <input
-          ref={fileRef}
-          type="file"
-          multiple
-          hidden
-          onChange={e => {
-            if (e.target.files) setFiles(p => [...p, ...Array.from(e.target.files!)]);
-            e.target.value = "";
-          }}
-        />
       </div>
     </div>
   );
