@@ -57,6 +57,14 @@ const s = StyleSheet.create({
   footerText: { fontSize: 7, color: MUTED },
 });
 
+function fmt12h(time24: string): string {
+  const [h, m] = time24.split(":").map(Number);
+  if (isNaN(h) || isNaN(m)) return time24;
+  const period = h >= 12 ? "PM" : "AM";
+  const h12 = h === 0 ? 12 : h > 12 ? h - 12 : h;
+  return `${h12}:${String(m).padStart(2, "0")} ${period}`;
+}
+
 function parseJson<T>(s: string | null, fallback: T): T {
   if (!s) return fallback;
   try { return JSON.parse(s) as T; } catch { return fallback; }
@@ -135,8 +143,9 @@ function Section({ title, children }: { title: string; children: React.ReactNode
 function DailyLogDocument({ log, company, client, photoDataUrls }: { log: DailyLogData; company: CompanyInfo; client: ClientInfo; photoDataUrls?: { name: string; dataUrl: string }[] }) {
   const logoPath = path.join(process.cwd(), "public", "logo.png");
   const date = new Date(log.arrivalDate);
-  const dateStr = date.toLocaleDateString("en-US", { weekday: "long", year: "numeric", month: "long", day: "numeric" });
-  const arrivalTimeStr = date.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", hour12: true });
+  const TZ = "America/New_York";
+  const dateStr = date.toLocaleDateString("en-US", { weekday: "long", year: "numeric", month: "long", day: "numeric", timeZone: TZ });
+  const arrivalTimeStr = date.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", hour12: true, timeZone: TZ });
   const subs = parseJson<{ name: string; company: string; trade: string }[]>(log.subsOnJobsite, []);
   const matDelivered = parseJson<{ item: string; qty: string; supplier?: string }[]>(log.materialDelivered, []);
   const matUsed = parseJson<{ item: string; qty: string }[]>(log.materialUsed, []);
@@ -211,7 +220,7 @@ function DailyLogDocument({ log, company, client, photoDataUrls }: { log: DailyL
           {log.departureTime && (
             <View style={s.infoBox}>
               <Text style={s.infoLabel}>Departure</Text>
-              <Text style={s.infoValue}>{log.departureTime}</Text>
+              <Text style={s.infoValue}>{fmt12h(log.departureTime)}</Text>
             </View>
           )}
         </View>
