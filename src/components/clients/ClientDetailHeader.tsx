@@ -15,6 +15,8 @@ type Client = {
   email: string | null;
   emailList?: string[] | null;
   phone: string | null;
+  projectName?: string | null;
+  legalDescription?: string | null;
 };
 
 const GOLD = "#C9A84C";
@@ -62,12 +64,14 @@ export default function ClientDetailHeader({
     state: client.state ?? "",
     zip: client.zip ?? "",
     phone: client.phone ?? "",
+    projectName: client.projectName ?? "",
+    legalDescription: client.legalDescription ?? "",
   });
   const [emailList, setEmailList] = useState<string[]>(initEmailList.length > 0 ? initEmailList : [""]);
 
   function save() {
     startTransition(async () => {
-      await upsertClient({ id: client.id, ...form, emailList });
+      await upsertClient({ id: client.id, ...form, emailList, projectName: form.projectName || undefined, legalDescription: form.legalDescription || undefined });
       setEditing(false);
       router.refresh();
     });
@@ -127,6 +131,14 @@ export default function ClientDetailHeader({
             <label className="block text-xs font-medium mb-1" style={{ color: "#8b949e" }}>Phone</label>
             <input value={form.phone} onChange={e => setForm({ ...form, phone: e.target.value })} className="rounded-lg px-3 py-2 text-sm" style={inputStyle} />
           </div>
+          <div className="col-span-2">
+            <label className="block text-xs font-medium mb-1" style={{ color: "#8b949e" }}>Project Name</label>
+            <input value={form.projectName} onChange={e => setForm({ ...form, projectName: e.target.value })} className="rounded-lg px-3 py-2 text-sm" style={inputStyle} placeholder="e.g. Smith Kitchen Remodel" />
+          </div>
+          <div className="col-span-2">
+            <label className="block text-xs font-medium mb-1" style={{ color: "#8b949e" }}>Legal Description</label>
+            <textarea value={form.legalDescription} onChange={e => setForm({ ...form, legalDescription: e.target.value })} className="rounded-lg px-3 py-2 text-sm resize-none" style={inputStyle} rows={3} placeholder="e.g. Lot 12, Block 4, Sunny Acres Subdivision…" />
+          </div>
         </div>
         <div className="flex gap-2">
           <button onClick={save} disabled={isPending || !form.name.trim()} className="px-5 py-2 text-sm rounded-lg font-semibold" style={{ background: GOLD, color: "#0d1117" }}>
@@ -157,6 +169,9 @@ export default function ClientDetailHeader({
             <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
               <div className="flex-1 min-w-0">
                 <h1 className="text-2xl font-bold leading-tight" style={{ color: "#e6edf3" }}>{client.name}</h1>
+                {client.projectName && (
+                  <p className="text-sm mt-0.5 font-medium" style={{ color: "#C9A84C" }}>{client.projectName}</p>
+                )}
                 <div className="flex flex-wrap gap-x-4 gap-y-0.5 mt-1.5">
                   {(client.address || cityLine) && (
                     <span className="text-sm" style={{ color: "#8b949e" }}>
