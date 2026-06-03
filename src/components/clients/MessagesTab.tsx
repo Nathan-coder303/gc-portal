@@ -49,7 +49,6 @@ export default function MessagesTab({
   const [sendingWelcome, setSendingWelcome] = useState(false);
   const [welcomeResult, setWelcomeResult] = useState<{ ok: boolean; msg: string } | null>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
-  const fileRef = useRef<HTMLInputElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   const load = useCallback(async () => {
@@ -72,7 +71,6 @@ export default function MessagesTab({
     setSending(true);
     setUploadError(null);
     try {
-      // Upload each file client-side to bypass serverless 4.5MB body limit
       const attachments: { id: string; name: string; url: string; mimeType: string }[] = [];
       for (const file of files) {
         const tokenRes = await fetch(`/api/${companyId}/clients/${clientId}/messages/upload-token`, {
@@ -123,6 +121,19 @@ export default function MessagesTab({
   const unread = messages.filter(m => m.senderType === "CLIENT" && !m.readByContractor).length;
 
   return (
+    <>
+    {/* Input lives outside overflow-hidden so iOS Safari fires onChange reliably */}
+    <input
+      id="msg-file-input"
+      type="file"
+      multiple
+      accept="image/*,image/heic,image/heif,.pdf,.doc,.docx,.xlsx,.xls"
+      className="hidden"
+      onChange={e => {
+        const f = e.target.files;
+        if (f && f.length > 0) setFiles(prev => [...prev, ...Array.from(f)]);
+      }}
+    />
     <div className="flex flex-col rounded-xl overflow-hidden" style={{ height: "calc(100vh - 280px)", minHeight: 480, background: BG, border: `1px solid ${BORDER}` }}>
       {/* Header */}
       <div className="flex items-center justify-between px-4 py-3 shrink-0" style={{ background: CARD, borderBottom: `1px solid ${BORDER}` }}>
@@ -235,23 +246,15 @@ export default function MessagesTab({
             {uploadError}
           </p>
         )}
-        {files.length > 0 && (
-          <div className="flex flex-wrap gap-2">
+
+        {/* Attachments row */}
+        <div className="flex items-center justify-between">
+          <div className="flex flex-wrap gap-2 flex-1 mr-2">
             {files.map((f, i) => (
-              <div key={i} className="relative group">
-                {f.type.startsWith("image/") || f.name.match(/\.(heic|heif|jpg|jpeg|png|gif|webp)$/i) ? (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img
-                    src={URL.createObjectURL(f)}
-                    alt={f.name}
-                    className="rounded-lg object-cover"
-                    style={{ width: 56, height: 56, border: `1px solid ${BORDER}` }}
-                  />
-                ) : (
-                  <span className="flex items-center gap-1 px-2 py-1 rounded-lg text-xs" style={{ background: BG, border: `1px solid ${BORDER}`, color: TEXT }}>
-                    📎 {f.name}
-                  </span>
-                )}
+              <div key={i} className="relative">
+                <span className="flex items-center gap-1 px-2 py-1 rounded-lg text-xs" style={{ background: BG, border: `1px solid ${BORDER}`, color: TEXT }}>
+                  📎 {f.name}
+                </span>
                 <button
                   onClick={() => setFiles(p => p.filter((_, j) => j !== i))}
                   className="absolute -top-1 -right-1 w-4 h-4 rounded-full text-[10px] font-bold flex items-center justify-center"
@@ -260,7 +263,15 @@ export default function MessagesTab({
               </div>
             ))}
           </div>
-        )}
+          <label
+            htmlFor="msg-file-input"
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold cursor-pointer shrink-0 transition-opacity hover:opacity-80"
+            style={{ background: GOLD, color: "#0d1117" }}
+          >
+            + Add
+          </label>
+        </div>
+
         <div className="flex items-end gap-2">
           <textarea
             ref={textareaRef}
@@ -272,34 +283,14 @@ export default function MessagesTab({
             className="flex-1 rounded-xl px-3 py-2 text-sm resize-none"
             style={{ background: BG, border: `1px solid ${BORDER}`, color: TEXT, outline: "none" }}
           />
-          <div className="flex flex-col gap-1 shrink-0">
-            <label
-              className="w-9 h-9 rounded-lg flex items-center justify-center text-base cursor-pointer"
-              style={{ background: BG, border: `1px solid ${BORDER}`, color: MUTED }}
-              title="Attach files"
-            >
-              📎
-              <input
-                ref={fileRef}
-                type="file"
-                multiple
-                accept="image/*,image/heic,image/heif,.pdf,.doc,.docx,.xlsx,.xls"
-                style={{ position: "absolute", width: 1, height: 1, opacity: 0, overflow: "hidden" }}
-                onChange={e => {
-                  if (e.target.files && e.target.files.length > 0) setFiles(p => [...p, ...Array.from(e.target.files!)]);
-                  e.target.value = "";
-                }}
-              />
-            </label>
-            <button
-              onClick={send}
-              disabled={sending || (!content.trim() && files.length === 0)}
-              className="w-9 h-9 rounded-lg flex items-center justify-center font-bold text-base disabled:opacity-40"
-              style={{ background: GOLD, color: "#0d1117" }}
-            >
-              {sending ? "…" : "↑"}
-            </button>
-          </div>
+          <button
+            onClick={send}
+            disabled={sending || (!content.trim() && files.length === 0)}
+            className="w-9 h-9 rounded-lg flex items-center justify-center font-bold text-base disabled:opacity-40 shrink-0"
+            style={{ background: GOLD, color: "#0d1117" }}
+          >
+            {sending ? "…" : "↑"}
+          </button>
         </div>
         <div className="flex items-center">
           <label className="flex items-center gap-2 cursor-pointer select-none" onClick={() => setNotifyClient(v => !v)}>
@@ -311,5 +302,6 @@ export default function MessagesTab({
         </div>
       </div>
     </div>
+    </>
   );
 }
