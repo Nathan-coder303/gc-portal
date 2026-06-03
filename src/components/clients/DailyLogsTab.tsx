@@ -273,7 +273,6 @@ function BulletTextarea({ value, onChange, rows = 4, placeholder }: { value: str
 
     if (e.key === "Enter") {
       e.preventDefault();
-      const lineStart = v.lastIndexOf("\n", pos - 1) + 1;
       const hasBullets = v.includes("• ");
 
       let newValue: string;
