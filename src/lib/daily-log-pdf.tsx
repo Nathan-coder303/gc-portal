@@ -44,8 +44,8 @@ const s = StyleSheet.create({
   grid2: { flexDirection: "row", gap: 10 },
   gridItem: { flex: 1, backgroundColor: CARD, borderRadius: 6, borderWidth: 1, borderColor: BORDER, padding: 8 },
   // Photo grid
-  photoGrid: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
-  photoCell: { width: "48%", borderRadius: 6, borderWidth: 4, borderColor: "#ffffff", overflow: "hidden", backgroundColor: CARD },
+  photoRow: { flexDirection: "row", gap: 8, marginBottom: 8 },
+  photoCell: { flex: 1, borderRadius: 6, borderWidth: 4, borderColor: "#ffffff", overflow: "hidden", backgroundColor: CARD },
   photoImg: { width: "100%", height: 190 },
   photoName: { fontSize: 6.5, color: MUTED, textAlign: "center", paddingVertical: 3, paddingHorizontal: 2 },
   // List item
@@ -56,6 +56,12 @@ const s = StyleSheet.create({
   footer: { position: "absolute", bottom: 18, left: 32, right: 32, flexDirection: "row", justifyContent: "space-between", alignItems: "center", borderTopWidth: 1, borderTopColor: BORDER, paddingTop: 6 },
   footerText: { fontSize: 7, color: MUTED },
 });
+
+function chunk<T>(arr: T[], size: number): T[][] {
+  const out: T[][] = [];
+  for (let i = 0; i < arr.length; i += size) out.push(arr.slice(i, i + size));
+  return out;
+}
 
 function fmt12h(time24: string): string {
   const [h, m] = time24.split(":").map(Number);
@@ -382,29 +388,37 @@ function DailyLogDocument({ log, company, client, photoDataUrls }: { log: DailyL
           </Section>
         )}
 
-        {/* Site Photos */}
+        {/* Site Photos — 6 per page, 2 per row */}
         {photoDataUrls && photoDataUrls.length > 0 && (
-          <View style={s.section} break>
-            <View style={{ flexDirection: "row", alignItems: "baseline", marginBottom: 6 }}>
-              <Text style={[s.sectionTitle, { marginBottom: 0 }]}>Site Photos</Text>
-              <Text style={[s.sectionTitle, { marginBottom: 0, marginLeft: 6, color: MUTED }]}>(click on a photo to enlarge)</Text>
-            </View>
-            <View style={s.photoGrid}>
-              {photoDataUrls.map((p, i) => (
-                <View key={i} style={s.photoCell}>
-                  {p.proxyUrl ? (
-                    <Link src={p.proxyUrl}>
-                      {/* eslint-disable-next-line jsx-a11y/alt-text */}
-                      <Image src={p.dataUrl} style={s.photoImg} />
-                    </Link>
-                  ) : (
-                    // eslint-disable-next-line jsx-a11y/alt-text
-                    <Image src={p.dataUrl} style={s.photoImg} />
-                  )}
+          chunk(photoDataUrls, 6).map((pagePhotos, pageIdx) => (
+            <View key={pageIdx} style={s.section} break>
+              {pageIdx === 0 && (
+                <View style={{ flexDirection: "row", alignItems: "baseline", marginBottom: 6 }}>
+                  <Text style={[s.sectionTitle, { marginBottom: 0 }]}>Site Photos</Text>
+                  <Text style={[s.sectionTitle, { marginBottom: 0, marginLeft: 6, color: MUTED }]}>(click on a photo to enlarge)</Text>
+                </View>
+              )}
+              {chunk(pagePhotos, 2).map((rowPhotos, rowIdx) => (
+                <View key={rowIdx} style={s.photoRow}>
+                  {rowPhotos.map((p, colIdx) => (
+                    <View key={colIdx} style={s.photoCell}>
+                      {p.proxyUrl ? (
+                        <Link src={p.proxyUrl}>
+                          {/* eslint-disable-next-line jsx-a11y/alt-text */}
+                          <Image src={p.dataUrl} style={s.photoImg} />
+                        </Link>
+                      ) : (
+                        // eslint-disable-next-line jsx-a11y/alt-text
+                        <Image src={p.dataUrl} style={s.photoImg} />
+                      )}
+                    </View>
+                  ))}
+                  {/* fill last row if odd number */}
+                  {rowPhotos.length === 1 && <View style={s.photoCell} />}
                 </View>
               ))}
             </View>
-          </View>
+          ))
         )}
 
         {/* Footer */}
