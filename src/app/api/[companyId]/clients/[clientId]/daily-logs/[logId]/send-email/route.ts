@@ -15,15 +15,11 @@ function encodeSubject(text: string): string {
 function stripHtmlSignature(html: string): string {
   return html
     .replace(/<br\s*\/?>/gi, "\n")
-    .replace(/<\/p>/gi, "\n")
-    .replace(/<\/div>/gi, "\n")
-    .replace(/<\/li>/gi, "\n")
     .replace(/<[^>]+>/g, "")
     .replace(/&amp;/g, "&")
     .replace(/&lt;/g, "<")
     .replace(/&gt;/g, ">")
     .replace(/&nbsp;/g, " ")
-    .replace(/\n{3,}/g, "\n\n")
     .trim();
 }
 
@@ -137,8 +133,13 @@ export async function POST(
     ...(signature ? [``, signature] : []),
   ].join("\n");
 
-  const boundary = `----=_Part_${Date.now()}`;
+  const outerBoundary = `----=_Mixed_${Date.now()}`;
+  const altBoundary = `----=_Alt_${Date.now() + 1}`;
   const pdfBase64 = pdfBuffer.toString("base64");
+  const htmlBody = emailBody
+    .split("\n")
+    .map(l => l.trim() === "" ? "<br>" : `<p style="margin:0 0 8px">${l}</p>`)
+    .join("\n");
   const mimeLines = [
     `From: ${fromEmail}`,
     `To: ${to}`,
@@ -146,20 +147,32 @@ export async function POST(
     ...(bcc ? [`Bcc: ${bcc}`] : []),
     `Subject: ${encodeSubject(emailSubject)}`,
     `MIME-Version: 1.0`,
-    `Content-Type: multipart/mixed; boundary="${boundary}"`,
+    `Content-Type: multipart/mixed; boundary="${outerBoundary}"`,
     ``,
-    `--${boundary}`,
+    `--${outerBoundary}`,
+    `Content-Type: multipart/alternative; boundary="${altBoundary}"`,
+    ``,
+    `--${altBoundary}`,
     `Content-Type: text/plain; charset=UTF-8`,
     ``,
     emailBody,
     ``,
-    `--${boundary}`,
+    `--${altBoundary}`,
+    `Content-Type: text/html; charset=UTF-8`,
+    ``,
+    `<html><body style="font-family:sans-serif;font-size:14px;color:#1e293b">`,
+    htmlBody,
+    `</body></html>`,
+    ``,
+    `--${altBoundary}--`,
+    ``,
+    `--${outerBoundary}`,
     `Content-Type: application/pdf; name="${filename}"`,
     `Content-Transfer-Encoding: base64`,
     `Content-Disposition: attachment; filename="${filename}"`,
     ``,
     pdfBase64,
-    `--${boundary}--`,
+    `--${outerBoundary}--`,
   ];
   const raw = Buffer.from(mimeLines.join("\r\n")).toString("base64url");
   await gmail.users.messages.send({ userId: "me", requestBody: { raw } });
