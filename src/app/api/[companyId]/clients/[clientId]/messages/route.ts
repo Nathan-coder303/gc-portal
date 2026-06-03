@@ -75,6 +75,24 @@ export async function POST(
     },
   });
 
+  // Mirror each attachment into ClientFile so it shows up in the Files tab
+  if (attachments.length > 0) {
+    const senderLabel = session.user?.name ?? session.user?.email ?? "Team";
+    await prisma.clientFile.createMany({
+      data: attachments.map(att => ({
+        clientId: params.clientId,
+        companyId: params.companyId,
+        fileName: att.name,
+        fileUrl: att.url,
+        fileSize: 0,
+        mimeType: att.mimeType || null,
+        uploadedBy: `Message from ${senderLabel}`,
+        sourceMessageId: message.id,
+        clientVisible: false,
+      })),
+    });
+  }
+
   // Email client if requested
   if (notifyClient) {
     const client = await prisma.client.findFirst({

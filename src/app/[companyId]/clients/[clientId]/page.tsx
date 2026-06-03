@@ -219,6 +219,8 @@ export default async function ClientDetailPage({
           email: safeClient.email ?? null,
           emailList: safeClient.emailList as string[] | null,
           phone: safeClient.phone ?? null,
+          projectName: safeClient.projectName ?? null,
+          legalDescription: safeClient.legalDescription ?? null,
         }}
         estimateCount={safeClient.templates.length}
         estimateTotal={safeClient.templates.reduce((sum, est) => sum + calcEstimateTotal(est.divisions, est.gcFeePercent), 0)}
@@ -593,6 +595,9 @@ export default async function ClientDetailPage({
             mimeType: f.mimeType,
             uploadedAt: f.uploadedAt.toISOString(),
             useInEstimate: f.useInEstimate,
+            clientVisible: f.clientVisible,
+            sourceMessageId: f.sourceMessageId,
+            uploadedBy: f.uploadedBy,
           }))}
         />
       )}

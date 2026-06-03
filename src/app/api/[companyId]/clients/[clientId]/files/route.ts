@@ -53,7 +53,7 @@ export async function POST(
   }
 }
 
-// PATCH — toggle useInEstimate (only one file per client can be set)
+// PATCH — toggle useInEstimate (only one file per client can be set) or clientVisible (per-file)
 export async function PATCH(
   req: NextRequest,
   { params }: { params: { companyId: string; clientId: string } }
@@ -61,22 +61,34 @@ export async function PATCH(
   const session = await auth();
   if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-  const { fileId, useInEstimate } = await req.json() as { fileId: string; useInEstimate: boolean };
+  const body = await req.json() as { fileId: string; useInEstimate?: boolean; clientVisible?: boolean };
+  const { fileId } = body;
   if (!fileId) return NextResponse.json({ error: "fileId required" }, { status: 400 });
 
-  // Clear all others for this client, then set the chosen one
-  await prisma.clientFile.updateMany({
-    where: { clientId: params.clientId },
-    data: { useInEstimate: false },
-  });
-  if (useInEstimate) {
+  if (typeof body.clientVisible === "boolean") {
     await prisma.clientFile.update({
       where: { id: fileId },
-      data: { useInEstimate: true },
+      data: { clientVisible: body.clientVisible },
     });
+    return NextResponse.json({ success: true });
   }
 
-  return NextResponse.json({ success: true });
+  if (typeof body.useInEstimate === "boolean") {
+    // Clear all others for this client, then set the chosen one
+    await prisma.clientFile.updateMany({
+      where: { clientId: params.clientId },
+      data: { useInEstimate: false },
+    });
+    if (body.useInEstimate) {
+      await prisma.clientFile.update({
+        where: { id: fileId },
+        data: { useInEstimate: true },
+      });
+    }
+    return NextResponse.json({ success: true });
+  }
+
+  return NextResponse.json({ error: "No supported field" }, { status: 400 });
 }
 
 // DELETE — remove a file by id (passed as query param)

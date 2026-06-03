@@ -89,6 +89,9 @@ type ClientFile = {
   mimeType: string | null;
   uploadedAt: string;
   useInEstimate: boolean;
+  clientVisible: boolean;
+  sourceMessageId: string | null;
+  uploadedBy: string | null;
 };
 
 function formatBytes(bytes: number): string {
@@ -138,7 +141,7 @@ export default function ClientFilesTab({
         });
         if (res.ok) {
           const record = await res.json();
-          setFiles(prev => [{ ...record, useInEstimate: record.useInEstimate ?? false, uploadedAt: record.uploadedAt ?? new Date().toISOString() }, ...prev]);
+          setFiles(prev => [{ ...record, useInEstimate: record.useInEstimate ?? false, clientVisible: record.clientVisible ?? false, sourceMessageId: record.sourceMessageId ?? null, uploadedBy: record.uploadedBy ?? null, uploadedAt: record.uploadedAt ?? new Date().toISOString() }, ...prev]);
         } else {
           const body = await res.json().catch(() => ({}));
           setErrors(prev => [...prev, `Failed to upload "${file.name}": ${body.error ?? res.statusText}`]);
@@ -177,6 +180,27 @@ export default function ClientFilesTab({
       setFiles(prev => prev.filter(f => f.id !== fileId));
     } finally {
       setDeletingId(null);
+    }
+  }
+
+  async function handleToggleClientVisible(fileId: string, currentValue: boolean) {
+    const next = !currentValue;
+    setTogglingId(fileId);
+    // Optimistic update
+    setFiles(prev => prev.map(f => f.id === fileId ? { ...f, clientVisible: next } : f));
+    try {
+      const res = await fetch(`/api/${companyId}/clients/${clientId}/files`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ fileId, clientVisible: next }),
+      });
+      if (!res.ok) {
+        setFiles(prev => prev.map(f => f.id === fileId ? { ...f, clientVisible: currentValue } : f));
+      }
+    } catch {
+      setFiles(prev => prev.map(f => f.id === fileId ? { ...f, clientVisible: currentValue } : f));
+    } finally {
+      setTogglingId(null);
     }
   }
 
@@ -290,8 +314,13 @@ export default function ClientFilesTab({
                       {file.fileName}
                     </a>
                   )}
-                  <div className="text-xs mt-0.5 flex items-center gap-2" style={{ color: "#8b949e" }}>
-                    <span>{formatBytes(file.fileSize)} · {new Date(file.uploadedAt).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}</span>
+                  <div className="text-xs mt-0.5 flex items-center gap-2 flex-wrap" style={{ color: "#8b949e" }}>
+                    <span>{file.fileSize > 0 ? `${formatBytes(file.fileSize)} · ` : ""}{new Date(file.uploadedAt).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}</span>
+                    {file.sourceMessageId && (
+                      <span className="text-xs font-semibold px-1.5 py-0.5 rounded" style={{ background: "#3b82f622", color: "#3b82f6", border: "1px solid #3b82f644" }}>
+                        💬 {file.uploadedBy ?? "From message"}
+                      </span>
+                    )}
                     {file.useInEstimate && (
                       <span className="text-xs font-semibold px-1.5 py-0.5 rounded" style={{ background: "#C9A84C22", color: "#C9A84C", border: "1px solid #C9A84C44" }}>
                         Page 2 → Estimate page 3
@@ -299,6 +328,22 @@ export default function ClientFilesTab({
                     )}
                   </div>
                 </div>
+
+                {/* Show to client toggle */}
+                <button
+                  onClick={() => handleToggleClientVisible(file.id, file.clientVisible)}
+                  disabled={togglingId === file.id}
+                  title={file.clientVisible ? "Hide from client portal" : "Show in client portal"}
+                  className="flex items-center gap-1.5 text-xs px-2.5 py-1 rounded-full font-medium transition-all"
+                  style={
+                    file.clientVisible
+                      ? { background: "#22c55e", color: "#0d1117", border: "1px solid #22c55e" }
+                      : { background: "#1e2736", color: "#8b949e", border: "1px solid #30373f" }
+                  }
+                >
+                  <span>{file.clientVisible ? "👁" : "🚫"}</span>
+                  <span>{file.clientVisible ? "Client sees" : "Hidden"}</span>
+                </button>
 
                 {/* Insert in estimate toggle — only for PDFs */}
                 {isPdf && (

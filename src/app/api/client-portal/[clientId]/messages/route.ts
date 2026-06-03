@@ -78,6 +78,24 @@ export async function POST(
     },
   });
 
+  // Mirror each attachment into ClientFile so it shows up in the contractor's Files tab
+  if (attachments.length > 0) {
+    const senderLabel = session.user.name ?? client.name;
+    await prisma.clientFile.createMany({
+      data: attachments.map(att => ({
+        clientId: params.clientId,
+        companyId: client.companyId,
+        fileName: att.name,
+        fileUrl: att.url,
+        fileSize: 0,
+        mimeType: att.mimeType || null,
+        uploadedBy: `Message from ${senderLabel}`,
+        sourceMessageId: message.id,
+        clientVisible: false,
+      })),
+    });
+  }
+
   const preview = content.slice(0, 100) + (content.length > 100 ? "…" : "");
   const hasAttachments = attachments.length > 0;
   const notifMessage = [

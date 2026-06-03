@@ -33,6 +33,11 @@ export default async function ClientPortalPage({ params }: { params: { clientId:
 
   if (!client) redirect("/login");
 
+  const sharedFiles = await prisma.clientFile.findMany({
+    where: { clientId: params.clientId, clientVisible: true },
+    orderBy: { uploadedAt: "desc" },
+  });
+
   const showMessages    = client.portalShowMessages;
   const showDailyPhotos = client.portalShowDailyPhotos;
   const showDocuments   = client.portalShowDocuments;
@@ -53,9 +58,10 @@ export default async function ClientPortalPage({ params }: { params: { clientId:
   if (showDailyLogs)   tabs.push("logs");
   if (showDocuments)   tabs.push("documents");
 
+  const sharedFilesColor = "#3b82f6";
   const documentsContent = (
     <>
-      {client.portalDocs.length === 0 ? (
+      {client.portalDocs.length === 0 && sharedFiles.length === 0 ? (
         <p className="text-sm" style={{ color: "#484f58" }}>No documents have been uploaded yet.</p>
       ) : (
         <div className="space-y-6">
@@ -103,6 +109,48 @@ export default async function ClientPortalPage({ params }: { params: { clientId:
               </div>
             );
           })}
+
+          {sharedFiles.length > 0 && (
+            <div>
+              <div className="text-xs font-bold uppercase tracking-widest mb-2" style={{ color: sharedFilesColor }}>
+                Shared Files
+              </div>
+              <div className="space-y-2">
+                {sharedFiles.map(file => (
+                  <div
+                    key={file.id}
+                    className="flex items-center justify-between px-4 py-3 rounded-xl"
+                    style={{ background: "#161b22", border: "1px solid #30373f" }}
+                  >
+                    <div className="min-w-0">
+                      <div className="text-sm font-semibold truncate" style={{ color: "#e6edf3" }}>{file.fileName}</div>
+                      <div className="text-xs mt-0.5" style={{ color: "#484f58" }}>
+                        {new Date(file.uploadedAt).toLocaleDateString("en-US")}
+                      </div>
+                    </div>
+                    <div className="flex gap-2 shrink-0 ml-3">
+                      <a
+                        href={`/api/client-portal/${client.id}/files/${file.id}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-xs px-3 py-1.5 rounded-lg font-semibold"
+                        style={{ background: `${sharedFilesColor}22`, color: sharedFilesColor, border: `1px solid ${sharedFilesColor}44` }}
+                      >
+                        View
+                      </a>
+                      <a
+                        href={`/api/client-portal/${client.id}/files/${file.id}?download=1`}
+                        className="text-xs px-3 py-1.5 rounded-lg font-semibold"
+                        style={{ background: "#1e2736", color: "#8b949e", border: "1px solid #30373f" }}
+                      >
+                        ↓
+                      </a>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
       )}
     </>
