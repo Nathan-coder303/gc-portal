@@ -182,11 +182,11 @@ function DailyLogDocument({ log, company, client, photoDataUrls }: { log: DailyL
         </View>
 
         {/* Centered "Prepared For" block */}
-        <View style={{ alignItems: "center", marginBottom: 12 }}>
-          <Text style={{ fontSize: 8, color: MUTED, fontFamily: "Helvetica-Bold", textTransform: "uppercase", letterSpacing: 1 }}>Daily Log Prepared For:</Text>
-          <Text style={{ fontSize: 11, color: WHITE, fontFamily: "Helvetica-Bold", marginTop: 3 }}>{client.name}</Text>
-          {client.address && <Text style={{ fontSize: 8.5, color: MUTED, marginTop: 2 }}>{client.address}</Text>}
-          <Text style={{ fontSize: 14, color: GOLD, fontFamily: "Helvetica-Bold", marginTop: 6, letterSpacing: 0.5 }}>{dateStr}</Text>
+        <View style={{ width: "100%", marginBottom: 12 }}>
+          <Text style={{ fontSize: 8, color: MUTED, fontFamily: "Helvetica-Bold", textTransform: "uppercase", letterSpacing: 1, textAlign: "center" }}>Daily Log Prepared For:</Text>
+          <Text style={{ fontSize: 11, color: WHITE, fontFamily: "Helvetica-Bold", marginTop: 3, textAlign: "center" }}>{client.name}</Text>
+          {client.address && <Text style={{ fontSize: 8.5, color: MUTED, marginTop: 2, textAlign: "center" }}>{client.address}</Text>}
+          <Text style={{ fontSize: 14, color: GOLD, fontFamily: "Helvetica-Bold", marginTop: 6, letterSpacing: 0.5, textAlign: "center" }}>{dateStr}</Text>
         </View>
 
         {/* Status badges */}
