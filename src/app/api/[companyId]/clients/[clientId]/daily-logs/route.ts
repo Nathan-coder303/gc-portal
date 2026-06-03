@@ -95,7 +95,7 @@ export async function POST(
           phone: client.company.phone ?? "",
           email: client.company.email ?? "",
         };
-        const pdfBuffer = await renderDailyLogPdf(log, company, { name: client.name, address: client.address });
+        const { buffer: pdfBuffer } = await renderDailyLogPdf(log, company, { name: client.name, address: client.address });
         const logDate = new Date(log.arrivalDate);
         const date = logDate.toISOString().slice(0, 10);
         const clientSlug = client.name.replace(/[^a-z0-9]/gi, "-");

@@ -26,7 +26,7 @@ export async function GET(
     email: log.company.email ?? "",
   };
 
-  const pdfBuffer = await renderDailyLogPdf(log, company, log.client);
+  const { buffer: pdfBuffer } = await renderDailyLogPdf(log, company, log.client);
 
   const date = new Date(log.arrivalDate).toISOString().slice(0, 10);
   const clientSlug = log.client.name.replace(/[^a-z0-9]/gi, "-");

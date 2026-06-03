@@ -1169,6 +1169,7 @@ function SendLogEmailModal({
   const [body, setBody] = useState("");
   const [loading, setLoading] = useState(true);
   const [sending, setSending] = useState(false);
+  const [photoCount, setPhotoCount] = useState(0);
   const [result, setResult] = useState<{ ok: boolean; msg: string } | null>(null);
 
   useEffect(() => {
@@ -1178,6 +1179,7 @@ function SendLogEmailModal({
         setTo(d.to ?? "");
         setSubject(d.defaultSubject ?? "");
         setBody(d.defaultBody ?? "");
+        setPhotoCount(d.photoCount ?? 0);
       })
       .finally(() => setLoading(false));
   }, [companyId, clientId, logId]);
@@ -1193,8 +1195,12 @@ function SendLogEmailModal({
       });
       const data = await res.json();
       if (res.ok) {
-        setResult({ ok: true, msg: "Email sent!" });
-        setTimeout(() => onClose(), 1800);
+        const { photoLoaded, photoTotal } = data as { photoLoaded: number; photoTotal: number };
+        const photoMsg = photoTotal > 0
+          ? ` · ${photoLoaded}/${photoTotal} photos included`
+          : "";
+        setResult({ ok: true, msg: `Email sent!${photoMsg}` });
+        setTimeout(() => onClose(), 2500);
       } else {
         setResult({ ok: false, msg: data.error ?? "Send failed" });
       }
@@ -1252,7 +1258,9 @@ function SendLogEmailModal({
             className="flex-1 py-2.5 rounded-xl text-sm font-bold disabled:opacity-50"
             style={{ background: GOLD, color: "#0d1117" }}
           >
-            {sending ? "Sending…" : "Send Email + PDF"}
+            {sending
+              ? photoCount > 0 ? `Generating PDF with ${photoCount} photo${photoCount > 1 ? "s" : ""}…` : "Sending…"
+              : photoCount > 0 ? `Send Email + PDF (${photoCount} photo${photoCount > 1 ? "s" : ""})` : "Send Email + PDF"}
           </button>
           <button
             onClick={onClose}

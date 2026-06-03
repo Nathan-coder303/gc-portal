@@ -6,7 +6,7 @@ import { google } from "googleapis";
 import { renderDailyLogPdf } from "@/lib/daily-log-pdf";
 
 export const runtime = "nodejs";
-export const maxDuration = 30;
+export const maxDuration = 60;
 
 function encodeSubject(text: string): string {
   return `=?UTF-8?B?${Buffer.from(text, "utf8").toString("base64")}?=`;
@@ -63,7 +63,14 @@ export async function GET(
     ...(signature ? [``, signature] : []),
   ].join("\n");
 
-  return NextResponse.json({ to, defaultSubject, defaultBody });
+  type RawAtt = { id: string; name: string; url: string; mimeType: string };
+  let photoCount = 0;
+  try {
+    const atts: RawAtt[] = JSON.parse((log.attachments as string | null) ?? "[]");
+    photoCount = atts.filter(a => a.mimeType?.startsWith("image/")).length;
+  } catch { /* */ }
+
+  return NextResponse.json({ to, defaultSubject, defaultBody, photoCount });
 }
 
 export async function POST(
@@ -92,7 +99,7 @@ export async function POST(
     email: log.company.email ?? "",
   };
 
-  const pdfBuffer = await renderDailyLogPdf(log, company, log.client);
+  const { buffer: pdfBuffer, photoTotal, photoLoaded } = await renderDailyLogPdf(log, company, log.client);
 
   const logDate = new Date(log.arrivalDate);
   const date = logDate.toISOString().slice(0, 10);
@@ -163,5 +170,5 @@ export async function POST(
     },
   });
 
-  return NextResponse.json({ success: true });
+  return NextResponse.json({ success: true, photoTotal, photoLoaded });
 }

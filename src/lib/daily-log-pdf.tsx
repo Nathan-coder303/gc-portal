@@ -399,16 +399,38 @@ function DailyLogDocument({ log, company, client, photoDataUrls }: { log: DailyL
   );
 }
 
+function isJpeg(buf: Buffer) { return buf[0] === 0xff && buf[1] === 0xd8 && buf[2] === 0xff; }
+function isPng(buf: Buffer)  { return buf[0] === 0x89 && buf[1] === 0x50 && buf[2] === 0x4e && buf[3] === 0x47; }
+
 async function fetchPhotoAsDataUrl(blobUrl: string): Promise<string | null> {
   try {
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), 12000);
     const res = await fetch(blobUrl, {
       headers: { Authorization: `Bearer ${process.env.BLOB_READ_WRITE_TOKEN}` },
+      signal: controller.signal,
     });
+    clearTimeout(timer);
     if (!res.ok) return null;
     const buf = Buffer.from(await res.arrayBuffer());
-    // Convert to JPEG via sharp — handles HEIC, CMYK, WEBP, PNG, etc.
-    const jpeg = await sharp(buf).rotate().jpeg({ quality: 85 }).toBuffer();
-    return `data:image/jpeg;base64,${jpeg.toString("base64")}`;
+    try {
+      // Always convert through sharp to guarantee sRGB JPEG
+      // This handles HEIC, CMYK JPEG, Display P3, WEBP, AVIF, PNG, etc.
+      const jpeg = await sharp(buf)
+        .rotate()                       // auto-orient from EXIF
+        .toColorspace("srgb")           // flatten any wide/CMYK gamut → standard RGB
+        .jpeg({ quality: 82 })
+        .toBuffer();
+      return `data:image/jpeg;base64,${jpeg.toString("base64")}`;
+    } catch {
+      // sharp couldn't decode this format (e.g. HEIC without libheif on this host)
+      // Fall back only for standard JPEG/PNG — skip unknown formats to avoid black frames
+      if (isJpeg(buf) || isPng(buf)) {
+        const mime = isPng(buf) ? "image/png" : "image/jpeg";
+        return `data:${mime};base64,${buf.toString("base64")}`;
+      }
+      return null; // skip HEIC / WEBP / etc. rather than embed black garbage
+    }
   } catch {
     return null;
   }
@@ -418,11 +440,11 @@ export async function renderDailyLogPdf(
   log: DailyLogData,
   company: CompanyInfo,
   client: ClientInfo,
-): Promise<Buffer> {
-  // Fetch image attachments and convert to base64 for react-pdf
+): Promise<{ buffer: Buffer; photoTotal: number; photoLoaded: number }> {
   type RawAttachment = { id: string; name: string; url: string; mimeType: string };
   const rawAttachments = parseJson<RawAttachment[]>(log.attachments ?? null, []);
   const imageAttachments = rawAttachments.filter(a => a.mimeType?.startsWith("image/"));
+  const photoTotal = imageAttachments.length;
 
   const photoDataUrls: { name: string; dataUrl: string }[] = [];
   await Promise.all(
@@ -431,9 +453,10 @@ export async function renderDailyLogPdf(
       if (dataUrl) photoDataUrls.push({ name: a.name, dataUrl });
     })
   );
+  const photoLoaded = photoDataUrls.length;
 
   const buf = await renderToBuffer(
     <DailyLogDocument log={log} company={company} client={client} photoDataUrls={photoDataUrls} />
   );
-  return Buffer.from(buf);
+  return { buffer: Buffer.from(buf), photoTotal, photoLoaded };
 }
