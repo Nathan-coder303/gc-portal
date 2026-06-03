@@ -6,7 +6,7 @@ type TabKey = "messages" | "photos" | "logs" | "documents";
 
 const TAB_LABELS: Record<TabKey, string> = {
   messages: "Messages",
-  photos: "Site Photos",
+  photos: "Site Photos (click to enlarge)",
   logs: "Daily Logs",
   documents: "Documents",
 };

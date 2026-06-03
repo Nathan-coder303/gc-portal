@@ -42,7 +42,6 @@ export default function PortalPhotoGallery({ clientId }: { clientId: string }) {
 
   return (
     <>
-      <p className="text-xs mb-4" style={{ color: MUTED }}>Please click on a picture to enlarge it.</p>
       <div className="space-y-6">
         {groups.map(([date, group]) => {
           const label = new Date(date + "T12:00:00").toLocaleDateString("en-US", {
