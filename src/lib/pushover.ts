@@ -13,10 +13,13 @@ export async function sendPushover({
 }) {
   const token = process.env.PUSHOVER_API_TOKEN;
   const user = process.env.PUSHOVER_USER_KEY;
-  if (!token || !user) return;
+  if (!token || !user) {
+    console.warn("[pushover] missing env vars:", { hasToken: !!token, hasUser: !!user });
+    return;
+  }
 
   try {
-    await fetch("https://api.pushover.net/1/messages.json", {
+    const res = await fetch("https://api.pushover.net/1/messages.json", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -30,7 +33,13 @@ export async function sendPushover({
         sound: "pushover",
       }),
     });
+    const body = await res.text();
+    if (!res.ok) {
+      console.error("[pushover] HTTP", res.status, body);
+    } else {
+      console.log("[pushover] sent:", body);
+    }
   } catch (err) {
-    console.error("Pushover notification failed:", err);
+    console.error("[pushover] fetch failed:", err);
   }
 }
