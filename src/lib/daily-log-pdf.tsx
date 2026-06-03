@@ -177,8 +177,9 @@ function DailyLogDocument({ log, company, client, photoDataUrls }: { log: DailyL
             {company.licenses && <Text style={s.companyDetail}>{company.licenses}</Text>}
           </View>
           <View style={s.titleBlock}>
-            <Text style={s.titleLabel}>DAILY LOG PREPARED FOR:</Text>
-            <Text style={{ fontSize: 11, color: WHITE, fontFamily: "Helvetica-Bold", textAlign: "right", marginTop: 4 }}>{client.name}</Text>
+            <Text style={s.titleLabel}>DAILY LOG</Text>
+            <Text style={[s.titleLabel, { fontSize: 10, marginTop: 2 }]}>PREPARED FOR:</Text>
+            <Text style={{ fontSize: 12, color: WHITE, fontFamily: "Helvetica-Bold", textAlign: "right", marginTop: 3 }}>{client.name}</Text>
           </View>
         </View>
 
