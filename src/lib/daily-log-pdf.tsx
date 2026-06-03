@@ -177,9 +177,8 @@ function DailyLogDocument({ log, company, client, photoDataUrls }: { log: DailyL
             {company.licenses && <Text style={s.companyDetail}>{company.licenses}</Text>}
           </View>
           <View style={s.titleBlock}>
-            <Text style={{ fontSize: 7, color: MUTED, textAlign: "right", marginBottom: 2 }}>Daily Log Prepared For:</Text>
-            <Text style={{ fontSize: 9, color: WHITE, fontFamily: "Helvetica-Bold", textAlign: "right", marginBottom: 4 }}>{client.name}</Text>
-            <Text style={s.titleLabel}>DAILY LOG</Text>
+            <Text style={s.titleLabel}>DAILY LOG PREPARED FOR:</Text>
+            <Text style={{ fontSize: 11, color: WHITE, fontFamily: "Helvetica-Bold", textAlign: "right", marginTop: 4 }}>{client.name}</Text>
           </View>
         </View>
 
@@ -198,11 +197,12 @@ function DailyLogDocument({ log, company, client, photoDataUrls }: { log: DailyL
 
         {/* Info strip */}
         <View style={s.infoStrip}>
-          <View style={s.infoBox}>
-            <Text style={s.infoLabel}>Project</Text>
-            <Text style={s.infoValue}>{client.name}</Text>
-            {client.address && <Text style={{ fontSize: 7.5, color: MUTED, marginTop: 2 }}>{client.address}</Text>}
-          </View>
+          {client.address && (
+            <View style={s.infoBox}>
+              <Text style={s.infoLabel}>Project Address</Text>
+              <Text style={[s.infoValue, { fontSize: 10 }]}>{client.address}</Text>
+            </View>
+          )}
           {log.weatherCondition && (
             <View style={s.infoBox}>
               <Text style={s.infoLabel}>Weather</Text>
