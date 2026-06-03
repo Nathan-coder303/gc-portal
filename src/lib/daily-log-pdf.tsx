@@ -398,7 +398,6 @@ function DailyLogDocument({ log, company, client, photoDataUrls }: { log: DailyL
                     // eslint-disable-next-line jsx-a11y/alt-text
                     <Image src={p.dataUrl} style={s.photoImg} />
                   )}
-                  <Text style={s.photoName}>{p.name.length > 30 ? p.name.slice(0, 28) + "…" : p.name}</Text>
                 </View>
               ))}
             </View>
