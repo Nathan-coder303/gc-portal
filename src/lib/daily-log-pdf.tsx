@@ -385,7 +385,10 @@ function DailyLogDocument({ log, company, client, photoDataUrls }: { log: DailyL
         {/* Site Photos */}
         {photoDataUrls && photoDataUrls.length > 0 && (
           <View style={s.section} break>
-            <Text style={s.sectionTitle}>Site Photos</Text>
+            <View style={{ flexDirection: "row", alignItems: "baseline", marginBottom: 6 }}>
+              <Text style={[s.sectionTitle, { marginBottom: 0 }]}>Site Photos</Text>
+              <Text style={{ fontSize: 7, color: "#8b949e", marginLeft: 6 }}>(click on a photo to enlarge)</Text>
+            </View>
             <View style={s.photoGrid}>
               {photoDataUrls.map((p, i) => (
                 <View key={i} style={s.photoCell}>
