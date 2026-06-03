@@ -224,6 +224,7 @@ model ClientMessage {
   readByClient     Boolean  @default(false)
   readByContractor Boolean  @default(false)
   reminderSent     Boolean  @default(false)
+  replyToId        String?
   createdAt   DateTime  @default(now())
   @@index([clientId])
   @@index([companyId])

@@ -46,12 +46,14 @@ export async function POST(
 
   let content = "";
   let attachments: { id: string; name: string; url: string; mimeType: string }[] = [];
+  let replyToId: string | null = null;
 
   const ct = req.headers.get("content-type") ?? "";
   if (ct.includes("application/json")) {
-    const body = await req.json() as { content?: string; attachments?: typeof attachments };
+    const body = await req.json() as { content?: string; attachments?: typeof attachments; replyToId?: string | null };
     content = body.content ?? "";
     attachments = body.attachments ?? [];
+    replyToId = body.replyToId ?? null;
   } else {
     const formData = await req.formData();
     content = (formData.get("content") as string) ?? "";
@@ -75,6 +77,7 @@ export async function POST(
       senderType: "CLIENT",
       senderName: session.user.name ?? client.name,
       readByClient: true,
+      replyToId: replyToId ?? undefined,
     },
   });
 

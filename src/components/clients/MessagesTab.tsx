@@ -14,8 +14,15 @@ type Message = {
   senderName: string;
   readByClient: boolean;
   readByContractor: boolean;
+  replyToId: string | null;
   createdAt: string;
 };
+
+function quotePreview(content: string, atts: Attachment[]) {
+  if (content.trim()) return content.length > 80 ? content.slice(0, 80) + "…" : content;
+  if (atts.length > 0) return `📎 ${atts.length} attachment${atts.length > 1 ? "s" : ""}`;
+  return "(message)";
+}
 
 const GOLD = "#C9A84C";
 const BG = "#0d1117";
@@ -48,8 +55,16 @@ export default function MessagesTab({
   const [uploadError, setUploadError] = useState<string | null>(null);
   const [sendingWelcome, setSendingWelcome] = useState(false);
   const [welcomeResult, setWelcomeResult] = useState<{ ok: boolean; msg: string } | null>(null);
+  const [replyTo, setReplyTo] = useState<Message | null>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+
+  const messagesById = new Map(messages.map(m => [m.id, m]));
+
+  function startReply(msg: Message) {
+    setReplyTo(msg);
+    textareaRef.current?.focus();
+  }
 
   const load = useCallback(async () => {
     const res = await fetch(`/api/${companyId}/clients/${clientId}/messages`);
@@ -92,13 +107,14 @@ export default function MessagesTab({
       const res = await fetch(`/api/${companyId}/clients/${clientId}/messages`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ content: content.trim(), notifyClient, attachments }),
+        body: JSON.stringify({ content: content.trim(), notifyClient, attachments, replyToId: replyTo?.id ?? null }),
       });
       if (res.ok) {
         const msg = await res.json();
         setMessages(prev => [...prev, msg]);
         setContent("");
         setFiles([]);
+        setReplyTo(null);
         textareaRef.current?.focus();
       } else {
         setUploadError("Failed to send message");
@@ -183,8 +199,17 @@ export default function MessagesTab({
           const time = new Date(msg.createdAt).toLocaleString("en-US", {
             month: "short", day: "numeric", hour: "numeric", minute: "2-digit",
           });
+          const repliedTo = msg.replyToId ? messagesById.get(msg.replyToId) : null;
           return (
-            <div key={msg.id} className={`flex ${isMine ? "justify-end" : "justify-start"}`}>
+            <div key={msg.id} className={`group flex ${isMine ? "justify-end" : "justify-start"} items-end gap-1`}>
+              {isMine && (
+                <button
+                  onClick={() => startReply(msg)}
+                  className="opacity-50 hover:opacity-100 transition-opacity text-sm px-2 py-1 rounded"
+                  style={{ color: MUTED, background: BG, border: `1px solid ${BORDER}` }}
+                  title="Reply"
+                >↩</button>
+              )}
               <div style={{ maxWidth: "75%" }}>
                 <p className="text-xs mb-1" style={{ color: MUTED, textAlign: isMine ? "right" : "left" }}>
                   {msg.senderName} · {time}
@@ -199,6 +224,15 @@ export default function MessagesTab({
                     borderBottomLeftRadius: isMine ? 16 : 4,
                   }}
                 >
+                  {repliedTo && (
+                    <div
+                      className="rounded-lg px-2.5 py-1.5 mb-2 border-l-2"
+                      style={{ background: "#0d1117", borderLeftColor: GOLD, borderTop: `1px solid ${BORDER}`, borderRight: `1px solid ${BORDER}`, borderBottom: `1px solid ${BORDER}` }}
+                    >
+                      <p className="text-[11px] font-bold" style={{ color: GOLD }}>{repliedTo.senderName}</p>
+                      <p className="text-xs truncate" style={{ color: MUTED }}>{quotePreview(repliedTo.content, parseAtts(repliedTo.attachments))}</p>
+                    </div>
+                  )}
                   {msg.content && <p className="whitespace-pre-wrap leading-relaxed">{msg.content}</p>}
                   {atts.length > 0 && (
                     <div className={`${msg.content ? "mt-2" : ""} space-y-1.5`}>
@@ -233,6 +267,14 @@ export default function MessagesTab({
                   </p>
                 )}
               </div>
+              {!isMine && (
+                <button
+                  onClick={() => startReply(msg)}
+                  className="opacity-50 hover:opacity-100 transition-opacity text-sm px-2 py-1 rounded"
+                  style={{ color: MUTED, background: BG, border: `1px solid ${BORDER}` }}
+                  title="Reply"
+                >↩</button>
+              )}
             </div>
           );
         })}
@@ -245,6 +287,16 @@ export default function MessagesTab({
           <p className="text-xs px-2 py-1.5 rounded-lg" style={{ background: "#2a1010", color: "#ef4444", border: "1px solid #ef444433" }}>
             {uploadError}
           </p>
+        )}
+
+        {replyTo && (
+          <div className="flex items-start gap-2 rounded-lg px-2.5 py-1.5 border-l-2" style={{ background: BG, borderLeftColor: GOLD, borderTop: `1px solid ${BORDER}`, borderRight: `1px solid ${BORDER}`, borderBottom: `1px solid ${BORDER}` }}>
+            <div className="flex-1 min-w-0">
+              <p className="text-[11px] font-bold" style={{ color: GOLD }}>Replying to {replyTo.senderName}</p>
+              <p className="text-xs truncate" style={{ color: MUTED }}>{quotePreview(replyTo.content, parseAtts(replyTo.attachments))}</p>
+            </div>
+            <button onClick={() => setReplyTo(null)} className="text-xs shrink-0" style={{ color: MUTED }} title="Cancel reply">✕</button>
+          </div>
         )}
 
         {/* Attachments row */}
