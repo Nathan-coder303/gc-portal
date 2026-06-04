@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef, useCallback } from "react";
 import { put } from "@vercel/blob/client";
+import SwipeToReply from "@/components/shared/SwipeToReply";
 
 type Attachment = { id: string; name: string; url: string; mimeType: string };
 type Message = {
@@ -201,81 +202,83 @@ export default function MessagesTab({
           });
           const repliedTo = msg.replyToId ? messagesById.get(msg.replyToId) : null;
           return (
-            <div key={msg.id} className={`group flex ${isMine ? "justify-end" : "justify-start"} items-end gap-1`}>
-              {isMine && (
-                <button
-                  onClick={() => startReply(msg)}
-                  className="opacity-50 hover:opacity-100 transition-opacity text-sm px-2 py-1 rounded"
-                  style={{ color: MUTED, background: BG, border: `1px solid ${BORDER}` }}
-                  title="Reply"
-                >↩</button>
-              )}
-              <div style={{ maxWidth: "75%" }}>
-                <p className="text-xs mb-1" style={{ color: MUTED, textAlign: isMine ? "right" : "left" }}>
-                  {msg.senderName} · {time}
-                </p>
-                <div
-                  className="rounded-2xl px-4 py-2.5 text-sm"
-                  style={{
-                    background: isMine ? "#C9A84C1a" : CARD,
-                    border: `1px solid ${isMine ? "#C9A84C44" : BORDER}`,
-                    color: TEXT,
-                    borderBottomRightRadius: isMine ? 4 : 16,
-                    borderBottomLeftRadius: isMine ? 16 : 4,
-                  }}
-                >
-                  {repliedTo && (
-                    <div
-                      className="rounded-lg px-2.5 py-1.5 mb-2 border-l-2"
-                      style={{ background: "#0d1117", borderLeftColor: GOLD, borderTop: `1px solid ${BORDER}`, borderRight: `1px solid ${BORDER}`, borderBottom: `1px solid ${BORDER}` }}
-                    >
-                      <p className="text-[11px] font-bold" style={{ color: GOLD }}>{repliedTo.senderName}</p>
-                      <p className="text-xs truncate" style={{ color: MUTED }}>{quotePreview(repliedTo.content, parseAtts(repliedTo.attachments))}</p>
-                    </div>
-                  )}
-                  {msg.content && <p className="whitespace-pre-wrap leading-relaxed">{msg.content}</p>}
-                  {atts.length > 0 && (
-                    <div className={`${msg.content ? "mt-2" : ""} space-y-1.5`}>
-                      {atts.map((att) => (
-                        <a
-                          key={att.id}
-                          href={`/api/${companyId}/clients/${clientId}/messages/${msg.id}?attachment=${att.id}`}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                        >
-                          {att.mimeType.startsWith("image/") ? (
-                            // eslint-disable-next-line @next/next/no-img-element
-                            <img
-                              src={`/api/${companyId}/clients/${clientId}/messages/${msg.id}?attachment=${att.id}`}
-                              alt={att.name}
-                              className="rounded-xl max-w-full block"
-                              style={{ maxHeight: 220, border: `1px solid ${BORDER}` }}
-                            />
-                          ) : (
-                            <span className="flex items-center gap-1.5 text-xs px-2.5 py-1.5 rounded-lg" style={{ background: "#1e2736", color: GOLD, border: `1px solid ${BORDER}` }}>
-                              📎 {att.name}
-                            </span>
-                          )}
-                        </a>
-                      ))}
-                    </div>
+            <SwipeToReply key={msg.id} onReply={() => startReply(msg)}>
+              <div className={`group flex ${isMine ? "justify-end" : "justify-start"} items-end gap-1`}>
+                {isMine && (
+                  <button
+                    onClick={() => startReply(msg)}
+                    className="hidden sm:block opacity-50 hover:opacity-100 transition-opacity text-sm px-2 py-1 rounded"
+                    style={{ color: MUTED, background: BG, border: `1px solid ${BORDER}` }}
+                    title="Reply"
+                  >↩</button>
+                )}
+                <div style={{ maxWidth: "75%" }}>
+                  <p className="text-xs mb-1" style={{ color: MUTED, textAlign: isMine ? "right" : "left" }}>
+                    {msg.senderName} · {time}
+                  </p>
+                  <div
+                    className="rounded-2xl px-4 py-2.5 text-sm"
+                    style={{
+                      background: isMine ? "#C9A84C1a" : CARD,
+                      border: `1px solid ${isMine ? "#C9A84C44" : BORDER}`,
+                      color: TEXT,
+                      borderBottomRightRadius: isMine ? 4 : 16,
+                      borderBottomLeftRadius: isMine ? 16 : 4,
+                    }}
+                  >
+                    {repliedTo && (
+                      <div
+                        className="rounded-lg px-2.5 py-1.5 mb-2 border-l-2"
+                        style={{ background: "#0d1117", borderLeftColor: GOLD, borderTop: `1px solid ${BORDER}`, borderRight: `1px solid ${BORDER}`, borderBottom: `1px solid ${BORDER}` }}
+                      >
+                        <p className="text-[11px] font-bold" style={{ color: GOLD }}>{repliedTo.senderName}</p>
+                        <p className="text-xs truncate" style={{ color: MUTED }}>{quotePreview(repliedTo.content, parseAtts(repliedTo.attachments))}</p>
+                      </div>
+                    )}
+                    {msg.content && <p className="whitespace-pre-wrap leading-relaxed">{msg.content}</p>}
+                    {atts.length > 0 && (
+                      <div className={`${msg.content ? "mt-2" : ""} space-y-1.5`}>
+                        {atts.map((att) => (
+                          <a
+                            key={att.id}
+                            href={`/api/${companyId}/clients/${clientId}/messages/${msg.id}?attachment=${att.id}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                          >
+                            {att.mimeType.startsWith("image/") ? (
+                              // eslint-disable-next-line @next/next/no-img-element
+                              <img
+                                src={`/api/${companyId}/clients/${clientId}/messages/${msg.id}?attachment=${att.id}`}
+                                alt={att.name}
+                                className="rounded-xl max-w-full block"
+                                style={{ maxHeight: 220, border: `1px solid ${BORDER}` }}
+                              />
+                            ) : (
+                              <span className="flex items-center gap-1.5 text-xs px-2.5 py-1.5 rounded-lg" style={{ background: "#1e2736", color: GOLD, border: `1px solid ${BORDER}` }}>
+                                📎 {att.name}
+                              </span>
+                            )}
+                          </a>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                  {isMine && (
+                    <p className="text-xs mt-0.5 text-right" style={{ color: msg.readByClient ? "#22c55e" : MUTED }}>
+                      {msg.readByClient ? "✓ Read" : "Delivered"}
+                    </p>
                   )}
                 </div>
-                {isMine && (
-                  <p className="text-xs mt-0.5 text-right" style={{ color: msg.readByClient ? "#22c55e" : MUTED }}>
-                    {msg.readByClient ? "✓ Read" : "Delivered"}
-                  </p>
+                {!isMine && (
+                  <button
+                    onClick={() => startReply(msg)}
+                    className="hidden sm:block opacity-50 hover:opacity-100 transition-opacity text-sm px-2 py-1 rounded"
+                    style={{ color: MUTED, background: BG, border: `1px solid ${BORDER}` }}
+                    title="Reply"
+                  >↩</button>
                 )}
               </div>
-              {!isMine && (
-                <button
-                  onClick={() => startReply(msg)}
-                  className="opacity-50 hover:opacity-100 transition-opacity text-sm px-2 py-1 rounded"
-                  style={{ color: MUTED, background: BG, border: `1px solid ${BORDER}` }}
-                  title="Reply"
-                >↩</button>
-              )}
-            </div>
+            </SwipeToReply>
           );
         })}
         <div ref={bottomRef} />
