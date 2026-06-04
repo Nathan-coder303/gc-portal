@@ -187,6 +187,12 @@ export default function ClientDetailHeader({
                     <span key={i} className="text-sm" style={{ color: "#8b949e" }}>✉ {em}</span>
                   ))}
                 </div>
+                {client.legalDescription && (
+                  <p className="text-xs mt-2 leading-relaxed" style={{ color: "#8b949e" }}>
+                    <span className="font-semibold" style={{ color: "#6b7280" }}>Legal: </span>
+                    {client.legalDescription}
+                  </p>
+                )}
 
                 {/* Payment summary */}
                 {paymentSummary && paymentSummary.totalInvoiced > 0 && (
