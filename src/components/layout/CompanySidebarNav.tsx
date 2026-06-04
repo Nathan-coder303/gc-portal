@@ -85,19 +85,16 @@ export default function CompanySidebarNav({ companyId, role }: { companyId: stri
       )}
 
       {!isPartner && (
-        <div className="pt-2 pb-1">
-          <div className="text-[10px] uppercase tracking-widest px-3 pb-1 font-bold" style={{ color: "#30373f" }}>
-            Coming Soon
-          </div>
-          <div className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm opacity-40 cursor-not-allowed">
-            <span className="shrink-0"><TeamsIcon color={IDLE_COLOR} /></span>
-            <span style={{ color: IDLE_COLOR }}>Teams</span>
-            <span className="ml-auto text-[9px] font-bold px-1.5 py-0.5 rounded uppercase tracking-wider"
-              style={{ background: "#C9A84C22", color: "#C9A84C", border: "1px solid #C9A84C44" }}>
-              Soon
-            </span>
-          </div>
-        </div>
+        <Link
+          href={`/${companyId}/team`}
+          className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all"
+          style={pathname.startsWith(`/${companyId}/team`) ? { background: "#C9A84C", color: "#0d1117" } : { color: IDLE_COLOR }}
+        >
+          <span className="shrink-0">
+            <TeamsIcon color={pathname.startsWith(`/${companyId}/team`) ? "#0d1117" : IDLE_COLOR} />
+          </span>
+          Team
+        </Link>
       )}
     </nav>
   );
