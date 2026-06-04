@@ -100,10 +100,11 @@ export async function POST(
   if (notifyClient) {
     const client = await prisma.client.findFirst({
       where: { id: params.clientId },
-      select: { name: true, email: true, emailList: true },
+      select: { name: true, email: true, emailList: true, messageCcEmails: true },
     });
     const emails = (client?.emailList as string[] | null)?.filter(Boolean) ?? [];
     const to = emails.length > 0 ? emails.join(", ") : client?.email;
+    const ccList = ((client?.messageCcEmails as string[] | null) ?? []).filter(Boolean);
     if (to) {
       try {
         const oauth2Client = await getGmailOAuth(params.companyId);
@@ -116,6 +117,7 @@ export async function POST(
         const mimeLines = [
           `From: ${fromEmail}`,
           `To: ${to}`,
+          ...(ccList.length > 0 ? [`Cc: ${ccList.join(", ")}`] : []),
           `Subject: ${subject}`,
           `MIME-Version: 1.0`,
           `Content-Type: text/plain; charset=UTF-8`,

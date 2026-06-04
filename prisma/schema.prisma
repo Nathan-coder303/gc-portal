@@ -183,6 +183,7 @@ model Client {
   projectName              String?   // Project name used in filenames and PDF labels
   legalDescription         String?   // Property legal description for lien releases
   dailyLogEmailEnabled     Boolean   @default(false)
+  messageCcEmails          Json?     // string[]: extra emails always CC'd on message notifications
   portalShowMessages       Boolean   @default(true)
   portalShowDailyPhotos    Boolean   @default(true)
   portalShowDocuments      Boolean   @default(true)
