@@ -5,20 +5,25 @@ import bcrypt from "bcryptjs";
 
 export const runtime = "nodejs";
 
-// GET — check if portal user exists for this client
+// GET — list all portal users (client-portal logins) for this client
 export async function GET(_req: NextRequest, { params }: { params: { companyId: string; clientId: string } }) {
   const session = await auth();
   if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-  const portalUser = await prisma.user.findUnique({
-    where: { clientId: params.clientId },
+  const portalUsers = await prisma.user.findMany({
+    where: { clientId: params.clientId, role: "CLIENT", archivedAt: null },
     select: { id: true, email: true, name: true, createdAt: true },
+    orderBy: { createdAt: "asc" },
   });
 
-  return NextResponse.json({ portalUser: portalUser ?? null });
+  // Keep backward-compat with old single-user UI: surface the first as portalUser
+  return NextResponse.json({
+    portalUser: portalUsers[0] ?? null,
+    portalUsers,
+  });
 }
 
-// POST — create or reset portal credentials for a client
+// POST — add a new portal user (or reset password for an existing email)
 export async function POST(req: NextRequest, { params }: { params: { companyId: string; clientId: string } }) {
   const session = await auth();
   if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -33,32 +38,27 @@ export async function POST(req: NextRequest, { params }: { params: { companyId: 
   });
   if (!client) return NextResponse.json({ error: "Client not found" }, { status: 404 });
 
+  const cleanEmail = email.trim().toLowerCase();
   const passwordHash = await bcrypt.hash(password, 10);
 
-  // Check if portal user already exists
-  const existing = await prisma.user.findUnique({ where: { clientId: params.clientId } });
-
+  // If this email already exists, only allow updating it if it's already attached to THIS client
+  const existing = await prisma.user.findUnique({ where: { email: cleanEmail } });
   if (existing) {
-    // Reset credentials
+    if (existing.clientId !== params.clientId) {
+      return NextResponse.json({ error: "Email already in use by another account" }, { status: 409 });
+    }
     const updated = await prisma.user.update({
       where: { id: existing.id },
-      data: { email: email.trim(), passwordHash, name: name?.trim() || client.name },
+      data: { passwordHash, name: name?.trim() || existing.name },
       select: { id: true, email: true, name: true, createdAt: true },
     });
     return NextResponse.json({ portalUser: updated });
   }
 
-  // Check if email already taken
-  const emailTaken = await prisma.user.findUnique({ where: { email: email.trim() } });
-  if (emailTaken) {
-    return NextResponse.json({ error: "Email already in use" }, { status: 409 });
-  }
-
-  // Create new portal user
   const created = await prisma.user.create({
     data: {
       companyId: params.companyId,
-      email: email.trim(),
+      email: cleanEmail,
       name: name?.trim() || client.name,
       role: "CLIENT",
       passwordHash,
@@ -70,14 +70,16 @@ export async function POST(req: NextRequest, { params }: { params: { companyId: 
   return NextResponse.json({ portalUser: created });
 }
 
-// DELETE — remove portal access for this client
-export async function DELETE(_req: NextRequest, { params }: { params: { companyId: string; clientId: string } }) {
+// DELETE — remove a portal user. If ?userId=X provided, remove that one; otherwise remove ALL (backward compat).
+export async function DELETE(req: NextRequest, { params }: { params: { companyId: string; clientId: string } }) {
   const session = await auth();
   if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-  const existing = await prisma.user.findUnique({ where: { clientId: params.clientId } });
-  if (existing) {
-    await prisma.user.delete({ where: { id: existing.id } });
+  const userId = req.nextUrl.searchParams.get("userId");
+  if (userId) {
+    await prisma.user.deleteMany({ where: { id: userId, clientId: params.clientId, role: "CLIENT" } });
+  } else {
+    await prisma.user.deleteMany({ where: { clientId: params.clientId, role: "CLIENT" } });
   }
 
   return NextResponse.json({ ok: true });

@@ -62,6 +62,8 @@ export default function ClientPortalTab({
   companyId: string; clientId: string; clientName: string; clientEmail: string | null;
 }) {
   const [portalUser, setPortalUser] = useState<PortalUser | null>(null);
+  const [portalUsers, setPortalUsers] = useState<PortalUser[]>([]);
+  const [newName, setNewName] = useState("");
   const [docs, setDocs] = useState<Doc[]>([]);
   const [settings, setSettings] = useState<Settings>({
     portalShowMessages: true,
@@ -95,9 +97,11 @@ export default function ClientPortalTab({
       fetch(`/api/${companyId}/clients/${clientId}/portal/settings`).then(r => r.json()),
     ]).then(([cred, dc, sett]) => {
       setPortalUser(cred.portalUser ?? null);
+      setPortalUsers(cred.portalUsers ?? []);
       setDocs(Array.isArray(dc) ? dc : []);
       if (sett && !sett.error) setSettings(sett);
-      if (cred.portalUser) setCredEmail(cred.portalUser.email);
+      // Don't prefill — empty form means "add a new login"
+      setCredEmail("");
     }).finally(() => setLoading(false));
   }, [companyId, clientId]);
 
@@ -120,24 +124,31 @@ export default function ClientPortalTab({
     const res = await fetch(`/api/${companyId}/clients/${clientId}/portal/credentials`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ email: credEmail.trim(), password: credPassword, name: clientName }),
+      body: JSON.stringify({ email: credEmail.trim(), password: credPassword, name: newName.trim() || clientName }),
     });
     const data = await res.json();
     if (res.ok) {
-      setPortalUser(data.portalUser);
+      // Refresh list
+      const wasNew = !portalUsers.some(u => u.email === credEmail.trim().toLowerCase());
+      setPortalUsers(prev => wasNew ? [...prev, data.portalUser] : prev.map(u => u.id === data.portalUser.id ? data.portalUser : u));
+      if (!portalUser) setPortalUser(data.portalUser);
+      setCredEmail("");
       setCredPassword("");
-      setCredMsg({ ok: true, text: "Portal access " + (portalUser ? "updated" : "created") + "!" });
+      setNewName("");
+      setCredMsg({ ok: true, text: wasNew ? `Added ${data.portalUser.email}` : `Updated ${data.portalUser.email}` });
     } else {
       setCredMsg({ ok: false, text: data.error ?? "Failed" });
     }
     setCredSaving(false);
   }
 
-  async function revokeAccess() {
-    if (!confirm("Remove portal access for this client?")) return;
-    await fetch(`/api/${companyId}/clients/${clientId}/portal/credentials`, { method: "DELETE" });
-    setPortalUser(null);
-    setCredMsg({ ok: true, text: "Access revoked." });
+  async function removePortalUser(userId: string, email: string) {
+    if (!confirm(`Remove portal access for ${email}?`)) return;
+    await fetch(`/api/${companyId}/clients/${clientId}/portal/credentials?userId=${userId}`, { method: "DELETE" });
+    const next = portalUsers.filter(u => u.id !== userId);
+    setPortalUsers(next);
+    setPortalUser(next[0] ?? null);
+    setCredMsg({ ok: true, text: `Removed ${email}` });
   }
 
   async function uploadDoc(file: File) {
@@ -204,82 +215,108 @@ Founder/CEO | MIBH Construction
       {/* ── Section 1: Access Credentials ── */}
       <div className="rounded-2xl p-5 space-y-4" style={{ background: CARD, border: `1px solid ${BORDER}` }}>
         <div className="flex items-center justify-between">
-          <h2 className="text-sm font-bold uppercase tracking-widest" style={{ color: GOLD }}>Client Portal Access</h2>
-          {portalUser && (
-            <span className="text-xs px-2 py-0.5 rounded-full font-semibold" style={{ background: "#22c55e22", color: "#22c55e", border: "1px solid #22c55e44" }}>
-              Active
+          <div>
+            <h2 className="text-sm font-bold uppercase tracking-widest" style={{ color: GOLD }}>Client Portal Logins</h2>
+            <p className="text-xs mt-0.5" style={{ color: MUTED }}>Add the client, spouse, partner, or anyone who should see this portal. All logins share the same view.</p>
+          </div>
+          {portalUsers.length > 0 && (
+            <span className="text-xs px-2 py-0.5 rounded-full font-semibold shrink-0" style={{ background: "#22c55e22", color: "#22c55e", border: "1px solid #22c55e44" }}>
+              {portalUsers.length} {portalUsers.length === 1 ? "user" : "users"}
             </span>
           )}
         </div>
 
-        {portalUser && (
-          <div className="rounded-xl px-4 py-3 text-sm space-y-1" style={{ background: "#0a1a0f", border: "1px solid #22c55e33" }}>
-            <div style={{ color: "#22c55e" }}>Portal access is active</div>
-            <div className="text-xs" style={{ color: MUTED }}>Login: <span style={{ color: TEXT }}>{portalUser.email}</span></div>
-            <div className="text-xs" style={{ color: MUTED }}>
-              Link: <span style={{ color: "#58a6ff" }}>{PORTAL_URL}/client-portal/{clientId}</span>
+        {portalUsers.length > 0 && (
+          <div className="space-y-2">
+            <p className="text-xs font-semibold uppercase tracking-widest" style={{ color: MUTED }}>Active logins</p>
+            {portalUsers.map(u => (
+              <div key={u.id} className="flex items-center gap-3 rounded-xl px-3 py-2.5" style={{ background: "#0a1a0f", border: "1px solid #22c55e33" }}>
+                <div className="w-8 h-8 rounded-full flex items-center justify-center font-bold shrink-0" style={{ background: "#22c55e22", color: "#22c55e" }}>
+                  {u.name.slice(0, 1).toUpperCase()}
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-semibold truncate" style={{ color: TEXT }}>{u.name}</p>
+                  <p className="text-xs truncate" style={{ color: MUTED }}>{u.email}</p>
+                </div>
+                <button
+                  onClick={() => removePortalUser(u.id, u.email)}
+                  className="text-xs px-2.5 py-1 rounded shrink-0"
+                  style={{ background: "#2a1010", color: "#ef4444", border: "1px solid #ef444433" }}
+                  title="Remove login"
+                >
+                  ✕
+                </button>
+              </div>
+            ))}
+            <p className="text-xs" style={{ color: MUTED }}>
+              Portal link: <span style={{ color: "#58a6ff" }}>{PORTAL_URL}/client-portal/{clientId}</span>
+            </p>
+          </div>
+        )}
+
+        <div className="rounded-xl p-4 space-y-3" style={{ background: BG, border: `1px dashed ${BORDER}` }}>
+          <p className="text-xs font-semibold uppercase tracking-widest" style={{ color: MUTED }}>
+            {portalUsers.length === 0 ? "Create first login" : "Add another login"}
+          </p>
+          <div className="grid grid-cols-2 gap-3">
+            <div className="col-span-2 sm:col-span-1">
+              <label className="block text-xs font-semibold mb-1" style={{ color: MUTED }}>Display Name</label>
+              <input
+                type="text"
+                value={newName}
+                onChange={e => setNewName(e.target.value)}
+                className="w-full rounded-lg px-3 py-2 text-sm"
+                style={inputStyle}
+                placeholder={`e.g. ${clientName.split(" ")[0]}'s spouse`}
+              />
+            </div>
+            <div className="col-span-2 sm:col-span-1">
+              <label className="block text-xs font-semibold mb-1" style={{ color: MUTED }}>Login Email</label>
+              <input
+                type="email"
+                value={credEmail}
+                onChange={e => setCredEmail(e.target.value)}
+                className="w-full rounded-lg px-3 py-2 text-sm"
+                style={inputStyle}
+                placeholder="spouse@email.com"
+              />
+            </div>
+            <div className="col-span-2 sm:col-span-1">
+              <label className="block text-xs font-semibold mb-1" style={{ color: MUTED }}>Password</label>
+              <input
+                type="text"
+                value={credPassword}
+                onChange={e => setCredPassword(e.target.value)}
+                className="w-full rounded-lg px-3 py-2 text-sm"
+                style={inputStyle}
+                placeholder="Set a password"
+              />
             </div>
           </div>
-        )}
 
-        <div className="grid grid-cols-2 gap-3">
-          <div className="col-span-2 sm:col-span-1">
-            <label className="block text-xs font-semibold mb-1" style={{ color: MUTED }}>Login Email</label>
-            <input
-              type="email"
-              value={credEmail}
-              onChange={e => setCredEmail(e.target.value)}
-              className="w-full rounded-lg px-3 py-2 text-sm"
-              style={inputStyle}
-              placeholder="client@email.com"
-            />
-          </div>
-          <div className="col-span-2 sm:col-span-1">
-            <label className="block text-xs font-semibold mb-1" style={{ color: MUTED }}>
-              {portalUser ? "New Password (leave blank to keep)" : "Password"}
-            </label>
-            <input
-              type="text"
-              value={credPassword}
-              onChange={e => setCredPassword(e.target.value)}
-              className="w-full rounded-lg px-3 py-2 text-sm"
-              style={inputStyle}
-              placeholder="Set a password"
-            />
-          </div>
-        </div>
+          {credMsg && (
+            <p className="text-xs font-medium" style={{ color: credMsg.ok ? "#22c55e" : "#ef4444" }}>{credMsg.text}</p>
+          )}
 
-        {credMsg && (
-          <p className="text-xs font-medium" style={{ color: credMsg.ok ? "#22c55e" : "#ef4444" }}>{credMsg.text}</p>
-        )}
-
-        <div className="flex gap-2 flex-wrap">
-          <button
-            onClick={saveCredentials}
-            disabled={credSaving || !credEmail.trim() || (!credPassword.trim() && !portalUser)}
-            className="px-4 py-2 rounded-xl text-sm font-bold disabled:opacity-50"
-            style={{ background: GOLD, color: "#0d1117" }}
-          >
-            {credSaving ? "Saving…" : portalUser ? "Update Access" : "Create Portal Access"}
-          </button>
-          {portalUser && (
-            <>
+          <div className="flex gap-2 flex-wrap">
+            <button
+              onClick={saveCredentials}
+              disabled={credSaving || !credEmail.trim() || !credPassword.trim()}
+              className="px-4 py-2 rounded-xl text-sm font-bold disabled:opacity-50"
+              style={{ background: GOLD, color: "#0d1117" }}
+            >
+              {credSaving ? "Saving…" : "+ Add Login"}
+            </button>
+            {portalUsers.length > 0 && (
               <button
                 onClick={() => { setEmailPassword(""); setShowEmailTpl(true); }}
                 className="px-4 py-2 rounded-xl text-sm font-semibold"
                 style={{ background: "#3b82f622", color: "#3b82f6", border: "1px solid #3b82f644" }}
               >
-                ✉ Email Credentials
+                ✉ Email Credentials Template
               </button>
-              <button
-                onClick={revokeAccess}
-                className="px-4 py-2 rounded-xl text-sm font-semibold"
-                style={{ background: "#ef444422", color: "#ef4444", border: "1px solid #ef444444" }}
-              >
-                Revoke Access
-              </button>
-            </>
-          )}
+            )}
+          </div>
         </div>
       </div>
 

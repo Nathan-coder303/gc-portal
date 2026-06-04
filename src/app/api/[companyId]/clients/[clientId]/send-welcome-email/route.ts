@@ -36,9 +36,10 @@ export async function POST(
   });
   if (!client) return NextResponse.json({ error: "Client not found" }, { status: 404 });
 
-  const portalUser = await prisma.user.findUnique({
-    where: { clientId: params.clientId },
+  const portalUser = await prisma.user.findFirst({
+    where: { clientId: params.clientId, role: "CLIENT" },
     select: { email: true },
+    orderBy: { createdAt: "asc" },
   });
 
   const emails = (client.emailList as string[] | null)?.filter(Boolean) ?? [];

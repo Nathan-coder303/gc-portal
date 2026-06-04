@@ -204,7 +204,7 @@ model Client {
   subAssignments    SubAssignment[]
   clientSubs        ClientSub[]
   materialPurchases MaterialPurchase[]
-  portalUser        User?              @relation("PortalUser")
+  portalUsers       User[]             @relation("PortalUser")
   portalPhotos      ClientPortalPhoto[]
   portalDocs        ClientPortalDocument[]
   payApps           PayApp[]
@@ -557,8 +557,10 @@ model User {
   archivedAt     DateTime?
   archivedBy     String?
   projectAccess  UserProjectAccess[]
-  clientId       String?              @unique
+  clientId       String?
   clientLink     Client?              @relation("PortalUser", fields: [clientId], references: [id], onDelete: SetNull)
+
+  @@index([clientId])
   passwordResetToken PasswordResetToken?
 }
 
