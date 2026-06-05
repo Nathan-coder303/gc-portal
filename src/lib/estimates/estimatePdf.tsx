@@ -315,6 +315,34 @@ export function EstimatePdfDocument({ companyName, projectName, estimate, divisi
   const gcFeeAmount = gcFee > 0 ? grandTotal * gcFee / 100 : 0;
   const grandTotalWithGc = grandTotal + gcFeeAmount;
 
+  // ── Auto-fit summary page: count visible rows, scale down to fit one page ──
+  let visibleRowUnits = 0;
+  for (const { groupLabel, divs } of grouped) {
+    const hasGroupContent = divs.some(d => {
+      const hasExcluded = [...d.items, ...d.groups.flatMap(g => g.items)].some(i => i.detail === "Excluded");
+      return computeDivisionTotal(d.groups, d.items, d.manualTotal) > 0 || hasExcluded;
+    });
+    if (!hasGroupContent) continue;
+    if (groupLabel) visibleRowUnits += 1.3; // group header row is a bit taller
+    for (const div of divs) {
+      const hasExcluded = [...div.items, ...div.groups.flatMap(g => g.items)].some(i => i.detail === "Excluded");
+      const divTotal = computeDivisionTotal(div.groups, div.items, div.manualTotal);
+      if (divTotal !== 0 || hasExcluded) visibleRowUnits += 1;
+    }
+  }
+  // Pick a scale so the summary always fits on one Letter page
+  const fitScale =
+    visibleRowUnits <= 22 ? 1.0 :
+    visibleRowUnits <= 28 ? 0.85 :
+    visibleRowUnits <= 35 ? 0.72 :
+    visibleRowUnits <= 45 ? 0.62 :
+    visibleRowUnits <= 55 ? 0.54 :
+    0.48;
+  const rowPadV = Math.max(1, 3 * fitScale);
+  const groupRowPadV = Math.max(1, 4 * fitScale);
+  const cellFs = Math.max(6, 8 * fitScale);
+  const groupSuperFs = Math.max(6.5, 9 * fitScale);
+
   return (
     <Document title={`${estimate.name} — Estimate`} author={companyName}>
       <Page size="LETTER" style={styles.page}>
@@ -373,10 +401,10 @@ export function EstimatePdfDocument({ companyName, projectName, estimate, divisi
           return (
             <View key={gi}>
               {groupLabel && (
-                <View style={styles.groupSuperSummaryRow}>
-                  <Text style={[styles.cellTextBold, { flex: 1, color: "#ffffff" }]}>{groupLabel}</Text>
-                  <Text style={[styles.cellTextBold, { width: 80, textAlign: "right", color: "#93c5fd" }]}>${fmt(groupTotal)}</Text>
-                  <Text style={[styles.cellTextMuted, { width: 60, textAlign: "right", color: "#94a3b8" }]}>{fmt(groupPct)}%</Text>
+                <View style={[styles.groupSuperSummaryRow, { paddingVertical: groupRowPadV }]}>
+                  <Text style={[styles.cellTextBold, { flex: 1, color: "#ffffff", fontSize: groupSuperFs }]}>{groupLabel}</Text>
+                  <Text style={[styles.cellTextBold, { width: 80, textAlign: "right", color: "#93c5fd", fontSize: groupSuperFs }]}>${fmt(groupTotal)}</Text>
+                  <Text style={[styles.cellTextMuted, { width: 60, textAlign: "right", color: "#94a3b8", fontSize: groupSuperFs }]}>{fmt(groupPct)}%</Text>
                 </View>
               )}
               {divs.map((div) => {
@@ -385,12 +413,12 @@ export function EstimatePdfDocument({ companyName, projectName, estimate, divisi
                 if (divTotal === 0 && !hasExcluded) return null;
                 const pct = grandTotal > 0 ? (divTotal / grandTotal) * 100 : 0;
                 return (
-                  <View key={div.id} style={[styles.divisionSummaryRow, groupLabel ? { paddingLeft: 16 } : {}]}>
-                    <Text style={[styles.cellText, { flex: 1 }]}>
+                  <View key={div.id} style={[styles.divisionSummaryRow, { paddingVertical: rowPadV }, groupLabel ? { paddingLeft: 16 } : {}]}>
+                    <Text style={[styles.cellText, { flex: 1, fontSize: cellFs }]}>
                       {div.csiCode ? `${div.csiCode} — ` : ""}{div.name}
                     </Text>
-                    <Text style={[styles.cellTextBold, { width: 80, textAlign: "right" }]}>${fmt(divTotal)}</Text>
-                    <Text style={[styles.cellTextMuted, { width: 60, textAlign: "right" }]}>{fmt(pct)}%</Text>
+                    <Text style={[styles.cellTextBold, { width: 80, textAlign: "right", fontSize: cellFs }]}>${fmt(divTotal)}</Text>
+                    <Text style={[styles.cellTextMuted, { width: 60, textAlign: "right", fontSize: cellFs }]}>{fmt(pct)}%</Text>
                   </View>
                 );
               })}
