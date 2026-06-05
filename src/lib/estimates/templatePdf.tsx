@@ -1875,24 +1875,29 @@ function TemplatePdfDocument({ companyName, template, client, divisions, showTer
           const overrideTotal = groupLabel && summaryGroups?.[groupLabel] ? computeOverrideTotal(summaryGroups[groupLabel]) : null;
           const groupTotal = overrideTotal !== null ? overrideTotal : rawTotal;
 
+          // If the first division in this group has a forced break, move the super-header (e.g. SHELL) with it
+          const firstDivForcesBreak = filteredDivs.length > 0 && forcedBreakDivIds.has(filteredDivs[0].div.id);
+
           return (
             <View key={gi}>
               {/* Super-group header (e.g. SHELL) — must stay with its following division */}
               {groupLabel && (
-                <View wrap={false} minPresenceAhead={120} style={styles.groupSuperHeader}>
+                <View wrap={false} minPresenceAhead={120} break={firstDivForcesBreak} style={styles.groupSuperHeader}>
                   <Text style={styles.groupSuperLabel}>{groupLabel}</Text>
                   <Text style={styles.groupSuperTotal}>${fmt(groupTotal)}</Text>
                 </View>
               )}
 
-              {filteredDivs.map(({ div, filledItems, filledGroups }) => {
+              {filteredDivs.map(({ div, filledItems, filledGroups }, divIdx) => {
                 const divTotal = div.manualTotal != null
                   ? div.manualTotal
                   : [...filledItems, ...filledGroups.flatMap(g => g.items)]
                     .reduce((s, i) => s + calcTotal(i.defaultQty, i.defaultUnitCost, i.defaultMarkupPct), 0);
+                // Skip break on first div when super-header already broke for it
+                const shouldBreak = forcedBreakDivIds.has(div.id) && !(divIdx === 0 && firstDivForcesBreak && !!groupLabel);
 
                 return (
-                  <View key={div.id} minPresenceAhead={160} break={forcedBreakDivIds.has(div.id)}>
+                  <View key={div.id} minPresenceAhead={160} break={shouldBreak}>
                     <View wrap={false} style={[styles.divisionHeader, groupLabel ? { marginTop: 6 } : {}]}>
                       <View style={styles.divisionLeft}>
                         {!isRoof && div.csiCode ? <Text style={styles.divisionCsi}>{div.csiCode}</Text> : null}
