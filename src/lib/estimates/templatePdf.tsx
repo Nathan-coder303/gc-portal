@@ -1284,7 +1284,7 @@ function DivisionSummaryPage({ template, client, divisions, gcFeePercent }: Pick
       <View style={{ flex: 1, paddingHorizontal: 48, paddingTop: 14, paddingBottom: 32 }}>
         {/* Title */}
         <Text style={{ fontSize: 18, fontFamily: "Helvetica-Bold", color: DARK, textAlign: "center", letterSpacing: 1, marginBottom: 4 }}>
-          ESTIMATE SUMMARY
+          ESTIMATE SUMMARY — SCOPE OF WORK
         </Text>
 
         {/* Gold divider */}
