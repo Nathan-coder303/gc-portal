@@ -1238,7 +1238,6 @@ function DivisionSummaryPage({ template, client, divisions, gcFeePercent }: Pick
   const subtotal = divTotals.reduce((s, d) => s + d.total, 0);
   const gcFeeAmount = gcFeePercent && gcFeePercent > 0 ? subtotal * gcFeePercent / 100 : 0;
   const grandTotalWithGc = subtotal + gcFeeAmount;
-  const dateDisplay = fmtDate(template.estimateDate);
   const allowanceLines: { csiCode: string; name: string; amount: number }[] = divisions.flatMap(div => [
     ...div.items.filter(i => i.detail === "Allowances"),
     ...div.groups.flatMap(g => g.items.filter(i => i.detail === "Allowances")),
