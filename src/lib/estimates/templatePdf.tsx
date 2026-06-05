@@ -1267,7 +1267,7 @@ function DivisionSummaryPage({ template, client, divisions, gcFeePercent }: Pick
   });
 
   return (
-    <Page size="LETTER" style={{ fontFamily: "Helvetica", paddingTop: 0, paddingBottom: 0 }}>
+    <Page size="LETTER" style={{ fontFamily: "Helvetica", paddingTop: 0, paddingBottom: 36 }}>
       {/* Header bar */}
       <View style={{ flexDirection: "row", alignItems: "center", backgroundColor: DARK, paddingHorizontal: 24, paddingVertical: 10, gap: 14 }}>
         {/* eslint-disable-next-line jsx-a11y/alt-text */}
@@ -1281,7 +1281,7 @@ function DivisionSummaryPage({ template, client, divisions, gcFeePercent }: Pick
       <View style={{ height: 3, backgroundColor: GOLD }} />
 
       {/* Main centered content */}
-      <View wrap={false} style={{ flex: 1, paddingHorizontal: 48, paddingTop: 14, paddingBottom: 32 }}>
+      <View style={{ paddingHorizontal: 48, paddingTop: 14, paddingBottom: 16 }}>
         {/* Title */}
         <Text style={{ fontSize: 18, fontFamily: "Helvetica-Bold", color: DARK, textAlign: "center", letterSpacing: 1, marginBottom: 4 }}>
           ESTIMATE SUMMARY for your {template.name}
@@ -1412,8 +1412,8 @@ function DivisionSummaryPage({ template, client, divisions, gcFeePercent }: Pick
           )}
       </View>
 
-      {/* Footer */}
-      <View style={{ backgroundColor: DARK, paddingHorizontal: 24, paddingVertical: 9, flexDirection: "row", alignItems: "center", gap: 12 }}>
+      {/* Footer — fixed so content height can never push it to a new page */}
+      <View fixed style={{ position: "absolute", bottom: 0, left: 0, right: 0, backgroundColor: DARK, paddingHorizontal: 24, paddingVertical: 9, flexDirection: "row", alignItems: "center", gap: 12 }}>
         <Text style={{ fontSize: 8.5, color: GOLD, fontFamily: "Helvetica-Bold" }}>{companyDisplayName.toUpperCase()}</Text>
         <Text style={{ fontSize: 7, color: "#94a3b8" }}>|</Text>
         <Text style={{ fontSize: 8.5, color: "#94a3b8" }}>{companyEmail}</Text>
