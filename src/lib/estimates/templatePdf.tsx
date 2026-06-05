@@ -1269,22 +1269,22 @@ function DivisionSummaryPage({ template, client, divisions, gcFeePercent }: Pick
   return (
     <Page size="LETTER" style={{ fontFamily: "Helvetica", paddingTop: 0, paddingBottom: 36 }}>
       {/* Header bar */}
-      <View style={{ flexDirection: "row", alignItems: "center", backgroundColor: DARK, paddingHorizontal: 24, paddingVertical: 10, gap: 14 }}>
+      <View style={{ flexDirection: "row", alignItems: "center", backgroundColor: DARK, paddingHorizontal: 24, paddingVertical: 6, gap: 12 }}>
         {/* eslint-disable-next-line jsx-a11y/alt-text */}
-        <Image src={logoPath} style={{ width: 48, height: 48 }} />
+        <Image src={logoPath} style={{ width: 36, height: 36 }} />
         <View style={{ flex: 1 }}>
-          <Text style={{ fontSize: 18, fontFamily: "Helvetica-Bold", color: GOLD, letterSpacing: 2 }}>MIBH CONSTRUCTION</Text>
-          <Text style={{ fontSize: 8, color: "#94a3b8", marginTop: 2 }}>Licensed &amp; Insured  |  {companyLicenses}  |  {companyPhone}</Text>
+          <Text style={{ fontSize: 14, fontFamily: "Helvetica-Bold", color: GOLD, letterSpacing: 2 }}>MIBH CONSTRUCTION</Text>
+          <Text style={{ fontSize: 7.5, color: "#94a3b8", marginTop: 1 }}>Licensed &amp; Insured  |  {companyLicenses}  |  {companyPhone}</Text>
         </View>
-        {client ? <Text style={{ fontSize: 10, color: "#94a3b8", textAlign: "right" }}>{client.name}</Text> : null}
+        {client ? <Text style={{ fontSize: 9, color: "#94a3b8", textAlign: "right" }}>{client.name}</Text> : null}
       </View>
       <View style={{ height: 3, backgroundColor: GOLD }} />
 
       {/* Main centered content */}
-      <View style={{ paddingHorizontal: 48, paddingTop: 14, paddingBottom: 16 }}>
+      <View style={{ paddingHorizontal: 48, paddingTop: 8, paddingBottom: 10 }}>
         {/* Title */}
-        <Text style={{ fontSize: 18, fontFamily: "Helvetica-Bold", color: DARK, textAlign: "center", letterSpacing: 1, marginBottom: 4 }}>
-          ESTIMATE SUMMARY for your {template.name}
+        <Text style={{ fontSize: 16, fontFamily: "Helvetica-Bold", color: DARK, textAlign: "center", letterSpacing: 1, marginBottom: 4 }}>
+          ESTIMATE SUMMARY FOR YOUR {(template.name ?? "").toUpperCase()}
         </Text>
 
         {/* Gold divider */}
