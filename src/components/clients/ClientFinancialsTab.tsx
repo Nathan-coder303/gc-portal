@@ -454,10 +454,10 @@ function PayForm({ subId, companyId, clientId, payment, onSave, onCancel }: {
 }
 
 function SubCard({
-  sub, companyId, clientId, estimateDivisions,
+  sub, companyId, clientId, clientName, estimateDivisions,
   onUpdate, onDelete, lienReleases, onReleaseCreated, onReleaseDeleted, subEmail, onSubEmailSaved,
 }: {
-  sub: ClientSub; companyId: string; clientId: string;
+  sub: ClientSub; companyId: string; clientId: string; clientName: string;
   estimateDivisions: EstimateDivision[];
   onUpdate: (updated: ClientSub) => void;
   onDelete: (id: string) => void;
@@ -487,6 +487,40 @@ function SubCard({
   const [showPayForm, setShowPayForm] = useState(false);
   const [editingPayId, setEditingPayId] = useState<string | null>(null);
   const [releasePanel, setReleasePanel] = useState<{ payId: string; type: "PARTIAL" | "FINAL" } | null>(null);
+  const [paymentsOpen, setPaymentsOpen] = useState(false);
+
+  function printSub() {
+    const win = window.open("", "_blank");
+    if (!win) return;
+    const scopeRows = sub.scopeItems.length > 0
+      ? sub.scopeItems.map(i => `<tr><td style="padding:8px 12px;color:#1e293b">${i.name}</td><td style="padding:8px 12px;text-align:right;color:#1e293b;font-weight:600">$${fmt(i.amount)}</td></tr>`).join("")
+      : `<tr><td colspan="2" style="padding:12px;color:#64748b;font-style:italic">No itemized scope. Contract amount: $${fmt(sub.contractAmount)}</td></tr>`;
+    const payRows = sub.payments.length > 0
+      ? sub.payments.map(p => {
+          const isCr = p.amount < 0;
+          return `<tr><td style="padding:8px 12px;color:#475569">${new Date(p.paidAt + "T00:00:00").toLocaleDateString("en-US",{month:"short",day:"numeric",year:"numeric"})}</td><td style="padding:8px 12px;color:#475569">${METHOD_LABELS[p.method] ?? p.method}${p.checkNumber ? ` #${p.checkNumber}` : ""}${isCr ? " (Credit)" : ""}</td><td style="padding:8px 12px;color:#475569">${p.notes ?? ""}</td><td style="padding:8px 12px;text-align:right;color:${isCr ? "#ef4444" : "#22c55e"};font-weight:600">${isCr ? "-" : ""}$${fmt(Math.abs(p.amount))}</td></tr>`;
+        }).join("")
+      : `<tr><td colspan="4" style="padding:12px;color:#64748b;font-style:italic">No payments yet</td></tr>`;
+    win.document.write(`<!DOCTYPE html><html><head><title>Sub Statement — ${sub.subName} — ${clientName}</title><style>body{font-family:Helvetica,sans-serif;max-width:800px;margin:40px auto;color:#1e293b}h1{font-size:22px;margin-bottom:4px}h2{font-size:14px;text-transform:uppercase;letter-spacing:2px;color:#64748b;margin-top:32px;margin-bottom:8px;border-bottom:1px solid #e2e8f0;padding-bottom:6px}table{width:100%;border-collapse:collapse;margin-top:8px}th{background:#1e293b;color:#fff;padding:10px 12px;text-align:left;font-size:13px}td{border-bottom:1px solid #e2e8f0;font-size:14px}.total{background:#f8fafc;font-weight:700}.bal{background:#0d2318;color:#22c55e;font-weight:700;font-size:16px}.due{background:#2d1010;color:#ef4444;font-weight:700;font-size:16px}@media print{body{margin:20px}}</style></head><body>
+<h1>${sub.subName}</h1>
+<p style="color:#64748b;font-size:14px">${clientName} &nbsp;·&nbsp; ${[sub.division, sub.scope].filter(Boolean).join(" — ")} &nbsp;·&nbsp; Generated ${new Date().toLocaleDateString("en-US",{month:"long",day:"numeric",year:"numeric"})}</p>
+
+<h2>Scope of Work</h2>
+<table><thead><tr><th>Item</th><th style="text-align:right">Amount</th></tr></thead><tbody>
+${scopeRows}
+<tr class="total"><td style="padding:10px 12px">Contract Total</td><td style="padding:10px 12px;text-align:right">$${fmt(contractTotal)}</td></tr>
+</tbody></table>
+
+<h2>Payment History</h2>
+<table><thead><tr><th>Date</th><th>Method</th><th>Notes</th><th style="text-align:right">Amount</th></tr></thead><tbody>
+${payRows}
+<tr class="total"><td colspan="3" style="padding:10px 12px">Total Paid</td><td style="padding:10px 12px;text-align:right">$${fmt(totalPaid)}</td></tr>
+<tr class="${balance > 0 ? "due" : "bal"}"><td colspan="3" style="padding:12px">${balance > 0 ? "BALANCE DUE" : balance < 0 ? "OVERPAID" : "PAID IN FULL"}</td><td style="padding:12px;text-align:right">$${fmt(Math.abs(balance))}</td></tr>
+</tbody></table>
+
+<script>window.onload=()=>window.print()</script></body></html>`);
+    win.document.close();
+  }
 
   async function saveInfo() {
     setSavingInfo(true);
@@ -561,6 +595,9 @@ function SubCard({
           <div className="text-xs font-bold px-3 py-1 rounded-lg" style={{ background: "#1e2736", color: "#C9A84C", border: "1px solid #C9A84C33" }}>
             Contract: ${fmt(contractTotal)}
           </div>
+          <button onClick={printSub} className="w-7 h-7 rounded flex items-center justify-center" style={{ background: "#1e2736", color: "#C9A84C", border: "1px solid #C9A84C44" }} title="Print scope and payments">
+            🖨
+          </button>
           <button onClick={deleteSub} className="w-7 h-7 rounded flex items-center justify-center" style={{ background: "#f8514922", color: "#f85149", border: "1px solid #f8514933" }}>
             <TrashIcon size={13} />
           </button>
@@ -733,8 +770,15 @@ function SubCard({
       {/* Payments */}
       {sub.payments.length > 0 && (
         <div className="space-y-1">
-          <div className="text-xs font-semibold uppercase tracking-widest mb-2" style={{ color: "#8b949e" }}>Payments</div>
-          {sub.payments.map(p => {
+          <button
+            onClick={() => setPaymentsOpen(v => !v)}
+            className="flex items-center gap-2 w-full text-left"
+          >
+            <span className="text-xs" style={{ color: "#8b949e" }}>{paymentsOpen ? "▼" : "▶"}</span>
+            <span className="text-xs font-semibold uppercase tracking-widest" style={{ color: "#8b949e" }}>Payments</span>
+            <span className="text-xs font-bold px-2 py-0.5 rounded-full" style={{ background: "#22c55e22", color: "#22c55e", border: "1px solid #22c55e44" }}>{sub.payments.length}</span>
+          </button>
+          {paymentsOpen && sub.payments.map(p => {
             const isCr = p.amount < 0;
             if (editingPayId === p.id) {
               return (
@@ -865,6 +909,10 @@ export default function ClientFinancialsTab({
   const [lienReleases, setLienReleases] = useState<LienRelease[]>([]);
   const [invoices, setInvoices] = useState<ClientInvoice[]>([]);
   const [loading, setLoading] = useState(true);
+
+  // Collapsible section state — collapsed by default
+  const [scopeRemainingOpen, setScopeRemainingOpen] = useState(false);
+  const [subsOpen, setSubsOpen] = useState(false);
 
   // Add sub form
   const [selectedSubId, setSelectedSubId] = useState("__new__");
@@ -1118,15 +1166,19 @@ ${rows}
       {/* ── Scope of Work Remaining ── */}
       {estimateDivisions.length > 0 && (
         <div className="space-y-3">
-          <div className="flex items-center gap-2">
+          <button
+            onClick={() => setScopeRemainingOpen(v => !v)}
+            className="flex items-center gap-2 w-full text-left"
+          >
+            <span className="text-xs" style={{ color: "#8b949e" }}>{scopeRemainingOpen ? "▼" : "▶"}</span>
             <h2 className="text-sm font-bold uppercase tracking-widest" style={{ color: "#8b949e" }}>Scope Remaining</h2>
             {totalRemaining > 0 ? (
               <span className="text-xs font-bold px-2 py-0.5 rounded-full" style={{ background: "#f8514922", color: "#f85149", border: "1px solid #f8514944" }}>{totalRemaining}</span>
             ) : (
               <span className="text-xs font-bold px-2 py-0.5 rounded-full" style={{ background: "#22c55e22", color: "#22c55e", border: "1px solid #22c55e44" }}>✓ All assigned</span>
             )}
-          </div>
-          {totalRemaining > 0 && (
+          </button>
+          {scopeRemainingOpen && totalRemaining > 0 && (
             <div className="rounded-2xl overflow-hidden" style={{ border: "1px solid #21262d" }}>
               {remainingByDiv.map((div, di) => (
                 <div key={div.divisionId}>
@@ -1169,14 +1221,23 @@ ${rows}
 
       {/* ── Section 1: Subcontractors ── */}
       <div className="space-y-4">
-        <div className="flex items-center justify-between">
-          <h2 className="text-sm font-bold uppercase tracking-widest" style={{ color: "#C9A84C" }}>Subcontractors</h2>
-          {!addingSubForm && (
-            <button onClick={() => setAddingSubForm(true)} className="px-3 py-1.5 rounded-xl text-xs font-semibold" style={{ background: "#C9A84C22", color: "#C9A84C", border: "1px solid #C9A84C44" }}>+ Add Sub</button>
+        <div className="flex items-center justify-between gap-2">
+          <button
+            onClick={() => setSubsOpen(v => !v)}
+            className="flex items-center gap-2 flex-1 text-left"
+          >
+            <span className="text-xs" style={{ color: "#C9A84C" }}>{subsOpen ? "▼" : "▶"}</span>
+            <h2 className="text-sm font-bold uppercase tracking-widest" style={{ color: "#C9A84C" }}>Subcontractors</h2>
+            {clientSubs.length > 0 && (
+              <span className="text-xs font-bold px-2 py-0.5 rounded-full" style={{ background: "#C9A84C22", color: "#C9A84C", border: "1px solid #C9A84C44" }}>{clientSubs.length}</span>
+            )}
+          </button>
+          {subsOpen && !addingSubForm && (
+            <button onClick={() => setAddingSubForm(true)} className="px-3 py-1.5 rounded-xl text-xs font-semibold shrink-0" style={{ background: "#C9A84C22", color: "#C9A84C", border: "1px solid #C9A84C44" }}>+ Add Sub</button>
           )}
         </div>
 
-        {addingSubForm && (
+        {subsOpen && addingSubForm && (
           <div className="rounded-2xl p-5 space-y-3" style={{ background: "#0d1421", border: "1px solid #C9A84C44" }}>
             <div className="text-xs font-bold uppercase tracking-widest" style={{ color: "#C9A84C" }}>Add Subcontractor</div>
             <div>
@@ -1215,28 +1276,31 @@ ${rows}
           </div>
         )}
 
-        {clientSubs.length === 0 && !addingSubForm && (
+        {subsOpen && clientSubs.length === 0 && !addingSubForm && (
           <p className="text-sm text-center py-6" style={{ color: "#8b949e" }}>No subs added yet.</p>
         )}
 
-        <div className="space-y-4">
-          {clientSubs.map(sub => (
-            <SubCard
-              key={sub.id}
-              sub={sub}
-              companyId={companyId}
-              clientId={clientId}
-              estimateDivisions={estimateDivisions}
-              onUpdate={updated => setClientSubs(prev => prev.map(s => s.id === updated.id ? updated : s))}
-              onDelete={id => setClientSubs(prev => prev.filter(s => s.id !== id))}
-              lienReleases={lienReleases.filter(r => r.subName === sub.subName)}
-              onReleaseCreated={handleReleaseCreated}
-              onReleaseDeleted={handleReleaseDeleted}
-              subEmail={allSubs.find(s => s.id === sub.subContractorId)?.email ?? ""}
-              onSubEmailSaved={handleSubEmailSaved}
-            />
-          ))}
-        </div>
+        {subsOpen && (
+          <div className="space-y-4">
+            {clientSubs.map(sub => (
+              <SubCard
+                key={sub.id}
+                sub={sub}
+                companyId={companyId}
+                clientId={clientId}
+                clientName={clientName}
+                estimateDivisions={estimateDivisions}
+                onUpdate={updated => setClientSubs(prev => prev.map(s => s.id === updated.id ? updated : s))}
+                onDelete={id => setClientSubs(prev => prev.filter(s => s.id !== id))}
+                lienReleases={lienReleases.filter(r => r.subName === sub.subName)}
+                onReleaseCreated={handleReleaseCreated}
+                onReleaseDeleted={handleReleaseDeleted}
+                subEmail={allSubs.find(s => s.id === sub.subContractorId)?.email ?? ""}
+                onSubEmailSaved={handleSubEmailSaved}
+              />
+            ))}
+          </div>
+        )}
       </div>
 
       {/* ── Section 2: Materials / COGS ── */}
