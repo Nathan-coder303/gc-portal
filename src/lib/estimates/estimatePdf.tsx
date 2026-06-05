@@ -43,8 +43,8 @@ const styles = StyleSheet.create({
   page: {
     fontFamily: "Helvetica",
     fontSize: 9,
-    paddingTop: 24,
-    paddingBottom: 36,
+    paddingTop: 36,
+    paddingBottom: 72,
     paddingHorizontal: 40,
     color: "#1e293b",
   },
@@ -53,27 +53,27 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "flex-start",
-    marginBottom: 8,
-    paddingBottom: 5,
-    borderBottomWidth: 1.5,
+    marginBottom: 20,
+    paddingBottom: 12,
+    borderBottomWidth: 2,
     borderBottomColor: "#2563eb",
   },
   headerLeft: { flex: 1 },
   headerRight: { alignItems: "flex-end" },
-  companyName: { fontSize: 14, fontFamily: "Helvetica-Bold", color: "#2563eb", marginBottom: 1 },
-  projectName: { fontSize: 9, color: "#475569" },
-  estimateTitle: { fontSize: 12, fontFamily: "Helvetica-Bold", color: "#0f172a", marginBottom: 2 },
+  companyName: { fontSize: 18, fontFamily: "Helvetica-Bold", color: "#2563eb", marginBottom: 2 },
+  projectName: { fontSize: 10, color: "#475569" },
+  estimateTitle: { fontSize: 14, fontFamily: "Helvetica-Bold", color: "#0f172a", marginBottom: 4 },
   metaBadge: {
-    fontSize: 7,
-    paddingHorizontal: 5,
-    paddingVertical: 1,
+    fontSize: 8,
+    paddingHorizontal: 6,
+    paddingVertical: 2,
     backgroundColor: "#eff6ff",
     color: "#1d4ed8",
     borderRadius: 3,
-    marginBottom: 2,
+    marginBottom: 4,
     alignSelf: "flex-end",
   },
-  metaText: { fontSize: 7, color: "#94a3b8", textAlign: "right" },
+  metaText: { fontSize: 8, color: "#94a3b8", textAlign: "right" },
 
   // ─── Summary bar ──────────────────────────────────────────────────────────
   summaryBar: {
@@ -82,13 +82,13 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: "#e2e8f0",
     borderRadius: 4,
-    marginBottom: 8,
-    padding: 6,
+    marginBottom: 16,
+    padding: 10,
     justifyContent: "space-between",
   },
   summaryItem: { alignItems: "center" },
-  summaryLabel: { fontSize: 6.5, color: "#94a3b8", marginBottom: 1, textTransform: "uppercase" },
-  summaryValue: { fontSize: 10, fontFamily: "Helvetica-Bold", color: "#0f172a" },
+  summaryLabel: { fontSize: 7, color: "#94a3b8", marginBottom: 2, textTransform: "uppercase" },
+  summaryValue: { fontSize: 12, fontFamily: "Helvetica-Bold", color: "#0f172a" },
 
   // ─── Division ─────────────────────────────────────────────────────────────
   divisionHeader: {
@@ -315,34 +315,6 @@ export function EstimatePdfDocument({ companyName, projectName, estimate, divisi
   const gcFeeAmount = gcFee > 0 ? grandTotal * gcFee / 100 : 0;
   const grandTotalWithGc = grandTotal + gcFeeAmount;
 
-  // ── Auto-fit summary page: count visible rows, scale down to fit one page ──
-  let visibleRowUnits = 0;
-  for (const { groupLabel, divs } of grouped) {
-    const hasGroupContent = divs.some(d => {
-      const hasExcluded = [...d.items, ...d.groups.flatMap(g => g.items)].some(i => i.detail === "Excluded");
-      return computeDivisionTotal(d.groups, d.items, d.manualTotal) > 0 || hasExcluded;
-    });
-    if (!hasGroupContent) continue;
-    if (groupLabel) visibleRowUnits += 1.3; // group header row is a bit taller
-    for (const div of divs) {
-      const hasExcluded = [...div.items, ...div.groups.flatMap(g => g.items)].some(i => i.detail === "Excluded");
-      const divTotal = computeDivisionTotal(div.groups, div.items, div.manualTotal);
-      if (divTotal !== 0 || hasExcluded) visibleRowUnits += 1;
-    }
-  }
-  // Pick a scale so the summary always fits on one Letter page
-  const fitScale =
-    visibleRowUnits <= 26 ? 1.0 :
-    visibleRowUnits <= 34 ? 0.82 :
-    visibleRowUnits <= 42 ? 0.68 :
-    visibleRowUnits <= 52 ? 0.56 :
-    visibleRowUnits <= 64 ? 0.48 :
-    0.42;
-  const rowPadV = Math.max(1, 3 * fitScale);
-  const groupRowPadV = Math.max(1, 4 * fitScale);
-  const cellFs = Math.max(6, 8 * fitScale);
-  const groupSuperFs = Math.max(6.5, 9 * fitScale);
-
   return (
     <Document title={`${estimate.name} — Estimate`} author={companyName}>
       <Page size="LETTER" style={styles.page}>
@@ -401,10 +373,10 @@ export function EstimatePdfDocument({ companyName, projectName, estimate, divisi
           return (
             <View key={gi}>
               {groupLabel && (
-                <View style={[styles.groupSuperSummaryRow, { paddingVertical: groupRowPadV }]}>
-                  <Text style={[styles.cellTextBold, { flex: 1, color: "#ffffff", fontSize: groupSuperFs }]}>{groupLabel}</Text>
-                  <Text style={[styles.cellTextBold, { width: 80, textAlign: "right", color: "#93c5fd", fontSize: groupSuperFs }]}>${fmt(groupTotal)}</Text>
-                  <Text style={[styles.cellTextMuted, { width: 60, textAlign: "right", color: "#94a3b8", fontSize: groupSuperFs }]}>{fmt(groupPct)}%</Text>
+                <View style={styles.groupSuperSummaryRow}>
+                  <Text style={[styles.cellTextBold, { flex: 1, color: "#ffffff" }]}>{groupLabel}</Text>
+                  <Text style={[styles.cellTextBold, { width: 80, textAlign: "right", color: "#93c5fd" }]}>${fmt(groupTotal)}</Text>
+                  <Text style={[styles.cellTextMuted, { width: 60, textAlign: "right", color: "#94a3b8" }]}>{fmt(groupPct)}%</Text>
                 </View>
               )}
               {divs.map((div) => {
@@ -413,12 +385,12 @@ export function EstimatePdfDocument({ companyName, projectName, estimate, divisi
                 if (divTotal === 0 && !hasExcluded) return null;
                 const pct = grandTotal > 0 ? (divTotal / grandTotal) * 100 : 0;
                 return (
-                  <View key={div.id} style={[styles.divisionSummaryRow, { paddingVertical: rowPadV }, groupLabel ? { paddingLeft: 16 } : {}]}>
-                    <Text style={[styles.cellText, { flex: 1, fontSize: cellFs }]}>
+                  <View key={div.id} style={[styles.divisionSummaryRow, groupLabel ? { paddingLeft: 16 } : {}]}>
+                    <Text style={[styles.cellText, { flex: 1 }]}>
                       {div.csiCode ? `${div.csiCode} — ` : ""}{div.name}
                     </Text>
-                    <Text style={[styles.cellTextBold, { width: 80, textAlign: "right", fontSize: cellFs }]}>${fmt(divTotal)}</Text>
-                    <Text style={[styles.cellTextMuted, { width: 60, textAlign: "right", fontSize: cellFs }]}>{fmt(pct)}%</Text>
+                    <Text style={[styles.cellTextBold, { width: 80, textAlign: "right" }]}>${fmt(divTotal)}</Text>
+                    <Text style={[styles.cellTextMuted, { width: 60, textAlign: "right" }]}>{fmt(pct)}%</Text>
                   </View>
                 );
               })}
