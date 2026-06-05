@@ -1877,9 +1877,9 @@ function TemplatePdfDocument({ companyName, template, client, divisions, showTer
 
           return (
             <View key={gi}>
-              {/* Super-group header (e.g. SHELL) */}
+              {/* Super-group header (e.g. SHELL) — must stay with its following division */}
               {groupLabel && (
-                <View style={styles.groupSuperHeader}>
+                <View wrap={false} minPresenceAhead={120} style={styles.groupSuperHeader}>
                   <Text style={styles.groupSuperLabel}>{groupLabel}</Text>
                   <Text style={styles.groupSuperTotal}>${fmt(groupTotal)}</Text>
                 </View>
