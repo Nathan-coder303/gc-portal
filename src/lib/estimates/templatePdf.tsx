@@ -1284,11 +1284,9 @@ function DivisionSummaryPage({ template, client, divisions, gcFeePercent }: Pick
       {/* Main centered content */}
       <View style={{ flex: 1, paddingHorizontal: 48, paddingTop: 14, paddingBottom: 32 }}>
         {/* Title */}
-        <Text style={{ fontSize: 18, fontFamily: "Helvetica-Bold", color: DARK, textAlign: "center", letterSpacing: 1, marginBottom: 6 }}>
+        <Text style={{ fontSize: 18, fontFamily: "Helvetica-Bold", color: DARK, textAlign: "center", letterSpacing: 1, marginBottom: 4 }}>
           ESTIMATE SUMMARY
         </Text>
-        <Text style={{ fontSize: 10, color: "#94a3b8", textAlign: "center", marginBottom: 4 }}>{template.name}</Text>
-        {dateDisplay ? <Text style={{ fontSize: 9, color: "#94a3b8", textAlign: "center", marginBottom: 12 }}>{dateDisplay}</Text> : <View style={{ height: 12 }} />}
 
         {/* Gold divider */}
         <View style={{ height: 2, backgroundColor: GOLD, marginBottom: 12 }} />
