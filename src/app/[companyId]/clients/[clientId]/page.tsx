@@ -186,7 +186,7 @@ export default async function ClientDetailPage({
     { key: "estimates", label: "Estimates" },
     { key: "tasks", label: `Tasks${followUpCount > 0 ? ` (${followUpCount})` : ""}` },
     { key: "schedule", label: `Schedule${clientScheduleTasks.length > 0 ? ` (${clientScheduleTasks.length})` : ""}` },
-    { key: "change-orders", label: `Contracts & Change Orders${changeOrders.length > 0 ? ` (${changeOrders.length})` : ""}` },
+    { key: "change-orders", label: `Change Orders${changeOrders.length > 0 ? ` (${changeOrders.length})` : ""}` },
     { key: "invoices", label: `Invoices${clientInvoices.length > 0 ? ` (${clientInvoices.length})` : ""}` },
     { key: "notes", label: `Notes${clientNotes.length > 0 ? ` (${clientNotes.length})` : ""}` },
     { key: "financials", label: "Financials" },
@@ -242,25 +242,28 @@ export default async function ClientDetailPage({
       /> */}
 
 
-      {/* Tab bar — wraps on mobile so all tabs are visible without scrolling */}
-      <div className="flex flex-wrap gap-2 mb-6">
-        {tabs.map((tab) => {
-          const isActive = activeTab === tab.key;
-          return (
-            <Link
-              key={tab.key}
-              href={`/${params.companyId}/clients/${params.clientId}?tab=${tab.key}`}
-              className="px-3 py-1.5 rounded-full text-xs font-medium transition-all whitespace-nowrap"
-              style={
-                isActive
-                  ? { background: "#C9A84C", color: "#0d1117" }
-                  : { background: "transparent", color: "#8b949e", border: "1px solid #30373f" }
-              }
-            >
-              {tab.label}
-            </Link>
-          );
-        })}
+      {/* Tab bar — horizontal scroll with underline active state */}
+      <div className="-mx-4 md:-mx-8 mb-5 sticky top-0 z-10" style={{ background: "#0d1117", borderBottom: "1px solid #21262d" }}>
+        <div className="flex overflow-x-auto scrollbar-none px-4 md:px-8" style={{ scrollSnapType: "x proximity" }}>
+          {tabs.map((tab) => {
+            const isActive = activeTab === tab.key;
+            return (
+              <Link
+                key={tab.key}
+                href={`/${params.companyId}/clients/${params.clientId}?tab=${tab.key}`}
+                className="px-3 py-3 text-xs font-semibold whitespace-nowrap transition-colors relative shrink-0"
+                style={{
+                  scrollSnapAlign: "start",
+                  color: isActive ? "#C9A84C" : "#8b949e",
+                  borderBottom: isActive ? "2px solid #C9A84C" : "2px solid transparent",
+                  marginBottom: "-1px",
+                }}
+              >
+                {tab.label}
+              </Link>
+            );
+          })}
+        </div>
       </div>
 
       {/* Tab content */}

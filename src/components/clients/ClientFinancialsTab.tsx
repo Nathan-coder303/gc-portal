@@ -1132,12 +1132,17 @@ ${rows}
           { label: "Contract Value", value: contractTotal, color: "#C9A84C" },
           { label: "Total Expenses", value: totalExpenses, color: "#f85149" },
           { label: "Net Profit", value: netProfit, color: netProfit >= 0 ? "#22c55e" : "#f85149" },
-        ].map(card => (
-          <div key={card.label} className="rounded-2xl p-4" style={{ background: "#161b22", border: "1px solid #30373f" }}>
-            <div className="text-xs font-semibold uppercase tracking-widest mb-1" style={{ color: "#8b949e" }}>{card.label}</div>
-            <div className="text-xl font-bold" style={{ color: card.color }}>${fmt(card.value)}</div>
-          </div>
-        ))}
+        ].map(card => {
+          const text = `$${fmt(card.value)}`;
+          // Auto-shrink so long numbers fit. Base = 20px; step down by length.
+          const fontSize = text.length >= 14 ? 14 : text.length >= 12 ? 16 : text.length >= 10 ? 18 : 22;
+          return (
+            <div key={card.label} className="rounded-2xl p-4 min-w-0 overflow-hidden" style={{ background: "#161b22", border: "1px solid #30373f" }}>
+              <div className="text-xs font-semibold uppercase tracking-widest mb-1 truncate" style={{ color: "#8b949e" }}>{card.label}</div>
+              <div className="font-bold whitespace-nowrap" style={{ color: card.color, fontSize, lineHeight: 1.1 }}>{text}</div>
+            </div>
+          );
+        })}
       </div>
 
       {/* Sub breakdown under summary */}
@@ -1148,12 +1153,16 @@ ${rows}
           { label: "Balance Owed to Subs", value: totalLaborBalance, color: "#f85149" },
           { label: "Balance Owed to MIBH", value: invoiceBalance, color: invoiceBalance < totalLaborBalance ? "#f85149" : "#22c55e", warn: invoiceBalance < totalLaborBalance },
           { label: "Materials", value: totalMaterials, color: "#3b82f6" },
-        ].map(card => (
-          <div key={card.label} className="rounded-xl px-4 py-3" style={{ background: (card as { warn?: boolean }).warn ? "#2d1010" : "#0d1117", border: `1px solid ${(card as { warn?: boolean }).warn ? "#dc262644" : "#21262d"}` }}>
-            <div className="text-xs uppercase tracking-widest mb-1" style={{ color: "#8b949e" }}>{card.label}</div>
-            <div className="text-base font-bold" style={{ color: card.color }}>${fmt(card.value)}</div>
-          </div>
-        ))}
+        ].map(card => {
+          const text = `$${fmt(card.value)}`;
+          const fontSize = text.length >= 14 ? 12 : text.length >= 12 ? 13 : text.length >= 10 ? 15 : 16;
+          return (
+            <div key={card.label} className="rounded-xl px-4 py-3 min-w-0 overflow-hidden" style={{ background: (card as { warn?: boolean }).warn ? "#2d1010" : "#0d1117", border: `1px solid ${(card as { warn?: boolean }).warn ? "#dc262644" : "#21262d"}` }}>
+              <div className="text-xs uppercase tracking-widest mb-1 truncate" style={{ color: "#8b949e" }}>{card.label}</div>
+              <div className="font-bold whitespace-nowrap" style={{ color: card.color, fontSize, lineHeight: 1.1 }}>{text}</div>
+            </div>
+          );
+        })}
       </div>
 
       {/* Print + actions */}
