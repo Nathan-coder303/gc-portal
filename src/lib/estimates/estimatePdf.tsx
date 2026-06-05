@@ -43,8 +43,8 @@ const styles = StyleSheet.create({
   page: {
     fontFamily: "Helvetica",
     fontSize: 9,
-    paddingTop: 36,
-    paddingBottom: 72,
+    paddingTop: 24,
+    paddingBottom: 36,
     paddingHorizontal: 40,
     color: "#1e293b",
   },
@@ -53,27 +53,27 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "flex-start",
-    marginBottom: 20,
-    paddingBottom: 12,
-    borderBottomWidth: 2,
+    marginBottom: 8,
+    paddingBottom: 5,
+    borderBottomWidth: 1.5,
     borderBottomColor: "#2563eb",
   },
   headerLeft: { flex: 1 },
   headerRight: { alignItems: "flex-end" },
-  companyName: { fontSize: 18, fontFamily: "Helvetica-Bold", color: "#2563eb", marginBottom: 2 },
-  projectName: { fontSize: 10, color: "#475569" },
-  estimateTitle: { fontSize: 14, fontFamily: "Helvetica-Bold", color: "#0f172a", marginBottom: 4 },
+  companyName: { fontSize: 14, fontFamily: "Helvetica-Bold", color: "#2563eb", marginBottom: 1 },
+  projectName: { fontSize: 9, color: "#475569" },
+  estimateTitle: { fontSize: 12, fontFamily: "Helvetica-Bold", color: "#0f172a", marginBottom: 2 },
   metaBadge: {
-    fontSize: 8,
-    paddingHorizontal: 6,
-    paddingVertical: 2,
+    fontSize: 7,
+    paddingHorizontal: 5,
+    paddingVertical: 1,
     backgroundColor: "#eff6ff",
     color: "#1d4ed8",
     borderRadius: 3,
-    marginBottom: 4,
+    marginBottom: 2,
     alignSelf: "flex-end",
   },
-  metaText: { fontSize: 8, color: "#94a3b8", textAlign: "right" },
+  metaText: { fontSize: 7, color: "#94a3b8", textAlign: "right" },
 
   // ─── Summary bar ──────────────────────────────────────────────────────────
   summaryBar: {
@@ -82,13 +82,13 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: "#e2e8f0",
     borderRadius: 4,
-    marginBottom: 16,
-    padding: 10,
+    marginBottom: 8,
+    padding: 6,
     justifyContent: "space-between",
   },
   summaryItem: { alignItems: "center" },
-  summaryLabel: { fontSize: 7, color: "#94a3b8", marginBottom: 2, textTransform: "uppercase" },
-  summaryValue: { fontSize: 12, fontFamily: "Helvetica-Bold", color: "#0f172a" },
+  summaryLabel: { fontSize: 6.5, color: "#94a3b8", marginBottom: 1, textTransform: "uppercase" },
+  summaryValue: { fontSize: 10, fontFamily: "Helvetica-Bold", color: "#0f172a" },
 
   // ─── Division ─────────────────────────────────────────────────────────────
   divisionHeader: {
@@ -332,12 +332,12 @@ export function EstimatePdfDocument({ companyName, projectName, estimate, divisi
   }
   // Pick a scale so the summary always fits on one Letter page
   const fitScale =
-    visibleRowUnits <= 22 ? 1.0 :
-    visibleRowUnits <= 28 ? 0.85 :
-    visibleRowUnits <= 35 ? 0.72 :
-    visibleRowUnits <= 45 ? 0.62 :
-    visibleRowUnits <= 55 ? 0.54 :
-    0.48;
+    visibleRowUnits <= 26 ? 1.0 :
+    visibleRowUnits <= 34 ? 0.82 :
+    visibleRowUnits <= 42 ? 0.68 :
+    visibleRowUnits <= 52 ? 0.56 :
+    visibleRowUnits <= 64 ? 0.48 :
+    0.42;
   const rowPadV = Math.max(1, 3 * fitScale);
   const groupRowPadV = Math.max(1, 4 * fitScale);
   const cellFs = Math.max(6, 8 * fitScale);
