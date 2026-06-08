@@ -1,6 +1,7 @@
 "use client";
 import { useState, useEffect, useCallback, useRef, useMemo } from "react";
 import { TrashIcon } from "@/components/ui/icons";
+import { FormulaInput } from "@/components/FormulaInput";
 import { STANDARD_TEMPLATE_DIVISIONS } from "@/lib/standardTemplateData";
 import {
   format, startOfMonth, endOfMonth, startOfWeek, endOfWeek,
@@ -425,7 +426,7 @@ function PayForm({ subId, companyId, clientId, payment, onSave, onCancel }: {
       <div className="grid grid-cols-2 gap-2">
         <div>
           <label className="text-xs font-semibold mb-1 block" style={{ color: "#8b949e" }}>Amount</label>
-          <input autoFocus={isEdit} value={amount} onChange={e => setAmount(e.target.value)} placeholder="0.00" className="w-full rounded-lg px-3 py-2 text-sm" style={{ background: "#0d1117", border: "1px solid #30373f", color: "#e6edf3" }} />
+          <FormulaInput value={amount} onChange={n => setAmount(String(n))} placeholder="0.00 or =100+50" className="w-full rounded-lg px-3 py-2 text-sm" style={{ background: "#0d1117", border: "1px solid #30373f", color: "#e6edf3" }} />
         </div>
         <div>
           <label className="text-xs font-semibold mb-1 block" style={{ color: "#8b949e" }}>Method</label>
@@ -653,10 +654,10 @@ ${payRows}
                     <div className="flex items-center gap-1 px-2 py-2">
                       <span className="text-xs flex-1 truncate" style={{ color: "#8b949e" }}>{item.name}</span>
                       <span className="text-xs shrink-0" style={{ color: "#8b949e" }}>$</span>
-                      <input
+                      <FormulaInput
                         autoFocus
                         value={editingItemAmt}
-                        onChange={e => setEditingItemAmt(e.target.value)}
+                        onChange={n => setEditingItemAmt(String(n))}
                         onKeyDown={e => { if (e.key === "Enter") saveScopeItemAmount(item.id, editingItemAmt); if (e.key === "Escape") setEditingItemId(null); }}
                         className="w-20 rounded px-1.5 py-0.5 text-xs text-right shrink-0"
                         style={{ background: "#161b22", border: "1px solid #C9A84C", color: "#C9A84C" }}
@@ -1351,7 +1352,7 @@ ${rows}
               </div>
               <div>
                 <label className="text-xs font-semibold mb-1 block" style={{ color: "#8b949e" }}>Amount</label>
-                <input value={matAmount} onChange={e => setMatAmount(e.target.value)} placeholder="0.00" className="w-full rounded-lg px-3 py-2 text-sm" style={{ background: "#0d1117", border: "1px solid #30373f", color: "#e6edf3" }} />
+                <FormulaInput value={matAmount} onChange={n => setMatAmount(String(n))} placeholder="0.00 or =100+50" className="w-full rounded-lg px-3 py-2 text-sm" style={{ background: "#0d1117", border: "1px solid #30373f", color: "#e6edf3" }} />
               </div>
               <div>
                 <label className="text-xs font-semibold mb-1 block" style={{ color: "#8b949e" }}>Date</label>

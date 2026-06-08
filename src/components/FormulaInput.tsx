@@ -29,9 +29,12 @@ interface FormulaInputProps {
   className?: string;
   style?: React.CSSProperties;
   placeholder?: string;
+  autoFocus?: boolean;
+  onKeyDown?: (e: React.KeyboardEvent<HTMLInputElement>) => void;
+  disabled?: boolean;
 }
 
-export function FormulaInput({ value, onChange, storageKey, className = "", style, placeholder = "0" }: FormulaInputProps) {
+export function FormulaInput({ value, onChange, storageKey, className = "", style, placeholder = "0", autoFocus, onKeyDown, disabled }: FormulaInputProps) {
   const getStored = () => storageKey && typeof window !== "undefined" ? localStorage.getItem(fxKey(storageKey)) : null;
 
   const [raw, setRaw] = useState<string>(() => getStored() ?? String(value ?? ""));
@@ -85,6 +88,9 @@ export function FormulaInput({ value, onChange, storageKey, className = "", styl
       onChange={handleChange}
       onFocus={handleFocus}
       onBlur={handleBlur}
+      onKeyDown={onKeyDown}
+      autoFocus={autoFocus}
+      disabled={disabled}
       className={className}
       style={{
         ...style,
