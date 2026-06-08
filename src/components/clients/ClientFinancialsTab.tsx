@@ -914,6 +914,7 @@ export default function ClientFinancialsTab({
   // Collapsible section state — collapsed by default
   const [scopeRemainingOpen, setScopeRemainingOpen] = useState(false);
   const [subsOpen, setSubsOpen] = useState(false);
+  const [materialsOpen, setMaterialsOpen] = useState(false);
 
   // Add sub form
   const [selectedSubId, setSelectedSubId] = useState("__new__");
@@ -1315,14 +1316,23 @@ ${rows}
 
       {/* ── Section 2: Materials / COGS ── */}
       <div className="space-y-4">
-        <div className="flex items-center justify-between">
-          <h2 className="text-sm font-bold uppercase tracking-widest" style={{ color: "#3b82f6" }}>Materials / COGS</h2>
-          {!addingMatForm && (
-            <button onClick={() => setAddingMatForm(true)} className="px-3 py-1.5 rounded-xl text-xs font-semibold" style={{ background: "#3b82f622", color: "#3b82f6", border: "1px solid #3b82f644" }}>+ Add Purchase</button>
+        <div className="flex items-center justify-between gap-2">
+          <button
+            onClick={() => setMaterialsOpen(v => !v)}
+            className="flex items-center gap-2 flex-1 text-left"
+          >
+            <span className="text-xs" style={{ color: "#3b82f6" }}>{materialsOpen ? "▼" : "▶"}</span>
+            <h2 className="text-sm font-bold uppercase tracking-widest" style={{ color: "#3b82f6" }}>Materials / COGS</h2>
+            {Object.keys(matsBySupplier).length > 0 && (
+              <span className="text-xs font-bold px-2 py-0.5 rounded-full" style={{ background: "#3b82f622", color: "#3b82f6", border: "1px solid #3b82f644" }}>{Object.keys(matsBySupplier).length}</span>
+            )}
+          </button>
+          {materialsOpen && !addingMatForm && (
+            <button onClick={() => setAddingMatForm(true)} className="px-3 py-1.5 rounded-xl text-xs font-semibold shrink-0" style={{ background: "#3b82f622", color: "#3b82f6", border: "1px solid #3b82f644" }}>+ Add Purchase</button>
           )}
         </div>
 
-        {addingMatForm && (
+        {materialsOpen && addingMatForm && (
           <div className="rounded-2xl p-5 space-y-3" style={{ background: "#0d1421", border: "1px solid #3b82f644" }}>
             <div className="flex items-center justify-between">
               <div className="text-xs font-bold uppercase tracking-widest" style={{ color: "#3b82f6" }}>
@@ -1393,20 +1403,22 @@ ${rows}
           </div>
         )}
 
-        {Object.keys(matsBySupplier).length === 0 && !addingMatForm && (
+        {materialsOpen && Object.keys(matsBySupplier).length === 0 && !addingMatForm && (
           <p className="text-sm text-center py-6" style={{ color: "#8b949e" }}>No material purchases yet.</p>
         )}
 
-        <div className="space-y-4">
-          {Object.entries(matsBySupplier).sort(([a], [b]) => a.localeCompare(b)).map(([supplierName, purchases]) => (
-            <SupplierCard
-              key={supplierName}
-              supplierName={supplierName}
-              purchases={purchases}
-              onDelete={deleteMaterial}
-            />
-          ))}
-        </div>
+        {materialsOpen && (
+          <div className="space-y-4">
+            {Object.entries(matsBySupplier).sort(([a], [b]) => a.localeCompare(b)).map(([supplierName, purchases]) => (
+              <SupplierCard
+                key={supplierName}
+                supplierName={supplierName}
+                purchases={purchases}
+                onDelete={deleteMaterial}
+              />
+            ))}
+          </div>
+        )}
       </div>
     </div>
   );
