@@ -1338,108 +1338,131 @@ function DivisionSummaryPage({ template, client, divisions, gcFeePercent }: Pick
           </View>
         </View>
           {/* Two-column: Allowances table (left) + Pie chart (right) */}
-          {(hasAllowances || hasExclusions || svgSlices.length > 0) && (
-            <View break={exclusionLines.length > 4 || allowanceLines.length > 8 || (exclusionLines.length + allowanceLines.length) > 10} style={{ flexDirection: "row", gap: 10, marginTop: 14 }}>
-              {/* LEFT: Allowances table */}
-              {hasAllowances ? (
-                <View style={{ flex: 1 }}>
-                  <View style={{ backgroundColor: "#2d2410", paddingHorizontal: 12, paddingVertical: 6, borderRadius: 3 }}>
-                    <Text style={{ fontSize: 9, fontFamily: "Helvetica-Bold", color: GOLD, letterSpacing: 1 }}>ALLOWANCES RECAP</Text>
-                  </View>
-                  <View style={{ flexDirection: "row", paddingHorizontal: 12, paddingVertical: 4, borderBottomWidth: 1, borderBottomColor: "#e2e8f0", backgroundColor: "#f8f4ec" }}>
-                    <Text style={{ fontSize: 7, fontFamily: "Helvetica-Bold", color: "#92400e", flex: 1 }}>DESCRIPTION</Text>
-                    <Text style={{ fontSize: 7, fontFamily: "Helvetica-Bold", color: "#92400e", width: 54, textAlign: "right" }}>AMOUNT</Text>
-                  </View>
-                  <View style={{ flex: 1, justifyContent: "space-evenly" }}>
-                    {allowanceLines.map((line, idx) => (
-                      <View key={idx} style={{ flexDirection: "row", paddingHorizontal: 12, paddingVertical: 3, borderBottomWidth: 1, borderBottomColor: "#f1f5f9", backgroundColor: idx % 2 === 0 ? "#fffbf2" : "#ffffff" }}>
-                        <Text style={{ fontSize: 8, color: "#334155", flex: 1 }}>{line.name}</Text>
-                        <Text style={{ fontSize: 8, fontFamily: "Helvetica-Bold", color: line.amount > 0 ? "#0f172a" : "#92400e", width: 54, textAlign: "right" }}>
-                          {line.amount > 0 ? `$${fmt(line.amount)}` : "TBD"}
-                        </Text>
-                      </View>
-                    ))}
-                  </View>
-                  <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", backgroundColor: "#2d2410", paddingHorizontal: 12, paddingVertical: 6, borderRadius: 3 }}>
-                    <Text style={{ fontSize: 8, fontFamily: "Helvetica-Bold", color: GOLD }}>TOTAL ALLOWANCES</Text>
-                    <Text style={{ fontSize: 10, fontFamily: "Helvetica-Bold", color: GOLD }}>{allowancesTotal > 0 ? `$${fmt(allowancesTotal)}` : "TBD"}</Text>
-                  </View>
-                </View>
-              ) : <View style={{ flex: 1 }} />}
+          {(hasAllowances || hasExclusions || svgSlices.length > 0) && (() => {
+            const shouldBreak = exclusionLines.length > 6;
 
-              {/* MIDDLE: Exclusion Summary */}
-              {hasExclusions && (
-                <View style={{ flex: 1 }}>
-                  <View style={{ backgroundColor: "#2a0f0f", paddingHorizontal: 12, paddingVertical: 6, borderRadius: 3 }}>
-                    <Text style={{ fontSize: 9, fontFamily: "Helvetica-Bold", color: "#fca5a5", letterSpacing: 1 }}>EXCLUSION SUMMARY</Text>
-                  </View>
-                  <View style={{ flexDirection: "row", paddingHorizontal: 12, paddingVertical: 4, borderBottomWidth: 1, borderBottomColor: "#e2e8f0", backgroundColor: "#fef2f2" }}>
-                    <Text style={{ fontSize: 7, fontFamily: "Helvetica-Bold", color: "#991b1b", flex: 1 }}>DESCRIPTION</Text>
-                    <Text style={{ fontSize: 7, fontFamily: "Helvetica-Bold", color: "#991b1b", width: 60, textAlign: "right" }}>SUGGESTED</Text>
-                  </View>
-                  <View style={{ flex: 1 }}>
-                    {exclusionLines.map((line, idx) => (
-                      <View key={idx} style={{ flexDirection: "row", paddingHorizontal: 12, paddingVertical: 3, borderBottomWidth: 1, borderBottomColor: "#f1f5f9", backgroundColor: idx % 2 === 0 ? "#fff5f5" : "#ffffff" }}>
-                        <Text style={{ fontSize: 8, color: "#334155", flex: 1 }}>{line.name}</Text>
-                        <Text style={{ fontSize: 8, fontFamily: "Helvetica-Bold", color: line.suggested > 0 ? "#991b1b" : "#9ca3af", width: 60, textAlign: "right" }}>
-                          {line.suggested > 0 ? `$${fmt(line.suggested)}` : "TBD"}
-                        </Text>
-                      </View>
-                    ))}
-                  </View>
-                  <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", backgroundColor: "#2a0f0f", paddingHorizontal: 12, paddingVertical: 6, borderRadius: 3 }}>
-                    <Text style={{ fontSize: 8, fontFamily: "Helvetica-Bold", color: "#fca5a5" }}>SUGGESTED TOTAL</Text>
-                    <Text style={{ fontSize: 10, fontFamily: "Helvetica-Bold", color: "#fca5a5" }}>{exclusionsSuggestedTotal > 0 ? `$${fmt(exclusionsSuggestedTotal)}` : "TBD"}</Text>
-                  </View>
+            const AllowancesBlock = hasAllowances ? (
+              <View style={{ flex: 1 }}>
+                <View style={{ backgroundColor: "#2d2410", paddingHorizontal: 12, paddingVertical: 6, borderRadius: 3 }}>
+                  <Text style={{ fontSize: 9, fontFamily: "Helvetica-Bold", color: GOLD, letterSpacing: 1 }}>ALLOWANCES RECAP</Text>
                 </View>
-              )}
+                <View style={{ flexDirection: "row", paddingHorizontal: 12, paddingVertical: 4, borderBottomWidth: 1, borderBottomColor: "#e2e8f0", backgroundColor: "#f8f4ec" }}>
+                  <Text style={{ fontSize: 7, fontFamily: "Helvetica-Bold", color: "#92400e", flex: 1 }}>DESCRIPTION</Text>
+                  <Text style={{ fontSize: 7, fontFamily: "Helvetica-Bold", color: "#92400e", width: 54, textAlign: "right" }}>AMOUNT</Text>
+                </View>
+                <View style={{ flex: 1, justifyContent: "space-evenly" }}>
+                  {allowanceLines.map((line, idx) => (
+                    <View key={idx} style={{ flexDirection: "row", paddingHorizontal: 12, paddingVertical: 3, borderBottomWidth: 1, borderBottomColor: "#f1f5f9", backgroundColor: idx % 2 === 0 ? "#fffbf2" : "#ffffff" }}>
+                      <Text style={{ fontSize: 8, color: "#334155", flex: 1 }}>{line.name}</Text>
+                      <Text style={{ fontSize: 8, fontFamily: "Helvetica-Bold", color: line.amount > 0 ? "#0f172a" : "#92400e", width: 54, textAlign: "right" }}>
+                        {line.amount > 0 ? `$${fmt(line.amount)}` : "TBD"}
+                      </Text>
+                    </View>
+                  ))}
+                </View>
+                <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", backgroundColor: "#2d2410", paddingHorizontal: 12, paddingVertical: 6, borderRadius: 3 }}>
+                  <Text style={{ fontSize: 8, fontFamily: "Helvetica-Bold", color: GOLD }}>TOTAL ALLOWANCES</Text>
+                  <Text style={{ fontSize: 10, fontFamily: "Helvetica-Bold", color: GOLD }}>{allowancesTotal > 0 ? `$${fmt(allowancesTotal)}` : "TBD"}</Text>
+                </View>
+              </View>
+            ) : <View style={{ flex: 1 }} />;
 
-              {/* RIGHT: Pie chart */}
-              {svgSlices.length > 0 && (
-                <View style={{ width: 188, alignItems: "center" }}>
-                  <View style={{ backgroundColor: DARK, paddingHorizontal: 8, paddingVertical: 6, borderRadius: 3, width: 188, marginBottom: 6 }}>
-                    <Text style={{ fontSize: 9, fontFamily: "Helvetica-Bold", color: GOLD, letterSpacing: 1, textAlign: "center" }}>COST BREAKDOWN</Text>
-                  </View>
-                  <View style={{ position: "relative", width: 160, height: 160 }}>
-                    <Svg width={160} height={160} viewBox="0 0 160 160">
-                      {svgSlices.map((s, i) => (
-                        <Path key={i} d={s.d} fill={s.color} stroke="white" strokeWidth={1.5} />
-                      ))}
-                    </Svg>
-                    {svgSlices.map((s, i) => {
-                      const centroid = polarToCartesian(80, 80, 44, s.startAngle + s.sweep / 2);
-                      const pct = pieTotal > 0 ? Math.round(s.amount / pieTotal * 100) : 0;
-                      const shortLabel = s.label === "Labor & Rough Material"
-                        ? `Labor &\nRough Material`
-                        : s.label === "GC Overhead & Profit"
-                        ? `GC Overhead\n& Profit`
-                        : s.label;
-                      return (
-                        <View key={`lbl-${i}`} style={{ position: "absolute", left: centroid.x - 22, top: centroid.y - 14, width: 44, alignItems: "center" }}>
-                          <Text style={{ fontSize: 5.5, color: "white", textAlign: "center", lineHeight: 1.3 }}>{shortLabel}</Text>
-                          <Text style={{ fontSize: 6.5, color: "white", fontFamily: "Helvetica-Bold", textAlign: "center", marginTop: 1 }}>{pct}%</Text>
-                        </View>
-                      );
-                    })}
-                  </View>
-                  <View style={{ width: 188, paddingHorizontal: 4, marginTop: 4 }}>
+            const ExclusionsBlock = hasExclusions ? (
+              <View style={{ flex: 1 }}>
+                <View style={{ backgroundColor: "#2a0f0f", paddingHorizontal: 12, paddingVertical: 6, borderRadius: 3 }}>
+                  <Text style={{ fontSize: 9, fontFamily: "Helvetica-Bold", color: "#fca5a5", letterSpacing: 1 }}>EXCLUSION SUMMARY</Text>
+                </View>
+                <View style={{ flexDirection: "row", paddingHorizontal: 12, paddingVertical: 4, borderBottomWidth: 1, borderBottomColor: "#e2e8f0", backgroundColor: "#fef2f2" }}>
+                  <Text style={{ fontSize: 7, fontFamily: "Helvetica-Bold", color: "#991b1b", flex: 1 }}>DESCRIPTION</Text>
+                  <Text style={{ fontSize: 7, fontFamily: "Helvetica-Bold", color: "#991b1b", width: 60, textAlign: "right" }}>SUGGESTED</Text>
+                </View>
+                <View style={{ flex: 1 }}>
+                  {exclusionLines.map((line, idx) => (
+                    <View key={idx} style={{ flexDirection: "row", paddingHorizontal: 12, paddingVertical: 3, borderBottomWidth: 1, borderBottomColor: "#f1f5f9", backgroundColor: idx % 2 === 0 ? "#fff5f5" : "#ffffff" }}>
+                      <Text style={{ fontSize: 8, color: "#334155", flex: 1 }}>{line.name}</Text>
+                      <Text style={{ fontSize: 8, fontFamily: "Helvetica-Bold", color: line.suggested > 0 ? "#991b1b" : "#9ca3af", width: 60, textAlign: "right" }}>
+                        {line.suggested > 0 ? `$${fmt(line.suggested)}` : "TBD"}
+                      </Text>
+                    </View>
+                  ))}
+                </View>
+                <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", backgroundColor: "#2a0f0f", paddingHorizontal: 12, paddingVertical: 6, borderRadius: 3 }}>
+                  <Text style={{ fontSize: 8, fontFamily: "Helvetica-Bold", color: "#fca5a5" }}>SUGGESTED TOTAL</Text>
+                  <Text style={{ fontSize: 10, fontFamily: "Helvetica-Bold", color: "#fca5a5" }}>{exclusionsSuggestedTotal > 0 ? `$${fmt(exclusionsSuggestedTotal)}` : "TBD"}</Text>
+                </View>
+              </View>
+            ) : null;
+
+            const PieBlock = svgSlices.length > 0 ? (
+              <View style={{ width: 188, alignItems: "center" }}>
+                <View style={{ backgroundColor: DARK, paddingHorizontal: 8, paddingVertical: 6, borderRadius: 3, width: 188, marginBottom: 6 }}>
+                  <Text style={{ fontSize: 9, fontFamily: "Helvetica-Bold", color: GOLD, letterSpacing: 1, textAlign: "center" }}>COST BREAKDOWN</Text>
+                </View>
+                <View style={{ position: "relative", width: 160, height: 160 }}>
+                  <Svg width={160} height={160} viewBox="0 0 160 160">
                     {svgSlices.map((s, i) => (
-                      <View key={i} style={{ flexDirection: "row", alignItems: "center", marginTop: 4 }}>
-                        <View style={{ width: 10, height: 10, backgroundColor: s.color, borderRadius: 2, marginRight: 5 }} />
-                        <Text style={{ fontSize: 7.5, color: "#334155", flex: 1 }}>{s.label}</Text>
-                        <View style={{ alignItems: "flex-end" }}>
-                          <Text style={{ fontSize: 7.5, fontFamily: "Helvetica-Bold", color: "#0f172a" }}>
-                            {pieTotal > 0 ? `${Math.round(s.amount / pieTotal * 100)}%` : "0%"}
-                          </Text>
-                          <Text style={{ fontSize: 7, color: "#64748b" }}>${fmt(s.amount)}</Text>
-                        </View>
-                      </View>
+                      <Path key={i} d={s.d} fill={s.color} stroke="white" strokeWidth={1.5} />
                     ))}
-                  </View>
+                  </Svg>
+                  {svgSlices.map((s, i) => {
+                    const centroid = polarToCartesian(80, 80, 44, s.startAngle + s.sweep / 2);
+                    const pct = pieTotal > 0 ? Math.round(s.amount / pieTotal * 100) : 0;
+                    const shortLabel = s.label === "Labor & Rough Material"
+                      ? `Labor &\nRough Material`
+                      : s.label === "GC Overhead & Profit"
+                      ? `GC Overhead\n& Profit`
+                      : s.label;
+                    return (
+                      <View key={`lbl-${i}`} style={{ position: "absolute", left: centroid.x - 22, top: centroid.y - 14, width: 44, alignItems: "center" }}>
+                        <Text style={{ fontSize: 5.5, color: "white", textAlign: "center", lineHeight: 1.3 }}>{shortLabel}</Text>
+                        <Text style={{ fontSize: 6.5, color: "white", fontFamily: "Helvetica-Bold", textAlign: "center", marginTop: 1 }}>{pct}%</Text>
+                      </View>
+                    );
+                  })}
                 </View>
-              )}
-            </View>
-          )}
+                <View style={{ width: 188, paddingHorizontal: 4, marginTop: 4 }}>
+                  {svgSlices.map((s, i) => (
+                    <View key={i} style={{ flexDirection: "row", alignItems: "center", marginTop: 4 }}>
+                      <View style={{ width: 10, height: 10, backgroundColor: s.color, borderRadius: 2, marginRight: 5 }} />
+                      <Text style={{ fontSize: 7.5, color: "#334155", flex: 1 }}>{s.label}</Text>
+                      <View style={{ alignItems: "flex-end" }}>
+                        <Text style={{ fontSize: 7.5, fontFamily: "Helvetica-Bold", color: "#0f172a" }}>
+                          {pieTotal > 0 ? `${Math.round(s.amount / pieTotal * 100)}%` : "0%"}
+                        </Text>
+                        <Text style={{ fontSize: 7, color: "#64748b" }}>${fmt(s.amount)}</Text>
+                      </View>
+                    </View>
+                  ))}
+                </View>
+              </View>
+            ) : null;
+
+            if (shouldBreak) {
+              // Broken layout: 2 columns top (Allowances + Exclusions), Pie chart centered below
+              return (
+                <View break style={{ marginTop: 14 }}>
+                  <View style={{ flexDirection: "row", gap: 12 }}>
+                    {AllowancesBlock}
+                    {ExclusionsBlock}
+                  </View>
+                  {PieBlock && (
+                    <View style={{ marginTop: 14, alignItems: "center" }}>
+                      {PieBlock}
+                    </View>
+                  )}
+                </View>
+              );
+            }
+
+            // Compact layout: original 3 columns in a single row
+            return (
+              <View style={{ flexDirection: "row", gap: 10, marginTop: 14 }}>
+                {AllowancesBlock}
+                {ExclusionsBlock}
+                {PieBlock}
+              </View>
+            );
+          })()}
       </View>
 
       {/* Footer — fixed so content height can never push it to a new page */}
