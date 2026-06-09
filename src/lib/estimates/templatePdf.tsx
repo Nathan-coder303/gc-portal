@@ -279,20 +279,21 @@ function ItemTableHeader({ showLineNum }: { showLineNum?: boolean }) {
   );
 }
 
-function ItemRow({ item, index, lineNum }: { item: Item; index: number; lineNum?: number }) {
+function ItemRow({ item, index, lineNum, fallbackCsi }: { item: Item; index: number; lineNum?: number; fallbackCsi?: string | null }) {
   const isExcluded = item.detail === "Excluded";
   const total = calcTotal(item.defaultQty, item.defaultUnitCost, item.defaultMarkupPct);
   const rowStyle = index % 2 === 0 ? styles.tableRow : styles.tableRowAlt;
   const detailColor = isExcluded ? "#dc2626" : item.detail === "Allowances" ? "#d97706" : "#334155";
   const { pct } = useProgressPayment();
   const progressAmt = pct != null && total > 0 && !isExcluded ? total * pct / 100 : null;
+  const csi = item.csiCode ?? fallbackCsi ?? null;
   return (
     <View wrap={false} minPresenceAhead={25} style={{ borderBottomWidth: 1, borderBottomColor: "#f1f5f9", backgroundColor: index % 2 === 0 ? undefined : "#fafafa" }}>
       <View style={[rowStyle, { borderBottomWidth: 0 }]}>
         {lineNum != null && <Text style={[styles.cellMuted, styles.colLineNum]}>{lineNum}</Text>}
         <View style={styles.colName}>
           <Text style={styles.cellText}>
-            {item.csiCode ? <Text style={{ fontSize: 7, color: "#94a3b8", fontFamily: "Helvetica-Bold" }}>{item.csiCode}{"  "}</Text> : null}
+            {csi ? <Text style={{ fontSize: 7, color: "#94a3b8", fontFamily: "Helvetica-Bold" }}>{csi}{"  "}</Text> : null}
             {(item.name ?? "")}
           </Text>
         </View>
@@ -1338,7 +1339,7 @@ function DivisionSummaryPage({ template, client, divisions, gcFeePercent }: Pick
         </View>
           {/* Two-column: Allowances table (left) + Pie chart (right) */}
           {(hasAllowances || hasExclusions || svgSlices.length > 0) && (
-            <View break={exclusionLines.length > 6} style={{ flexDirection: "row", gap: 10, marginTop: 14 }}>
+            <View break={exclusionLines.length > 4 || allowanceLines.length > 8 || (exclusionLines.length + allowanceLines.length) > 10} style={{ flexDirection: "row", gap: 10, marginTop: 14 }}>
               {/* LEFT: Allowances table */}
               {hasAllowances ? (
                 <View style={{ flex: 1 }}>
@@ -1945,7 +1946,7 @@ function TemplatePdfDocument({ companyName, template, client, divisions, showTer
                             {grpTotal > 0 && <Text style={{ fontSize: 7.5, fontFamily: "Helvetica-Bold", color: "#1e40af" }}>${fmt(grpTotal)}</Text>}
                           </View>
                           <ItemTableHeader showLineNum={isRoof} />
-                          {grp.items.map((item, idx) => <ItemRow key={item.id} item={item} index={idx} lineNum={lineNumMap.get(item.id)} />)}
+                          {grp.items.map((item, idx) => <ItemRow key={item.id} item={item} index={idx} lineNum={lineNumMap.get(item.id)} fallbackCsi={div.csiCode} />)}
                         </View>
                       );
                     })}
@@ -1953,7 +1954,7 @@ function TemplatePdfDocument({ companyName, template, client, divisions, showTer
                     {filledItems.length > 0 && (
                       <View minPresenceAhead={55}>
                         <ItemTableHeader showLineNum={isRoof} />
-                        {filledItems.map((item, idx) => <ItemRow key={item.id} item={item} index={idx} lineNum={lineNumMap.get(item.id)} />)}
+                        {filledItems.map((item, idx) => <ItemRow key={item.id} item={item} index={idx} lineNum={lineNumMap.get(item.id)} fallbackCsi={div.csiCode} />)}
                       </View>
                     )}
                   </View>
