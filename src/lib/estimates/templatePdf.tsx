@@ -1408,6 +1408,11 @@ function DivisionSummaryPage({ template, client, divisions, gcFeePercent }: Pick
   const hasExclusions = exclusionLines.length > 0;
   const exclusionsSuggestedTotal = exclusionLines.reduce((s, l) => s + l.suggested, 0);
 
+  // When the bottom summary breaks to its own page, enlarge the division rows so the summary page isn't sparse
+  const bottomBreaks = exclusionLines.length > 6;
+  const divRowFs = bottomBreaks ? 13 : 10;
+  const divRowPadV = bottomBreaks ? 9 : 5;
+
   // Pie chart slices: Labor & Rough Material, Allowances, GC Fee
   const laborAmount = Math.max(0, grandTotalWithGc - allowancesTotal - gcFeeAmount);
   const rawPieSlices = [
@@ -1451,18 +1456,18 @@ function DivisionSummaryPage({ template, client, divisions, gcFeePercent }: Pick
 
         {/* Division rows */}
         {divTotals.map((d, idx) => (
-          <View key={idx} style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", paddingVertical: 5, paddingHorizontal: 16, borderBottomWidth: 1, borderBottomColor: "#e2e8f0", backgroundColor: idx % 2 === 0 ? "#f8fafc" : "#ffffff" }}>
-            <Text style={{ fontSize: 10, color: "#334155", fontFamily: "Helvetica-Bold" }}>{d.name}</Text>
-            <Text style={{ fontSize: 10, color: "#0f172a", fontFamily: "Helvetica-Bold" }}>${fmt(d.total)}</Text>
+          <View key={idx} style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", paddingVertical: divRowPadV, paddingHorizontal: 16, borderBottomWidth: 1, borderBottomColor: "#e2e8f0", backgroundColor: idx % 2 === 0 ? "#f8fafc" : "#ffffff" }}>
+            <Text style={{ fontSize: divRowFs, color: "#334155", fontFamily: "Helvetica-Bold" }}>{d.name}</Text>
+            <Text style={{ fontSize: divRowFs, color: "#0f172a", fontFamily: "Helvetica-Bold" }}>${fmt(d.total)}</Text>
           </View>
         ))}
 
         {/* GC Fee row */}
         {gcFeeAmount > 0 && (
           <>
-            <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", paddingVertical: 5, paddingHorizontal: 16, borderBottomWidth: 1, borderBottomColor: "#e2e8f0", backgroundColor: divTotals.length % 2 === 0 ? "#f8fafc" : "#ffffff" }}>
-              <Text style={{ fontSize: 10, color: "#334155", fontFamily: "Helvetica-Bold" }}>GC Overhead &amp; Profit</Text>
-              <Text style={{ fontSize: 10, color: "#0f172a", fontFamily: "Helvetica-Bold" }}>${fmt(gcFeeAmount)}</Text>
+            <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", paddingVertical: divRowPadV, paddingHorizontal: 16, borderBottomWidth: 1, borderBottomColor: "#e2e8f0", backgroundColor: divTotals.length % 2 === 0 ? "#f8fafc" : "#ffffff" }}>
+              <Text style={{ fontSize: divRowFs, color: "#334155", fontFamily: "Helvetica-Bold" }}>GC Overhead &amp; Profit</Text>
+              <Text style={{ fontSize: divRowFs, color: "#0f172a", fontFamily: "Helvetica-Bold" }}>${fmt(gcFeeAmount)}</Text>
             </View>
           </>
         )}
