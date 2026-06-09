@@ -1238,7 +1238,7 @@ function AllowancesBlock({ allowanceLines, allowancesTotal }: { allowanceLines: 
         <Text style={{ fontSize: 7, fontFamily: "Helvetica-Bold", color: "#92400e", flex: 1 }}>DESCRIPTION</Text>
         <Text style={{ fontSize: 7, fontFamily: "Helvetica-Bold", color: "#92400e", width: 54, textAlign: "right" }}>AMOUNT</Text>
       </View>
-      <View style={{ flex: 1, justifyContent: "space-evenly" }}>
+      <View>
         {allowanceLines.map((line, idx) => (
           <View key={idx} style={{ flexDirection: "row", paddingHorizontal: 12, paddingVertical: 3, borderBottomWidth: 1, borderBottomColor: "#f1f5f9", backgroundColor: idx % 2 === 0 ? "#fffbf2" : "#ffffff" }}>
             <Text style={{ fontSize: 8, color: "#334155", flex: 1 }}>{line.name}</Text>
@@ -1266,7 +1266,7 @@ function ExclusionsBlock({ exclusionLines, exclusionsSuggestedTotal }: { exclusi
         <Text style={{ fontSize: 7, fontFamily: "Helvetica-Bold", color: "#991b1b", flex: 1 }}>DESCRIPTION</Text>
         <Text style={{ fontSize: 7, fontFamily: "Helvetica-Bold", color: "#991b1b", width: 60, textAlign: "right" }}>SUGGESTED</Text>
       </View>
-      <View style={{ flex: 1 }}>
+      <View>
         {exclusionLines.map((line, idx) => (
           <View key={idx} style={{ flexDirection: "row", paddingHorizontal: 12, paddingVertical: 3, borderBottomWidth: 1, borderBottomColor: "#f1f5f9", backgroundColor: idx % 2 === 0 ? "#fff5f5" : "#ffffff" }}>
             <Text style={{ fontSize: 8, color: "#334155", flex: 1 }}>{line.name}</Text>
