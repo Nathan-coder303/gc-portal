@@ -1481,7 +1481,19 @@ function DivisionSummaryPage({ template, client, divisions, gcFeePercent }: Pick
             </View>
           </View>
         </View>
-          {/* Two-column: Allowances table (left) + Pie chart (right) */}
+          {/* Bottom summary: Allowances + Exclusions + Pie chart (breaks to next page when exclusions > 6) */}
+          {(hasAllowances || hasExclusions || svgSlices.length > 0) && (
+            <BottomSummary
+              hasAllowances={hasAllowances}
+              hasExclusions={hasExclusions}
+              allowanceLines={allowanceLines}
+              allowancesTotal={allowancesTotal}
+              exclusionLines={exclusionLines}
+              exclusionsSuggestedTotal={exclusionsSuggestedTotal}
+              svgSlices={svgSlices}
+              pieTotal={pieTotal}
+            />
+          )}
       </View>
 
       {/* Footer — fixed so content height can never push it to a new page */}
