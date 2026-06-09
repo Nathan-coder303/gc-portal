@@ -1376,7 +1376,10 @@ function DivisionSummaryPage({ template, client, divisions, gcFeePercent }: Pick
       ...div.groups.flatMap(g => g.items.filter(isItemFilled)),
     ];
     if (allItems.length === 0) continue;
-    const total = allItems.reduce((s, i) => s + calcTotal(i.defaultQty, i.defaultUnitCost, i.defaultMarkupPct), 0);
+    // Excluded items must NEVER add to the estimate total
+    const total = allItems
+      .filter(i => i.detail !== "Excluded")
+      .reduce((s, i) => s + calcTotal(i.defaultQty, i.defaultUnitCost, i.defaultMarkupPct), 0);
     if (total > 0) divTotals.push({ name: div.name, total });
   }
 
@@ -1582,7 +1585,9 @@ function TemplatePdfDocument({ companyName, template, client, divisions, showTer
       return sum + [
         ...div.items.filter(isItemFilled),
         ...div.groups.flatMap(g => g.items.filter(isItemFilled)),
-      ].reduce((s, i) => s + calcTotal(i.defaultQty, i.defaultUnitCost, i.defaultMarkupPct), 0);
+      ]
+        .filter(i => i.detail !== "Excluded")
+        .reduce((s, i) => s + calcTotal(i.defaultQty, i.defaultUnitCost, i.defaultMarkupPct), 0);
     }, 0);
   }
 
@@ -1955,7 +1960,7 @@ function TemplatePdfDocument({ companyName, template, client, divisions, showTer
           if (filteredDivs.length === 0) return null;
 
           const rawTotal = filteredDivs.reduce((s, { div, filledItems, filledGroups }) =>
-            s + (div.manualTotal != null ? div.manualTotal : [...filledItems, ...filledGroups.flatMap(g => g.items)].reduce((ss, i) => ss + calcTotal(i.defaultQty, i.defaultUnitCost, i.defaultMarkupPct), 0)), 0);
+            s + (div.manualTotal != null ? div.manualTotal : [...filledItems, ...filledGroups.flatMap(g => g.items)].filter(i => i.detail !== "Excluded").reduce((ss, i) => ss + calcTotal(i.defaultQty, i.defaultUnitCost, i.defaultMarkupPct), 0)), 0);
           const overrideTotal = groupLabel && summaryGroups?.[groupLabel] ? computeOverrideTotal(summaryGroups[groupLabel]) : null;
           const groupTotal = overrideTotal !== null ? overrideTotal : rawTotal;
 
@@ -1976,6 +1981,7 @@ function TemplatePdfDocument({ companyName, template, client, divisions, showTer
                 const divTotal = div.manualTotal != null
                   ? div.manualTotal
                   : [...filledItems, ...filledGroups.flatMap(g => g.items)]
+                    .filter(i => i.detail !== "Excluded")
                     .reduce((s, i) => s + calcTotal(i.defaultQty, i.defaultUnitCost, i.defaultMarkupPct), 0);
                 // Skip break on first div when super-header already broke for it
                 const shouldBreak = forcedBreakDivIds.has(div.id) && !(divIdx === 0 && firstDivForcesBreak && !!groupLabel);
@@ -1991,7 +1997,7 @@ function TemplatePdfDocument({ companyName, template, client, divisions, showTer
                     </View>
 
                     {filledGroups.map((grp) => {
-                      const grpTotal = grp.items.reduce((s, i) => s + calcTotal(i.defaultQty, i.defaultUnitCost, i.defaultMarkupPct), 0);
+                      const grpTotal = grp.items.filter(i => i.detail !== "Excluded").reduce((s, i) => s + calcTotal(i.defaultQty, i.defaultUnitCost, i.defaultMarkupPct), 0);
                       return (
                         <View key={grp.id} minPresenceAhead={70}>
                           {/* Group header row — light blue */}
