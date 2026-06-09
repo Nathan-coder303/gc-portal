@@ -1338,7 +1338,7 @@ function DivisionSummaryPage({ template, client, divisions, gcFeePercent }: Pick
         </View>
           {/* Two-column: Allowances table (left) + Pie chart (right) */}
           {(hasAllowances || hasExclusions || svgSlices.length > 0) && (
-            <View style={{ flexDirection: "row", gap: 10, marginTop: 14 }}>
+            <View break={exclusionLines.length > 6} style={{ flexDirection: "row", gap: 10, marginTop: 14 }}>
               {/* LEFT: Allowances table */}
               {hasAllowances ? (
                 <View style={{ flex: 1 }}>
@@ -1346,14 +1346,12 @@ function DivisionSummaryPage({ template, client, divisions, gcFeePercent }: Pick
                     <Text style={{ fontSize: 9, fontFamily: "Helvetica-Bold", color: GOLD, letterSpacing: 1 }}>ALLOWANCES RECAP</Text>
                   </View>
                   <View style={{ flexDirection: "row", paddingHorizontal: 12, paddingVertical: 4, borderBottomWidth: 1, borderBottomColor: "#e2e8f0", backgroundColor: "#f8f4ec" }}>
-                    <Text style={{ fontSize: 7, fontFamily: "Helvetica-Bold", color: "#92400e", width: 58 }}>CSI CODE</Text>
                     <Text style={{ fontSize: 7, fontFamily: "Helvetica-Bold", color: "#92400e", flex: 1 }}>DESCRIPTION</Text>
                     <Text style={{ fontSize: 7, fontFamily: "Helvetica-Bold", color: "#92400e", width: 54, textAlign: "right" }}>AMOUNT</Text>
                   </View>
                   <View style={{ flex: 1, justifyContent: "space-evenly" }}>
                     {allowanceLines.map((line, idx) => (
                       <View key={idx} style={{ flexDirection: "row", paddingHorizontal: 12, paddingVertical: 3, borderBottomWidth: 1, borderBottomColor: "#f1f5f9", backgroundColor: idx % 2 === 0 ? "#fffbf2" : "#ffffff" }}>
-                        <Text style={{ fontSize: 8, color: "#78716c", width: 58 }}>{line.csiCode}</Text>
                         <Text style={{ fontSize: 8, color: "#334155", flex: 1 }}>{line.name}</Text>
                         <Text style={{ fontSize: 8, fontFamily: "Helvetica-Bold", color: line.amount > 0 ? "#0f172a" : "#92400e", width: 54, textAlign: "right" }}>
                           {line.amount > 0 ? `$${fmt(line.amount)}` : "TBD"}
@@ -1375,14 +1373,12 @@ function DivisionSummaryPage({ template, client, divisions, gcFeePercent }: Pick
                     <Text style={{ fontSize: 9, fontFamily: "Helvetica-Bold", color: "#fca5a5", letterSpacing: 1 }}>EXCLUSION SUMMARY</Text>
                   </View>
                   <View style={{ flexDirection: "row", paddingHorizontal: 12, paddingVertical: 4, borderBottomWidth: 1, borderBottomColor: "#e2e8f0", backgroundColor: "#fef2f2" }}>
-                    <Text style={{ fontSize: 7, fontFamily: "Helvetica-Bold", color: "#991b1b", width: 58 }}>CSI CODE</Text>
                     <Text style={{ fontSize: 7, fontFamily: "Helvetica-Bold", color: "#991b1b", flex: 1 }}>DESCRIPTION</Text>
                     <Text style={{ fontSize: 7, fontFamily: "Helvetica-Bold", color: "#991b1b", width: 60, textAlign: "right" }}>SUGGESTED</Text>
                   </View>
                   <View style={{ flex: 1 }}>
                     {exclusionLines.map((line, idx) => (
                       <View key={idx} style={{ flexDirection: "row", paddingHorizontal: 12, paddingVertical: 3, borderBottomWidth: 1, borderBottomColor: "#f1f5f9", backgroundColor: idx % 2 === 0 ? "#fff5f5" : "#ffffff" }}>
-                        <Text style={{ fontSize: 8, color: "#78716c", width: 58 }}>{line.csiCode}</Text>
                         <Text style={{ fontSize: 8, color: "#334155", flex: 1 }}>{line.name}</Text>
                         <Text style={{ fontSize: 8, fontFamily: "Helvetica-Bold", color: line.suggested > 0 ? "#991b1b" : "#9ca3af", width: 60, textAlign: "right" }}>
                           {line.suggested > 0 ? `$${fmt(line.suggested)}` : "TBD"}
