@@ -5,9 +5,12 @@ export type ItemLike = {
   materialCost: number;
   markupPct: number;
   manualTotal: number | null;
+  detail?: string | null;
 };
 
 export function computeItemTotal(item: ItemLike): number {
+  // Excluded items never roll into any total — they're informational only
+  if (item.detail === "Excluded") return 0;
   if (item.manualTotal !== null && item.manualTotal !== undefined) return item.manualTotal;
   const base = item.qty * item.unitCost;
   return base * (1 + item.markupPct / 100);
