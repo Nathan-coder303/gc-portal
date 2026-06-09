@@ -1249,14 +1249,16 @@ function DivisionSummaryPage({ template, client, divisions, gcFeePercent }: Pick
   const hasAllowances = allowanceLines.length > 0;
   const allowancesTotal = allowanceLines.reduce((s, l) => s + l.amount, 0);
 
-  const exclusionLines: { csiCode: string; name: string }[] = divisions.flatMap(div => [
+  const exclusionLines: { csiCode: string; name: string; suggested: number }[] = divisions.flatMap(div => [
     ...div.items.filter(i => i.detail === "Excluded"),
     ...div.groups.flatMap(g => g.items.filter(i => i.detail === "Excluded")),
   ].map(item => ({
     csiCode: item.csiCode ?? div.csiCode ?? "",
     name: item.name,
+    suggested: calcTotal(item.defaultQty, item.defaultUnitCost, item.defaultMarkupPct),
   })));
   const hasExclusions = exclusionLines.length > 0;
+  const exclusionsSuggestedTotal = exclusionLines.reduce((s, l) => s + l.suggested, 0);
 
   // Pie chart slices: Labor & Rough Material, Allowances, GC Fee
   const laborAmount = Math.max(0, grandTotalWithGc - allowancesTotal - gcFeeAmount);
@@ -1375,18 +1377,22 @@ function DivisionSummaryPage({ template, client, divisions, gcFeePercent }: Pick
                   <View style={{ flexDirection: "row", paddingHorizontal: 12, paddingVertical: 4, borderBottomWidth: 1, borderBottomColor: "#e2e8f0", backgroundColor: "#fef2f2" }}>
                     <Text style={{ fontSize: 7, fontFamily: "Helvetica-Bold", color: "#991b1b", width: 58 }}>CSI CODE</Text>
                     <Text style={{ fontSize: 7, fontFamily: "Helvetica-Bold", color: "#991b1b", flex: 1 }}>DESCRIPTION</Text>
+                    <Text style={{ fontSize: 7, fontFamily: "Helvetica-Bold", color: "#991b1b", width: 60, textAlign: "right" }}>SUGGESTED</Text>
                   </View>
                   <View style={{ flex: 1 }}>
                     {exclusionLines.map((line, idx) => (
                       <View key={idx} style={{ flexDirection: "row", paddingHorizontal: 12, paddingVertical: 3, borderBottomWidth: 1, borderBottomColor: "#f1f5f9", backgroundColor: idx % 2 === 0 ? "#fff5f5" : "#ffffff" }}>
                         <Text style={{ fontSize: 8, color: "#78716c", width: 58 }}>{line.csiCode}</Text>
                         <Text style={{ fontSize: 8, color: "#334155", flex: 1 }}>{line.name}</Text>
+                        <Text style={{ fontSize: 8, fontFamily: "Helvetica-Bold", color: line.suggested > 0 ? "#991b1b" : "#9ca3af", width: 60, textAlign: "right" }}>
+                          {line.suggested > 0 ? `$${fmt(line.suggested)}` : "TBD"}
+                        </Text>
                       </View>
                     ))}
                   </View>
                   <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", backgroundColor: "#2a0f0f", paddingHorizontal: 12, paddingVertical: 6, borderRadius: 3 }}>
-                    <Text style={{ fontSize: 8, fontFamily: "Helvetica-Bold", color: "#fca5a5" }}>TOTAL EXCLUSIONS</Text>
-                    <Text style={{ fontSize: 10, fontFamily: "Helvetica-Bold", color: "#fca5a5" }}>{exclusionLines.length}</Text>
+                    <Text style={{ fontSize: 8, fontFamily: "Helvetica-Bold", color: "#fca5a5" }}>SUGGESTED TOTAL</Text>
+                    <Text style={{ fontSize: 10, fontFamily: "Helvetica-Bold", color: "#fca5a5" }}>{exclusionsSuggestedTotal > 0 ? `$${fmt(exclusionsSuggestedTotal)}` : "TBD"}</Text>
                   </View>
                 </View>
               )}
