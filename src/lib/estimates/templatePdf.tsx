@@ -1249,6 +1249,15 @@ function DivisionSummaryPage({ template, client, divisions, gcFeePercent }: Pick
   const hasAllowances = allowanceLines.length > 0;
   const allowancesTotal = allowanceLines.reduce((s, l) => s + l.amount, 0);
 
+  const exclusionLines: { csiCode: string; name: string }[] = divisions.flatMap(div => [
+    ...div.items.filter(i => i.detail === "Excluded"),
+    ...div.groups.flatMap(g => g.items.filter(i => i.detail === "Excluded")),
+  ].map(item => ({
+    csiCode: item.csiCode ?? div.csiCode ?? "",
+    name: item.name,
+  })));
+  const hasExclusions = exclusionLines.length > 0;
+
   // Pie chart slices: Labor & Rough Material, Allowances, GC Fee
   const laborAmount = Math.max(0, grandTotalWithGc - allowancesTotal - gcFeeAmount);
   const rawPieSlices = [
@@ -1326,8 +1335,8 @@ function DivisionSummaryPage({ template, client, divisions, gcFeePercent }: Pick
           </View>
         </View>
           {/* Two-column: Allowances table (left) + Pie chart (right) */}
-          {(hasAllowances || svgSlices.length > 0) && (
-            <View style={{ flexDirection: "row", gap: 14, marginTop: 14 }}>
+          {(hasAllowances || hasExclusions || svgSlices.length > 0) && (
+            <View style={{ flexDirection: "row", gap: 10, marginTop: 14 }}>
               {/* LEFT: Allowances table */}
               {hasAllowances ? (
                 <View style={{ flex: 1 }}>
@@ -1356,6 +1365,31 @@ function DivisionSummaryPage({ template, client, divisions, gcFeePercent }: Pick
                   </View>
                 </View>
               ) : <View style={{ flex: 1 }} />}
+
+              {/* MIDDLE: Exclusion Summary */}
+              {hasExclusions && (
+                <View style={{ flex: 1 }}>
+                  <View style={{ backgroundColor: "#2a0f0f", paddingHorizontal: 12, paddingVertical: 6, borderRadius: 3 }}>
+                    <Text style={{ fontSize: 9, fontFamily: "Helvetica-Bold", color: "#fca5a5", letterSpacing: 1 }}>EXCLUSION SUMMARY</Text>
+                  </View>
+                  <View style={{ flexDirection: "row", paddingHorizontal: 12, paddingVertical: 4, borderBottomWidth: 1, borderBottomColor: "#e2e8f0", backgroundColor: "#fef2f2" }}>
+                    <Text style={{ fontSize: 7, fontFamily: "Helvetica-Bold", color: "#991b1b", width: 58 }}>CSI CODE</Text>
+                    <Text style={{ fontSize: 7, fontFamily: "Helvetica-Bold", color: "#991b1b", flex: 1 }}>DESCRIPTION</Text>
+                  </View>
+                  <View style={{ flex: 1 }}>
+                    {exclusionLines.map((line, idx) => (
+                      <View key={idx} style={{ flexDirection: "row", paddingHorizontal: 12, paddingVertical: 3, borderBottomWidth: 1, borderBottomColor: "#f1f5f9", backgroundColor: idx % 2 === 0 ? "#fff5f5" : "#ffffff" }}>
+                        <Text style={{ fontSize: 8, color: "#78716c", width: 58 }}>{line.csiCode}</Text>
+                        <Text style={{ fontSize: 8, color: "#334155", flex: 1 }}>{line.name}</Text>
+                      </View>
+                    ))}
+                  </View>
+                  <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", backgroundColor: "#2a0f0f", paddingHorizontal: 12, paddingVertical: 6, borderRadius: 3 }}>
+                    <Text style={{ fontSize: 8, fontFamily: "Helvetica-Bold", color: "#fca5a5" }}>TOTAL EXCLUSIONS</Text>
+                    <Text style={{ fontSize: 10, fontFamily: "Helvetica-Bold", color: "#fca5a5" }}>{exclusionLines.length}</Text>
+                  </View>
+                </View>
+              )}
 
               {/* RIGHT: Pie chart */}
               {svgSlices.length > 0 && (
