@@ -76,6 +76,8 @@ function fmt(n: number) {
 }
 
 function itemTotal(item: Item): number {
+  // Excluded items never roll into any total — they're informational only
+  if (item.detail === "Excluded") return 0;
   const qty = item.defaultQty ?? 0;
   const cost = item.defaultUnitCost ?? 0;
   const markup = item.defaultMarkupPct ?? 0;
