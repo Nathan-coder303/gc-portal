@@ -66,7 +66,7 @@ export const STANDARD_TEMPLATE_DIVISIONS: TemplateDivisionData[] = [
   },
   {
     csiCode: "05 00 00",
-    name: "Structural Steel",
+    name: "Metals",
     items: [
       { csiCode: "05 12 00", name: "Structural Steel Framing" },
       { csiCode: "05 21 00", name: "Steel Joists" },
@@ -88,7 +88,7 @@ export const STANDARD_TEMPLATE_DIVISIONS: TemplateDivisionData[] = [
   },
   {
     csiCode: "07 00 00",
-    name: "Roofing & Waterproofing",
+    name: "Thermal and Moisture Protection",
     items: [
       { csiCode: "07 21 00", name: "Thermal Insulation" },
       { csiCode: "07 25 00", name: "Weather Barriers" },
@@ -101,7 +101,7 @@ export const STANDARD_TEMPLATE_DIVISIONS: TemplateDivisionData[] = [
   },
   {
     csiCode: "08 00 00",
-    name: "Doors & Windows",
+    name: "Openings",
     items: [
       { csiCode: "08 11 13", name: "Hollow Metal Doors" },
       { csiCode: "08 14 16", name: "Flush Wood Doors" },
@@ -184,8 +184,18 @@ export const STANDARD_TEMPLATE_DIVISIONS: TemplateDivisionData[] = [
     ],
   },
   {
+    csiCode: "31 00 00",
+    name: "Earthwork",
+    items: [
+      { csiCode: "31 22 00", name: "Grading" },
+      { csiCode: "31 23 16", name: "Excavation" },
+      { csiCode: "31 23 23", name: "Fill" },
+      { csiCode: "31 23 33", name: "Trenching and Backfill" },
+    ],
+  },
+  {
     csiCode: "32 00 00",
-    name: "Site Work",
+    name: "Exterior Improvements",
     items: [
       { csiCode: "32 13 13", name: "Concrete Paving" },
       { csiCode: "32 31 00", name: "Fences and Gates" },
