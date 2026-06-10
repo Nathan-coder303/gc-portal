@@ -77,6 +77,7 @@ export async function POST(
   req: NextRequest,
   { params }: { params: { companyId: string; clientId: string; logId: string } }
 ) {
+  try {
   const session = await auth();
   if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
@@ -86,7 +87,7 @@ export async function POST(
   const log = await prisma.dailyLog.findFirst({
     where: { id: params.logId, clientId: params.clientId, companyId: params.companyId },
     include: {
-      client: { select: { name: true, address: true } },
+      client: { select: { name: true, address: true, projectName: true } },
       company: { select: { name: true, address: true, phone: true, email: true } },
     },
   });
@@ -105,8 +106,8 @@ export async function POST(
 
   const logDate = new Date(log.arrivalDate);
   const date = logDate.toISOString().slice(0, 10);
-  const clientSlug = log.client.name.replace(/[^a-z0-9]/gi, "-");
-  const filename = `Daily-Log-${clientSlug}-${date}.pdf`;
+  const projectSlug = (log.client.projectName || log.client.name).replace(/[^a-z0-9]/gi, "-");
+  const filename = `Daily-Log-${projectSlug}-${date}.pdf`;
 
   const friendlyDate = logDate.toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric", year: "numeric" });
   const emailSubject = subject ?? `Daily Log - ${log.client.name} - ${logDate.toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" })}`;
@@ -192,4 +193,9 @@ export async function POST(
   });
 
   return NextResponse.json({ success: true, photoTotal, photoLoaded });
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    console.error("[daily-log send-email] error:", err);
+    return NextResponse.json({ error: `Send failed: ${msg}` }, { status: 500 });
+  }
 }
