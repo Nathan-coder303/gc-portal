@@ -127,12 +127,15 @@ function EstimateCard({
     : clientName.split(" ")[0];
   const scope = est.name || est.description;
 
-  // Build initial CC: include any extra emails on the client beyond what's already in "To", plus the default mikebaruh@gmail.com
-  const toEmails = new Set((clientEmail ?? "").split(",").map(e => e.trim().toLowerCase()).filter(Boolean));
-  const extraClientEmails = (clientEmailList ?? []).map(e => e.trim()).filter(e => e && !toEmails.has(e.toLowerCase()));
+  // Default To = primary email only. Extra client emails default into CC alongside mikebaruh@gmail.com.
+  const allClientEmails = (clientEmailList ?? []).map(e => e.trim()).filter(Boolean);
+  const primaryEmail = allClientEmails[0]
+    ?? (clientEmail ? clientEmail.split(",")[0]?.trim() : "")
+    ?? "";
+  const extraClientEmails = allClientEmails.slice(1);
   const defaultCc = Array.from(new Set([...extraClientEmails, "mikebaruh@gmail.com"])).join(", ");
 
-  const [to, setTo] = useState(clientEmail ?? "");
+  const [to, setTo] = useState(primaryEmail);
   const [cc, setCc] = useState(defaultCc);
   const [bcc, setBcc] = useState("");
   const numPart = est.estimateNumber ? `Estimate #${est.estimateNumber}` : "Estimate";
