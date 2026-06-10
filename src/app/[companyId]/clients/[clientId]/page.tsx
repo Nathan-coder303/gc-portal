@@ -158,6 +158,10 @@ export default async function ClientDetailPage({
     where: { clientId: params.clientId, companyId: params.companyId, senderType: "CLIENT", readByContractor: false },
   });
 
+  const dailyLogsCount = await prisma.dailyLog.count({
+    where: { clientId: params.clientId, companyId: params.companyId },
+  });
+
   const [clientFollowUps, clientInvoices, changeOrders, clientScheduleTasks, clientEmails] = await Promise.all([
     prisma.followUp.findMany({
       where: { clientId: params.clientId, companyId: params.companyId },
@@ -198,7 +202,7 @@ export default async function ClientDetailPage({
     { key: "files", label: `Files${clientFiles.length > 0 ? ` (${clientFiles.length})` : ""}` },
     { key: "nurturing", label: "Nurturing" },
     { key: "comms", label: `Comms${clientEmails.length > 0 ? ` (${clientEmails.length})` : ""}` },
-    { key: "daily-logs", label: "Daily Logs" },
+    { key: "daily-logs", label: `Daily Logs${dailyLogsCount > 0 ? ` (${dailyLogsCount})` : ""}` },
     { key: "messages", label: `Messages${unreadMessages > 0 ? ` (${unreadMessages})` : ""}` },
   ];
 
@@ -576,6 +580,7 @@ export default async function ClientDetailPage({
             arrivalDate: l.arrivalDate.toISOString(),
             createdAt: l.createdAt.toISOString(),
             updatedAt: l.updatedAt.toISOString(),
+            emailSentAt: l.emailSentAt ? l.emailSentAt.toISOString() : null,
           }))}
         />
       )}

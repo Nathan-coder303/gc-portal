@@ -90,6 +90,7 @@ type DailyLog = {
   signatureData: string | null;
   createdBy: string | null;
   createdAt: string;
+  emailSentAt: string | null;
 };
 
 const SECTIONS = [
@@ -1135,7 +1136,18 @@ function LogCard({ log, onClick }: { log: DailyLog; onClick: () => void }) {
           <p className="text-base font-bold" style={{ color: TEXT }}>{dateStr}</p>
           <p className="text-xs" style={{ color: MUTED }}>{dayStr}</p>
         </div>
-        {statusBadge(log.status)}
+        <div className="flex flex-col items-end gap-1.5 shrink-0">
+          {statusBadge(log.status)}
+          {log.emailSentAt ? (
+            <span className="text-xs font-semibold px-2 py-0.5 rounded-full" style={{ background: "#0d2a1a", color: "#22c55e", border: "1px solid #22c55e44" }}>
+              ✓ Sent {new Date(log.emailSentAt).toLocaleDateString("en-US", { month: "short", day: "numeric" })}
+            </span>
+          ) : (
+            <span className="text-xs font-semibold px-2 py-0.5 rounded-full" style={{ background: "#2a1010", color: "#f87171", border: "1px solid #ef444466" }}>
+              ⚠ Ready to send
+            </span>
+          )}
+        </div>
       </div>
       {log.tasksPerformed && (
         <p className="text-sm mb-2 line-clamp-2" style={{ color: "#c9d1d9" }}>{log.tasksPerformed}</p>

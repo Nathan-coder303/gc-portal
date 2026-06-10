@@ -192,6 +192,11 @@ export async function POST(
     },
   });
 
+  await prisma.dailyLog.update({
+    where: { id: params.logId },
+    data: { emailSentAt: new Date() },
+  });
+
   return NextResponse.json({ success: true, photoTotal, photoLoaded });
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);

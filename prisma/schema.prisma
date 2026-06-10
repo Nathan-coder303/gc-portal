@@ -1352,6 +1352,8 @@ model DailyLog {
   signatureData         String?   @db.Text
   attachments           String?   @db.Text
 
+  emailSentAt           DateTime?
+
   createdBy   String?
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
