@@ -145,6 +145,11 @@ export async function duplicateTemplate(templateId: string) {
   });
   if (!source) throw new Error("Template not found");
 
+  // Only client estimates get a sequential estimateNumber — master templates don't
+  const nextEstimateNumber = source.type === "CLIENT_ESTIMATE"
+    ? await getNextEstimateNumber(session.user.companyId)
+    : null;
+
   // Create the template shell
   const copy = await prisma.estimateTemplate.create({
     data: {
@@ -153,6 +158,7 @@ export async function duplicateTemplate(templateId: string) {
       description: source.description,
       type: source.type,
       createdBy: session.user.id,
+      estimateNumber: nextEstimateNumber,
       gcFeePercent: source.gcFeePercent,
       sqFt: source.sqFt,
       durationMonths: source.durationMonths,
