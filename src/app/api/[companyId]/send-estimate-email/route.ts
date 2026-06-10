@@ -249,13 +249,47 @@ export async function POST(
   }
   const signUrl = `https://portal.mibhconstruction.com/sign/${signToken}`;
   const trackPixelUrl = `https://portal.mibhconstruction.com/api/track/open?token=${signToken}`;
-  const fullEmailBody = `${emailBody}\n\n---\nSign your estimate here: ${signUrl}`;
-  const htmlBody = emailBody
-    .split("\n")
+
+  // Place signing block right after the closing question phrase ("any questions."), before the signature block.
+  // Falls back to the last paragraph break when no closing phrase is found.
+  let mainBody: string;
+  let closing: string;
+  const closingMatch = emailBody.match(/[^\n]*(any questions|let me know|thank you|sincerely)[^\n]*\n?/i);
+  if (closingMatch && closingMatch.index !== undefined) {
+    const splitAt = closingMatch.index + closingMatch[0].length;
+    mainBody = emailBody.slice(0, splitAt).replace(/\s+$/, "");
+    closing = emailBody.slice(splitAt).replace(/^\s+/, "");
+  } else {
+    const lastBreak = emailBody.lastIndexOf("\n\n");
+    mainBody = lastBreak >= 0 ? emailBody.slice(0, lastBreak) : emailBody;
+    closing = lastBreak >= 0 ? emailBody.slice(lastBreak + 2) : "";
+  }
+
+  const fullEmailBody = [
+    mainBody,
+    "",
+    "─────────────────────────────",
+    "✅ READY TO SIGN YOUR ESTIMATE?",
+    `Click here to review and sign electronically: ${signUrl}`,
+    "─────────────────────────────",
+    "",
+    closing,
+  ].join("\n");
+
+  const mainBodyHtml = mainBody.split("\n")
     .map(l => l.trim() === "" ? "<br>" : `<p style="margin:0 0 8px">${l}</p>`)
-    .join("\n") +
-    `\n<br>\n<p style="margin:0 0 8px">---<br>` +
-    `<a href="${signUrl}" style="color:#C9A84C;font-weight:bold">Sign your estimate here</a></p>` +
+    .join("\n");
+  const closingHtml = closing.split("\n")
+    .map(l => l.trim() === "" ? "<br>" : `<p style="margin:0 0 8px">${l}</p>`)
+    .join("\n");
+  const signingBlock = `
+<div style="background:#fffbf0;border:2px solid #C9A84C;border-radius:10px;padding:20px 24px;margin:20px 0;text-align:center">
+  <p style="margin:0 0 6px;font-size:16px;font-weight:700;color:#1e293b">Your Estimate is Ready to Sign</p>
+  <p style="margin:0 0 16px;color:#475569;font-size:14px">Please review the attached PDF estimate. When you are ready to proceed, click the button below to sign electronically.</p>
+  <a href="${signUrl}" style="display:inline-block;background:#C9A84C;color:#0d1117;font-weight:bold;padding:14px 32px;border-radius:8px;text-decoration:none;font-size:15px">Review &amp; Sign Your Estimate →</a>
+  <p style="margin:12px 0 0;font-size:12px;color:#94a3b8">Or copy this link: ${signUrl}</p>
+</div>`;
+  const htmlBody = mainBodyHtml + signingBlock + (closing.trim() ? "\n" + closingHtml : "") +
     `\n<img src="${trackPixelUrl}" width="1" height="1" alt="" style="display:none" />`;
 
   const oauth2Client = await getGmailOAuth(params.companyId);
