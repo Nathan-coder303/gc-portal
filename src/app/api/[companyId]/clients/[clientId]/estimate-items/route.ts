@@ -38,6 +38,7 @@ export async function GET(
           id: true,
           name: true,
           csiCode: true,
+          detail: true,
           defaultQty: true,
           defaultUnitCost: true,
           defaultMarkupPct: true,
@@ -55,18 +56,21 @@ export async function GET(
       divisionId: d.id,
       divisionName: d.name,
       csiCode: d.csiCode,
-      items: d.items.map(i => {
-        const qty = Number(i.defaultQty ?? 0);
-        const cost = Number(i.defaultUnitCost ?? 0);
-        const markup = Number(i.defaultMarkupPct ?? 0);
-        const salePrice = qty * cost * (1 + markup / 100);
-        return {
-          id: i.id,
-          name: i.name,
-          csiCode: i.csiCode,
-          salePrice: Math.round(salePrice * 100) / 100,
-        };
-      }).filter(i => i.name && i.salePrice > 0),
+      items: d.items
+        // Excluded items shouldn't appear in Scope Remaining — they're explicitly not in scope
+        .filter(i => i.detail !== "Excluded" && i.name)
+        .map(i => {
+          const qty = Number(i.defaultQty ?? 0);
+          const cost = Number(i.defaultUnitCost ?? 0);
+          const markup = Number(i.defaultMarkupPct ?? 0);
+          const salePrice = qty * cost * (1 + markup / 100);
+          return {
+            id: i.id,
+            name: i.name,
+            csiCode: i.csiCode,
+            salePrice: Math.round(salePrice * 100) / 100,
+          };
+        }),
     }))
     .filter(d => d.items.length > 0);
 
