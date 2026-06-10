@@ -855,12 +855,20 @@ export async function saveAsNewTemplate(sourceTemplateId: string, newName: strin
 
   if (!source) throw new Error("Template not found");
 
+  // Client estimates get a sequential estimateNumber so the duplicate is a fresh estimate
+  const nextEstimateNumber = source.type === "CLIENT_ESTIMATE"
+    ? await getNextEstimateNumber(session.user.companyId)
+    : null;
+
   const newTemplate = await prisma.$transaction(async (tx) => {
     const tpl = await tx.estimateTemplate.create({
       data: {
         companyId: session.user.companyId,
         name: newName.trim(),
         description: source.description,
+        type: source.type,
+        clientId: source.clientId,
+        estimateNumber: nextEstimateNumber,
         sortOrder: 0,
         createdBy: session.user.id,
         updatedBy: session.user.id,
