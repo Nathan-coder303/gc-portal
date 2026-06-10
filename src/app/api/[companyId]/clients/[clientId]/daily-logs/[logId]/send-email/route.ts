@@ -14,12 +14,16 @@ function encodeSubject(text: string): string {
 
 function stripHtmlSignature(html: string): string {
   return html
+    // Block-level closing tags become newlines so each line stays separated
+    .replace(/<\/(div|p|li|tr|h[1-6]|section|article|header|footer)\s*>/gi, "\n")
     .replace(/<br\s*\/?>/gi, "\n")
     .replace(/<[^>]+>/g, "")
     .replace(/&amp;/g, "&")
     .replace(/&lt;/g, "<")
     .replace(/&gt;/g, ">")
     .replace(/&nbsp;/g, " ")
+    // Collapse 3+ consecutive newlines down to 2
+    .replace(/\n{3,}/g, "\n\n")
     .trim();
 }
 
