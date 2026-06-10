@@ -104,12 +104,15 @@ export default async function ClientDetailPage({
       const allItems = [...div.items, ...div.groups.flatMap((g) => g.items)];
       return (
         sum +
-        allItems.reduce((s, i) => {
-          const qty = i.defaultQty ? Number(i.defaultQty) : 0;
-          const cost = i.defaultUnitCost ? Number(i.defaultUnitCost) : 0;
-          const markup = i.defaultMarkupPct ? Number(i.defaultMarkupPct) : 0;
-          return s + qty * cost * (1 + markup / 100);
-        }, 0)
+        allItems
+          // Excluded items must NEVER roll into the estimate total
+          .filter(i => i.detail !== "Excluded")
+          .reduce((s, i) => {
+            const qty = i.defaultQty ? Number(i.defaultQty) : 0;
+            const cost = i.defaultUnitCost ? Number(i.defaultUnitCost) : 0;
+            const markup = i.defaultMarkupPct ? Number(i.defaultMarkupPct) : 0;
+            return s + qty * cost * (1 + markup / 100);
+          }, 0)
       );
     }, 0);
     const fee = gcFeePercent ? raw * Number(gcFeePercent) / 100 : 0;

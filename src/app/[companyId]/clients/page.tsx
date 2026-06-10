@@ -6,12 +6,14 @@ import ClientsManager from "./ClientsManager";
 
 export const dynamic = "force-dynamic";
 
-type DivisionLike = { manualTotal?: unknown; items: { defaultQty: unknown; defaultUnitCost: unknown; defaultMarkupPct: unknown }[]; groups: { items: { defaultQty: unknown; defaultUnitCost: unknown; defaultMarkupPct: unknown }[] }[] };
+type ItemLike = { defaultQty: unknown; defaultUnitCost: unknown; defaultMarkupPct: unknown; detail?: string | null };
+type DivisionLike = { manualTotal?: unknown; items: ItemLike[]; groups: { items: ItemLike[] }[] };
 
 function divisionRaw(div: DivisionLike): number {
   if (div.manualTotal != null) return Number(div.manualTotal);
   const allItems = [...div.items, ...div.groups.flatMap(g => g.items)];
-  return allItems.reduce((s, i) => {
+  // Excluded items must NEVER roll into the estimate total
+  return allItems.filter(i => i.detail !== "Excluded").reduce((s, i) => {
     const qty = i.defaultQty ? Number(i.defaultQty) : 0;
     const cost = i.defaultUnitCost ? Number(i.defaultUnitCost) : 0;
     const markup = i.defaultMarkupPct ? Number(i.defaultMarkupPct) : 0;
@@ -27,7 +29,7 @@ function calcMarkupTotal(divisions: DivisionLike[]): number {
   return divisions.reduce((sum, div) => {
     if (div.manualTotal != null) return sum; // lump-sum divisions don't have item-level markup
     const allItems = [...div.items, ...div.groups.flatMap(g => g.items)];
-    return sum + allItems.reduce((s, i) => {
+    return sum + allItems.filter(i => i.detail !== "Excluded").reduce((s, i) => {
       const qty = i.defaultQty ? Number(i.defaultQty) : 0;
       const cost = i.defaultUnitCost ? Number(i.defaultUnitCost) : 0;
       const markup = i.defaultMarkupPct ? Number(i.defaultMarkupPct) : 0;
@@ -68,10 +70,10 @@ export default async function ClientsPage({ params }: { params: { companyId: str
             where: { archivedAt: null },
             select: {
               manualTotal: true,
-              items: { where: { archivedAt: null, groupId: null }, select: { defaultQty: true, defaultUnitCost: true, defaultMarkupPct: true } },
+              items: { where: { archivedAt: null, groupId: null }, select: { defaultQty: true, defaultUnitCost: true, defaultMarkupPct: true, detail: true } },
               groups: {
                 where: { archivedAt: null },
-                select: { items: { where: { archivedAt: null }, select: { defaultQty: true, defaultUnitCost: true, defaultMarkupPct: true } } },
+                select: { items: { where: { archivedAt: null }, select: { defaultQty: true, defaultUnitCost: true, defaultMarkupPct: true, detail: true } } },
               },
             },
           },
