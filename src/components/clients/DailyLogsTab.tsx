@@ -92,6 +92,7 @@ type DailyLog = {
   createdBy: string | null;
   createdAt: string;
   emailSentAt: string | null;
+  emailOpenedAt: string | null;
 };
 
 const SECTIONS = [
@@ -1194,6 +1195,11 @@ function LogCard({ log, onClick }: { log: DailyLog; onClick: () => void }) {
           ) : (
             <span className="text-xs font-semibold px-2 py-0.5 rounded-full" style={{ background: "#2a1010", color: "#f87171", border: "1px solid #ef444466" }}>
               ⚠ Ready to send
+            </span>
+          )}
+          {log.emailOpenedAt && (
+            <span className="text-xs font-semibold px-2 py-0.5 rounded-full" style={{ background: "#0d2030", color: "#60a5fa", border: "1px solid #3b82f666" }}>
+              👁 Opened {new Date(log.emailOpenedAt).toLocaleDateString("en-US", { month: "short", day: "numeric" })}
             </span>
           )}
         </div>

@@ -588,6 +588,7 @@ export default async function ClientDetailPage({
             createdAt: l.createdAt.toISOString(),
             updatedAt: l.updatedAt.toISOString(),
             emailSentAt: l.emailSentAt ? l.emailSentAt.toISOString() : null,
+            emailOpenedAt: l.emailOpenedAt ? l.emailOpenedAt.toISOString() : null,
           }))}
           availableSubs={dailyLogSubs.map(s => ({
             name: s.subContractor?.name ?? s.subName ?? "",

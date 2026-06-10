@@ -134,27 +134,46 @@ export async function POST(
         ].join("\n");
 
         const encodedSubject = `=?UTF-8?B?${Buffer.from(emailSubject, "utf8").toString("base64")}?=`;
-        const boundary = `----=_Part_${Date.now()}`;
+        const outerBoundary = `----=_Mixed_${Date.now()}`;
+        const altBoundary = `----=_Alt_${Date.now() + 1}`;
         const pdfBase64 = pdfBuffer.toString("base64");
+        const trackPixelUrl = `https://portal.mibhconstruction.com/api/track/open?token=dl_${log.id}`;
+        const htmlBody = emailBody
+          .split("\n")
+          .map(l => l.trim() === "" ? "<br>" : `<p style="margin:0 0 8px">${l}</p>`)
+          .join("\n")
+          + `\n<img src="${trackPixelUrl}" width="1" height="1" alt="" style="display:none" />`;
         const mimeLines = [
           `From: ${fromEmail}`,
           `To: ${to}`,
           `Subject: ${encodedSubject}`,
           `MIME-Version: 1.0`,
-          `Content-Type: multipart/mixed; boundary="${boundary}"`,
+          `Content-Type: multipart/mixed; boundary="${outerBoundary}"`,
           ``,
-          `--${boundary}`,
+          `--${outerBoundary}`,
+          `Content-Type: multipart/alternative; boundary="${altBoundary}"`,
+          ``,
+          `--${altBoundary}`,
           `Content-Type: text/plain; charset=UTF-8`,
           ``,
           emailBody,
           ``,
-          `--${boundary}`,
+          `--${altBoundary}`,
+          `Content-Type: text/html; charset=UTF-8`,
+          ``,
+          `<html><body style="font-family:sans-serif;font-size:14px;color:#1e293b">`,
+          htmlBody,
+          `</body></html>`,
+          ``,
+          `--${altBoundary}--`,
+          ``,
+          `--${outerBoundary}`,
           `Content-Type: application/pdf; name="${filename}"`,
           `Content-Transfer-Encoding: base64`,
           `Content-Disposition: attachment; filename="${filename}"`,
           ``,
           pdfBase64,
-          `--${boundary}--`,
+          `--${outerBoundary}--`,
         ];
         const raw = Buffer.from(mimeLines.join("\r\n")).toString("base64url");
         await gmail.users.messages.send({ userId: "me", requestBody: { raw } });
@@ -171,6 +190,11 @@ export async function POST(
             context: "daily-log",
             attachments: JSON.stringify([filename]),
           },
+        });
+
+        await prisma.dailyLog.update({
+          where: { id: log.id },
+          data: { emailSentAt: new Date() },
         });
       } catch (err) {
         console.error("Daily log auto-send failed:", err);

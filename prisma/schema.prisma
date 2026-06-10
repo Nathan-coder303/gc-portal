@@ -1354,6 +1354,7 @@ model DailyLog {
   attachments           String?   @db.Text
 
   emailSentAt           DateTime?
+  emailOpenedAt         DateTime?
 
   createdBy   String?
   createdAt   DateTime  @default(now())

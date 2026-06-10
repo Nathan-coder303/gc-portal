@@ -141,10 +141,12 @@ export async function POST(
   const outerBoundary = `----=_Mixed_${Date.now()}`;
   const altBoundary = `----=_Alt_${Date.now() + 1}`;
   const pdfBase64 = pdfBuffer.toString("base64");
+  const trackPixelUrl = `https://portal.mibhconstruction.com/api/track/open?token=dl_${params.logId}`;
   const htmlBody = emailBody
     .split("\n")
     .map(l => l.trim() === "" ? "<br>" : `<p style="margin:0 0 8px">${l}</p>`)
-    .join("\n");
+    .join("\n")
+    + `\n<img src="${trackPixelUrl}" width="1" height="1" alt="" style="display:none" />`;
   const mimeLines = [
     `From: ${fromEmail}`,
     `To: ${to}`,
