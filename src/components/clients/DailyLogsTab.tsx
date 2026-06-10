@@ -10,7 +10,8 @@ const BORDER = "#30373f";
 const TEXT = "#e6edf3";
 const MUTED = "#8b949e";
 
-type Sub = { name: string; company: string; trade: string };
+type Sub = { name: string; company: string; trade: string; count?: number };
+type SubOption = { name: string; company: string; trade: string };
 type ListItem = { item: string; qty: string; supplier?: string };
 type Note = { addedBy: string; title: string; content: string };
 type Inspection = { type: string; status: string };
@@ -490,7 +491,29 @@ function DetailsSection({ form, set }: { form: LogForm; set: (k: keyof LogForm, 
   );
 }
 
-function PeopleSection({ form, set }: { form: LogForm; set: (k: keyof LogForm, v: LogForm[keyof LogForm]) => void }) {
+function PeopleSection({ form, set, availableSubs }: { form: LogForm; set: (k: keyof LogForm, v: LogForm[keyof LogForm]) => void; availableSubs: SubOption[] }) {
+  const presentByName = new Map(form.subsOnJobsite.map(s => [s.name, s]));
+
+  // Merge: every available sub from financials + any ad-hoc subs already on the log not in the list
+  const knownNames = new Set(availableSubs.map(s => s.name));
+  const extraSubs: SubOption[] = form.subsOnJobsite
+    .filter(s => !knownNames.has(s.name))
+    .map(s => ({ name: s.name, company: s.company, trade: s.trade }));
+  const rows: SubOption[] = [...availableSubs, ...extraSubs];
+
+  function setPresent(sub: SubOption, on: boolean) {
+    if (on) {
+      if (presentByName.has(sub.name)) return;
+      set("subsOnJobsite", [...form.subsOnJobsite, { ...sub, count: 1 }]);
+    } else {
+      set("subsOnJobsite", form.subsOnJobsite.filter(s => s.name !== sub.name));
+    }
+  }
+
+  function setCount(sub: SubOption, n: number) {
+    set("subsOnJobsite", form.subsOnJobsite.map(s => s.name === sub.name ? { ...s, count: n } : s));
+  }
+
   return (
     <div className="space-y-4">
       <SectionCard>
@@ -510,26 +533,51 @@ function PeopleSection({ form, set }: { form: LogForm; set: (k: keyof LogForm, v
       </SectionCard>
 
       <SectionCard>
-        <AddableList<Sub>
-          label="Subs on Jobsite"
-          items={form.subsOnJobsite}
-          onAdd={item => set("subsOnJobsite", [...form.subsOnJobsite, item])}
-          onRemove={i => set("subsOnJobsite", form.subsOnJobsite.filter((_, idx) => idx !== i))}
-          blankItem={{ name: "", company: "", trade: "" }}
-          renderItem={s => (
-            <div>
-              <p className="text-xs font-semibold" style={{ color: TEXT }}>{s.name}</p>
-              <p className="text-xs" style={{ color: MUTED }}>{[s.company, s.trade].filter(Boolean).join(" · ")}</p>
-            </div>
-          )}
-          renderAddForm={(draft, setDraft) => (
-            <div className="space-y-2">
-              <TextInput value={draft.name} onChange={v => setDraft({ ...draft, name: v })} placeholder="Name" />
-              <TextInput value={draft.company} onChange={v => setDraft({ ...draft, company: v })} placeholder="Company" />
-              <TextInput value={draft.trade} onChange={v => setDraft({ ...draft, trade: v })} placeholder="Trade" />
-            </div>
-          )}
-        />
+        <div className="flex items-center justify-between mb-2">
+          <p className="text-sm font-semibold" style={{ color: TEXT }}>Subs on Jobsite</p>
+          <span className="text-xs" style={{ color: MUTED }}>From Financials</span>
+        </div>
+        {rows.length === 0 ? (
+          <p className="text-xs" style={{ color: MUTED }}>No subs added yet — add them on the Financials tab first.</p>
+        ) : (
+          <div className="space-y-1.5">
+            {rows.map((sub, idx) => {
+              const present = presentByName.get(sub.name);
+              const isOn = !!present;
+              return (
+                <div key={`${sub.name}-${idx}`} className="flex items-center gap-2 rounded-lg px-3 py-2" style={{ background: "#0d1117", border: `1px solid ${BORDER}` }}>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-xs font-semibold truncate" style={{ color: TEXT }}>{sub.name}</p>
+                    {(sub.company || sub.trade) && (
+                      <p className="text-xs truncate" style={{ color: MUTED }}>{[sub.company !== sub.name ? sub.company : "", sub.trade].filter(Boolean).join(" · ")}</p>
+                    )}
+                  </div>
+                  {isOn && (
+                    <select
+                      value={present?.count ?? 1}
+                      onChange={e => setCount(sub, Number(e.target.value))}
+                      className="rounded-md px-2 py-1 text-xs shrink-0"
+                      style={{ background: "#1e2736", border: `1px solid ${BORDER}`, color: TEXT, outline: "none" }}
+                      title="Number of people"
+                    >
+                      {Array.from({ length: 10 }, (_, i) => i + 1).map(n => <option key={n} value={n}>{n}</option>)}
+                    </select>
+                  )}
+                  <button
+                    onClick={() => setPresent(sub, !isOn)}
+                    className="text-xs font-semibold px-2.5 py-1 rounded-full shrink-0 transition-colors"
+                    style={isOn
+                      ? { background: "#22c55e", color: "#0d1117", border: "1px solid #22c55e" }
+                      : { background: "#1e2736", color: MUTED, border: `1px solid ${BORDER}` }
+                    }
+                  >
+                    {isOn ? "On site" : "Off site"}
+                  </button>
+                </div>
+              );
+            })}
+          </div>
+        )}
       </SectionCard>
     </div>
   );
@@ -1014,7 +1062,7 @@ function CustomSection({ form, set }: { form: LogForm; set: (k: keyof LogForm, v
 // ── Log Editor ────────────────────────────────────────────────────────────────
 
 function LogEditor({
-  companyId, clientId, clientName, initial, onSave, onCancel,
+  companyId, clientId, clientName, initial, onSave, onCancel, availableSubs,
 }: {
   companyId: string;
   clientId: string;
@@ -1022,6 +1070,7 @@ function LogEditor({
   initial: DailyLog | null;
   onSave: (log: DailyLog) => void;
   onCancel: () => void;
+  availableSubs: SubOption[];
 }) {
   const [section, setSection] = useState<Section>("details");
   const [form, setForm] = useState<LogForm>(initial ? logToForm(initial) : blankForm());
@@ -1054,7 +1103,7 @@ function LogEditor({
 
   const sectionContent = {
     details: <DetailsSection form={form} set={setField} />,
-    people: <PeopleSection form={form} set={setField} />,
+    people: <PeopleSection form={form} set={setField} availableSubs={availableSubs} />,
     notes: <NotesSection form={form} set={setField} />,
     mtl: <MaterialSection form={form} set={setField} />,
     equip: <EquipmentSection form={form} set={setField} />,
@@ -1315,6 +1364,7 @@ export default function DailyLogsTab({
   initialLogs,
   initialDailyLogEmailEnabled,
   canEdit,
+  availableSubs = [],
 }: {
   companyId: string;
   clientId: string;
@@ -1323,6 +1373,7 @@ export default function DailyLogsTab({
   initialLogs: DailyLog[];
   initialDailyLogEmailEnabled?: boolean;
   canEdit: boolean;
+  availableSubs?: SubOption[];
 }) {
   const [logs, setLogs] = useState<DailyLog[]>(initialLogs);
   const [editing, setEditing] = useState<DailyLog | null | "new">(null);
@@ -1368,6 +1419,7 @@ export default function DailyLogsTab({
         initial={editing === "new" ? null : editing}
         onSave={handleSaved}
         onCancel={() => setEditing(null)}
+        availableSubs={availableSubs}
       />
     );
   }

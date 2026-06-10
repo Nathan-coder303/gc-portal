@@ -141,7 +141,7 @@ export default async function ClientDetailPage({
     orderBy: { counterSignedAt: "desc" },
   });
 
-  const [dailyLogs, dailyLogClient] = activeTab === "daily-logs"
+  const [dailyLogs, dailyLogClient, dailyLogSubs] = activeTab === "daily-logs"
     ? await Promise.all([
         prisma.dailyLog.findMany({
           where: { clientId: params.clientId, companyId: params.companyId },
@@ -151,8 +151,12 @@ export default async function ClientDetailPage({
           where: { id: params.clientId },
           select: { dailyLogEmailEnabled: true },
         }),
+        prisma.clientSub.findMany({
+          where: { clientId: params.clientId, companyId: params.companyId },
+          select: { subName: true, scope: true, division: true, subContractor: { select: { name: true } } },
+        }),
       ])
-    : [[], null];
+    : [[], null, []];
 
   const unreadMessages = await prisma.clientMessage.count({
     where: { clientId: params.clientId, companyId: params.companyId, senderType: "CLIENT", readByContractor: false },
@@ -582,6 +586,11 @@ export default async function ClientDetailPage({
             updatedAt: l.updatedAt.toISOString(),
             emailSentAt: l.emailSentAt ? l.emailSentAt.toISOString() : null,
           }))}
+          availableSubs={dailyLogSubs.map(s => ({
+            name: s.subContractor?.name ?? s.subName ?? "",
+            company: s.subContractor?.name ?? "",
+            trade: s.scope ?? s.division ?? "",
+          })).filter(s => s.name)}
         />
       )}
 
