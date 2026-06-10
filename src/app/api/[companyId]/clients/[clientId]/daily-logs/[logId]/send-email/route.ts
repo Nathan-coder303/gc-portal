@@ -6,7 +6,7 @@ import { google } from "googleapis";
 import { renderDailyLogPdf } from "@/lib/daily-log-pdf";
 
 export const runtime = "nodejs";
-export const maxDuration = 60;
+export const maxDuration = 300;
 
 function encodeSubject(text: string): string {
   return `=?UTF-8?B?${Buffer.from(text, "utf8").toString("base64")}?=`;

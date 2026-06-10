@@ -1196,7 +1196,9 @@ function SendLogEmailModal({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ to: to.trim(), cc: cc.trim() || undefined, bcc: bcc.trim() || undefined, subject, body }),
       });
-      const data = await res.json();
+      const text = await res.text();
+      let data: { error?: string; photoLoaded?: number; photoTotal?: number } = {};
+      try { data = JSON.parse(text); } catch { /* response wasn't JSON */ }
       if (res.ok) {
         const { photoLoaded, photoTotal } = data as { photoLoaded: number; photoTotal: number };
         const photoMsg = photoTotal > 0
@@ -1205,10 +1207,13 @@ function SendLogEmailModal({
         setResult({ ok: true, msg: `Email sent!${photoMsg}` });
         setTimeout(() => onClose(), 2500);
       } else {
-        setResult({ ok: false, msg: data.error ?? "Send failed" });
+        const snippet = text.slice(0, 300).replace(/<[^>]+>/g, " ").trim();
+        setResult({ ok: false, msg: data.error ?? `HTTP ${res.status}: ${snippet || res.statusText}` });
       }
-    } catch { setResult({ ok: false, msg: "Network error" }); }
-    finally { setSending(false); }
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      setResult({ ok: false, msg: `Network/fetch error: ${msg}` });
+    } finally { setSending(false); }
   }
 
   const inputStyle = { background: BG, border: `1px solid ${BORDER}`, color: TEXT, outline: "none" };
