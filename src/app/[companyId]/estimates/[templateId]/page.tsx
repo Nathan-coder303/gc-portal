@@ -143,9 +143,11 @@ export default async function TemplateEditorPage({
             state: template.client.state,
             zip: template.client.zip,
             email: template.client.email,
+            emailList: template.client.emailList as string[] | null,
+            contactName: template.client.contactName ?? null,
             phone: template.client.phone,
           } : null}
-          allClients={clients.map(c => ({ id: c.id, name: c.name, address: c.address, city: c.city, state: c.state, zip: c.zip, email: c.email, phone: c.phone }))}
+          allClients={clients.map(c => ({ id: c.id, name: c.name, address: c.address, city: c.city, state: c.state, zip: c.zip, email: c.email, emailList: c.emailList as string[] | null, contactName: c.contactName ?? null, phone: c.phone }))}
           termsTemplates={termsTemplates}
           initialSummaryGroups={template.summaryGroups as Record<string, { qty: number | null; unit: string | null; unitCost: number | null; markupPct: number | null; manualTotal: number | null }> | null}
           hasInsertFile={clientFiles.some(f => f.useInEstimate)}

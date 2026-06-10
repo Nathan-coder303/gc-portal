@@ -1345,8 +1345,8 @@ export default function TemplateEditor({
   template: Template;
   divisions: Division[];
   canEdit: boolean;
-  currentClient: { id: string; name: string; address: string | null; city: string | null; state: string | null; zip: string | null; email: string | null; phone: string | null } | null;
-  allClients: { id: string; name: string; address: string | null; city: string | null; state: string | null; zip: string | null; email: string | null; phone: string | null }[];
+  currentClient: { id: string; name: string; address: string | null; city: string | null; state: string | null; zip: string | null; email: string | null; emailList?: string[] | null; contactName?: string | null; phone: string | null } | null;
+  allClients: { id: string; name: string; address: string | null; city: string | null; state: string | null; zip: string | null; email: string | null; emailList?: string[] | null; contactName?: string | null; phone: string | null }[];
   termsTemplates: { id: string; name: string; content: string }[];
   initialSummaryGroups?: Record<string, SummaryGroupData> | null;
   hasInsertFile?: boolean;
@@ -1389,8 +1389,16 @@ export default function TemplateEditor({
   const [saveError, setSaveError] = useState("");
   const [pdfStep, setPdfStep] = useState<"cover" | "email" | null>(null);
   const [pdfOpts, setPdfOpts] = useState<PdfOptions | null>(null);
-  const [emailTo, setEmailTo] = useState(currentClient?.email ?? "");
-  const [emailCc, setEmailCc] = useState("mikebaruh@gmail.com");
+  // To = primary email; CC = other client emails + default mikebaruh@gmail.com
+  const _emailList = currentClient?.emailList ?? null;
+  const _primaryEmail = _emailList?.[0] ?? currentClient?.email ?? "";
+  const _extraEmails = (_emailList ?? []).slice(1).filter(e => e && e !== _primaryEmail);
+  const _defaultCc = Array.from(new Set([..._extraEmails, "mikebaruh@gmail.com"])).join(", ");
+  const _greetingName = currentClient?.contactName?.trim()
+    ? currentClient.contactName.trim().split(" ")[0]
+    : currentClient?.name?.split(" ")[0] ?? "there";
+  const [emailTo, setEmailTo] = useState(_primaryEmail);
+  const [emailCc, setEmailCc] = useState(_defaultCc);
   const [emailBcc, setEmailBcc] = useState("");
   const [emailSubject, setEmailSubject] = useState(() => {
     const scope = template.name || template.description || "Estimate";
@@ -1399,8 +1407,7 @@ export default function TemplateEditor({
     return `${numPart}${clientPart} for ${scope}`;
   });
   const [emailBody, setEmailBody] = useState(() => {
-    const firstName = currentClient?.name?.split(" ")[0] ?? "there";
-    return `Dear ${firstName},\n\nPlease find attached your estimate for the project.\n\nDo not hesitate to contact us with any questions.\n\nMike Baruh\nFounder/CEO | MIBH Construction\nCertified & Licensed General Contractor CGC 1527069\nCertified & Licensed Roofer CCC 1336817\n\n📱 Cell: 305.746.7307\n📧 Email: mike@mibhconstruction.com\n📍 Address: 2950 N 28 Terr, Hollywood, FL 33020\n🌐 Website: www.mibhconstruction.com\n📸 Instagram: @mibh_construction`;
+    return `Dear ${_greetingName},\n\nPlease find attached your estimate for the project.\n\nDo not hesitate to contact us with any questions.\n\nMike Baruh\nFounder/CEO | MIBH Construction\nCertified & Licensed General Contractor CGC 1527069\nCertified & Licensed Roofer CCC 1336817\n\n📱 Cell: 305.746.7307\n📧 Email: mike@mibhconstruction.com\n📍 Address: 2950 N 28 Terr, Hollywood, FL 33020\n🌐 Website: www.mibhconstruction.com\n📸 Instagram: @mibh_construction`;
   });
   const [emailSending, setEmailSending] = useState(false);
   const [emailResult, setEmailResult] = useState<{ ok: boolean; msg: string } | null>(null);
@@ -1432,7 +1439,18 @@ export default function TemplateEditor({
   const [durationMonths, setDurationMonths] = useState<number | "">(template.durationMonths ?? "");
   useEffect(() => { setSqFt(template.sqFt ?? ""); }, [template.sqFt]);
   useEffect(() => { setDurationMonths(template.durationMonths ?? ""); }, [template.durationMonths]);
-  useEffect(() => { setEmailTo(currentClient?.email ?? ""); }, [currentClient?.id]);
+  useEffect(() => {
+    const list = currentClient?.emailList ?? null;
+    const primary = list?.[0] ?? currentClient?.email ?? "";
+    const extras = (list ?? []).slice(1).filter(e => e && e !== primary);
+    setEmailTo(primary);
+    setEmailCc(Array.from(new Set([...extras, "mikebaruh@gmail.com"])).join(", "));
+    const greet = currentClient?.contactName?.trim()
+      ? currentClient.contactName.trim().split(" ")[0]
+      : currentClient?.name?.split(" ")[0] ?? "there";
+    setEmailBody(`Dear ${greet},\n\nPlease find attached your estimate for the project.\n\nDo not hesitate to contact us with any questions.\n\nMike Baruh\nFounder/CEO | MIBH Construction\nCertified & Licensed General Contractor CGC 1527069\nCertified & Licensed Roofer CCC 1336817\n\n📱 Cell: 305.746.7307\n📧 Email: mike@mibhconstruction.com\n📍 Address: 2950 N 28 Terr, Hollywood, FL 33020\n🌐 Website: www.mibhconstruction.com\n📸 Instagram: @mibh_construction`);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentClient?.id]);
   const isRoofTemplate = template.name.toLowerCase().includes("roof");
   const [hasSkylights, setHasSkylights] = useState<boolean>(template.hasSkylights ?? true);
   const [hasRoofDrains, setHasRoofDrains] = useState<boolean>(template.hasRoofDrains ?? true);
