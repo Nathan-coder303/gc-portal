@@ -54,7 +54,7 @@ function fmt(n: number) {
 }
 
 function EstimateCard({
-  est, companyId, clientId, clientName, clientEmail, canEdit, canDelete,
+  est, companyId, clientId, clientName, clientEmail, clientEmailList, clientContactName, canEdit, canDelete,
   isCommercial, clientCoverPhotoType, clientCoverPhotoUrl, hasInsertFile,
 }: {
   est: EstimateRow;
@@ -62,6 +62,8 @@ function EstimateCard({
   clientId: string;
   clientName: string;
   clientEmail: string | null;
+  clientEmailList?: string[] | null;
+  clientContactName?: string | null;
   canEdit: boolean;
   canDelete: boolean;
   isCommercial?: boolean;
@@ -119,15 +121,23 @@ function EstimateCard({
   }
 
   // Email compose state
-  const firstName = clientName.split(" ")[0];
+  // Greet by contact name (or its first word) so "Leema Holdings Group LLC" greets the actual person.
+  const greetingName = clientContactName?.trim()
+    ? clientContactName.trim().split(" ")[0]
+    : clientName.split(" ")[0];
   const scope = est.name || est.description;
 
+  // Build initial CC: include any extra emails on the client beyond what's already in "To", plus the default mikebaruh@gmail.com
+  const toEmails = new Set((clientEmail ?? "").split(",").map(e => e.trim().toLowerCase()).filter(Boolean));
+  const extraClientEmails = (clientEmailList ?? []).map(e => e.trim()).filter(e => e && !toEmails.has(e.toLowerCase()));
+  const defaultCc = Array.from(new Set([...extraClientEmails, "mikebaruh@gmail.com"])).join(", ");
+
   const [to, setTo] = useState(clientEmail ?? "");
-  const [cc, setCc] = useState("mikebaruh@gmail.com");
+  const [cc, setCc] = useState(defaultCc);
   const [bcc, setBcc] = useState("");
   const numPart = est.estimateNumber ? `Estimate #${est.estimateNumber}` : "Estimate";
   const [subject, setSubject] = useState(`${numPart} for ${clientName} for ${scope}`);
-  const [body, setBody] = useState(`Dear ${firstName},\n\nPlease find attached your estimate for the project.\n\nDo not hesitate to contact us with any questions.\n\n${MIKE_SIGNATURE}`);
+  const [body, setBody] = useState(`Dear ${greetingName},\n\nPlease find attached your estimate for the project.\n\nDo not hesitate to contact us with any questions.\n\n${MIKE_SIGNATURE}`);
   const [sending, setSending] = useState(false);
   const [result, setResult] = useState<{ ok: boolean; msg: string } | null>(null);
 
@@ -621,7 +631,7 @@ function EstimateCard({
 }
 
 export default function CollapsibleEstimateList({
-  estimates, companyId, clientId, clientName, clientEmail, canEdit, canDelete,
+  estimates, companyId, clientId, clientName, clientEmail, clientEmailList, clientContactName, canEdit, canDelete,
   isCommercial, clientCoverPhotoType, clientCoverPhotoUrl, hasInsertFile,
 }: {
   estimates: EstimateRow[];
@@ -629,6 +639,8 @@ export default function CollapsibleEstimateList({
   clientId: string;
   clientName: string;
   clientEmail: string | null;
+  clientEmailList?: string[] | null;
+  clientContactName?: string | null;
   clientAddress: string | null;
   canEdit: boolean;
   canDelete: boolean;
@@ -680,6 +692,8 @@ export default function CollapsibleEstimateList({
             clientId={clientId}
             clientName={clientName}
             clientEmail={clientEmail}
+            clientEmailList={clientEmailList}
+            clientContactName={clientContactName}
             canEdit={canEdit}
             canDelete={canDelete}
             isCommercial={isCommercial}

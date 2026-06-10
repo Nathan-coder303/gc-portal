@@ -342,6 +342,8 @@ export default async function ClientDetailPage({
           clientId={params.clientId}
           clientName={safeClient.name}
           clientEmail={clientEmailAll}
+          clientEmailList={safeClient.emailList as string[] | null}
+          clientContactName={safeClient.contactName ?? null}
           clientAddress={safeClient.address ?? null}
           canEdit={canEdit}
           canDelete={canDelete}
