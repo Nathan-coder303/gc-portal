@@ -15,6 +15,7 @@ type Client = {
   email: string | null;
   emailList?: string[] | null;
   phone: string | null;
+  contactName?: string | null;
   projectName?: string | null;
   legalDescription?: string | null;
 };
@@ -64,6 +65,7 @@ export default function ClientDetailHeader({
     state: client.state ?? "",
     zip: client.zip ?? "",
     phone: client.phone ?? "",
+    contactName: client.contactName ?? "",
     projectName: client.projectName ?? "",
     legalDescription: client.legalDescription ?? "",
   });
@@ -71,7 +73,7 @@ export default function ClientDetailHeader({
 
   function save() {
     startTransition(async () => {
-      await upsertClient({ id: client.id, ...form, emailList, projectName: form.projectName || undefined, legalDescription: form.legalDescription || undefined });
+      await upsertClient({ id: client.id, ...form, emailList, contactName: form.contactName || undefined, projectName: form.projectName || undefined, legalDescription: form.legalDescription || undefined });
       setEditing(false);
       router.refresh();
     });
@@ -132,6 +134,10 @@ export default function ClientDetailHeader({
             <input value={form.phone} onChange={e => setForm({ ...form, phone: e.target.value })} className="rounded-lg px-3 py-2 text-sm" style={inputStyle} />
           </div>
           <div className="col-span-2">
+            <label className="block text-xs font-medium mb-1" style={{ color: "#8b949e" }}>Contact Name</label>
+            <input value={form.contactName} onChange={e => setForm({ ...form, contactName: e.target.value })} className="rounded-lg px-3 py-2 text-sm" style={inputStyle} placeholder="e.g. John Smith (used for 'Dear ...' in emails)" />
+          </div>
+          <div className="col-span-2">
             <label className="block text-xs font-medium mb-1" style={{ color: "#8b949e" }}>Project Name</label>
             <input value={form.projectName} onChange={e => setForm({ ...form, projectName: e.target.value })} className="rounded-lg px-3 py-2 text-sm" style={inputStyle} placeholder="e.g. Smith Kitchen Remodel" />
           </div>
@@ -176,6 +182,11 @@ export default function ClientDetailHeader({
                   {(client.address || cityLine) && (
                     <span className="text-sm" style={{ color: "#8b949e" }}>
                       📍 {[client.address, cityLine].filter(Boolean).join(", ")}
+                    </span>
+                  )}
+                  {client.contactName && (
+                    <span className="text-sm" style={{ color: "#8b949e" }}>
+                      👤 {client.contactName}
                     </span>
                   )}
                   {client.phone && (

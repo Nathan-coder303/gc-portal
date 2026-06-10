@@ -230,6 +230,7 @@ export default async function ClientDetailPage({
           email: safeClient.email ?? null,
           emailList: safeClient.emailList as string[] | null,
           phone: safeClient.phone ?? null,
+          contactName: safeClient.contactName ?? null,
           projectName: safeClient.projectName ?? null,
           legalDescription: safeClient.legalDescription ?? null,
         }}

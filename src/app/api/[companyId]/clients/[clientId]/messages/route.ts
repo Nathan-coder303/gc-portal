@@ -100,7 +100,7 @@ export async function POST(
   if (notifyClient) {
     const client = await prisma.client.findFirst({
       where: { id: params.clientId },
-      select: { name: true, email: true, emailList: true, messageCcEmails: true },
+      select: { name: true, contactName: true, email: true, emailList: true, messageCcEmails: true },
     });
     const emails = (client?.emailList as string[] | null)?.filter(Boolean) ?? [];
     const to = emails.length > 0 ? emails.join(", ") : client?.email;
@@ -113,7 +113,7 @@ export async function POST(
         const fromEmail = profile.data.emailAddress ?? "me";
         const portalUrl = `${PORTAL_BASE}/client-portal/${params.clientId}`;
         const subject = `New message from your contractor — action may be needed`;
-        const body = `Hi ${client?.name ?? "there"},\n\nYou have a new message from your contractor:\n\n"${content.slice(0, 300)}${content.length > 300 ? "…" : ""}"\n\nPlease log in to your portal to view and reply:\n${portalUrl}\n\nThank you`;
+        const body = `Hi ${client?.contactName || client?.name || "there"},\n\nYou have a new message from your contractor:\n\n"${content.slice(0, 300)}${content.length > 300 ? "…" : ""}"\n\nPlease log in to your portal to view and reply:\n${portalUrl}\n\nThank you`;
         const mimeLines = [
           `From: ${fromEmail}`,
           `To: ${to}`,

@@ -49,7 +49,7 @@ export async function GET(req: NextRequest) {
 
     const client = await prisma.client.findUnique({
       where: { id: msg.clientId },
-      select: { name: true, email: true, emailList: true },
+      select: { name: true, contactName: true, email: true, emailList: true },
     });
     if (!client) continue;
 
@@ -68,7 +68,7 @@ export async function GET(req: NextRequest) {
 
       const subject = `Reminder: You have an unread message waiting — ${client.name}`;
       const body = [
-        `Hi ${client.name},`,
+        `Hi ${client.contactName || client.name},`,
         ``,
         `Just a friendly reminder that you have an unread message from your contractor that may require your attention.`,
         ``,

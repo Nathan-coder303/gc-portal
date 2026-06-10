@@ -35,7 +35,7 @@ export async function POST(
   const client = await prisma.client.findFirst({
     where: { id: params.clientId, companyId: params.companyId },
     select: {
-      name: true, address: true, email: true, emailList: true, dailyLogEmailEnabled: true,
+      name: true, contactName: true, address: true, email: true, emailList: true, dailyLogEmailEnabled: true,
       company: { select: { name: true, address: true, phone: true, email: true } },
     },
   });
@@ -123,7 +123,7 @@ export async function POST(
           : "";
 
         const emailBody = [
-          `Hi ${client.name},`,
+          `Hi ${client.contactName || client.name},`,
           ``,
           `Please find attached your Daily Log for ${friendlyDate}.`,
           ``,

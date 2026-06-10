@@ -36,7 +36,7 @@ export async function POST(
 
   const client = await prisma.client.findFirst({
     where: { id: params.clientId, companyId: params.companyId },
-    select: { name: true, email: true, emailList: true },
+    select: { name: true, contactName: true, email: true, emailList: true },
   });
   if (!client) return NextResponse.json({ error: "Client not found" }, { status: 404 });
 
@@ -67,7 +67,7 @@ export async function POST(
 
     const subject = `Welcome to Your Client Portal — ${client.name}`;
     const body = [
-      `Hi ${client.name},`,
+      `Hi ${client.contactName || client.name},`,
       ``,
       `We're excited to welcome you to your dedicated client portal! This is your central hub to stay informed and connected throughout your project.`,
       ``,

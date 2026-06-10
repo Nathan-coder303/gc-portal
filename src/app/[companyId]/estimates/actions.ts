@@ -757,7 +757,7 @@ export async function listClients() {
   return clients;
 }
 
-export async function upsertClient(data: { id?: string; name: string; address?: string; city?: string; state?: string; zip?: string; emailList?: string[]; phone?: string; projectName?: string; legalDescription?: string }) {
+export async function upsertClient(data: { id?: string; name: string; address?: string; city?: string; state?: string; zip?: string; emailList?: string[]; phone?: string; contactName?: string; projectName?: string; legalDescription?: string }) {
   const session = await auth();
   if (!session) throw new Error("Unauthorized");
   requirePermission(session, "estimateTemplate:edit");
@@ -772,6 +772,7 @@ export async function upsertClient(data: { id?: string; name: string; address?: 
     email: cleanEmails[0] ?? null,
     emailList: cleanEmails.length > 0 ? cleanEmails : Prisma.JsonNull,
     phone: data.phone?.trim() || null,
+    contactName: data.contactName?.trim() || null,
     projectName: data.projectName?.trim() || null,
     legalDescription: data.legalDescription?.trim() || null,
   };

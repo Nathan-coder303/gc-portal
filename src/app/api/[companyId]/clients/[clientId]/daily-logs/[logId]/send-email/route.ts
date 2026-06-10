@@ -36,7 +36,7 @@ export async function GET(
 
   const log = await prisma.dailyLog.findFirst({
     where: { id: params.logId, clientId: params.clientId, companyId: params.companyId },
-    include: { client: { select: { name: true, email: true, emailList: true } } },
+    include: { client: { select: { name: true, contactName: true, email: true, emailList: true } } },
   });
   if (!log) return NextResponse.json({ error: "Not found" }, { status: 404 });
 
@@ -57,7 +57,7 @@ export async function GET(
   } catch { /* gmail not connected */ }
 
   const defaultBody = [
-    `Hi ${log.client.name},`,
+    `Hi ${log.client.contactName || log.client.name},`,
     ``,
     `Please find attached your Daily Log for ${friendlyDate}.`,
     ``,
@@ -91,7 +91,7 @@ export async function POST(
   const log = await prisma.dailyLog.findFirst({
     where: { id: params.logId, clientId: params.clientId, companyId: params.companyId },
     include: {
-      client: { select: { name: true, address: true, projectName: true } },
+      client: { select: { name: true, contactName: true, address: true, projectName: true } },
       company: { select: { name: true, address: true, phone: true, email: true } },
     },
   });
@@ -128,7 +128,7 @@ export async function POST(
   const signature = defaultSendAs?.signature ? stripHtmlSignature(defaultSendAs.signature) : "";
 
   const emailBody = body ?? [
-    `Hi ${log.client.name},`,
+    `Hi ${log.client.contactName || log.client.name},`,
     ``,
     `Please find attached your Daily Log for ${friendlyDate}.`,
     ``,
