@@ -1657,9 +1657,16 @@ export default function TemplateEditor({
           bcc: emailBcc.trim() || undefined,
           subject: emailSubject,
           body: emailBody,
+          // Send the same PDF options as the preview so the generated PDF matches
           coverType: pdfOpts.coverType,
           page2: pdfOpts.page2,
           includeInsert: pdfOpts.includeInsert,
+          includeDivisionSummary: pdfOpts.includeDivisionSummary,
+          forcedBreakCsiPrefixes: pdfOpts.forcedBreakCsiPrefixes,
+          forcedBreakTerms: pdfOpts.forcedBreakTerms,
+          noPresentation: pdfOpts.noPresentation,
+          scopeOfWorkId: pdfOpts.scopeOfWorkId,
+          scopeTitle: pdfOpts.scopeTitle,
         }),
       });
       const text = await res.text();

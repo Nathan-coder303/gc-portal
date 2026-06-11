@@ -81,7 +81,7 @@ export async function POST(
   if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const body = await req.json().catch(() => ({}));
-  const { templateId, to, cc, bcc, subject, body: emailBody, coverType, page2, includeInsert, includeDivisionSummary, forcedBreakCsiPrefixes, scopeOfWorkId } = body as {
+  const { templateId, to, cc, bcc, subject, body: emailBody, coverType, page2, includeInsert, includeDivisionSummary, forcedBreakCsiPrefixes, forcedBreakTerms, noPresentation, scopeOfWorkId, scopeTitle } = body as {
     templateId?: string;
     to?: string;
     cc?: string;
@@ -93,7 +93,10 @@ export async function POST(
     includeInsert?: boolean;
     includeDivisionSummary?: boolean;
     forcedBreakCsiPrefixes?: string[];
+    forcedBreakTerms?: boolean;
+    noPresentation?: boolean;
     scopeOfWorkId?: string | null;
+    scopeTitle?: string | null;
   };
 
   if (!templateId || !to || !subject || !emailBody) {
@@ -210,15 +213,17 @@ export async function POST(
         string,
         { qty: number | null; unit: string | null; unitCost: number | null; markupPct: number | null; manualTotal: number | null }
       > | null) ?? null,
-    includeRoofUpgradesPage: page2 ? page2 === "ROOF" : (template.name.toLowerCase().includes("roof") && !template.name.toLowerCase().includes("retail")),
-    includeAdditionPages: page2 ? page2 === "ADDITION" : template.name.toLowerCase().includes("addition"),
-    includePermitPages: page2 ? page2 === "PERMIT" : false,
-    includeRetailPages: page2 ? page2 === "RETAIL" : template.name.toLowerCase().includes("retail"),
-    includeCoverPage: coverType !== "NONE",
+    includeRoofUpgradesPage: noPresentation ? false : (page2 ? page2 === "ROOF" : (template.name.toLowerCase().includes("roof") && !template.name.toLowerCase().includes("retail"))),
+    includeAdditionPages: noPresentation ? false : (page2 ? page2 === "ADDITION" : template.name.toLowerCase().includes("addition")),
+    includePermitPages: noPresentation ? false : (page2 ? page2 === "PERMIT" : false),
+    includeRetailPages: noPresentation ? false : (page2 ? page2 === "RETAIL" : template.name.toLowerCase().includes("retail")),
+    includeCoverPage: !noPresentation && coverType !== "NONE",
     includeDivisionSummary: includeDivisionSummary ?? false,
     showTerms: template.showTerms,
     forcedBreakCsiPrefixes: forcedBreakCsiPrefixes ?? [],
+    forcedBreakTerms: forcedBreakTerms ?? false,
     scopeOfWork: scopeOfWork ?? null,
+    scopeTitle: scopeTitle ?? null,
     insulationType: template.insulationType ?? "ISO",
     clientCoverPhotoType: coverType ?? template.client?.coverPhotoType ?? null,
     clientCoverPhotoUrl: await resolvePrivateCoverUrl(template.client?.coverPhotoUrl ?? null),
