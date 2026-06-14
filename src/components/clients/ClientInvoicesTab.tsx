@@ -96,23 +96,6 @@ function StatusBadge({ status }: { status: string }) {
   );
 }
 
-function PaymentMethodBadge({ method }: { method: string }) {
-  const colors: Record<string, string> = {
-    Zelle: "#8b5cf6",
-    Check: "#f59e0b",
-    Cash: "#22c55e",
-    "Credit Card": "#3b82f6",
-    ACH: "#06b6d4",
-    Wire: "#f97316",
-  };
-  const color = colors[method] ?? "#8b949e";
-  return (
-    <span style={{ fontSize: 10, fontWeight: 700, padding: "1px 6px", borderRadius: 10, background: color + "22", color }}>
-      {method}
-    </span>
-  );
-}
-
 export default function ClientInvoicesTab({
   companyId,
   clientId,
@@ -408,6 +391,7 @@ export default function ClientInvoicesTab({
     }
   }
 
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   async function deletePayment(invoiceId: string, paymentId: string) {
     await fetch(`/api/${companyId}/clients/${clientId}/invoices/${invoiceId}/payments/${paymentId}`, { method: "DELETE" });
     setInvoices(prev => {
@@ -1082,37 +1066,15 @@ export default function ClientInvoicesTab({
                           <div className="text-[11px] rounded px-2 py-1" style={{ background: "#1e2736", color: "#8b949e" }}>{inv.notes}</div>
                         )}
 
-                        {/* Payment history */}
+                        {/* Balance summary (payment list moved to its own section in Invoices & CO's tab) */}
                         {inv.payments.length > 0 && (
-                          <div className="rounded-lg overflow-hidden" style={{ border: "1px solid #1a2a1a" }}>
-                            <div className="px-3 py-1.5 text-[10px] font-semibold uppercase tracking-wider" style={{ background: "#0a1a0a", color: "#22c55e88" }}>
-                              Payments Received
-                            </div>
-                            {inv.payments.map((p) => (
-                              <div key={p.id} className="flex items-center justify-between px-3 py-2 gap-2" style={{ borderTop: "1px solid #1a2a1a" }}>
-                                <div className="flex items-center gap-2">
-                                  <span className="text-xs font-bold font-mono" style={{ color: "#22c55e" }}>${fmt(p.amount)}</span>
-                                  <PaymentMethodBadge method={p.method} />
-                                  {p.notes && <span className="text-[10px]" style={{ color: "#8b949e" }}>{p.notes}</span>}
-                                </div>
-                                <div className="flex items-center gap-2">
-                                  <span className="text-[10px]" style={{ color: "#6b7280" }}>{fmtDate(p.paidDate)}</span>
-                                  <button onClick={() => deletePayment(inv.id, p.id)}
-                                    className="text-[10px] px-1.5 py-0.5 rounded"
-                                    style={{ background: "#2d1b1b", color: "#f87171" }} title="Remove payment">
-                                    ✕
-                                  </button>
-                                </div>
-                              </div>
-                            ))}
-                            <div className="flex items-center justify-between px-3 py-2" style={{ background: balance <= 0 ? "#0a1a0a" : "#1a0a0a", borderTop: "1px solid #1a2a1a" }}>
-                              <span className="text-[11px] font-semibold" style={{ color: balance <= 0 ? "#22c55e" : "#f87171" }}>
-                                {balance <= 0 ? "✓ Paid in Full" : "Balance Due"}
-                              </span>
-                              <span className="text-sm font-bold font-mono" style={{ color: balance <= 0 ? "#22c55e" : "#f87171" }}>
-                                {balance <= 0 ? "$0.00" : `$${fmt(balance)}`}
-                              </span>
-                            </div>
+                          <div className="flex items-center justify-between rounded-lg px-3 py-2" style={{ background: balance <= 0 ? "#0a1a0a" : "#1a0a0a", border: `1px solid ${balance <= 0 ? "#1a2a1a" : "#2a1010"}` }}>
+                            <span className="text-[11px] font-semibold" style={{ color: balance <= 0 ? "#22c55e" : "#f87171" }}>
+                              {balance <= 0 ? "✓ Paid in Full" : `Balance Due (${inv.payments.length} payment${inv.payments.length === 1 ? "" : "s"} received)`}
+                            </span>
+                            <span className="text-sm font-bold font-mono" style={{ color: balance <= 0 ? "#22c55e" : "#f87171" }}>
+                              {balance <= 0 ? "$0.00" : `$${fmt(balance)}`}
+                            </span>
                           </div>
                         )}
 

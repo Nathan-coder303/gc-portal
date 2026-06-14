@@ -15,9 +15,8 @@ import CollapsibleEstimateList from "@/components/clients/CollapsibleEstimateLis
 import ClientDetailHeader from "@/components/clients/ClientDetailHeader";
 import ClientNotesTab from "@/components/clients/ClientNotesTab";
 import ClientTextNotes from "@/components/clients/ClientTextNotes";
-import ClientInvoicesTab from "@/components/clients/ClientInvoicesTab";
+import InvoicesAndCoTab from "@/components/clients/InvoicesAndCoTab";
 import NurturingEmailTab from "@/components/clients/NurturingEmailTab";
-import ChangeOrdersTab from "@/components/clients/ChangeOrdersTab";
 import ClientScheduleTab from "@/components/clients/ClientScheduleTab";
 import DailyLogsTab from "@/components/clients/DailyLogsTab";
 import MessagesTab from "@/components/clients/MessagesTab";
@@ -197,8 +196,7 @@ export default async function ClientDetailPage({
     { key: "estimates", label: "Estimates" },
     { key: "tasks", label: `Tasks${followUpCount > 0 ? ` (${followUpCount})` : ""}` },
     { key: "schedule", label: `Schedule${clientScheduleTasks.length > 0 ? ` (${clientScheduleTasks.length})` : ""}` },
-    { key: "change-orders", label: `Change Orders${changeOrders.length > 0 ? ` (${changeOrders.length})` : ""}` },
-    { key: "invoices", label: `Invoices${clientInvoices.length > 0 ? ` (${clientInvoices.length})` : ""}` },
+    { key: "invoices-co", label: `Invoices & CO's${(clientInvoices.length + changeOrders.length) > 0 ? ` (${clientInvoices.length + changeOrders.length})` : ""}` },
     { key: "notes", label: `Notes${clientNotes.length > 0 ? ` (${clientNotes.length})` : ""}` },
     { key: "financials", label: "Financials" },
     { key: "portal", label: "Portal" },
@@ -382,98 +380,98 @@ export default async function ClientDetailPage({
         />
       )}
 
-      {activeTab === "change-orders" && (
-        <ChangeOrdersTab
-          companyId={params.companyId}
-          clientId={params.clientId}
+      {activeTab === "invoices-co" && (
+        <InvoicesAndCoTab
           clientName={safeClient.name}
-          clientEmail={clientEmailAll}
-          isCommercial={isCommercial}
-          clientCoverPhotoType={safeClient.coverPhotoType ?? null}
-          canEdit={canEdit}
-          initialOrders={changeOrders.map(co => ({
-            id: co.id,
-            title: co.title,
-            orderNumber: co.orderNumber,
-            status: co.status,
-            notes: co.notes,
-            signatureData: co.signatureData ?? null,
-            signedAt: co.signedAt?.toISOString() ?? null,
-            signedByName: co.signedByName ?? null,
-            createdAt: co.createdAt.toISOString(),
-            items: co.items.map(it => ({
-              id: it.id,
-              csiCode: it.csiCode,
-              divisionName: it.divisionName,
-              name: it.name,
-              description: it.description,
-              qty: it.qty != null ? String(it.qty) : null,
-              unit: it.unit,
-              unitCost: it.unitCost != null ? String(it.unitCost) : null,
-              markupPct: it.markupPct != null ? String(it.markupPct) : null,
-              sortOrder: it.sortOrder,
+          invoices={{
+            companyId: params.companyId,
+            clientId: params.clientId,
+            clientName: safeClient.name,
+            clientEmail: clientEmailAll,
+            estimates: safeClient.templates.map((est) => ({
+              id: est.id,
+              name: est.name,
+              estimateNumber: est.estimateNumber ?? null,
+              paymentSchedule: est.paymentSchedule as { payment: string; trigger: string; pct: number }[] | null,
+              total: calcEstimateTotal(est.divisions, est.gcFeePercent),
             })),
-          }))}
-          contracts={executedContracts
-            .filter(c => c.counterSignedAt && c.executedPdfUrl)
-            .map(c => ({
-              id: c.id,
-              name: c.name,
-              estimateNumber: c.estimateNumber,
-              counterSignedAt: c.counterSignedAt!.toISOString(),
-              executedPdfUrl: `/api/${params.companyId}/estimates/${c.id}/pdf?executed=1`,
-              executedEmailSentAt: c.executedEmailSentAt?.toISOString() ?? null,
-            }))}
-          initialClientDocs={clientDocuments.map(d => ({
-            id: d.id,
-            name: d.name,
-            clientAlreadySigned: d.clientAlreadySigned,
-            clientSignedAt: d.clientSignedAt?.toISOString() ?? null,
-            clientSignedByName: d.clientSignedByName ?? null,
-            counterSignedAt: d.counterSignedAt?.toISOString() ?? null,
-            countersignedFileUrl: d.countersignedFileUrl
-              ? `/api/${params.companyId}/clients/${params.clientId}/documents/${d.id}/file?executed=1`
-              : null,
-            originalFileUrl: `/api/${params.companyId}/clients/${params.clientId}/documents/${d.id}/file`,
-          }))}
-        />
-      )}
-
-      {activeTab === "invoices" && (
-        <ClientInvoicesTab
-          companyId={params.companyId}
-          clientId={params.clientId}
-          clientName={safeClient.name}
-          clientEmail={clientEmailAll}
-          estimates={safeClient.templates.map((est) => ({
-            id: est.id,
-            name: est.name,
-            estimateNumber: est.estimateNumber ?? null,
-            paymentSchedule: est.paymentSchedule as { payment: string; trigger: string; pct: number }[] | null,
-            total: calcEstimateTotal(est.divisions, est.gcFeePercent),
-          }))}
-          initialInvoices={clientInvoices.map((inv) => ({
-            id: inv.id,
-            invoiceNumber: inv.invoiceNumber,
-            estimateId: inv.estimateId,
-            phase: inv.phase,
-            trigger: inv.trigger,
-            pct: Number(inv.pct),
-            amount: Number(inv.amount),
-            status: inv.status,
-            dueDate: inv.dueDate?.toISOString() ?? null,
-            notes: inv.notes,
-            sentAt: inv.sentAt?.toISOString() ?? null,
-            paidAt: inv.paidAt?.toISOString() ?? null,
-            createdAt: inv.createdAt.toISOString(),
-            payments: inv.payments.map(p => ({
-              id: p.id,
-              amount: Number(p.amount),
-              method: p.method,
-              paidDate: p.paidDate.toISOString(),
-              notes: p.notes,
+            initialInvoices: clientInvoices.map((inv) => ({
+              id: inv.id,
+              invoiceNumber: inv.invoiceNumber,
+              estimateId: inv.estimateId,
+              phase: inv.phase,
+              trigger: inv.trigger,
+              pct: Number(inv.pct),
+              amount: Number(inv.amount),
+              status: inv.status,
+              dueDate: inv.dueDate?.toISOString() ?? null,
+              notes: inv.notes,
+              sentAt: inv.sentAt?.toISOString() ?? null,
+              paidAt: inv.paidAt?.toISOString() ?? null,
+              createdAt: inv.createdAt.toISOString(),
+              payments: inv.payments.map(p => ({
+                id: p.id,
+                amount: Number(p.amount),
+                method: p.method,
+                paidDate: p.paidDate.toISOString(),
+                notes: p.notes,
+              })),
             })),
-          }))}
+          }}
+          changeOrders={{
+            companyId: params.companyId,
+            clientId: params.clientId,
+            clientName: safeClient.name,
+            clientEmail: clientEmailAll,
+            isCommercial: isCommercial,
+            clientCoverPhotoType: safeClient.coverPhotoType ?? null,
+            canEdit: canEdit,
+            initialOrders: changeOrders.map(co => ({
+              id: co.id,
+              title: co.title,
+              orderNumber: co.orderNumber,
+              status: co.status,
+              notes: co.notes,
+              signatureData: co.signatureData ?? null,
+              signedAt: co.signedAt?.toISOString() ?? null,
+              signedByName: co.signedByName ?? null,
+              createdAt: co.createdAt.toISOString(),
+              items: co.items.map(it => ({
+                id: it.id,
+                csiCode: it.csiCode,
+                divisionName: it.divisionName,
+                name: it.name,
+                description: it.description,
+                qty: it.qty != null ? String(it.qty) : null,
+                unit: it.unit,
+                unitCost: it.unitCost != null ? String(it.unitCost) : null,
+                markupPct: it.markupPct != null ? String(it.markupPct) : null,
+                sortOrder: it.sortOrder,
+              })),
+            })),
+            contracts: executedContracts
+              .filter(c => c.counterSignedAt && c.executedPdfUrl)
+              .map(c => ({
+                id: c.id,
+                name: c.name,
+                estimateNumber: c.estimateNumber,
+                counterSignedAt: c.counterSignedAt!.toISOString(),
+                executedPdfUrl: `/api/${params.companyId}/estimates/${c.id}/pdf?executed=1`,
+                executedEmailSentAt: c.executedEmailSentAt?.toISOString() ?? null,
+              })),
+            initialClientDocs: clientDocuments.map(d => ({
+              id: d.id,
+              name: d.name,
+              clientAlreadySigned: d.clientAlreadySigned,
+              clientSignedAt: d.clientSignedAt?.toISOString() ?? null,
+              clientSignedByName: d.clientSignedByName ?? null,
+              counterSignedAt: d.counterSignedAt?.toISOString() ?? null,
+              countersignedFileUrl: d.countersignedFileUrl
+                ? `/api/${params.companyId}/clients/${params.clientId}/documents/${d.id}/file?executed=1`
+                : null,
+              originalFileUrl: `/api/${params.companyId}/clients/${params.clientId}/documents/${d.id}/file`,
+            })),
+          }}
         />
       )}
 

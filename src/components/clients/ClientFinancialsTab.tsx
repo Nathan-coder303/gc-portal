@@ -1114,6 +1114,7 @@ export default function ClientFinancialsTab({
     matsBySupplier[m.supplierName].push(m);
   }
 
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   function printStatement() {
     const win = window.open("", "_blank");
     if (!win) return;
@@ -1225,12 +1226,7 @@ ${paymentRows}
         })}
       </div>
 
-      {/* Print + actions */}
-      <div className="flex justify-end">
-        <button onClick={printStatement} className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold" style={{ background: "#1e2736", border: "1px solid #C9A84C44", color: "#C9A84C" }}>
-          🖨 Print Statement
-        </button>
-      </div>
+      {/* Print Statement moved to the Invoices & CO's tab. */}
 
       {/* ── Scope of Work Remaining ── */}
       {estimateDivisions.length > 0 && (
