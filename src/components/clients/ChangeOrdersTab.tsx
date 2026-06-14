@@ -981,6 +981,7 @@ export default function ChangeOrdersTab({
   contracts,
   initialClientDocs,
   canEdit,
+  hideExecutedSection = false,
 }: {
   companyId: string;
   clientId: string;
@@ -992,6 +993,7 @@ export default function ChangeOrdersTab({
   contracts?: ExecutedContract[];
   initialClientDocs?: ClientDoc[];
   canEdit: boolean;
+  hideExecutedSection?: boolean;
 }) {
   const [orders, setOrders] = useState<ChangeOrder[]>(initialOrders);
   const [editing, setEditing] = useState<ChangeOrder | null | "new">(null);
@@ -1248,6 +1250,7 @@ export default function ChangeOrdersTab({
       </div>
 
       {/* ── Executed Contracts section ── */}
+      {!hideExecutedSection && (
       <div>
         <h3 className="text-sm font-bold mb-3" style={{ color: "#e6edf3" }}>Executed Contracts & Change Orders</h3>
         {allExecuted.length === 0 ? (
@@ -1295,6 +1298,7 @@ export default function ChangeOrdersTab({
           </div>
         )}
       </div>
+      )}
 
       {/* ── Countersign modal ── */}
       {countersigning && (
