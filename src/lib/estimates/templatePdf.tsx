@@ -279,14 +279,14 @@ function ItemTableHeader({ showLineNum }: { showLineNum?: boolean }) {
   );
 }
 
-function ItemRow({ item, index, lineNum, fallbackCsi }: { item: Item; index: number; lineNum?: number; fallbackCsi?: string | null }) {
+function ItemRow({ item, index, lineNum, fallbackCsi, hideCsi }: { item: Item; index: number; lineNum?: number; fallbackCsi?: string | null; hideCsi?: boolean }) {
   const isExcluded = item.detail === "Excluded";
   const total = calcTotal(item.defaultQty, item.defaultUnitCost, item.defaultMarkupPct);
   const rowStyle = index % 2 === 0 ? styles.tableRow : styles.tableRowAlt;
   const detailColor = isExcluded ? "#dc2626" : item.detail === "Allowances" ? "#d97706" : "#334155";
   const { pct } = useProgressPayment();
   const progressAmt = pct != null && total > 0 && !isExcluded ? total * pct / 100 : null;
-  const csi = item.csiCode ?? fallbackCsi ?? null;
+  const csi = hideCsi ? null : (item.csiCode ?? fallbackCsi ?? null);
   return (
     <View wrap={false} minPresenceAhead={25} style={{ borderBottomWidth: 1, borderBottomColor: "#f1f5f9", backgroundColor: index % 2 === 0 ? undefined : "#fafafa" }}>
       <View style={[rowStyle, { borderBottomWidth: 0 }]}>
@@ -1361,14 +1361,12 @@ function BottomSummary(props: BottomSummaryProps) {
 }
 
 // ─── Division Summary Page ────────────────────────────────────────────────────
-function DivisionSummaryPage({ template, client, divisions, gcFeePercent, isRoof }: Pick<TemplatePdfProps, "template" | "client" | "divisions" | "gcFeePercent"> & { isRoof?: boolean }) {
+function DivisionSummaryPage({ template, client, divisions, gcFeePercent }: Pick<TemplatePdfProps, "template" | "client" | "divisions" | "gcFeePercent">) {
   const { logoSrc: logoPath, name: companyDisplayName, phone: companyPhone, email: companyEmail, licenses: companyLicenses, contactName: companyContactName } = useBranding();
 
-  // Compute division totals (only divisions with items having a total).
-  // For roofing estimates, hide Division 07 (Thermal and Moisture Protection) from the summary.
+  // Compute division totals (only divisions with items having a total)
   const divTotals: { name: string; total: number }[] = [];
   for (const div of divisions) {
-    if (isRoof && (div.csiCode ?? "").replace(/\s/g, "").startsWith("07")) continue;
     if (div.manualTotal != null) {
       if (div.manualTotal > 0) divTotals.push({ name: div.name, total: div.manualTotal });
       continue;
@@ -1792,7 +1790,7 @@ function TemplatePdfDocument({ companyName, template, client, divisions, showTer
       {includeRetailPages && <RetailPage2 client={client} />}
       {scopeOfWork && <ScopeOfWorkPage title={scopeOfWork.title} body={scopeOfWork.body} client={client} />}
       {includeDivisionSummary && !includeRoofUpgradesPage && (
-        <DivisionSummaryPage template={template} client={client} divisions={divisions} gcFeePercent={gcFeePercent} isRoof={!!includeRoofUpgradesPage} />
+        <DivisionSummaryPage template={template} client={client} divisions={divisions} gcFeePercent={gcFeePercent} />
       )}
       <Page size="LETTER" style={styles.page}>
         {/* Fixed footer — renders on every page */}
@@ -1908,13 +1906,11 @@ function TemplatePdfDocument({ companyName, template, client, divisions, showTer
           const divNameMap = new Map<string, string>();
 
           for (const { groupLabel, divs: ds } of grouped) {
-            const filteredDs = ds
-              .filter(div => !(isRoof && (div.csiCode ?? "").replace(/\s/g, "").startsWith("07")))
-              .map(div => ({
-                div,
-                filledItems: div.items.map(applyInsF).filter((i): i is Item => i !== null && (isItemFilled(i) || !!i.detail)),
-                filledGroups: div.groups.map(g => ({ ...g, items: g.items.map(applyInsF).filter((i): i is Item => i !== null && (isItemFilled(i) || !!i.detail)) })).filter(g => g.items.length > 0),
-              })).filter(d => d.filledItems.length > 0 || d.filledGroups.length > 0);
+            const filteredDs = ds.map(div => ({
+              div,
+              filledItems: div.items.map(applyInsF).filter((i): i is Item => i !== null && (isItemFilled(i) || !!i.detail)),
+              filledGroups: div.groups.map(g => ({ ...g, items: g.items.map(applyInsF).filter((i): i is Item => i !== null && (isItemFilled(i) || !!i.detail)) })).filter(g => g.items.length > 0),
+            })).filter(d => d.filledItems.length > 0 || d.filledGroups.length > 0);
 
             if (filteredDs.length === 0) continue;
 
@@ -1959,15 +1955,12 @@ function TemplatePdfDocument({ companyName, template, client, divisions, showTer
 
 
           return grouped.map(({ groupLabel, divs }, gi) => {
-          // Pre-filter each division's items (apply insulation type filter).
-          // For roofing estimates, hide all of Division 07 (Thermal and Moisture Protection) line items.
-          const filteredDivs = divs
-            .filter(div => !(isRoof && (div.csiCode ?? "").replace(/\s/g, "").startsWith("07")))
-            .map(div => ({
-              div,
-              filledItems: div.items.map(applyInsF).filter((i): i is Item => i !== null && (isItemFilled(i) || !!i.detail)),
-              filledGroups: div.groups.map(g => ({ ...g, items: g.items.map(applyInsF).filter((i): i is Item => i !== null && (isItemFilled(i) || !!i.detail)) })).filter(g => g.items.length > 0),
-            })).filter(({ filledItems, filledGroups }) => filledItems.length > 0 || filledGroups.length > 0);
+          // Pre-filter each division's items (apply insulation type filter)
+          const filteredDivs = divs.map(div => ({
+            div,
+            filledItems: div.items.map(applyInsF).filter((i): i is Item => i !== null && (isItemFilled(i) || !!i.detail)),
+            filledGroups: div.groups.map(g => ({ ...g, items: g.items.map(applyInsF).filter((i): i is Item => i !== null && (isItemFilled(i) || !!i.detail)) })).filter(g => g.items.length > 0),
+          })).filter(({ filledItems, filledGroups }) => filledItems.length > 0 || filledGroups.length > 0);
 
           if (filteredDivs.length === 0) return null;
 
@@ -2018,7 +2011,7 @@ function TemplatePdfDocument({ companyName, template, client, divisions, showTer
                             {grpTotal > 0 && <Text style={{ fontSize: 7.5, fontFamily: "Helvetica-Bold", color: "#1e40af" }}>${fmt(grpTotal)}</Text>}
                           </View>
                           <ItemTableHeader showLineNum={isRoof} />
-                          {grp.items.map((item, idx) => <ItemRow key={item.id} item={item} index={idx} lineNum={lineNumMap.get(item.id)} fallbackCsi={div.csiCode} />)}
+                          {grp.items.map((item, idx) => <ItemRow key={item.id} item={item} index={idx} lineNum={lineNumMap.get(item.id)} fallbackCsi={div.csiCode} hideCsi={isRoof} />)}
                         </View>
                       );
                     })}
@@ -2026,7 +2019,7 @@ function TemplatePdfDocument({ companyName, template, client, divisions, showTer
                     {filledItems.length > 0 && (
                       <View minPresenceAhead={55}>
                         <ItemTableHeader showLineNum={isRoof} />
-                        {filledItems.map((item, idx) => <ItemRow key={item.id} item={item} index={idx} lineNum={lineNumMap.get(item.id)} fallbackCsi={div.csiCode} />)}
+                        {filledItems.map((item, idx) => <ItemRow key={item.id} item={item} index={idx} lineNum={lineNumMap.get(item.id)} fallbackCsi={div.csiCode} hideCsi={isRoof} />)}
                       </View>
                     )}
                   </View>
