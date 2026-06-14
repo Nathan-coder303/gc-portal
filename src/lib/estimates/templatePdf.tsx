@@ -1361,12 +1361,14 @@ function BottomSummary(props: BottomSummaryProps) {
 }
 
 // ─── Division Summary Page ────────────────────────────────────────────────────
-function DivisionSummaryPage({ template, client, divisions, gcFeePercent }: Pick<TemplatePdfProps, "template" | "client" | "divisions" | "gcFeePercent">) {
+function DivisionSummaryPage({ template, client, divisions, gcFeePercent, isRoof }: Pick<TemplatePdfProps, "template" | "client" | "divisions" | "gcFeePercent"> & { isRoof?: boolean }) {
   const { logoSrc: logoPath, name: companyDisplayName, phone: companyPhone, email: companyEmail, licenses: companyLicenses, contactName: companyContactName } = useBranding();
 
-  // Compute division totals (only divisions with items having a total)
+  // Compute division totals (only divisions with items having a total).
+  // For roofing estimates, hide Division 07 (Thermal and Moisture Protection) from the summary.
   const divTotals: { name: string; total: number }[] = [];
   for (const div of divisions) {
+    if (isRoof && (div.csiCode ?? "").replace(/\s/g, "").startsWith("07")) continue;
     if (div.manualTotal != null) {
       if (div.manualTotal > 0) divTotals.push({ name: div.name, total: div.manualTotal });
       continue;
@@ -1790,7 +1792,7 @@ function TemplatePdfDocument({ companyName, template, client, divisions, showTer
       {includeRetailPages && <RetailPage2 client={client} />}
       {scopeOfWork && <ScopeOfWorkPage title={scopeOfWork.title} body={scopeOfWork.body} client={client} />}
       {includeDivisionSummary && !includeRoofUpgradesPage && (
-        <DivisionSummaryPage template={template} client={client} divisions={divisions} gcFeePercent={gcFeePercent} />
+        <DivisionSummaryPage template={template} client={client} divisions={divisions} gcFeePercent={gcFeePercent} isRoof={!!includeRoofUpgradesPage} />
       )}
       <Page size="LETTER" style={styles.page}>
         {/* Fixed footer — renders on every page */}
@@ -1906,11 +1908,13 @@ function TemplatePdfDocument({ companyName, template, client, divisions, showTer
           const divNameMap = new Map<string, string>();
 
           for (const { groupLabel, divs: ds } of grouped) {
-            const filteredDs = ds.map(div => ({
-              div,
-              filledItems: div.items.map(applyInsF).filter((i): i is Item => i !== null && (isItemFilled(i) || !!i.detail)),
-              filledGroups: div.groups.map(g => ({ ...g, items: g.items.map(applyInsF).filter((i): i is Item => i !== null && (isItemFilled(i) || !!i.detail)) })).filter(g => g.items.length > 0),
-            })).filter(d => d.filledItems.length > 0 || d.filledGroups.length > 0);
+            const filteredDs = ds
+              .filter(div => !(isRoof && (div.csiCode ?? "").replace(/\s/g, "").startsWith("07")))
+              .map(div => ({
+                div,
+                filledItems: div.items.map(applyInsF).filter((i): i is Item => i !== null && (isItemFilled(i) || !!i.detail)),
+                filledGroups: div.groups.map(g => ({ ...g, items: g.items.map(applyInsF).filter((i): i is Item => i !== null && (isItemFilled(i) || !!i.detail)) })).filter(g => g.items.length > 0),
+              })).filter(d => d.filledItems.length > 0 || d.filledGroups.length > 0);
 
             if (filteredDs.length === 0) continue;
 
@@ -1955,12 +1959,15 @@ function TemplatePdfDocument({ companyName, template, client, divisions, showTer
 
 
           return grouped.map(({ groupLabel, divs }, gi) => {
-          // Pre-filter each division's items (apply insulation type filter)
-          const filteredDivs = divs.map(div => ({
-            div,
-            filledItems: div.items.map(applyInsF).filter((i): i is Item => i !== null && (isItemFilled(i) || !!i.detail)),
-            filledGroups: div.groups.map(g => ({ ...g, items: g.items.map(applyInsF).filter((i): i is Item => i !== null && (isItemFilled(i) || !!i.detail)) })).filter(g => g.items.length > 0),
-          })).filter(({ filledItems, filledGroups }) => filledItems.length > 0 || filledGroups.length > 0);
+          // Pre-filter each division's items (apply insulation type filter).
+          // For roofing estimates, hide all of Division 07 (Thermal and Moisture Protection) line items.
+          const filteredDivs = divs
+            .filter(div => !(isRoof && (div.csiCode ?? "").replace(/\s/g, "").startsWith("07")))
+            .map(div => ({
+              div,
+              filledItems: div.items.map(applyInsF).filter((i): i is Item => i !== null && (isItemFilled(i) || !!i.detail)),
+              filledGroups: div.groups.map(g => ({ ...g, items: g.items.map(applyInsF).filter((i): i is Item => i !== null && (isItemFilled(i) || !!i.detail)) })).filter(g => g.items.length > 0),
+            })).filter(({ filledItems, filledGroups }) => filledItems.length > 0 || filledGroups.length > 0);
 
           if (filteredDivs.length === 0) return null;
 
