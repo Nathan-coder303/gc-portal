@@ -91,6 +91,8 @@ export default function SubsPageClient({
 }) {
   const [search, setSearch] = useState("");
   const [triageOpen, setTriageOpen] = useState(true);
+  // Shared division filter: clicking a division in the database pill row also filters triage
+  const [filterDiv, setFilterDiv] = useState("ALL");
   const isSearching = search.trim().length > 0;
 
   const toggleTriage = useCallback(() => setTriageOpen(o => !o), []);
@@ -135,6 +137,7 @@ export default function SubsPageClient({
                 leads={leads}
                 projects={projects}
                 filterQuery={search}
+                filterDiv={filterDiv}
               />
             </div>
           </div>
@@ -149,6 +152,8 @@ export default function SubsPageClient({
                 companyId={companyId}
                 initialSubs={initialSubs}
                 filterQuery={search}
+                filterDiv={filterDiv}
+                onFilterDivChange={setFilterDiv}
               />
             </div>
           </div>
@@ -166,6 +171,7 @@ export default function SubsPageClient({
                 leads={leads}
                 projects={projects}
                 filterQuery=""
+                filterDiv={filterDiv}
               />
             )}
           </div>
@@ -179,6 +185,8 @@ export default function SubsPageClient({
               companyId={companyId}
               initialSubs={initialSubs}
               filterQuery=""
+              filterDiv={filterDiv}
+              onFilterDivChange={setFilterDiv}
             />
           </div>
         </>

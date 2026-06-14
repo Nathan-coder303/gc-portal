@@ -129,12 +129,14 @@ export default function BidTriage({
   leads = [],
   projects = [],
   filterQuery = "",
+  filterDiv = "ALL",
 }: {
   companyId: string;
   clients: Client[];
   leads?: Lead[];
   projects?: Project[];
   filterQuery?: string;
+  filterDiv?: string;
 }) {
   const [bids, setBids] = useState<TriageBid[]>([]);
   const [loading, setLoading] = useState(true);
@@ -350,12 +352,12 @@ export default function BidTriage({
   }
 
   const triageQ = filterQuery.trim().toLowerCase();
-  const visibleBids = triageQ
-    ? bids.filter(b =>
-        (b.contractorName ?? "").toLowerCase().includes(triageQ) ||
-        b.divisionName.toLowerCase().includes(triageQ)
-      )
-    : bids;
+  const matchesQ = (b: TriageBid) =>
+    (b.contractorName ?? "").toLowerCase().includes(triageQ) ||
+    b.divisionName.toLowerCase().includes(triageQ);
+  const matchesDiv = (b: TriageBid) =>
+    filterDiv === "ALL" || (selectedDivision[b.id] ?? b.divisionCode) === filterDiv;
+  const visibleBids = bids.filter(b => (triageQ ? matchesQ(b) : true) && matchesDiv(b));
 
   return (
     <>

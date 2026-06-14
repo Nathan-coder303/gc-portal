@@ -914,9 +914,12 @@ function BidEmailModal({
 
 // ─── Main Component ───────────────────────────────────────────────────────────
 export default function SubsDatabase({
-  companyId, initialSubs, filterQuery = "",
+  companyId, initialSubs, filterQuery = "", filterDiv: filterDivProp, onFilterDivChange,
 }: {
   companyId: string; initialSubs: Sub[]; filterQuery?: string;
+  // Optional controlled division filter — when provided, parent owns it
+  filterDiv?: string;
+  onFilterDivChange?: (code: string) => void;
 }) {
   const normalizedInit = initialSubs.map(s => {
     const { code, name } = normalizeDivision(s.divisionCode, s.divisionName);
@@ -924,7 +927,12 @@ export default function SubsDatabase({
   });
 
   const [subs, setSubs] = useState<Sub[]>(normalizedInit);
-  const [filterDiv, setFilterDiv] = useState("ALL");
+  const [filterDivLocal, setFilterDivLocal] = useState("ALL");
+  const filterDiv = filterDivProp ?? filterDivLocal;
+  const setFilterDiv = (code: string) => {
+    if (onFilterDivChange) onFilterDivChange(code);
+    else setFilterDivLocal(code);
+  };
   const [favOnly, setFavOnly] = useState(false);
   const [search, setSearch] = useState("");
   const [modal, setModal] = useState<{ mode: "add" | "edit"; sub?: Sub; prefillDiv?: { code: string; name: string } } | null>(null);
