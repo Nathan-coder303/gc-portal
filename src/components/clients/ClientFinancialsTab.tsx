@@ -18,6 +18,8 @@ type Supplier = { id: string; name: string };
 type MaterialPurchase = { id: string; supplierId: string; supplierName: string; amount: number; description: string | null; purchasedAt: string; notes: string | null };
 type InvoicePayment = { id: string; amount: number };
 type ClientInvoice = { id: string; amount: number; status: string; payments: InvoicePayment[] };
+type ChangeOrderItem = { qty: string | null; unitCost: string | null; markupPct: string | null };
+type ChangeOrder = { id: string; title: string; orderNumber: string | null; status: string; signedAt: string | null; createdAt: string; items: ChangeOrderItem[] };
 type LienRelease = { id: string; type: "PARTIAL" | "FINAL"; subName: string; recipientEmail: string | null; amount: string | null; throughDate: string | null; legalDescription: string; signatureToken: string | null; signedAt: string | null; signedByName: string | null; emailSentAt: string | null; createdAt: string };
 
 function fmt(n: number) { return n.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 }); }
@@ -909,6 +911,7 @@ export default function ClientFinancialsTab({
   const [estimateDivisions, setEstimateDivisions] = useState<EstimateDivision[]>([]);
   const [lienReleases, setLienReleases] = useState<LienRelease[]>([]);
   const [invoices, setInvoices] = useState<ClientInvoice[]>([]);
+  const [changeOrders, setChangeOrders] = useState<ChangeOrder[]>([]);
   const [loading, setLoading] = useState(true);
 
   // Collapsible section state — collapsed by default
@@ -937,7 +940,7 @@ export default function ClientFinancialsTab({
   const [savingMat, setSavingMat] = useState(false);
 
   const load = useCallback(async () => {
-    const [subsRes, allSubsRes, suppliersRes, matsRes, itemsRes, lienRes, invRes] = await Promise.all([
+    const [subsRes, allSubsRes, suppliersRes, matsRes, itemsRes, lienRes, invRes, coRes] = await Promise.all([
       fetch(`/api/${companyId}/clients/${clientId}/financials/subs`),
       fetch(`/api/${companyId}/subs`),
       fetch(`/api/${companyId}/suppliers`),
@@ -945,9 +948,10 @@ export default function ClientFinancialsTab({
       fetch(`/api/${companyId}/clients/${clientId}/estimate-items`),
       fetch(`/api/${companyId}/clients/${clientId}/lien-releases`),
       fetch(`/api/${companyId}/clients/${clientId}/invoices`),
+      fetch(`/api/${companyId}/clients/${clientId}/change-orders`),
     ]);
-    const [subs, allSubsList, suppliersList, matsList, itemsList, lienList, invList] = await Promise.all([
-      subsRes.json(), allSubsRes.json(), suppliersRes.json(), matsRes.json(), itemsRes.json(), lienRes.json(), invRes.json(),
+    const [subs, allSubsList, suppliersList, matsList, itemsList, lienList, invList, coList] = await Promise.all([
+      subsRes.json(), allSubsRes.json(), suppliersRes.json(), matsRes.json(), itemsRes.json(), lienRes.json(), invRes.json(), coRes.json(),
     ]);
     setClientSubs(subs);
     setAllSubs(Array.isArray(allSubsList) ? allSubsList.sort((a: SubContractor, b: SubContractor) => a.name.localeCompare(b.name)) : []);
@@ -956,6 +960,7 @@ export default function ClientFinancialsTab({
     setEstimateDivisions(Array.isArray(itemsList) ? itemsList : []);
     setLienReleases(Array.isArray(lienList) ? lienList : []);
     setInvoices(Array.isArray(invList) ? invList : []);
+    setChangeOrders(Array.isArray(coList) ? coList : []);
     setLoading(false);
   }, [companyId, clientId]);
 
@@ -1072,6 +1077,23 @@ export default function ClientFinancialsTab({
     return s + Math.max(0, inv.amount - paid);
   }, 0);
 
+  // Client statement totals
+  function coTotal(co: ChangeOrder): number {
+    return co.items.reduce((s, i) => {
+      const q = parseFloat(i.qty ?? "") || 0;
+      const c = parseFloat(i.unitCost ?? "") || 0;
+      const m = parseFloat(i.markupPct ?? "") || 0;
+      return s + q * c * (1 + m / 100);
+    }, 0);
+  }
+  // Only approved or signed change orders count toward what the client owes
+  const approvedChangeOrders = changeOrders.filter(co => co.status === "APPROVED" || !!co.signedAt);
+  const totalChangeOrders = approvedChangeOrders.reduce((s, co) => s + coTotal(co), 0);
+  const totalInvoiced = invoices.reduce((s, inv) => s + inv.amount, 0);
+  const totalClientPaid = invoices.reduce((s, inv) => s + inv.payments.reduce((ps, p) => ps + p.amount, 0), 0);
+  const totalBilled = totalInvoiced + totalChangeOrders;
+  const clientBalance = totalBilled - totalClientPaid;
+
   // Auto-sync netProfit → internalProfitOverride on the client's estimate
   useEffect(() => {
     if (loading) return;
@@ -1095,29 +1117,65 @@ export default function ClientFinancialsTab({
   function printStatement() {
     const win = window.open("", "_blank");
     if (!win) return;
-    const rows = [
-      ...clientSubs.flatMap(sub => [
-        `<tr><td style="padding:8px 12px;color:#1e293b;font-weight:600">${sub.subName}</td><td style="padding:8px 12px;color:#475569">Sub Contract</td><td style="padding:8px 12px;text-align:right;color:#1e293b;font-weight:600">$${fmt(sub.contractAmount)}</td></tr>`,
-        ...sub.payments.map(p => `<tr><td style="padding:6px 12px 6px 28px;color:#475569;font-size:13px">${new Date(p.paidAt + "T00:00:00").toLocaleDateString("en-US",{month:"short",day:"numeric",year:"numeric"})} — ${METHOD_LABELS[p.method] ?? p.method}${p.checkNumber ? ` #${p.checkNumber}` : ""}${p.amount < 0 ? " (Credit)" : ""}</td><td style="padding:6px 12px;color:${p.amount < 0 ? "#ef4444" : "#22c55e"};font-size:13px">${p.amount < 0 ? "Credit" : "Payment"}</td><td style="padding:6px 12px;text-align:right;color:${p.amount < 0 ? "#ef4444" : "#22c55e"};font-size:13px">${p.amount < 0 ? "-" : ""}($${fmt(Math.abs(p.amount))})</td></tr>`),
-      ]),
-      ...materials.map(p => `<tr><td style="padding:8px 12px;color:#475569">${new Date(p.purchasedAt + "T00:00:00").toLocaleDateString("en-US",{month:"short",day:"numeric",year:"numeric"})} — ${p.supplierName}${p.description ? `: ${p.description}` : ""}${p.amount < 0 ? " (Credit)" : ""}</td><td style="padding:8px 12px;color:${p.amount < 0 ? "#ef4444" : "#3b82f6"}">${p.amount < 0 ? "Credit" : "Materials"}</td><td style="padding:8px 12px;text-align:right;color:${p.amount < 0 ? "#ef4444" : "#3b82f6"}">${p.amount < 0 ? "-" : ""}$${fmt(Math.abs(p.amount))}</td></tr>`),
-    ].join("");
-    win.document.write(`<!DOCTYPE html><html><head><title>Financial Statement — ${clientName}</title><style>body{font-family:Helvetica,sans-serif;max-width:800px;margin:40px auto;color:#1e293b}h1{font-size:22px;margin-bottom:4px}table{width:100%;border-collapse:collapse;margin-top:16px}th{background:#1e293b;color:#fff;padding:10px 12px;text-align:left;font-size:13px}td{border-bottom:1px solid #e2e8f0;font-size:14px}.total{background:#f8fafc;font-weight:700}.profit{background:#0d2318;color:#22c55e;font-weight:700;font-size:16px}@media print{body{margin:20px}}</style></head><body>
-<h1>Financial Statement</h1>
+
+    const fmtDate = (s: string) => new Date(s).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
+
+    const invoiceRows = invoices.length === 0
+      ? `<tr><td colspan="3" style="padding:12px;color:#64748b;font-style:italic">No invoices issued yet.</td></tr>`
+      : invoices.map((inv, idx) => `<tr><td style="padding:8px 12px;color:#1e293b">Invoice #${idx + 1}${inv.status ? ` (${inv.status})` : ""}</td><td style="padding:8px 12px;color:#475569">Invoice</td><td style="padding:8px 12px;text-align:right;color:#1e293b;font-weight:600">$${fmt(inv.amount)}</td></tr>`).join("");
+
+    const coRows = approvedChangeOrders.length === 0
+      ? ""
+      : approvedChangeOrders.map(co => `<tr><td style="padding:8px 12px;color:#1e293b">${co.orderNumber ? `CO #${co.orderNumber} — ` : ""}${co.title}${co.signedAt ? ` (signed ${fmtDate(co.signedAt)})` : ""}</td><td style="padding:8px 12px;color:#92400e">Change Order</td><td style="padding:8px 12px;text-align:right;color:#1e293b;font-weight:600">$${fmt(coTotal(co))}</td></tr>`).join("");
+
+    const paymentRows = invoices.flatMap((inv, idx) => inv.payments.map(p => `<tr><td style="padding:6px 12px 6px 24px;color:#475569;font-size:13px">Payment toward Invoice #${idx + 1}</td><td style="padding:6px 12px;color:#22c55e;font-size:13px">Payment</td><td style="padding:6px 12px;text-align:right;color:#22c55e;font-size:13px">-$${fmt(p.amount)}</td></tr>`)).join("");
+
+    win.document.write(`<!DOCTYPE html><html><head><title>Client Statement — ${clientName}</title><style>
+      body{font-family:Helvetica,sans-serif;max-width:800px;margin:40px auto;color:#1e293b}
+      h1{font-size:22px;margin-bottom:4px}
+      table{width:100%;border-collapse:collapse;margin-top:16px}
+      th{background:#1e293b;color:#fff;padding:10px 12px;text-align:left;font-size:13px}
+      td{border-bottom:1px solid #e2e8f0;font-size:14px}
+      .group-header{background:#f1f5f9;font-weight:700;text-transform:uppercase;letter-spacing:1px;font-size:12px;color:#475569}
+      .subtotal{background:#f8fafc;font-weight:700}
+      .balance{background:#1e293b;color:#C9A84C;font-weight:700;font-size:16px}
+      .paid{background:#0d2318;color:#22c55e;font-weight:700;font-size:14px}
+      @media print{body{margin:20px}}
+    </style></head><body>
+<h1>Client Statement</h1>
 <p style="color:#64748b;font-size:14px">${clientName} &nbsp;·&nbsp; Generated ${new Date().toLocaleDateString("en-US",{month:"long",day:"numeric",year:"numeric"})}</p>
-<div style="display:flex;gap:24px;margin:24px 0;padding:20px;background:#f8fafc;border-radius:12px;border:1px solid #e2e8f0">
-  <div><div style="font-size:12px;color:#64748b;text-transform:uppercase;letter-spacing:1px">Contract Price</div><div style="font-size:24px;font-weight:800;color:#1e293b">$${fmt(contractTotal)}</div></div>
-  <div><div style="font-size:12px;color:#64748b;text-transform:uppercase;letter-spacing:1px">Total Expenses</div><div style="font-size:24px;font-weight:800;color:#ef4444">$${fmt(totalExpenses)}</div></div>
-  <div><div style="font-size:12px;color:#64748b;text-transform:uppercase;letter-spacing:1px">Net Profit</div><div style="font-size:24px;font-weight:800;color:${netProfit >= 0 ? "#16a34a" : "#ef4444"}">$${fmt(netProfit)}</div></div>
+
+<div style="display:flex;gap:18px;margin:24px 0;padding:20px;background:#f8fafc;border-radius:12px;border:1px solid #e2e8f0;flex-wrap:wrap">
+  <div style="flex:1;min-width:140px"><div style="font-size:11px;color:#64748b;text-transform:uppercase;letter-spacing:1px">Invoices</div><div style="font-size:22px;font-weight:800;color:#1e293b">$${fmt(totalInvoiced)}</div></div>
+  <div style="font-size:24px;color:#94a3b8;align-self:center">+</div>
+  <div style="flex:1;min-width:140px"><div style="font-size:11px;color:#64748b;text-transform:uppercase;letter-spacing:1px">Change Orders</div><div style="font-size:22px;font-weight:800;color:#92400e">$${fmt(totalChangeOrders)}</div></div>
+  <div style="font-size:24px;color:#94a3b8;align-self:center">−</div>
+  <div style="flex:1;min-width:140px"><div style="font-size:11px;color:#64748b;text-transform:uppercase;letter-spacing:1px">Payments</div><div style="font-size:22px;font-weight:800;color:#22c55e">$${fmt(totalClientPaid)}</div></div>
+  <div style="font-size:24px;color:#94a3b8;align-self:center">=</div>
+  <div style="flex:1;min-width:140px"><div style="font-size:11px;color:#64748b;text-transform:uppercase;letter-spacing:1px">Balance Due</div><div style="font-size:22px;font-weight:800;color:${clientBalance > 0 ? "#dc2626" : "#16a34a"}">$${fmt(Math.abs(clientBalance))}${clientBalance < 0 ? " CR" : ""}</div></div>
 </div>
+
 <table><thead><tr><th>Description</th><th>Category</th><th style="text-align:right">Amount</th></tr></thead><tbody>
-${rows}
-<tr class="total"><td colspan="2" style="padding:10px 12px">Total Labor (Sub Contracts)</td><td style="padding:10px 12px;text-align:right">$${fmt(totalContracted)}</td></tr>
-<tr><td colspan="2" style="padding:4px 12px 4px 24px;font-size:12px;color:#64748b">Paid to Subs</td><td style="padding:4px 12px;text-align:right;font-size:12px;color:#64748b">$${fmt(totalLaborPaid)}</td></tr>
-<tr><td colspan="2" style="padding:4px 12px 10px 24px;font-size:12px;color:#64748b">Balance Owed</td><td style="padding:4px 12px 10px;text-align:right;font-size:12px;color:#64748b">$${fmt(totalLaborBalance)}</td></tr>
-<tr class="total"><td colspan="2" style="padding:10px 12px">Total Materials</td><td style="padding:10px 12px;text-align:right">$${fmt(totalMaterials)}</td></tr>
-<tr class="total"><td colspan="2" style="padding:10px 12px">Total Expenses</td><td style="padding:10px 12px;text-align:right">$${fmt(totalExpenses)}</td></tr>
-<tr class="profit"><td colspan="2" style="padding:12px">NET PROFIT</td><td style="padding:12px;text-align:right">$${fmt(netProfit)}</td></tr>
+
+<tr class="group-header"><td colspan="3" style="padding:8px 12px">Invoices</td></tr>
+${invoiceRows}
+<tr class="subtotal"><td colspan="2" style="padding:10px 12px">Total Invoiced</td><td style="padding:10px 12px;text-align:right">$${fmt(totalInvoiced)}</td></tr>
+
+${approvedChangeOrders.length > 0 ? `
+<tr class="group-header"><td colspan="3" style="padding:8px 12px">Change Orders</td></tr>
+${coRows}
+<tr class="subtotal"><td colspan="2" style="padding:10px 12px">Total Change Orders</td><td style="padding:10px 12px;text-align:right">$${fmt(totalChangeOrders)}</td></tr>` : ""}
+
+<tr class="subtotal"><td colspan="2" style="padding:10px 12px">Total Billed (Invoices + Change Orders)</td><td style="padding:10px 12px;text-align:right">$${fmt(totalBilled)}</td></tr>
+
+${paymentRows ? `
+<tr class="group-header"><td colspan="3" style="padding:8px 12px">Payments Received</td></tr>
+${paymentRows}
+<tr class="paid"><td colspan="2" style="padding:10px 12px">Total Paid</td><td style="padding:10px 12px;text-align:right">-$${fmt(totalClientPaid)}</td></tr>` : `
+<tr><td colspan="3" style="padding:12px;color:#64748b;font-style:italic">No payments received yet.</td></tr>`}
+
+<tr class="balance"><td colspan="2" style="padding:14px 12px">${clientBalance >= 0 ? "BALANCE DUE" : "CREDIT"}</td><td style="padding:14px 12px;text-align:right">$${fmt(Math.abs(clientBalance))}</td></tr>
+
 </tbody></table>
 <script>window.onload=()=>window.print()</script></body></html>`);
     win.document.close();
