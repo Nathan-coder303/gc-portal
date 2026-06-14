@@ -491,6 +491,8 @@ function SubCard({
   const [editingPayId, setEditingPayId] = useState<string | null>(null);
   const [releasePanel, setReleasePanel] = useState<{ payId: string; type: "PARTIAL" | "FINAL" } | null>(null);
   const [paymentsOpen, setPaymentsOpen] = useState(false);
+  // Each sub card starts collapsed; user picks which to expand
+  const [cardOpen, setCardOpen] = useState(false);
 
   function printSub() {
     const win = window.open("", "_blank");
@@ -583,30 +585,47 @@ ${payRows}
   return (
     <div className="rounded-2xl p-5 space-y-4" style={{ background: "#161b22", border: "1px solid #30373f" }}>
 
-      {/* Header row */}
+      {/* Header row — click name area to expand */}
       <div className="flex items-start justify-between gap-3">
-        <div className="flex-1 min-w-0">
-          <div className="text-sm font-bold" style={{ color: "#e6edf3" }}>{sub.subName}</div>
-          <div className="flex items-center gap-2 mt-0.5 flex-wrap">
-            <span className="text-xs" style={{ color: "#8b949e" }}>
-              {[sub.division?.split(" | ").map(d => d.slice(0, 2) + " · " + d.split(" · ").slice(1).join(" · ")).join(", "), sub.scope].filter(Boolean).join(" — ") || "Subcontractor"}
-            </span>
-            <button onClick={() => { setEditDivision(sub.division ?? ""); setEditScope(sub.scope ?? ""); setShowEditInfo(v => !v); }} className="text-xs px-1.5 py-0.5 rounded shrink-0" style={{ color: "#C9A84C", background: "#C9A84C11", border: "1px solid #C9A84C33" }}>Edit</button>
+        <button onClick={() => setCardOpen(v => !v)} className="flex-1 min-w-0 text-left">
+          <div className="flex items-center gap-2">
+            <span className="text-xs" style={{ color: "#C9A84C" }}>{cardOpen ? "▼" : "▶"}</span>
+            <span className="text-sm font-bold" style={{ color: "#e6edf3" }}>{sub.subName}</span>
+            {totalPaid > 0 && (
+              <span className="text-xs font-bold px-1.5 py-0.5 rounded" style={{ background: "#0d2318", color: "#22c55e", border: "1px solid #22c55e44" }}>Paid ${fmt(totalPaid)}</span>
+            )}
+            {balance > 0 && (
+              <span className="text-xs font-bold px-1.5 py-0.5 rounded" style={{ background: "#2a1010", color: "#f87171", border: "1px solid #ef444466" }}>Owed ${fmt(balance)}</span>
+            )}
           </div>
-        </div>
+          {cardOpen && (
+            <div className="flex items-center gap-2 mt-0.5 flex-wrap">
+              <span className="text-xs" style={{ color: "#8b949e" }}>
+                {[sub.division?.split(" | ").map(d => d.slice(0, 2) + " · " + d.split(" · ").slice(1).join(" · ")).join(", "), sub.scope].filter(Boolean).join(" — ") || "Subcontractor"}
+              </span>
+              <span onClick={e => { e.stopPropagation(); setEditDivision(sub.division ?? ""); setEditScope(sub.scope ?? ""); setShowEditInfo(v => !v); }} className="text-xs px-1.5 py-0.5 rounded shrink-0 cursor-pointer" style={{ color: "#C9A84C", background: "#C9A84C11", border: "1px solid #C9A84C33" }}>Edit</span>
+            </div>
+          )}
+        </button>
         <div className="flex items-center gap-2 shrink-0">
           <div className="text-xs font-bold px-3 py-1 rounded-lg" style={{ background: "#1e2736", color: "#C9A84C", border: "1px solid #C9A84C33" }}>
             Contract: ${fmt(contractTotal)}
           </div>
-          <button onClick={printSub} className="w-7 h-7 rounded flex items-center justify-center" style={{ background: "#1e2736", color: "#C9A84C", border: "1px solid #C9A84C44" }} title="Print scope and payments">
-            🖨
-          </button>
-          <button onClick={deleteSub} className="w-7 h-7 rounded flex items-center justify-center" style={{ background: "#f8514922", color: "#f85149", border: "1px solid #f8514933" }}>
-            <TrashIcon size={13} />
-          </button>
+          {cardOpen && (
+            <>
+              <button onClick={printSub} className="w-7 h-7 rounded flex items-center justify-center" style={{ background: "#1e2736", color: "#C9A84C", border: "1px solid #C9A84C44" }} title="Print scope and payments">
+                🖨
+              </button>
+              <button onClick={deleteSub} className="w-7 h-7 rounded flex items-center justify-center" style={{ background: "#f8514922", color: "#f85149", border: "1px solid #f8514933" }}>
+                <TrashIcon size={13} />
+              </button>
+            </>
+          )}
         </div>
       </div>
 
+      {cardOpen && (
+      <>
       {/* Edit info panel */}
       {showEditInfo && (
         <div className="rounded-xl p-3 space-y-3" style={{ background: "#0d1117", border: "1px solid #C9A84C33" }}>
@@ -854,6 +873,8 @@ ${payRows}
         <button onClick={() => setShowPayForm(true)} className="w-full py-2 rounded-xl text-sm font-semibold" style={{ background: "#22c55e22", color: "#22c55e", border: "1px solid #22c55e33" }}>
           + Add Payment
         </button>
+      )}
+      </>
       )}
     </div>
   );

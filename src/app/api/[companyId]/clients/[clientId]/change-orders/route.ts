@@ -15,7 +15,10 @@ export async function GET(
   const orders = await prisma.changeOrder.findMany({
     where: { companyId: params.companyId, clientId: params.clientId },
     orderBy: { createdAt: "desc" },
-    include: { items: { orderBy: { sortOrder: "asc" } } },
+    include: {
+      items: { orderBy: { sortOrder: "asc" } },
+      payments: { orderBy: { paidDate: "desc" } },
+    },
   });
 
   return NextResponse.json(orders);

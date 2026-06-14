@@ -1163,9 +1163,23 @@ model ChangeOrder {
   createdAt     DateTime          @default(now())
   updatedAt     DateTime          @updatedAt
   items         ChangeOrderItem[]
+  payments      ChangeOrderPayment[]
 
   @@index([companyId])
   @@index([clientId])
+}
+
+model ChangeOrderPayment {
+  id             String      @id @default(cuid())
+  changeOrderId  String
+  changeOrder    ChangeOrder @relation(fields: [changeOrderId], references: [id], onDelete: Cascade)
+  amount         Decimal     @db.Decimal(14, 2)
+  method         String
+  paidDate       DateTime
+  notes          String?
+  createdAt      DateTime    @default(now())
+
+  @@index([changeOrderId])
 }
 
 model ChangeOrderItem {

@@ -38,7 +38,13 @@ function coTotal(co: ChangeOrder): number {
   }, 0);
 }
 
-type PaymentRow = { invoiceId: string; invoiceNumber: string; phase: string | null; payment: Payment };
+type PaymentRow = {
+  source: "invoice" | "co";
+  parentId: string;        // invoice id or change order id
+  label: string;           // "Invoice #X" or "CO #Y"
+  detail?: string | null;  // phase or CO title
+  payment: Payment;
+};
 
 export default function InvoicesAndCoTab(props: {
   invoices: ComponentProps<typeof ClientInvoicesTab>;
@@ -51,13 +57,26 @@ export default function InvoicesAndCoTab(props: {
 
   // Local mirror of invoices so we can record payments and reflect them immediately
   const [invoices, setInvoices] = useState<Invoice[]>(props.invoices.initialInvoices);
-  const orders: ChangeOrder[] = props.changeOrders.initialOrders;
+  const [orders, setOrders] = useState<ChangeOrder[]>(props.changeOrders.initialOrders);
   const clientName = props.clientName;
   const { companyId, clientId } = props.invoices;
 
-  const allPayments: PaymentRow[] = invoices.flatMap(inv =>
-    inv.payments.map(p => ({ invoiceId: inv.id, invoiceNumber: inv.invoiceNumber, phase: inv.phase, payment: p }))
-  ).sort((a, b) => new Date(b.payment.paidDate).getTime() - new Date(a.payment.paidDate).getTime());
+  const allPayments: PaymentRow[] = [
+    ...invoices.flatMap(inv => inv.payments.map(p => ({
+      source: "invoice" as const,
+      parentId: inv.id,
+      label: `Invoice #${inv.invoiceNumber}`,
+      detail: inv.phase,
+      payment: p,
+    }))),
+    ...orders.flatMap(co => (co.payments ?? []).map(p => ({
+      source: "co" as const,
+      parentId: co.id,
+      label: `CO ${co.orderNumber ? `#${co.orderNumber} ` : ""}— ${co.title}`,
+      detail: null,
+      payment: p,
+    }))),
+  ].sort((a, b) => new Date(b.payment.paidDate).getTime() - new Date(a.payment.paidDate).getTime());
 
   const approvedChangeOrders = orders.filter(co => co.status === "APPROVED" || !!co.signedAt);
 
@@ -92,23 +111,41 @@ export default function InvoicesAndCoTab(props: {
     })),
   ].sort((a, b) => new Date(b.counterSignedAt).getTime() - new Date(a.counterSignedAt).getTime());
 
-  // ── Add Payment modal state ──
+  // ── Add/Edit Payment modal state ──
   const [payOpen, setPayOpen] = useState(false);
   const [paySaving, setPaySaving] = useState(false);
   const [payError, setPayError] = useState<string | null>(null);
-  const [payInvoiceId, setPayInvoiceId] = useState<string>(invoices[0]?.id ?? "");
+  // target = "inv:<id>" or "co:<id>"
+  const [payTarget, setPayTarget] = useState<string>("");
   const [payAmount, setPayAmount] = useState("");
   const [payMethod, setPayMethod] = useState("Zelle");
   const [payDate, setPayDate] = useState(todayStr());
   const [payNotes, setPayNotes] = useState("");
+  const [editing, setEditing] = useState<{ row: PaymentRow } | null>(null);
+
+  // Build dropdown options: every invoice + every change order (only approved/signed ones for clarity)
+  const targetOptions = [
+    ...invoices.map(inv => {
+      const paid = inv.payments.reduce((s, p) => s + p.amount, 0);
+      const bal = inv.amount - paid;
+      return { key: `inv:${inv.id}`, label: `Invoice #${inv.invoiceNumber} · ${inv.phase} · $${fmt(inv.amount)} (${bal <= 0 ? "Paid" : `$${fmt(bal)} due`})` };
+    }),
+    ...orders.map(co => {
+      const total = coTotal(co);
+      const paid = (co.payments ?? []).reduce((s, p) => s + p.amount, 0);
+      const bal = total - paid;
+      return { key: `co:${co.id}`, label: `CO ${co.orderNumber ? `#${co.orderNumber} ` : ""}— ${co.title} · $${fmt(total)} (${bal <= 0 ? "Paid" : `$${fmt(bal)} due`})` };
+    }),
+  ];
 
   function openAddPayment() {
-    if (invoices.length === 0) {
-      setPayError("No invoices exist for this client yet — create one first under the Invoices section.");
+    setEditing(null);
+    if (targetOptions.length === 0) {
+      setPayError("Create an invoice or change order first.");
       setPayOpen(true);
       return;
     }
-    setPayInvoiceId(invoices[0].id);
+    setPayTarget(targetOptions[0].key);
     setPayAmount("");
     setPayMethod("Zelle");
     setPayDate(todayStr());
@@ -117,37 +154,116 @@ export default function InvoicesAndCoTab(props: {
     setPayOpen(true);
   }
 
+  function openEditPayment(row: PaymentRow) {
+    setEditing({ row });
+    setPayTarget(row.source === "invoice" ? `inv:${row.parentId}` : `co:${row.parentId}`);
+    setPayAmount(String(row.payment.amount));
+    setPayMethod(row.payment.method);
+    setPayDate(row.payment.paidDate.slice(0, 10));
+    setPayNotes(row.payment.notes ?? "");
+    setPayError(null);
+    setPayOpen(true);
+  }
+
+  function applyInvoicePayment(invId: string, newPayments: Payment[]) {
+    setInvoices(prev => prev.map(inv => {
+      if (inv.id !== invId) return inv;
+      const paid = newPayments.reduce((s, p) => s + p.amount, 0);
+      return {
+        ...inv,
+        payments: newPayments,
+        status: paid >= inv.amount ? "PAID" : (inv.sentAt ? "SENT" : inv.status),
+        paidAt: paid >= inv.amount && !inv.paidAt ? new Date().toISOString() : (paid >= inv.amount ? inv.paidAt : null),
+      };
+    }));
+  }
+
+  function applyCoPayments(coId: string, newPayments: Payment[]) {
+    setOrders(prev => prev.map(co => co.id === coId ? { ...co, payments: newPayments } : co));
+  }
+
   async function savePayment() {
-    if (!payInvoiceId || !payAmount || !payMethod) return;
+    if (!payTarget || !payAmount || !payMethod) return;
     setPaySaving(true);
     setPayError(null);
     try {
-      const res = await fetch(`/api/${companyId}/clients/${clientId}/invoices/${payInvoiceId}/payments`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ amount: payAmount, method: payMethod, paidDate: payDate, notes: payNotes || null }),
-      });
-      if (!res.ok) {
-        const data = await res.json().catch(() => ({}));
-        throw new Error(data.error ?? `HTTP ${res.status}`);
+      const [type, id] = payTarget.split(":");
+      const isCo = type === "co";
+
+      if (editing) {
+        // Edit existing payment — same target only (changing target on edit isn't supported)
+        const orig = editing.row;
+        const url = orig.source === "invoice"
+          ? `/api/${companyId}/clients/${clientId}/invoices/${orig.parentId}/payments/${orig.payment.id}`
+          : `/api/${companyId}/clients/${clientId}/change-orders/${orig.parentId}/payments/${orig.payment.id}`;
+        const res = await fetch(url, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ amount: payAmount, method: payMethod, paidDate: payDate, notes: payNotes || null }),
+        });
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const saved = await res.json() as Payment;
+        if (orig.source === "invoice") {
+          const inv = invoices.find(i => i.id === orig.parentId);
+          if (inv) {
+            const np = inv.payments.map(p => p.id === orig.payment.id ? { id: saved.id, amount: Number(saved.amount), method: saved.method, paidDate: saved.paidDate, notes: saved.notes } : p);
+            applyInvoicePayment(inv.id, np);
+          }
+        } else {
+          const co = orders.find(o => o.id === orig.parentId);
+          if (co) {
+            const np = (co.payments ?? []).map(p => p.id === orig.payment.id ? { id: saved.id, amount: Number(saved.amount), method: saved.method, paidDate: saved.paidDate, notes: saved.notes } : p);
+            applyCoPayments(co.id, np);
+          }
+        }
+      } else {
+        // Create new
+        const url = isCo
+          ? `/api/${companyId}/clients/${clientId}/change-orders/${id}/payments`
+          : `/api/${companyId}/clients/${clientId}/invoices/${id}/payments`;
+        const res = await fetch(url, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ amount: payAmount, method: payMethod, paidDate: payDate, notes: payNotes || null }),
+        });
+        if (!res.ok) {
+          const data = await res.json().catch(() => ({}));
+          throw new Error(data.error ?? `HTTP ${res.status}`);
+        }
+        const saved = await res.json() as Payment;
+        const newPayment: Payment = { id: saved.id, amount: Number(saved.amount), method: saved.method, paidDate: typeof saved.paidDate === "string" ? saved.paidDate : new Date(saved.paidDate).toISOString(), notes: saved.notes ?? null };
+        if (isCo) {
+          const co = orders.find(o => o.id === id);
+          applyCoPayments(id, [...(co?.payments ?? []), newPayment]);
+        } else {
+          const inv = invoices.find(i => i.id === id);
+          if (inv) applyInvoicePayment(id, [...inv.payments, newPayment]);
+        }
       }
-      const saved = await res.json() as Payment & { invoice?: Partial<Invoice> };
-      setInvoices(prev => prev.map(inv => {
-        if (inv.id !== payInvoiceId) return inv;
-        const newPayments = [...inv.payments, { id: saved.id, amount: Number(saved.amount), method: saved.method, paidDate: typeof saved.paidDate === "string" ? saved.paidDate : new Date(saved.paidDate).toISOString(), notes: saved.notes ?? null }];
-        const paid = newPayments.reduce((s, p) => s + p.amount, 0);
-        return {
-          ...inv,
-          payments: newPayments,
-          status: paid >= inv.amount ? "PAID" : (inv.sentAt ? "SENT" : inv.status),
-          paidAt: paid >= inv.amount && !inv.paidAt ? new Date().toISOString() : inv.paidAt,
-        };
-      }));
       setPayOpen(false);
     } catch (e) {
       setPayError(e instanceof Error ? e.message : "Failed to save payment");
     } finally {
       setPaySaving(false);
+    }
+  }
+
+  async function deletePaymentRow(row: PaymentRow) {
+    if (!confirm("Delete this payment?")) return;
+    const url = row.source === "invoice"
+      ? `/api/${companyId}/clients/${clientId}/invoices/${row.parentId}/payments/${row.payment.id}`
+      : `/api/${companyId}/clients/${clientId}/change-orders/${row.parentId}/payments/${row.payment.id}`;
+    const res = await fetch(url, { method: "DELETE" });
+    if (!res.ok) {
+      alert("Failed to delete payment.");
+      return;
+    }
+    if (row.source === "invoice") {
+      const inv = invoices.find(i => i.id === row.parentId);
+      if (inv) applyInvoicePayment(inv.id, inv.payments.filter(p => p.id !== row.payment.id));
+    } else {
+      const co = orders.find(o => o.id === row.parentId);
+      if (co) applyCoPayments(co.id, (co.payments ?? []).filter(p => p.id !== row.payment.id));
     }
   }
 
@@ -163,7 +279,7 @@ export default function InvoicesAndCoTab(props: {
       ? ""
       : approvedChangeOrders.map(co => `<tr><td style="padding:8px 12px;color:#1e293b">${co.orderNumber ? `CO #${co.orderNumber} — ` : ""}${co.title}${co.signedAt ? ` (signed ${fmtDate(co.signedAt)})` : ""}</td><td style="padding:8px 12px;color:#92400e">Change Order</td><td style="padding:8px 12px;text-align:right;color:#1e293b;font-weight:600">$${fmt(coTotal(co))}</td></tr>`).join("");
 
-    const paymentRows = allPayments.map(r => `<tr><td style="padding:6px 12px 6px 24px;color:#475569;font-size:13px">Payment on ${fmtDate(r.payment.paidDate)} — toward Invoice #${r.invoiceNumber}</td><td style="padding:6px 12px;color:#22c55e;font-size:13px">Payment</td><td style="padding:6px 12px;text-align:right;color:#22c55e;font-size:13px">-$${fmt(r.payment.amount)}</td></tr>`).join("");
+    const paymentRows = allPayments.map(r => `<tr><td style="padding:6px 12px 6px 24px;color:#475569;font-size:13px">Payment on ${fmtDate(r.payment.paidDate)} — toward ${r.label}</td><td style="padding:6px 12px;color:#22c55e;font-size:13px">Payment</td><td style="padding:6px 12px;text-align:right;color:#22c55e;font-size:13px">-$${fmt(r.payment.amount)}</td></tr>`).join("");
 
     win.document.write(`<!DOCTYPE html><html><head><title>Client Statement — ${clientName}</title><style>
       body{font-family:Helvetica,sans-serif;max-width:800px;margin:40px auto;color:#1e293b}
@@ -338,17 +454,24 @@ ${paymentRows}
               <p className="text-xs text-center py-4" style={{ color: MUTED }}>No payments recorded yet.</p>
             ) : (
               <div className="space-y-1.5">
-                {allPayments.map(({ invoiceNumber, phase, payment }) => (
-                  <div key={payment.id} className="flex items-center justify-between rounded-lg px-3 py-2.5" style={{ background: BG, border: `1px solid ${BORDER}` }}>
-                    <div className="flex items-center gap-2 flex-1 min-w-0">
-                      <span className="text-sm font-bold font-mono" style={{ color: "#22c55e" }}>${fmt(payment.amount)}</span>
-                      <span className="text-xs px-1.5 py-0.5 rounded font-semibold" style={{ background: "#1e2736", color: MUTED, border: `1px solid ${BORDER}` }}>{payment.method}</span>
-                      <span className="text-xs truncate" style={{ color: MUTED }}>
-                        Invoice #{invoiceNumber}{phase ? ` · ${phase}` : ""}
+                {allPayments.map(row => (
+                  <div key={`${row.source}-${row.payment.id}`} className="flex items-center justify-between rounded-lg px-3 py-2.5 gap-2" style={{ background: BG, border: `1px solid ${BORDER}` }}>
+                    <div className="flex items-center gap-2 flex-1 min-w-0 flex-wrap">
+                      <span className="text-sm font-bold font-mono" style={{ color: "#22c55e" }}>${fmt(row.payment.amount)}</span>
+                      <span className="text-xs px-1.5 py-0.5 rounded font-semibold" style={{ background: "#1e2736", color: MUTED, border: `1px solid ${BORDER}` }}>{row.payment.method}</span>
+                      <span className="text-[10px] px-1.5 py-0.5 rounded font-bold uppercase tracking-wider" style={{ background: row.source === "co" ? "#1e2a3a" : "#C9A84C22", color: row.source === "co" ? "#58a6ff" : GOLD, border: `1px solid ${row.source === "co" ? "#1f6feb44" : `${GOLD}44`}` }}>
+                        {row.source === "co" ? "CO" : "INV"}
                       </span>
-                      {payment.notes && <span className="text-xs truncate" style={{ color: MUTED }}>· {payment.notes}</span>}
+                      <span className="text-xs truncate" style={{ color: MUTED }}>
+                        {row.label}{row.detail ? ` · ${row.detail}` : ""}
+                      </span>
+                      {row.payment.notes && <span className="text-xs truncate" style={{ color: MUTED }}>· {row.payment.notes}</span>}
                     </div>
-                    <span className="text-xs shrink-0 ml-2" style={{ color: MUTED }}>{fmtDate(payment.paidDate)}</span>
+                    <div className="flex items-center gap-1 shrink-0">
+                      <span className="text-xs" style={{ color: MUTED }}>{fmtDate(row.payment.paidDate)}</span>
+                      <button onClick={() => openEditPayment(row)} className="text-xs px-2 py-0.5 rounded" style={{ color: GOLD, background: "#C9A84C11" }}>Edit</button>
+                      <button onClick={() => deletePaymentRow(row)} className="text-xs px-2 py-0.5 rounded" style={{ color: "#f87171", background: "#2d1010" }}>✕</button>
+                    </div>
                   </div>
                 ))}
               </div>
@@ -363,24 +486,25 @@ ${paymentRows}
           onClick={() => !paySaving && setPayOpen(false)}>
           <div style={{ background: CARD, border: "1px solid #22c55e44", borderRadius: 14, padding: 24, width: "100%", maxWidth: 440 }}
             onClick={e => e.stopPropagation()}>
-            <h3 className="text-sm font-bold mb-1" style={{ color: TEXT }}>Record Payment</h3>
-            <p className="text-xs mb-4" style={{ color: MUTED }}>Apply a payment to one of this client&apos;s invoices.</p>
+            <h3 className="text-sm font-bold mb-1" style={{ color: TEXT }}>{editing ? "Edit Payment" : "Record Payment"}</h3>
+            <p className="text-xs mb-4" style={{ color: MUTED }}>Apply a payment to an invoice or a change order.</p>
 
-            {invoices.length === 0 ? (
-              <p className="text-sm" style={{ color: "#f87171" }}>{payError ?? "No invoices yet."}</p>
+            {targetOptions.length === 0 ? (
+              <p className="text-sm" style={{ color: "#f87171" }}>{payError ?? "No invoices or change orders yet."}</p>
             ) : (
               <div className="space-y-3">
                 <div>
-                  <label className="block text-[11px] mb-1" style={{ color: MUTED }}>Apply to Invoice *</label>
-                  <select value={payInvoiceId} onChange={e => setPayInvoiceId(e.target.value)}
-                    className="w-full rounded-lg px-3 py-2 text-sm"
-                    style={{ background: BG, border: `1px solid ${BORDER}`, color: TEXT, outline: "none" }}>
-                    {invoices.map(inv => {
-                      const paid = inv.payments.reduce((s, p) => s + p.amount, 0);
-                      const bal = inv.amount - paid;
-                      return <option key={inv.id} value={inv.id}>Invoice #{inv.invoiceNumber} · {inv.phase} · ${fmt(inv.amount)} ({bal <= 0 ? "Paid" : `$${fmt(bal)} due`})</option>;
-                    })}
+                  <label className="block text-[11px] mb-1" style={{ color: MUTED }}>Apply to *</label>
+                  <select
+                    value={payTarget}
+                    onChange={e => setPayTarget(e.target.value)}
+                    disabled={!!editing}
+                    className="w-full rounded-lg px-3 py-2 text-sm disabled:opacity-60"
+                    style={{ background: BG, border: `1px solid ${BORDER}`, color: TEXT, outline: "none" }}
+                  >
+                    {targetOptions.map(o => <option key={o.key} value={o.key}>{o.label}</option>)}
                   </select>
+                  {editing && <p className="text-[10px] mt-1" style={{ color: MUTED }}>Target can&apos;t be changed when editing — delete and re-add to move to a different invoice/CO.</p>}
                 </div>
                 <div className="grid grid-cols-2 gap-3">
                   <div>
@@ -425,10 +549,10 @@ ${paymentRows}
             )}
 
             <div className="flex gap-2 mt-4">
-              <button onClick={savePayment} disabled={!payAmount || paySaving || invoices.length === 0}
+              <button onClick={savePayment} disabled={!payAmount || paySaving || targetOptions.length === 0}
                 className="flex-1 py-2 text-xs font-semibold rounded-lg disabled:opacity-50"
                 style={{ background: "#22c55e", color: "#fff" }}>
-                {paySaving ? "Saving…" : "✓ Record Payment"}
+                {paySaving ? "Saving…" : (editing ? "✓ Save Changes" : "✓ Record Payment")}
               </button>
               <button onClick={() => setPayOpen(false)} disabled={paySaving}
                 className="px-4 py-2 text-xs rounded-lg disabled:opacity-50"

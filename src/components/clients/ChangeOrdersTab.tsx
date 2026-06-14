@@ -68,6 +68,7 @@ type ChangeOrder = {
     markupPct: string | null;
     sortOrder: number;
   }[];
+  payments?: { id: string; amount: number; method: string; paidDate: string; notes: string | null }[];
 };
 
 function calcTotal(items: COItem[]): number {

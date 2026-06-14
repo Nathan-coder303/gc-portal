@@ -179,7 +179,7 @@ export default async function ClientDetailPage({
     prisma.changeOrder.findMany({
       where: { clientId: params.clientId, companyId: params.companyId },
       orderBy: { createdAt: "desc" },
-      include: { items: { orderBy: { sortOrder: "asc" } } },
+      include: { items: { orderBy: { sortOrder: "asc" } }, payments: { orderBy: { paidDate: "desc" } } },
     }),
     prisma.clientTask.findMany({
       where: { clientId: params.clientId, companyId: params.companyId },
@@ -447,6 +447,13 @@ export default async function ClientDetailPage({
                 unitCost: it.unitCost != null ? String(it.unitCost) : null,
                 markupPct: it.markupPct != null ? String(it.markupPct) : null,
                 sortOrder: it.sortOrder,
+              })),
+              payments: co.payments.map(p => ({
+                id: p.id,
+                amount: Number(p.amount),
+                method: p.method,
+                paidDate: p.paidDate.toISOString(),
+                notes: p.notes,
               })),
             })),
             contracts: executedContracts
