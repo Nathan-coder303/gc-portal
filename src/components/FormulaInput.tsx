@@ -15,8 +15,15 @@ function evalFormula(expr: string): number | null {
 }
 
 function parseRaw(raw: string): number | null {
-  if (raw.startsWith("=")) return evalFormula(raw);
-  const n = parseFloat(raw.replace(/,/g, ""));
+  const cleaned = raw.replace(/,/g, "").trim();
+  if (cleaned.startsWith("=")) return evalFormula(cleaned);
+  // If it contains an arithmetic operator (not as a leading sign), evaluate as a formula
+  // e.g. "100+50", "100 - 25 * 2", "(10+5)*2"
+  if (/\d\s*[\+\-\*\/]\s*\d/.test(cleaned) || /^\(/.test(cleaned)) {
+    const evaluated = evalFormula(cleaned);
+    if (evaluated != null) return evaluated;
+  }
+  const n = parseFloat(cleaned);
   return isNaN(n) ? null : n;
 }
 

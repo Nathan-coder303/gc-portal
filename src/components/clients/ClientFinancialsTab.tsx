@@ -18,7 +18,7 @@ type Supplier = { id: string; name: string };
 type MaterialPurchase = { id: string; supplierId: string; supplierName: string; amount: number; description: string | null; purchasedAt: string; notes: string | null };
 type InvoicePayment = { id: string; amount: number };
 type ClientInvoice = { id: string; amount: number; status: string; payments: InvoicePayment[] };
-type ChangeOrderItem = { qty: string | null; unitCost: string | null; markupPct: string | null };
+type ChangeOrderItem = { id: string; name: string; csiCode: string | null; divisionName: string; qty: string | null; unitCost: string | null; markupPct: string | null };
 type ChangeOrder = { id: string; title: string; orderNumber: string | null; status: string; signedAt: string | null; createdAt: string; items: ChangeOrderItem[] };
 type LienRelease = { id: string; type: "PARTIAL" | "FINAL"; subName: string; recipientEmail: string | null; amount: string | null; throughDate: string | null; legalDescription: string; signatureToken: string | null; signedAt: string | null; signedByName: string | null; emailSentAt: string | null; createdAt: string };
 
@@ -925,6 +925,46 @@ export default function ClientFinancialsTab({
   const [subScope, setSubScope] = useState("");
   const [subDivision, setSubDivision] = useState("");
   const [addingSubForm, setAddingSubForm] = useState(false);
+
+  // Custom scope adder state
+  const [customScopeName, setCustomScopeName] = useState("");
+  const [customScopeOpen, setCustomScopeOpen] = useState(false);
+
+  // Lookup CSI/division from standard data by best-match against an input name
+  function lookupCsi(name: string): { csiCode: string | null; divisionName: string } {
+    const lower = name.toLowerCase().trim();
+    if (!lower) return { csiCode: null, divisionName: "Custom" };
+    // Exact item-name match first
+    for (const div of STANDARD_TEMPLATE_DIVISIONS) {
+      for (const item of div.items) {
+        if (item.name.toLowerCase() === lower) return { csiCode: item.csiCode, divisionName: div.name };
+      }
+    }
+    // Partial: item name contains input or vice versa
+    for (const div of STANDARD_TEMPLATE_DIVISIONS) {
+      for (const item of div.items) {
+        const iname = item.name.toLowerCase();
+        if (iname.includes(lower) || lower.includes(iname)) return { csiCode: item.csiCode, divisionName: div.name };
+      }
+    }
+    // Division name match
+    for (const div of STANDARD_TEMPLATE_DIVISIONS) {
+      if (div.name.toLowerCase().includes(lower) || lower.includes(div.name.toLowerCase())) {
+        return { csiCode: div.csiCode, divisionName: div.name };
+      }
+    }
+    return { csiCode: null, divisionName: "Custom" };
+  }
+  const customCsi = useMemo(() => lookupCsi(customScopeName), [customScopeName]);
+
+  async function addCustomScopeToSub(sub: ClientSub) {
+    const trimmed = customScopeName.trim();
+    if (!trimmed) return;
+    const item: EstimateLineItem = { id: `custom_${Date.now()}`, name: trimmed, csiCode: customCsi.csiCode, salePrice: 0 };
+    await addItemToSub(sub, item);
+    setCustomScopeName("");
+    setCustomScopeOpen(false);
+  }
   const [savingSub, setSavingSub] = useState(false);
 
   // Add material form
@@ -1044,14 +1084,47 @@ export default function ClientFinancialsTab({
     setAllSubs(prev => prev.map(s => s.id === subContractorId ? { ...s, email } : s));
   }
 
-  // Remaining scope items: estimate line items not yet assigned to any sub
-  const assignedItemNames = useMemo(() => new Set(clientSubs.flatMap(sub => sub.scopeItems.map(i => i.name))), [clientSubs]);
-  const remainingByDiv = useMemo(() =>
-    estimateDivisions
-      .map(div => ({ ...div, items: div.items.filter(i => !assignedItemNames.has(i.name)) }))
-      .filter(div => div.items.length > 0),
-    [estimateDivisions, assignedItemNames]
+  // Remaining scope items: estimate line items not yet assigned to any sub.
+  // Names are normalized (lowercase, trimmed, collapsed whitespace) so subtle variations
+  // (extra spaces, trailing punctuation) don't cause items to appear in both subs AND remaining.
+  const normName = (s: string) => s.toLowerCase().replace(/\s+/g, " ").trim();
+  const assignedItemNames = useMemo(
+    () => new Set(clientSubs.flatMap(sub => sub.scopeItems.map(i => normName(i.name)))),
+    [clientSubs]
   );
+
+  // Include items from change orders in the scope pool so they're assignable to subs too.
+  const coDivisions = useMemo<EstimateDivision[]>(() => {
+    const byCode = new Map<string, EstimateLineItem[]>();
+    const nameByCode = new Map<string, string>();
+    for (const co of changeOrders) {
+      for (const it of co.items) {
+        const csi = (it.csiCode ?? "").replace(/\s/g, "");
+        const divCode = csi ? `${csi.slice(0, 2)} 00 00` : "CO 00 00";
+        const divName = it.divisionName?.trim() || "Change Order Items";
+        nameByCode.set(divCode, divName);
+        const sale =
+          (parseFloat(it.qty ?? "") || 0) *
+          (parseFloat(it.unitCost ?? "") || 0) *
+          (1 + (parseFloat(it.markupPct ?? "") || 0) / 100);
+        if (!byCode.has(divCode)) byCode.set(divCode, []);
+        byCode.get(divCode)!.push({ id: `co_${it.id}`, name: it.name, csiCode: it.csiCode ?? null, salePrice: Math.round(sale * 100) / 100 });
+      }
+    }
+    return Array.from(byCode.entries()).map(([code, items]) => ({
+      divisionId: `co_${code}`,
+      divisionName: `${nameByCode.get(code)} (CO)`,
+      csiCode: code,
+      items,
+    }));
+  }, [changeOrders]);
+
+  const remainingByDiv = useMemo(() => {
+    const combined = [...estimateDivisions, ...coDivisions];
+    return combined
+      .map(div => ({ ...div, items: div.items.filter(i => !assignedItemNames.has(normName(i.name))) }))
+      .filter(div => div.items.length > 0);
+  }, [estimateDivisions, coDivisions, assignedItemNames]);
   const totalRemaining = remainingByDiv.reduce((s, d) => s + d.items.length, 0);
 
   async function addItemToSub(sub: ClientSub, item: EstimateLineItem) {
@@ -1243,8 +1316,14 @@ ${paymentRows}
               <span className="text-xs font-bold px-2 py-0.5 rounded-full" style={{ background: "#22c55e22", color: "#22c55e", border: "1px solid #22c55e44" }}>✓ All assigned</span>
             )}
           </button>
-          {scopeRemainingOpen && totalRemaining > 0 && (
+          {scopeRemainingOpen && (
+            <>
             <div className="rounded-2xl overflow-hidden" style={{ border: "1px solid #21262d" }}>
+              {totalRemaining === 0 && (
+                <div className="px-4 py-3 text-xs text-center" style={{ background: "#0d1117", color: "#8b949e" }}>
+                  All scope items have been assigned to subs.
+                </div>
+              )}
               {remainingByDiv.map((div, di) => (
                 <div key={div.divisionId}>
                   {/* Division header */}
@@ -1280,6 +1359,54 @@ ${paymentRows}
                 </div>
               ))}
             </div>
+
+            {/* Custom scope adder — system auto-detects CSI from item name */}
+            <div className="rounded-2xl mt-2 p-3" style={{ background: "#161b22", border: "1px dashed #30373f" }}>
+              {!customScopeOpen ? (
+                <button onClick={() => setCustomScopeOpen(true)} className="text-xs font-semibold" style={{ color: "#C9A84C" }}>
+                  + Add custom scope item
+                </button>
+              ) : (
+                <div className="space-y-2">
+                  <div className="flex items-center gap-2">
+                    <input
+                      autoFocus
+                      value={customScopeName}
+                      onChange={e => setCustomScopeName(e.target.value)}
+                      placeholder="Scope item name (e.g. Roof Tile Replacement)"
+                      className="flex-1 rounded-lg px-3 py-2 text-sm"
+                      style={{ background: "#0d1117", border: "1px solid #30373f", color: "#e6edf3", outline: "none" }}
+                    />
+                    <button onClick={() => { setCustomScopeOpen(false); setCustomScopeName(""); }} className="text-xs px-2 py-1.5 rounded" style={{ color: "#8b949e", background: "#1e2736" }}>Cancel</button>
+                  </div>
+                  {customScopeName.trim() && (
+                    <p className="text-xs" style={{ color: "#8b949e" }}>
+                      Detected: <span style={{ color: "#C9A84C" }}>{customCsi.csiCode ?? "—"} · {customCsi.divisionName}</span>
+                    </p>
+                  )}
+                  {customScopeName.trim() && clientSubs.length > 0 && (
+                    <div className="flex flex-wrap gap-1.5">
+                      <span className="text-xs" style={{ color: "#4d5566" }}>Add to:</span>
+                      {clientSubs.map(sub => (
+                        <button
+                          key={sub.id}
+                          onClick={() => addCustomScopeToSub(sub)}
+                          className="text-xs px-2 py-0.5 rounded-full font-semibold transition-colors"
+                          style={{ background: "#C9A84C18", color: "#C9A84C", border: "1px solid #C9A84C33" }}
+                          title={`Add "${customScopeName.trim()}" to ${sub.subName}`}
+                        >
+                          {sub.subName}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                  {customScopeName.trim() && clientSubs.length === 0 && (
+                    <p className="text-xs" style={{ color: "#f59e0b" }}>Add a subcontractor first to assign this scope item.</p>
+                  )}
+                </div>
+              )}
+            </div>
+            </>
           )}
         </div>
       )}
