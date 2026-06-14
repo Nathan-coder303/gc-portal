@@ -1085,9 +1085,16 @@ export default function ClientFinancialsTab({
   }
 
   // Remaining scope items: estimate line items not yet assigned to any sub.
-  // Names are normalized (lowercase, trimmed, collapsed whitespace) so subtle variations
-  // (extra spaces, trailing punctuation) don't cause items to appear in both subs AND remaining.
-  const normName = (s: string) => s.toLowerCase().replace(/\s+/g, " ").trim();
+  // Names are normalized (lowercase, trimmed, collapsed whitespace, strip CSI prefix and trailing punctuation)
+  // so subtle variations don't cause items to appear in both subs AND remaining.
+  const normName = (s: string) =>
+    (s ?? "")
+      // Strip leading CSI codes like "03 30 00 — " or "03 30 00 - "
+      .replace(/^\s*\d{2}\s*\d{2}\s*\d{2}\s*[—\-:|·]?\s*/i, "")
+      .toLowerCase()
+      .replace(/[.,;:!?]+$/g, "")
+      .replace(/\s+/g, " ")
+      .trim();
   const assignedItemNames = useMemo(
     () => new Set(clientSubs.flatMap(sub => sub.scopeItems.map(i => normName(i.name)))),
     [clientSubs]
@@ -1302,7 +1309,8 @@ ${paymentRows}
       {/* Print Statement moved to the Invoices & CO's tab. */}
 
       {/* ── Scope of Work Remaining ── */}
-      {estimateDivisions.length > 0 && (
+      {/* Show whenever there are estimate items, change-order items, OR existing subs (so the custom-scope adder is always reachable). */}
+      {(estimateDivisions.length > 0 || coDivisions.length > 0 || clientSubs.length > 0) && (
         <div className="space-y-3">
           <button
             onClick={() => setScopeRemainingOpen(v => !v)}

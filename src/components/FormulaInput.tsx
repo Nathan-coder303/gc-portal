@@ -90,7 +90,8 @@ export function FormulaInput({ value, onChange, storageKey, className = "", styl
   return (
     <input
       type="text"
-      inputMode="decimal"
+      // Use full text keyboard on mobile so + - * / and parens are reachable
+      inputMode="text"
       value={displayValue}
       onChange={handleChange}
       onFocus={handleFocus}
