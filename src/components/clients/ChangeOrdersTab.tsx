@@ -1159,6 +1159,7 @@ export default function ChangeOrdersTab({
     });
     setViewingOrder(prev => prev?.id === order.id ? order : prev);
     setEditing(null);
+    window.dispatchEvent(new CustomEvent("mibh:client-financials-changed"));
   }
 
   function handleDelete(id: string) {
@@ -1166,6 +1167,7 @@ export default function ChangeOrdersTab({
     startTransition(async () => {
       await fetch(`/api/${companyId}/clients/${clientId}/change-orders/${id}`, { method: "DELETE" });
       setOrders(prev => prev.filter(o => o.id !== id));
+      window.dispatchEvent(new CustomEvent("mibh:client-financials-changed"));
     });
   }
 
@@ -1178,6 +1180,7 @@ export default function ChangeOrdersTab({
       if (res.ok) {
         const updated = await res.json();
         setOrders(prev => prev.map(o => o.id === id ? updated : o));
+        window.dispatchEvent(new CustomEvent("mibh:client-financials-changed"));
       }
     });
   }
@@ -1575,6 +1578,7 @@ export default function ChangeOrdersTab({
           onSignatureSaved={updated => {
             setOrders(prev => prev.map(o => o.id === updated.id ? { ...o, ...updated } : o));
             setViewingOrder(updated);
+            window.dispatchEvent(new CustomEvent("mibh:client-financials-changed"));
           }}
         />
       )}

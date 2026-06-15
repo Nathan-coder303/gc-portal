@@ -240,6 +240,7 @@ export default function InvoicesAndCoTab(props: {
           if (inv) applyInvoicePayment(id, [...inv.payments, newPayment]);
         }
       }
+      window.dispatchEvent(new CustomEvent("mibh:client-financials-changed"));
       setPayOpen(false);
     } catch (e) {
       setPayError(e instanceof Error ? e.message : "Failed to save payment");
@@ -265,6 +266,7 @@ export default function InvoicesAndCoTab(props: {
       const co = orders.find(o => o.id === row.parentId);
       if (co) applyCoPayments(co.id, (co.payments ?? []).filter(p => p.id !== row.payment.id));
     }
+    window.dispatchEvent(new CustomEvent("mibh:client-financials-changed"));
   }
 
   function printStatement() {

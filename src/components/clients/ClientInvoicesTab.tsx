@@ -273,6 +273,7 @@ export default function ClientInvoicesTab({
           ? { ...i, phase: editPhase.trim(), trigger: editTrigger.trim() || null, amount: newAmount, pct: Number(editPct), dueDate: editDueDate || null, notes: editNotes.trim() || null }
           : i
       ));
+      window.dispatchEvent(new CustomEvent("mibh:client-financials-changed"));
       setEditingInvoice(null);
     } finally {
       setEditSaving(false);
@@ -342,6 +343,7 @@ export default function ClientInvoicesTab({
       });
       const inv = await res.json();
       setInvoices((prev) => [...prev, { ...inv, amount: Number(inv.amount), pct: Number(inv.pct), payments: [] }]);
+      window.dispatchEvent(new CustomEvent("mibh:client-financials-changed"));
       setCreating(false);
       setSelectedPhase(null);
       setCustomAmount("");
@@ -378,13 +380,9 @@ export default function ClientInvoicesTab({
             paidAt: paid >= inv.amount ? new Date().toISOString() : inv.paidAt,
           };
         });
-        const totalInvoiced = next.reduce((s, i) => s + Number(i.amount), 0);
-        const totalPaid = next.reduce((s, i) => s + i.payments.reduce((ps, p) => ps + Number(p.amount), 0), 0);
-        window.dispatchEvent(new CustomEvent("payment-summary-updated", {
-          detail: totalInvoiced > 0 ? { totalInvoiced, totalPaid, balance: totalInvoiced - totalPaid } : null,
-        }));
         return next;
       });
+      window.dispatchEvent(new CustomEvent("mibh:client-financials-changed"));
       setPayingInvoice(null);
     } finally {
       setPayingSaving(false);
@@ -406,18 +404,15 @@ export default function ClientInvoicesTab({
           paidAt: paid >= inv.amount ? inv.paidAt : null,
         };
       });
-      const totalInvoiced = next.reduce((s, i) => s + Number(i.amount), 0);
-      const totalPaid = next.reduce((s, i) => s + i.payments.reduce((ps, p) => ps + Number(p.amount), 0), 0);
-      window.dispatchEvent(new CustomEvent("payment-summary-updated", {
-        detail: totalInvoiced > 0 ? { totalInvoiced, totalPaid, balance: totalInvoiced - totalPaid } : null,
-      }));
       return next;
     });
+    window.dispatchEvent(new CustomEvent("mibh:client-financials-changed"));
   }
 
   async function deleteInvoice(id: string) {
     await fetch(`/api/${companyId}/clients/${clientId}/invoices/${id}`, { method: "DELETE" });
     setInvoices((prev) => prev.filter((i) => i.id !== id));
+    window.dispatchEvent(new CustomEvent("mibh:client-financials-changed"));
   }
 
   async function duplicateInvoice(inv: Invoice) {
@@ -436,6 +431,7 @@ export default function ClientInvoicesTab({
     });
     const newInv = await res.json();
     setInvoices((prev) => [...prev, { ...newInv, amount: Number(newInv.amount), pct: Number(newInv.pct), payments: [] }]);
+    window.dispatchEvent(new CustomEvent("mibh:client-financials-changed"));
   }
 
   async function sendEmail() {

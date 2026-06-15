@@ -1,5 +1,6 @@
 "use client";
 import { useState, useEffect, useCallback, useRef, useMemo } from "react";
+import { useRouter } from "next/navigation";
 import { TrashIcon } from "@/components/ui/icons";
 import { FormulaInput } from "@/components/FormulaInput";
 import { STANDARD_TEMPLATE_DIVISIONS } from "@/lib/standardTemplateData";
@@ -19,7 +20,8 @@ type MaterialPurchase = { id: string; supplierId: string; supplierName: string; 
 type InvoicePayment = { id: string; amount: number };
 type ClientInvoice = { id: string; amount: number; status: string; payments: InvoicePayment[] };
 type ChangeOrderItem = { id: string; name: string; csiCode: string | null; divisionName: string; qty: string | null; unitCost: string | null; markupPct: string | null };
-type ChangeOrder = { id: string; title: string; orderNumber: string | null; status: string; signedAt: string | null; createdAt: string; items: ChangeOrderItem[] };
+type ChangeOrderPayment = { id: string; amount: number | string; method: string; paidDate: string; notes: string | null };
+type ChangeOrder = { id: string; title: string; orderNumber: string | null; status: string; signedAt: string | null; createdAt: string; items: ChangeOrderItem[]; payments?: ChangeOrderPayment[] };
 type LienRelease = { id: string; type: "PARTIAL" | "FINAL"; subName: string; recipientEmail: string | null; amount: string | null; throughDate: string | null; legalDescription: string; signatureToken: string | null; signedAt: string | null; signedByName: string | null; emailSentAt: string | null; createdAt: string };
 
 function fmt(n: number) { return n.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 }); }
@@ -925,6 +927,7 @@ export default function ClientFinancialsTab({
 }: {
   companyId: string; clientId: string; clientName: string; contractTotal: number;
 }) {
+  const router = useRouter();
   const [clientSubs, setClientSubs] = useState<ClientSub[]>([]);
   const [allSubs, setAllSubs] = useState<SubContractor[]>([]);
   const [suppliers, setSuppliers] = useState<Supplier[]>([]);
@@ -1105,20 +1108,32 @@ export default function ClientFinancialsTab({
     setAllSubs(prev => prev.map(s => s.id === subContractorId ? { ...s, email } : s));
   }
 
-  // Remaining scope items: estimate line items not yet assigned to any sub.
-  // Names are normalized (lowercase, trimmed, collapsed whitespace, strip CSI prefix and trailing punctuation)
-  // so subtle variations don't cause items to appear in both subs AND remaining.
+  // Remaining scope items: estimate + CO line items minus anything already given to a sub or bought as material.
+  // Aggressive normalization (strip CSI prefix, lowercase, collapse all non-alphanumerics to single spaces) so
+  // "03 30 00 — Concrete Slab", "Concrete-Slab", and "concrete slab" all collapse to the same key.
   const normName = (s: string) =>
     (s ?? "")
-      // Strip leading CSI codes like "03 30 00 — " or "03 30 00 - "
-      .replace(/^\s*\d{2}\s*\d{2}\s*\d{2}\s*[—\-:|·]?\s*/i, "")
+      // Strip a leading CSI code in any common form: "03 30 00", "03-30-00", "033000", with or without a separator like —, -, :, |, ·
+      .replace(/^\s*\d{2}[\s\-_/]*\d{2}[\s\-_/]*\d{2}[\s—\-:|·.]*/i, "")
       .toLowerCase()
-      .replace(/[.,;:!?]+$/g, "")
-      .replace(/\s+/g, " ")
+      .replace(/[^a-z0-9]+/g, " ")
       .trim();
-  const assignedItemNames = useMemo(
+  const normCsi = (s: string | null | undefined) => (s ?? "").replace(/\s+/g, "").toLowerCase();
+
+  // Assigned to subs — match on composite (csi + name) AND on name alone, so an item that was renamed
+  // slightly when added still drops out of the remaining pool.
+  const assignedNameSet = useMemo(
     () => new Set(clientSubs.flatMap(sub => sub.scopeItems.map(i => normName(i.name)))),
     [clientSubs]
+  );
+  const assignedCsiNameSet = useMemo(
+    () => new Set(clientSubs.flatMap(sub => sub.scopeItems.map(i => `${normCsi(i.csiCode)}|${normName(i.name)}`))),
+    [clientSubs]
+  );
+  // Material purchases consume scope too — match by description name.
+  const materialNameSet = useMemo(
+    () => new Set(materials.map(m => normName(m.description ?? "")).filter(Boolean)),
+    [materials]
   );
 
   // Include items from change orders in the scope pool so they're assignable to subs too.
@@ -1149,10 +1164,27 @@ export default function ClientFinancialsTab({
 
   const remainingByDiv = useMemo(() => {
     const combined = [...estimateDivisions, ...coDivisions];
+    // Also dedup within the combined pool — if an estimate item and a CO item share the same name+CSI, only show one.
+    const seenInPool = new Set<string>();
     return combined
-      .map(div => ({ ...div, items: div.items.filter(i => !assignedItemNames.has(normName(i.name))) }))
+      .map(div => ({
+        ...div,
+        items: div.items.filter(i => {
+          const name = normName(i.name);
+          if (!name) return false;
+          const key = `${normCsi(i.csiCode)}|${name}`;
+          // Already given to a sub?
+          if (assignedCsiNameSet.has(key) || assignedNameSet.has(name)) return false;
+          // Already accounted for as a material purchase?
+          if (materialNameSet.has(name)) return false;
+          // Already shown earlier in the pool (estimate item collapsing with CO item of same name)?
+          if (seenInPool.has(key)) return false;
+          seenInPool.add(key);
+          return true;
+        }),
+      }))
       .filter(div => div.items.length > 0);
-  }, [estimateDivisions, coDivisions, assignedItemNames]);
+  }, [estimateDivisions, coDivisions, assignedCsiNameSet, assignedNameSet, materialNameSet]);
   const totalRemaining = remainingByDiv.reduce((s, d) => s + d.items.length, 0);
 
   async function addItemToSub(sub: ClientSub, item: EstimateLineItem) {
@@ -1173,11 +1205,6 @@ export default function ClientFinancialsTab({
   const totalMaterials = materials.reduce((s, p) => s + p.amount, 0);
   const totalExpenses = totalContracted + totalMaterials;
   const netProfit = contractTotal - totalExpenses;
-  const invoiceBalance = invoices.reduce((s, inv) => {
-    const paid = inv.payments.reduce((ps, p) => ps + p.amount, 0);
-    return s + Math.max(0, inv.amount - paid);
-  }, 0);
-
   // Client statement totals
   function coTotal(co: ChangeOrder): number {
     return co.items.reduce((s, i) => {
@@ -1191,7 +1218,9 @@ export default function ClientFinancialsTab({
   const approvedChangeOrders = changeOrders.filter(co => co.status === "APPROVED" || !!co.signedAt);
   const totalChangeOrders = approvedChangeOrders.reduce((s, co) => s + coTotal(co), 0);
   const totalInvoiced = invoices.reduce((s, inv) => s + inv.amount, 0);
-  const totalClientPaid = invoices.reduce((s, inv) => s + inv.payments.reduce((ps, p) => ps + p.amount, 0), 0);
+  const invoicePaid = invoices.reduce((s, inv) => s + inv.payments.reduce((ps, p) => ps + p.amount, 0), 0);
+  const coPaid = approvedChangeOrders.reduce((s, co) => s + (co.payments ?? []).reduce((ps, p) => ps + Number(p.amount), 0), 0);
+  const totalClientPaid = invoicePaid + coPaid;
   const totalBilled = totalInvoiced + totalChangeOrders;
   const clientBalance = totalBilled - totalClientPaid;
 
@@ -1313,15 +1342,36 @@ ${paymentRows}
           { label: "Sub Contracted", value: totalContracted, color: "#C9A84C" },
           { label: "Labor Paid", value: totalLaborPaid, color: "#22c55e" },
           { label: "Balance Owed to Subs", value: totalLaborBalance, color: "#f85149" },
-          { label: "Balance Owed to MIBH", value: invoiceBalance, color: invoiceBalance < totalLaborBalance ? "#f85149" : "#22c55e", warn: invoiceBalance < totalLaborBalance },
+          { label: "Balance Owed to MIBH", value: clientBalance, color: clientBalance < totalLaborBalance ? "#f85149" : "#22c55e", warn: clientBalance < totalLaborBalance, clickable: true },
           { label: "Materials", value: totalMaterials, color: "#3b82f6" },
         ].map(card => {
           const text = `$${fmt(card.value)}`;
           const fontSize = text.length >= 14 ? 12 : text.length >= 12 ? 13 : text.length >= 10 ? 15 : 16;
-          return (
-            <div key={card.label} className="rounded-xl px-4 py-3 min-w-0 overflow-hidden" style={{ background: (card as { warn?: boolean }).warn ? "#2d1010" : "#0d1117", border: `1px solid ${(card as { warn?: boolean }).warn ? "#dc262644" : "#21262d"}` }}>
+          const warn = (card as { warn?: boolean }).warn;
+          const clickable = (card as { clickable?: boolean }).clickable;
+          const content = (
+            <>
               <div className="text-xs uppercase tracking-widest mb-1 truncate" style={{ color: "#8b949e" }}>{card.label}</div>
               <div className="font-bold whitespace-nowrap" style={{ color: card.color, fontSize, lineHeight: 1.1 }}>{text}</div>
+            </>
+          );
+          if (clickable) {
+            return (
+              <button
+                key={card.label}
+                type="button"
+                onClick={() => router.push(`/${companyId}/clients/${clientId}?tab=invoices-co`)}
+                className="rounded-xl px-4 py-3 min-w-0 overflow-hidden text-left transition-colors hover:opacity-90"
+                style={{ background: warn ? "#2d1010" : "#0d1117", border: `1px solid ${warn ? "#dc262644" : "#21262d"}`, cursor: "pointer" }}
+                title="Open Invoices & CO's"
+              >
+                {content}
+              </button>
+            );
+          }
+          return (
+            <div key={card.label} className="rounded-xl px-4 py-3 min-w-0 overflow-hidden" style={{ background: warn ? "#2d1010" : "#0d1117", border: `1px solid ${warn ? "#dc262644" : "#21262d"}` }}>
+              {content}
             </div>
           );
         })}

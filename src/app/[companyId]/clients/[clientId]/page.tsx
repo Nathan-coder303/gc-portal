@@ -218,6 +218,7 @@ export default async function ClientDetailPage({
         <span style={{ fontSize: 16 }}>←</span> Clients
       </a>
       <ClientDetailHeader
+        companyId={params.companyId}
         client={{
           id: safeClient.id,
           name: safeClient.name,
@@ -237,8 +238,22 @@ export default async function ClientDetailPage({
         canEdit={canEdit}
         paymentSummary={(() => {
           const totalInvoiced = clientInvoices.reduce((s, inv) => s + Number(inv.amount), 0);
-          const totalPaid = clientInvoices.reduce((s, inv) => s + inv.payments.reduce((ps, p) => ps + Number(p.amount), 0), 0);
-          return totalInvoiced > 0 ? { totalInvoiced, totalPaid, balance: totalInvoiced - totalPaid } : null;
+          const invoicePaid = clientInvoices.reduce((s, inv) => s + inv.payments.reduce((ps, p) => ps + Number(p.amount), 0), 0);
+          const approvedCos = changeOrders.filter(co => co.status === "APPROVED" || !!co.signedAt);
+          const totalChangeOrders = approvedCos.reduce((sum, co) => {
+            return sum + co.items.reduce((s, it) => {
+              const qty = it.qty != null ? Number(it.qty) : 0;
+              const cost = it.unitCost != null ? Number(it.unitCost) : 0;
+              const markup = it.markupPct != null ? Number(it.markupPct) : 0;
+              return s + qty * cost * (1 + markup / 100);
+            }, 0);
+          }, 0);
+          const coPaid = approvedCos.reduce((s, co) => s + co.payments.reduce((ps, p) => ps + Number(p.amount), 0), 0);
+          const totalPaid = invoicePaid + coPaid;
+          const balance = (totalInvoiced + totalChangeOrders) - totalPaid;
+          return (totalInvoiced > 0 || totalChangeOrders > 0)
+            ? { totalInvoiced, totalChangeOrders, totalPaid, balance }
+            : null;
         })()}
       />
 

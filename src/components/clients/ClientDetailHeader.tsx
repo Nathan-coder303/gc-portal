@@ -33,28 +33,44 @@ function formatPhone(p: string | null): string {
 
 export default function ClientDetailHeader({
   client,
+  companyId,
   estimateCount,
   estimateTotal,
   canEdit,
   paymentSummary: initialPaymentSummary,
 }: {
   client: Client;
+  companyId: string;
   estimateCount: number;
   estimateTotal: number;
   canEdit: boolean;
-  paymentSummary?: { totalInvoiced: number; totalPaid: number; balance: number } | null;
+  paymentSummary?: { totalInvoiced: number; totalChangeOrders?: number; totalPaid: number; balance: number } | null;
 }) {
   const [editing, setEditing] = useState(false);
   const [paymentSummary, setPaymentSummary] = useState(initialPaymentSummary ?? null);
 
   useEffect(() => {
-    function handler(e: Event) {
-      const detail = (e as CustomEvent).detail as { totalInvoiced: number; totalPaid: number; balance: number } | null;
-      setPaymentSummary(detail);
+    function handleOptimistic(e: Event) {
+      const detail = (e as CustomEvent).detail as { totalInvoiced: number; totalChangeOrders?: number; totalPaid: number; balance: number } | null;
+      if (detail) setPaymentSummary(detail);
     }
-    window.addEventListener("payment-summary-updated", handler);
-    return () => window.removeEventListener("payment-summary-updated", handler);
-  }, []);
+    async function refetch() {
+      try {
+        const res = await fetch(`/api/${companyId}/clients/${client.id}/payment-summary`, { cache: "no-store" });
+        if (res.ok) {
+          const data = await res.json();
+          setPaymentSummary(data);
+        }
+      } catch { /* non-fatal */ }
+    }
+    function handleChanged() { refetch(); }
+    window.addEventListener("payment-summary-updated", handleOptimistic);
+    window.addEventListener("mibh:client-financials-changed", handleChanged);
+    return () => {
+      window.removeEventListener("payment-summary-updated", handleOptimistic);
+      window.removeEventListener("mibh:client-financials-changed", handleChanged);
+    };
+  }, [client.id, companyId]);
   const [isPending, startTransition] = useTransition();
   const router = useRouter();
   const initEmailList = client.emailList as string[] | null ?? (client.email ? [client.email] : [""]);
@@ -206,12 +222,18 @@ export default function ClientDetailHeader({
                 )}
 
                 {/* Payment summary */}
-                {paymentSummary && paymentSummary.totalInvoiced > 0 && (
+                {paymentSummary && (paymentSummary.totalInvoiced > 0 || (paymentSummary.totalChangeOrders ?? 0) > 0) && (
                   <div className="flex flex-wrap gap-3 mt-3">
                     <div className="rounded-lg px-3 py-2 text-center" style={{ background: "#0d1117", border: "1px solid #30373f" }}>
                       <div className="text-[10px] uppercase tracking-wide font-semibold" style={{ color: "#8b949e" }}>Invoiced</div>
                       <div className="text-sm font-bold font-mono" style={{ color: "#e6edf3" }}>
                         {paymentSummary.totalInvoiced.toLocaleString("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 0 })}
+                      </div>
+                    </div>
+                    <div className="rounded-lg px-3 py-2 text-center" style={{ background: "#1a1508", border: "1px solid #f59e0b33" }}>
+                      <div className="text-[10px] uppercase tracking-wide font-semibold" style={{ color: "#f59e0b88" }}>Change Orders</div>
+                      <div className="text-sm font-bold font-mono" style={{ color: "#f59e0b" }}>
+                        {(paymentSummary.totalChangeOrders ?? 0).toLocaleString("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 0 })}
                       </div>
                     </div>
                     <div className="rounded-lg px-3 py-2 text-center" style={{ background: "#0a1a0a", border: "1px solid #22c55e33" }}>
