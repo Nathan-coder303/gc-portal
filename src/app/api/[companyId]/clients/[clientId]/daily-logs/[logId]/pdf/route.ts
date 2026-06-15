@@ -15,7 +15,7 @@ export async function GET(
 
   const log = await prisma.dailyLog.findFirst({
     where: { id: params.logId, clientId: params.clientId, companyId: params.companyId },
-    include: { client: { select: { name: true, address: true } }, company: { select: { name: true, address: true, phone: true, email: true } } },
+    include: { client: { select: { name: true, address: true, projectName: true } }, company: { select: { name: true, address: true, phone: true, email: true } } },
   });
   if (!log) return new NextResponse("Not found", { status: 404 });
 
@@ -31,8 +31,8 @@ export async function GET(
   const { buffer: pdfBuffer } = await renderDailyLogPdf(log, company, log.client, attachmentBaseUrl);
 
   const date = new Date(log.arrivalDate).toISOString().slice(0, 10);
-  const clientSlug = log.client.name.replace(/[^a-z0-9]/gi, "-");
-  const filename = `Daily-Log-${clientSlug}-${date}.pdf`;
+  const projectSlug = (log.client.projectName || log.client.name).replace(/[^a-z0-9]/gi, "-");
+  const filename = `Daily-Log-${projectSlug}-${date}.pdf`;
 
   const download = req.nextUrl.searchParams.get("download") === "1";
 

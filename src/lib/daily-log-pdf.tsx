@@ -126,7 +126,7 @@ type DailyLogData = {
 };
 
 type CompanyInfo = { name: string; address: string; phone: string; email: string; licenses?: string };
-type ClientInfo = { name: string; address?: string | null };
+type ClientInfo = { name: string; address?: string | null; projectName?: string | null };
 
 function InfoRow({ label, value }: { label: string; value: string }) {
   return (
