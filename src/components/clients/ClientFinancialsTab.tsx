@@ -18,7 +18,7 @@ type ClientSub = { id: string; subContractorId: string | null; subName: string; 
 type Supplier = { id: string; name: string };
 type MaterialPurchase = { id: string; supplierId: string; supplierName: string; amount: number; description: string | null; purchasedAt: string; notes: string | null };
 type InvoicePayment = { id: string; amount: number };
-type ClientInvoice = { id: string; amount: number; status: string; payments: InvoicePayment[] };
+type ClientInvoice = { id: string; amount: number; status: string; pct?: number | string | null; payments: InvoicePayment[] };
 type ChangeOrderItem = { id: string; name: string; csiCode: string | null; divisionName: string; qty: string | null; unitCost: string | null; markupPct: string | null };
 type ChangeOrderPayment = { id: string; amount: number | string; method: string; paidDate: string; notes: string | null };
 type ChangeOrder = { id: string; title: string; orderNumber: string | null; status: string; signedAt: string | null; createdAt: string; items: ChangeOrderItem[]; payments?: ChangeOrderPayment[] };
@@ -1217,7 +1217,10 @@ export default function ClientFinancialsTab({
   // Only approved or signed change orders count toward what the client owes
   const approvedChangeOrders = changeOrders.filter(co => co.status === "APPROVED" || !!co.signedAt);
   const totalChangeOrders = approvedChangeOrders.reduce((s, co) => s + coTotal(co), 0);
-  const totalInvoiced = invoices.reduce((s, inv) => s + inv.amount, 0);
+  const rawInvoiced = invoices.reduce((s, inv) => s + inv.amount, 0);
+  const totalInvoicePct = invoices.reduce((s, inv) => s + (typeof inv.pct === "number" ? inv.pct : Number(inv.pct ?? 0)), 0);
+  const fullyInvoiced = totalInvoicePct >= 99.5 || (contractTotal > 0 && Math.abs(contractTotal - rawInvoiced) <= Math.max(200, contractTotal * 0.005));
+  const totalInvoiced = fullyInvoiced ? contractTotal : rawInvoiced;
   const invoicePaid = invoices.reduce((s, inv) => s + inv.payments.reduce((ps, p) => ps + p.amount, 0), 0);
   const coPaid = approvedChangeOrders.reduce((s, co) => s + (co.payments ?? []).reduce((ps, p) => ps + Number(p.amount), 0), 0);
   const totalClientPaid = invoicePaid + coPaid;

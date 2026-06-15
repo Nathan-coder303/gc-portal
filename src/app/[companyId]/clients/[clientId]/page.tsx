@@ -237,7 +237,13 @@ export default async function ClientDetailPage({
         estimateTotal={safeClient.templates.reduce((sum, est) => sum + calcEstimateTotal(est.divisions, est.gcFeePercent), 0)}
         canEdit={canEdit}
         paymentSummary={(() => {
-          const totalInvoiced = clientInvoices.reduce((s, inv) => s + Number(inv.amount), 0);
+          const rawInvoiced = clientInvoices.reduce((s, inv) => s + Number(inv.amount), 0);
+          const totalPct = clientInvoices.reduce((s, inv) => s + Number(inv.pct ?? 0), 0);
+          const estimateTotal = safeClient.templates.reduce((sum, est) => sum + calcEstimateTotal(est.divisions, est.gcFeePercent), 0);
+          // When the user has billed the full estimate (pct ≥ ~100% OR sum is within rounding of estimate),
+          // show the contract amount exactly — pennies/rounding gaps from per-phase percentage math shouldn't leak.
+          const fullyInvoiced = totalPct >= 99.5 || (estimateTotal > 0 && Math.abs(estimateTotal - rawInvoiced) <= Math.max(200, estimateTotal * 0.005));
+          const totalInvoiced = fullyInvoiced ? estimateTotal : rawInvoiced;
           const invoicePaid = clientInvoices.reduce((s, inv) => s + inv.payments.reduce((ps, p) => ps + Number(p.amount), 0), 0);
           const approvedCos = changeOrders.filter(co => co.status === "APPROVED" || !!co.signedAt);
           const totalChangeOrders = approvedCos.reduce((sum, co) => {
