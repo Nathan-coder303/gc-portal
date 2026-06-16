@@ -85,6 +85,7 @@ model Company {
   clientMessages    ClientMessage[]
   googleRefreshToken String?
   scopesOfWork      ScopeOfWork[]
+  marketingAgencies MarketingAgency[]
   coverNames        Json?          // { [blobUrl]: string }
   address           String?
   phone             String?
@@ -94,6 +95,22 @@ model Company {
   logoUrl           String?
   website           String?
   contactName       String?
+}
+
+model MarketingAgency {
+  id                String    @id @default(cuid())
+  companyId         String
+  company           Company   @relation(fields: [companyId], references: [id])
+  name              String
+  contractStartDate DateTime
+  payAmount         Decimal   @db.Decimal(14, 2)
+  payFrequency      String    // "MONTH", "APPOINTMENT", "LEAD", "QUARTER", "YEAR", "FLAT", "OTHER"
+  facebookFees      Decimal?  @db.Decimal(14, 2)
+  notes             String?
+  archivedAt        DateTime?
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+  @@index([companyId])
 }
 
 model ScopeOfWork {
