@@ -1,0 +1,1 @@
+ALTER TABLE "DailyLog" ADD COLUMN IF NOT EXISTS "visitorNotes" TEXT;

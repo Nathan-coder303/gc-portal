@@ -58,6 +58,7 @@ export async function POST(
       tasksPerformed: body.tasksPerformed ?? null,
       employeesOnSite: body.employeesOnSite ?? null,
       visitorsOnSite: body.visitorsOnSite ?? false,
+      visitorNotes: body.visitorNotes ?? null,
       employeeWorkNotes: body.employeeWorkNotes ?? null,
       subsOnJobsite: body.subsOnJobsite ? JSON.stringify(body.subsOnJobsite) : null,
       materialNotes: body.materialNotes ?? null,

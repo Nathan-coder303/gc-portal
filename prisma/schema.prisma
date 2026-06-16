@@ -1341,6 +1341,7 @@ model DailyLog {
 
   employeesOnSite       String?
   visitorsOnSite        Boolean   @default(false)
+  visitorNotes          String?   @db.Text
   employeeWorkNotes     String?
   subsOnJobsite         String?   @db.Text
 

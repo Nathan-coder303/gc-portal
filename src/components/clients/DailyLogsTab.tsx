@@ -32,6 +32,7 @@ type LogForm = {
   tasksPerformed: string;
   employeesOnSite: string;
   visitorsOnSite: boolean;
+  visitorNotes: string;
   employeeWorkNotes: string;
   subsOnJobsite: Sub[];
   materialNotes: string;
@@ -69,6 +70,7 @@ type DailyLog = {
   tasksPerformed: string | null;
   employeesOnSite: string | null;
   visitorsOnSite: boolean;
+  visitorNotes: string | null;
   employeeWorkNotes: string | null;
   subsOnJobsite: string | null;
   materialNotes: string | null;
@@ -134,6 +136,7 @@ function blankForm(): LogForm {
     tasksPerformed: "",
     employeesOnSite: "",
     visitorsOnSite: false,
+    visitorNotes: "",
     employeeWorkNotes: "",
     subsOnJobsite: [],
     materialNotes: "",
@@ -179,6 +182,7 @@ function logToForm(log: DailyLog): LogForm {
     tasksPerformed: log.tasksPerformed ?? "",
     employeesOnSite: log.employeesOnSite ?? "",
     visitorsOnSite: log.visitorsOnSite,
+    visitorNotes: log.visitorNotes ?? "",
     employeeWorkNotes: log.employeeWorkNotes ?? "",
     subsOnJobsite: parseJson<Sub[]>(log.subsOnJobsite, []),
     materialNotes: log.materialNotes ?? "",
@@ -220,6 +224,7 @@ function formToPayload(f: LogForm) {
     tasksPerformed: f.tasksPerformed || null,
     employeesOnSite: f.employeesOnSite || null,
     visitorsOnSite: f.visitorsOnSite,
+    visitorNotes: f.visitorsOnSite ? (f.visitorNotes || null) : null,
     employeeWorkNotes: f.employeeWorkNotes || null,
     subsOnJobsite: f.subsOnJobsite,
     materialNotes: f.materialNotes || null,
@@ -492,7 +497,7 @@ function DetailsSection({ form, set }: { form: LogForm; set: (k: keyof LogForm, 
   );
 }
 
-function PeopleSection({ form, set, availableSubs }: { form: LogForm; set: (k: keyof LogForm, v: LogForm[keyof LogForm]) => void; availableSubs: SubOption[] }) {
+function PeopleSection({ form, set, availableSubs, companyId }: { form: LogForm; set: (k: keyof LogForm, v: LogForm[keyof LogForm]) => void; availableSubs: SubOption[]; companyId: string }) {
   const presentByName = new Map(form.subsOnJobsite.map(s => [s.name, s]));
 
   // Merge: every available sub from financials + any ad-hoc subs already on the log not in the list
@@ -515,6 +520,43 @@ function PeopleSection({ form, set, availableSubs }: { form: LogForm; set: (k: k
     set("subsOnJobsite", form.subsOnJobsite.map(s => s.name === sub.name ? { ...s, count: n } : s));
   }
 
+  // ── Add Sub typeahead ──
+  // Pull every sub in the company so the user can add one that isn't on Financials yet.
+  type CompanySub = { id: string; name: string; divisionCode: string; divisionName: string };
+  const [companySubs, setCompanySubs] = useState<CompanySub[]>([]);
+  const [addQuery, setAddQuery] = useState("");
+  const [addOpen, setAddOpen] = useState(false);
+  useEffect(() => {
+    if (!addOpen || companySubs.length > 0) return;
+    fetch(`/api/${companyId}/subs`)
+      .then(r => r.ok ? r.json() : [])
+      .then((data: CompanySub[]) => Array.isArray(data) && setCompanySubs(data))
+      .catch(() => {});
+  }, [addOpen, companyId, companySubs.length]);
+
+  const onJobNames = new Set(form.subsOnJobsite.map(s => s.name.toLowerCase()));
+  const q = addQuery.trim().toLowerCase();
+  const matches = q
+    ? companySubs
+        .filter(s => !onJobNames.has(s.name.toLowerCase()))
+        .filter(s => s.name.toLowerCase().includes(q) || s.divisionName.toLowerCase().includes(q))
+        .slice(0, 8)
+    : [];
+
+  function addCompanySub(s: CompanySub) {
+    if (presentByName.has(s.name)) return;
+    set("subsOnJobsite", [...form.subsOnJobsite, { name: s.name, company: s.name, trade: s.divisionName, count: 1 }]);
+    setAddQuery("");
+    setAddOpen(false);
+  }
+  function addCustomSub() {
+    const name = addQuery.trim();
+    if (!name || presentByName.has(name)) return;
+    set("subsOnJobsite", [...form.subsOnJobsite, { name, company: name, trade: "", count: 1 }]);
+    setAddQuery("");
+    setAddOpen(false);
+  }
+
   return (
     <div className="space-y-4">
       <SectionCard>
@@ -527,6 +569,17 @@ function PeopleSection({ form, set, availableSubs }: { form: LogForm; set: (k: k
           <p className="text-sm font-medium" style={{ color: TEXT }}>Any Visitors on Site?</p>
           <Toggle value={form.visitorsOnSite} onChange={v => set("visitorsOnSite", v)} />
         </div>
+        {form.visitorsOnSite && (
+          <div>
+            <FieldLabel>Visitor Notes</FieldLabel>
+            <TextArea
+              value={form.visitorNotes}
+              onChange={v => set("visitorNotes", v)}
+              rows={3}
+              placeholder="Who visited, why, and what they observed..."
+            />
+          </div>
+        )}
         <div>
           <FieldLabel>Employee Work Notes</FieldLabel>
           <TextArea value={form.employeeWorkNotes} onChange={v => set("employeeWorkNotes", v)} rows={3} />
@@ -536,8 +589,58 @@ function PeopleSection({ form, set, availableSubs }: { form: LogForm; set: (k: k
       <SectionCard>
         <div className="flex items-center justify-between mb-2">
           <p className="text-sm font-semibold" style={{ color: TEXT }}>Subs on Jobsite</p>
-          <span className="text-xs" style={{ color: MUTED }}>From Financials</span>
+          <button
+            onClick={() => setAddOpen(o => !o)}
+            className="text-xs font-semibold px-2.5 py-1 rounded-full"
+            style={{ background: addOpen ? GOLD : "#1e2736", color: addOpen ? "#0d1117" : GOLD, border: `1px solid ${GOLD}55` }}
+          >
+            {addOpen ? "✕ Close" : "+ Add Sub"}
+          </button>
         </div>
+
+        {addOpen && (
+          <div className="rounded-lg p-2 mb-2" style={{ background: "#0d1117", border: `1px solid ${BORDER}` }}>
+            <input
+              type="text"
+              value={addQuery}
+              onChange={e => setAddQuery(e.target.value)}
+              placeholder="Search sub by name or trade…"
+              autoFocus
+              className="w-full text-sm rounded-md px-3 py-2 outline-none"
+              style={{ background: "#1e2736", border: `1px solid ${BORDER}`, color: TEXT }}
+            />
+            {q && (
+              <div className="mt-2 space-y-1">
+                {matches.length === 0 ? (
+                  <button
+                    onClick={addCustomSub}
+                    className="w-full text-left rounded-md px-2 py-1.5 text-xs"
+                    style={{ background: "#1a2638", color: GOLD, border: `1px dashed ${GOLD}55` }}
+                  >
+                    + Add &quot;{addQuery.trim()}&quot; as a custom sub
+                  </button>
+                ) : (
+                  matches.map(s => (
+                    <button
+                      key={s.id}
+                      onClick={() => addCompanySub(s)}
+                      className="w-full text-left rounded-md px-2 py-1.5"
+                      style={{ background: "#1e2736", border: `1px solid ${BORDER}` }}
+                    >
+                      <p className="text-xs font-semibold" style={{ color: TEXT }}>{s.name}</p>
+                      <p className="text-[10px]" style={{ color: MUTED }}>{s.divisionCode.slice(0, 2)} – {s.divisionName}</p>
+                    </button>
+                  ))
+                )}
+              </div>
+            )}
+            {!q && (
+              <p className="text-[10px] mt-2 px-1" style={{ color: MUTED }}>
+                Type to search the company sub database. Or type a new name and add it as a custom sub.
+              </p>
+            )}
+          </div>
+        )}
         {rows.length === 0 ? (
           <p className="text-xs" style={{ color: MUTED }}>No subs added yet — add them on the Financials tab first.</p>
         ) : (
@@ -1104,7 +1207,7 @@ function LogEditor({
 
   const sectionContent = {
     details: <DetailsSection form={form} set={setField} />,
-    people: <PeopleSection form={form} set={setField} availableSubs={availableSubs} />,
+    people: <PeopleSection form={form} set={setField} availableSubs={availableSubs} companyId={companyId} />,
     notes: <NotesSection form={form} set={setField} />,
     mtl: <MaterialSection form={form} set={setField} />,
     equip: <EquipmentSection form={form} set={setField} />,
