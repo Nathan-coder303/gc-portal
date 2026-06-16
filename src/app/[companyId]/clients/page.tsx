@@ -3,6 +3,7 @@ import { auth } from "@/lib/auth";
 import { redirect } from "next/navigation";
 import { can } from "@/lib/auth/permissions";
 import ClientsManager from "./ClientsManager";
+import MobileClientList from "@/components/clients/MobileClientList";
 
 export const dynamic = "force-dynamic";
 
@@ -85,35 +86,52 @@ export default async function ClientsPage({ params }: { params: { companyId: str
 
   const isAdmin = can(session.user.role, "estimateTemplate:edit");
 
+  const mapped = clients.map(c => ({
+    id: c.id,
+    name: c.name,
+    address: c.address,
+    city: c.city,
+    state: c.state,
+    zip: c.zip,
+    email: c.email,
+    phone: c.phone,
+    estimateCount: c._count.templates,
+    estimateTotal: c.templates.reduce((sum, t) => sum + calcEstimateTotal(t.divisions, t.gcFeePercent), 0),
+    internalProfit: c.templates.reduce((sum, t) => {
+      if (t.internalProfitOverride != null) return sum + Number(t.internalProfitOverride);
+      return sum + calcMarkupTotal(t.divisions);
+    }, 0),
+    gcFee: c.templates.reduce((sum, t) => sum + calcGcFeeAmt(t.divisions, t.gcFeePercent), 0),
+    status: c.status,
+    sortOrder: c.sortOrder,
+    updatedAt: new Date(Math.max(
+      c.updatedAt.getTime(),
+      ...c.templates.map(t => t.updatedAt.getTime()),
+    )).toISOString(),
+  }));
+
   return (
-    <div className="w-full px-4 md:px-8 py-6 md:py-8">
-      <ClientsManager
-        companyId={params.companyId}
-        clients={clients.map(c => ({
-          id: c.id,
-          name: c.name,
-          address: c.address,
-          city: c.city,
-          state: c.state,
-          zip: c.zip,
-          email: c.email,
-          phone: c.phone,
-          estimateCount: c._count.templates,
-          estimateTotal: c.templates.reduce((sum, t) => sum + calcEstimateTotal(t.divisions, t.gcFeePercent), 0),
-          internalProfit: c.templates.reduce((sum, t) => {
-            if (t.internalProfitOverride != null) return sum + Number(t.internalProfitOverride);
-            return sum + calcMarkupTotal(t.divisions);
-          }, 0),
-          gcFee: c.templates.reduce((sum, t) => sum + calcGcFeeAmt(t.divisions, t.gcFeePercent), 0),
-          status: c.status,
-          sortOrder: c.sortOrder,
-          updatedAt: new Date(Math.max(
-            c.updatedAt.getTime(),
-            ...c.templates.map(t => t.updatedAt.getTime()),
-          )).toISOString(),
-        }))}
-        isAdmin={isAdmin}
-      />
-    </div>
+    <>
+      {/* Mobile view: collapsible stage cards */}
+      <div className="md:hidden w-full max-w-full overflow-x-hidden px-4 py-4 pb-24">
+        <MobileClientList
+          companyId={params.companyId}
+          clients={mapped.map(c => ({
+            id: c.id, name: c.name, address: c.address, city: c.city, state: c.state,
+            estimateCount: c.estimateCount, estimateTotal: c.estimateTotal,
+            status: c.status, updatedAt: c.updatedAt,
+          }))}
+        />
+      </div>
+
+      {/* Desktop view: 5-column kanban */}
+      <div className="hidden md:block w-full px-4 md:px-8 py-6 md:py-8">
+        <ClientsManager
+          companyId={params.companyId}
+          clients={mapped}
+          isAdmin={isAdmin}
+        />
+      </div>
+    </>
   );
 }

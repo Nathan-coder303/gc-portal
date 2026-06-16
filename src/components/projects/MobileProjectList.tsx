@@ -214,9 +214,9 @@ function MobileProjectCard({
   return (
     <>
       {uploadError && <PhotoToast message={uploadError} onDismiss={() => setUploadError(null)} />}
-    <div className="rounded-2xl overflow-hidden" style={{ background: "#161b22", border: "1px solid #30373f" }}>
+    <div className="rounded-2xl overflow-hidden w-full max-w-full" style={{ background: "#161b22", border: "1px solid #30373f" }}>
       {/* Card header row */}
-      <div className="flex items-center gap-3 px-4 py-3">
+      <div className="flex items-center gap-3 px-4 py-3 min-w-0">
         <PhotoThumb projectId={project.id} companyId={companyId} photoUrl={photoUrl}
           name={project.name} isAdmin={isAdmin} onUploaded={setPhotoUrl} onError={setUploadError} />
 
@@ -307,7 +307,7 @@ export default function MobileProjectList({
     : projects;
 
   return (
-    <div className="flex flex-col min-h-0">
+    <div className="flex flex-col min-h-0 w-full max-w-full">
       {/* Header */}
       <div className="flex items-center justify-between mb-4">
         <div>

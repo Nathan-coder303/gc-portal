@@ -66,7 +66,7 @@ export default async function ProjectsPage({
   return (
     <>
       {/* Mobile view */}
-      <div className="md:hidden w-full px-4 py-4 pb-24">
+      <div className="md:hidden w-full max-w-full overflow-x-hidden px-4 py-4 pb-24">
         <MobileProjectList
           projects={projectItems}
           companyId={params.companyId}

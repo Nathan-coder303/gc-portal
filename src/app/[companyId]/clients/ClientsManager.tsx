@@ -38,6 +38,7 @@ async function patchClientStatus(companyId: string, clientId: string, body: { st
 
 const STATUS_OPTIONS = [
   { value: "PROSPECT", label: "Prospect" },
+  { value: "PIPELINE", label: "Pipeline" },
   { value: "ACTIVE", label: "Active" },
   { value: "COMPLETED", label: "Completed" },
   { value: "DEAD", label: "Dead" },
@@ -643,6 +644,7 @@ export default function ClientsManager({ companyId, clients: initialClients, isA
   }
 
   const prospects = applySort(clients.filter(c => c.status === "PROSPECT"));
+  const pipelines = applySort(clients.filter(c => c.status === "PIPELINE"));
   const actives = applySort(clients.filter(c => c.status === "ACTIVE"));
   const completed = applySort(clients.filter(c => c.status === "COMPLETED"));
   const dead = applySort(clients.filter(c => c.status === "DEAD"));
@@ -753,7 +755,7 @@ export default function ClientsManager({ companyId, clients: initialClients, isA
           {touchDragClient.name}
           {touchDropTarget && (
             <span style={{ fontSize: 10, fontWeight: 400, color: "#C9A84C", display: "block", marginTop: 2 }}>
-              → {touchDropTarget.status === "PROSPECT" ? "Prospects" : touchDropTarget.status === "ACTIVE" ? "Active" : touchDropTarget.status === "COMPLETED" ? "Closed" : "Dead"}
+              → {touchDropTarget.status === "PROSPECT" ? "Prospects" : touchDropTarget.status === "PIPELINE" ? "Pipeline" : touchDropTarget.status === "ACTIVE" ? "Active" : touchDropTarget.status === "COMPLETED" ? "Closed" : "Dead"}
             </span>
           )}
         </div>
@@ -786,6 +788,7 @@ export default function ClientsManager({ companyId, clients: initialClients, isA
       <div className="flex gap-4 overflow-x-auto pb-2">
         {[
           { title: "Prospects", status: "PROSPECT", clients: prospects, accentColor: "#C9A84C", bgColor: "#0d1117" },
+          { title: "Pipeline", status: "PIPELINE", clients: pipelines, accentColor: "#3b82f6", bgColor: "#0a1220" },
           { title: "Active Clients", status: "ACTIVE", clients: actives, accentColor: "#22c55e", bgColor: "#0a1a0f" },
           { title: "Closed Jobs", status: "COMPLETED", clients: completed, accentColor: "#8b949e", bgColor: "#0d1117" },
           { title: "Dead Clients", status: "DEAD", clients: dead, accentColor: "#ef4444", bgColor: "#1a0a0a" },
