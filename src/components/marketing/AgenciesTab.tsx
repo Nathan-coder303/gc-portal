@@ -1,6 +1,8 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
+
+type Attachment = { id: string; name: string; url: string; size: number; mimeType: string };
 
 type Agency = {
   id: string;
@@ -8,8 +10,11 @@ type Agency = {
   contractStartDate: string;
   payAmount: number | string;
   payFrequency: string;
+  upfrontFee: number | string | null;
+  commitment: string | null;
   facebookFees: number | string | null;
   notes: string | null;
+  attachments: string | null; // JSON
 };
 
 const FREQUENCIES = [
@@ -37,6 +42,17 @@ function fmtDate(s: string): string {
   return new Date(s).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
 }
 
+function fmtSize(bytes: number): string {
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(0)} KB`;
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+}
+
+function parseAttachments(raw: string | null): Attachment[] {
+  if (!raw) return [];
+  try { return JSON.parse(raw) as Attachment[]; } catch { return []; }
+}
+
 const GOLD = "#C9A84C";
 const BG = "#0d1117";
 const CARD = "#161b22";
@@ -49,6 +65,8 @@ type FormState = {
   contractStartDate: string;
   payAmount: string;
   payFrequency: string;
+  upfrontFee: string;
+  commitment: string;
   facebookFees: string;
   notes: string;
 };
@@ -59,9 +77,113 @@ function emptyForm(): FormState {
     contractStartDate: new Date().toISOString().slice(0, 10),
     payAmount: "",
     payFrequency: "MONTH",
+    upfrontFee: "",
+    commitment: "",
     facebookFees: "",
     notes: "",
   };
+}
+
+function AttachmentZone({
+  companyId, agency, onUpdated,
+}: {
+  companyId: string;
+  agency: Agency;
+  onUpdated: (newAttachmentsJson: string) => void;
+}) {
+  const [dragOver, setDragOver] = useState(false);
+  const [uploading, setUploading] = useState(false);
+  const [err, setErr] = useState<string | null>(null);
+  const fileRef = useRef<HTMLInputElement>(null);
+  const attachments = parseAttachments(agency.attachments);
+
+  async function uploadFile(file: File) {
+    setUploading(true);
+    setErr(null);
+    try {
+      const fd = new FormData();
+      fd.append("file", file);
+      const res = await fetch(`/api/${companyId}/marketing/agencies/${agency.id}/attachments`, {
+        method: "POST",
+        body: fd,
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data.error ?? `Upload failed (${res.status})`);
+      }
+      const att = await res.json() as Attachment;
+      const updated = [...attachments, att];
+      onUpdated(JSON.stringify(updated));
+    } catch (e) {
+      setErr(e instanceof Error ? e.message : "Upload failed");
+    } finally {
+      setUploading(false);
+    }
+  }
+
+  async function handleFiles(files: FileList | null) {
+    if (!files || files.length === 0) return;
+    for (const f of Array.from(files)) {
+      await uploadFile(f);
+    }
+  }
+
+  async function removeAttachment(id: string) {
+    if (!confirm("Remove this attachment?")) return;
+    const res = await fetch(`/api/${companyId}/marketing/agencies/${agency.id}/attachments?id=${id}`, { method: "DELETE" });
+    if (res.ok) {
+      onUpdated(JSON.stringify(attachments.filter(a => a.id !== id)));
+    }
+  }
+
+  return (
+    <div className="space-y-2">
+      {attachments.length > 0 && (
+        <div className="space-y-1.5">
+          {attachments.map(a => (
+            <div key={a.id} className="flex items-center gap-2 rounded-lg px-3 py-2" style={{ background: BG, border: `1px solid ${BORDER}` }}>
+              <span className="text-base shrink-0">📎</span>
+              <a href={a.url} target="_blank" rel="noopener noreferrer" className="flex-1 min-w-0">
+                <p className="text-xs font-semibold truncate" style={{ color: GOLD }}>{a.name}</p>
+                <p className="text-[10px]" style={{ color: MUTED }}>{fmtSize(a.size)}</p>
+              </a>
+              <button onClick={() => removeAttachment(a.id)} className="text-xs px-2 py-0.5 rounded shrink-0" style={{ color: "#f87171", background: "#2d1010" }}>✕</button>
+            </div>
+          ))}
+        </div>
+      )}
+
+      <div
+        onDragOver={e => { e.preventDefault(); setDragOver(true); }}
+        onDragLeave={() => setDragOver(false)}
+        onDrop={e => {
+          e.preventDefault();
+          setDragOver(false);
+          handleFiles(e.dataTransfer.files);
+        }}
+        className="rounded-xl px-3 py-3 text-center transition-colors cursor-pointer"
+        style={{
+          background: dragOver ? `${GOLD}11` : "#0d1117",
+          border: `1px dashed ${dragOver ? GOLD : BORDER}`,
+        }}
+        onClick={() => fileRef.current?.click()}
+      >
+        <p className="text-xs font-semibold" style={{ color: dragOver ? GOLD : MUTED }}>
+          {uploading ? "Uploading…" : dragOver ? "Drop to attach" : "+ Attach contract / drag & drop"}
+        </p>
+        <input
+          ref={fileRef}
+          type="file"
+          multiple
+          className="sr-only"
+          onChange={e => { handleFiles(e.target.files); e.target.value = ""; }}
+          accept="application/pdf,image/*,.doc,.docx,.txt"
+        />
+      </div>
+
+      {err && <p className="text-[11px]" style={{ color: "#f87171" }}>{err}</p>}
+    </div>
+  );
 }
 
 export default function AgenciesTab({ companyId }: { companyId: string }) {
@@ -99,6 +221,8 @@ export default function AgenciesTab({ companyId }: { companyId: string }) {
       contractStartDate: a.contractStartDate.slice(0, 10),
       payAmount: String(a.payAmount),
       payFrequency: a.payFrequency,
+      upfrontFee: a.upfrontFee != null ? String(a.upfrontFee) : "",
+      commitment: a.commitment ?? "",
       facebookFees: a.facebookFees != null ? String(a.facebookFees) : "",
       notes: a.notes ?? "",
     });
@@ -125,6 +249,8 @@ export default function AgenciesTab({ companyId }: { companyId: string }) {
           contractStartDate: form.contractStartDate,
           payAmount: form.payAmount,
           payFrequency: form.payFrequency,
+          upfrontFee: form.upfrontFee || null,
+          commitment: form.commitment || null,
           facebookFees: form.facebookFees || null,
           notes: form.notes || null,
         }),
@@ -135,7 +261,7 @@ export default function AgenciesTab({ companyId }: { companyId: string }) {
       }
       const saved = await res.json();
       setAgencies(prev => editing
-        ? prev.map(a => a.id === saved.id ? saved : a)
+        ? prev.map(a => a.id === saved.id ? { ...a, ...saved } : a)
         : [...prev, saved]);
       setModalOpen(false);
     } catch (e) {
@@ -151,14 +277,16 @@ export default function AgenciesTab({ companyId }: { companyId: string }) {
     if (res.ok) setAgencies(prev => prev.filter(x => x.id !== a.id));
   }
 
+  function patchLocalAttachments(agencyId: string, attachmentsJson: string) {
+    setAgencies(prev => prev.map(a => a.id === agencyId ? { ...a, attachments: attachmentsJson } : a));
+  }
+
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
-        <div>
-          <p className="text-sm" style={{ color: MUTED }}>
-            {agencies.length} {agencies.length === 1 ? "agency" : "agencies"} on contract
-          </p>
-        </div>
+        <p className="text-sm" style={{ color: MUTED }}>
+          {agencies.length} {agencies.length === 1 ? "agency" : "agencies"} on contract
+        </p>
         <button
           onClick={openAdd}
           className="px-4 py-2 rounded-xl text-sm font-semibold"
@@ -179,8 +307,8 @@ export default function AgenciesTab({ companyId }: { companyId: string }) {
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
           {agencies.map(a => (
-            <div key={a.id} className="rounded-2xl p-4" style={{ background: CARD, border: `1px solid ${BORDER}` }}>
-              <div className="flex items-start justify-between gap-3 mb-3">
+            <div key={a.id} className="rounded-2xl p-4 space-y-3" style={{ background: CARD, border: `1px solid ${BORDER}` }}>
+              <div className="flex items-start justify-between gap-3">
                 <div className="min-w-0">
                   <p className="text-base font-bold truncate" style={{ color: TEXT }}>{a.name}</p>
                   <p className="text-xs mt-0.5" style={{ color: MUTED }}>
@@ -200,6 +328,18 @@ export default function AgenciesTab({ companyId }: { companyId: string }) {
                   <p className="text-[10px]" style={{ color: MUTED }}>{freqLabel(a.payFrequency)}</p>
                 </div>
                 <div className="rounded-lg px-3 py-2" style={{ background: BG, border: `1px solid ${BORDER}` }}>
+                  <p className="text-[10px] uppercase tracking-wide" style={{ color: MUTED }}>Upfront Fee</p>
+                  <p className="text-sm font-bold font-mono" style={{ color: a.upfrontFee ? "#f59e0b" : MUTED }}>
+                    {a.upfrontFee ? fmtMoney(a.upfrontFee) : "—"}
+                  </p>
+                </div>
+                <div className="rounded-lg px-3 py-2" style={{ background: BG, border: `1px solid ${BORDER}` }}>
+                  <p className="text-[10px] uppercase tracking-wide" style={{ color: MUTED }}>Commitment</p>
+                  <p className="text-sm font-semibold" style={{ color: a.commitment ? "#22c55e" : MUTED }}>
+                    {a.commitment ?? "—"}
+                  </p>
+                </div>
+                <div className="rounded-lg px-3 py-2" style={{ background: BG, border: `1px solid ${BORDER}` }}>
                   <p className="text-[10px] uppercase tracking-wide" style={{ color: MUTED }}>Facebook Fees</p>
                   <p className="text-sm font-bold font-mono" style={{ color: a.facebookFees ? "#3b82f6" : MUTED }}>
                     {a.facebookFees ? fmtMoney(a.facebookFees) : "—"}
@@ -208,14 +348,19 @@ export default function AgenciesTab({ companyId }: { companyId: string }) {
               </div>
 
               {a.notes && (
-                <p className="text-xs mt-2" style={{ color: MUTED }}>{a.notes}</p>
+                <p className="text-xs" style={{ color: MUTED }}>{a.notes}</p>
               )}
+
+              <AttachmentZone
+                companyId={companyId}
+                agency={a}
+                onUpdated={json => patchLocalAttachments(a.id, json)}
+              />
             </div>
           ))}
         </div>
       )}
 
-      {/* Add / Edit modal */}
       {modalOpen && (
         <div style={{ position: "fixed", inset: 0, zIndex: 60, background: "rgba(0,0,0,0.75)", display: "flex", alignItems: "center", justifyContent: "center", padding: 16 }}
           onClick={() => !saving && setModalOpen(false)}>
@@ -272,6 +417,32 @@ export default function AgenciesTab({ companyId }: { companyId: string }) {
                   >
                     {FREQUENCIES.map(f => <option key={f.value} value={f.value}>{f.label}</option>)}
                   </select>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-[11px] mb-1 uppercase tracking-wide" style={{ color: MUTED }}>Upfront Fee ($)</label>
+                  <input
+                    type="number"
+                    step="0.01"
+                    value={form.upfrontFee}
+                    onChange={e => setForm({ ...form, upfrontFee: e.target.value })}
+                    placeholder="One-time, paid at signing"
+                    className="w-full rounded-lg px-3 py-2 text-sm"
+                    style={{ background: BG, border: `1px solid ${BORDER}`, color: TEXT, outline: "none" }}
+                  />
+                </div>
+                <div>
+                  <label className="block text-[11px] mb-1 uppercase tracking-wide" style={{ color: MUTED }}>Commitment</label>
+                  <input
+                    type="text"
+                    value={form.commitment}
+                    onChange={e => setForm({ ...form, commitment: e.target.value })}
+                    placeholder="e.g. 6 months, Month-to-month"
+                    className="w-full rounded-lg px-3 py-2 text-sm"
+                    style={{ background: BG, border: `1px solid ${BORDER}`, color: TEXT, outline: "none" }}
+                  />
                 </div>
               </div>
 

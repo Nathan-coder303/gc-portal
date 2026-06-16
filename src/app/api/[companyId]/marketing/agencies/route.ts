@@ -40,6 +40,8 @@ export async function POST(
       contractStartDate: new Date(body.contractStartDate),
       payAmount: Number(body.payAmount),
       payFrequency: body.payFrequency,
+      upfrontFee: body.upfrontFee != null && body.upfrontFee !== "" ? Number(body.upfrontFee) : null,
+      commitment: body.commitment?.trim() || null,
       facebookFees: body.facebookFees != null && body.facebookFees !== "" ? Number(body.facebookFees) : null,
       notes: body.notes?.trim() || null,
     },

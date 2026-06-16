@@ -1,0 +1,2 @@
+ALTER TABLE "MarketingAgency" ADD COLUMN IF NOT EXISTS "upfrontFee" DECIMAL(14,2);
+ALTER TABLE "MarketingAgency" ADD COLUMN IF NOT EXISTS "commitment" TEXT;

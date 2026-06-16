@@ -105,8 +105,11 @@ model MarketingAgency {
   contractStartDate DateTime
   payAmount         Decimal   @db.Decimal(14, 2)
   payFrequency      String    // "MONTH", "APPOINTMENT", "LEAD", "QUARTER", "YEAR", "FLAT", "OTHER"
+  upfrontFee        Decimal?  @db.Decimal(14, 2)
+  commitment        String?   // e.g. "6 months", "12 month minimum", "Month-to-month"
   facebookFees      Decimal?  @db.Decimal(14, 2)
   notes             String?
+  attachments       String?   @db.Text   // JSON array: [{ id, name, url, size, mimeType }]
   archivedAt        DateTime?
   createdAt         DateTime  @default(now())
   updatedAt         DateTime  @updatedAt

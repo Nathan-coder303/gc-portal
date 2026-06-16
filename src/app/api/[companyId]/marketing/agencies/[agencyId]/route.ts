@@ -18,6 +18,8 @@ export async function PATCH(
   if (body.contractStartDate !== undefined) data.contractStartDate = new Date(body.contractStartDate);
   if (body.payAmount !== undefined) data.payAmount = Number(body.payAmount);
   if (body.payFrequency !== undefined) data.payFrequency = body.payFrequency;
+  if (body.upfrontFee !== undefined) data.upfrontFee = body.upfrontFee == null || body.upfrontFee === "" ? null : Number(body.upfrontFee);
+  if (body.commitment !== undefined) data.commitment = body.commitment?.trim() || null;
   if (body.facebookFees !== undefined) data.facebookFees = body.facebookFees == null || body.facebookFees === "" ? null : Number(body.facebookFees);
   if (body.notes !== undefined) data.notes = body.notes?.trim() || null;
 
