@@ -64,7 +64,7 @@ export async function POST(
 
     let blob;
     try {
-      blob = await put(`marketing/${params.agencyId}/${Date.now()}-${file.name}`, file, { access: "public" });
+      blob = await put(`marketing/${params.agencyId}/${Date.now()}-${file.name}`, file, { access: "private" });
     } catch (err) {
       console.error("Blob upload failed:", err);
       return NextResponse.json({ error: `Upload failed: ${String(err)}` }, { status: 500 });
