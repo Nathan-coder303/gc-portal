@@ -138,6 +138,7 @@ export default function SubsPageClient({
                 projects={projects}
                 filterQuery={search}
                 filterDiv={filterDiv}
+                onFilterDivChange={setFilterDiv}
               />
             </div>
           </div>
@@ -172,6 +173,7 @@ export default function SubsPageClient({
                 projects={projects}
                 filterQuery=""
                 filterDiv={filterDiv}
+                onFilterDivChange={setFilterDiv}
               />
             )}
           </div>

@@ -130,6 +130,7 @@ export default function BidTriage({
   projects = [],
   filterQuery = "",
   filterDiv = "ALL",
+  onFilterDivChange,
 }: {
   companyId: string;
   clients: Client[];
@@ -137,6 +138,7 @@ export default function BidTriage({
   projects?: Project[];
   filterQuery?: string;
   filterDiv?: string;
+  onFilterDivChange?: (code: string) => void;
 }) {
   const [bids, setBids] = useState<TriageBid[]>([]);
   const [loading, setLoading] = useState(true);
@@ -359,6 +361,17 @@ export default function BidTriage({
     filterDiv === "ALL" || (selectedDivision[b.id] ?? b.divisionCode) === filterDiv;
   const visibleBids = bids.filter(b => (triageQ ? matchesQ(b) : true) && matchesDiv(b));
 
+  // Count bids per division — respect the active text search so the chips reflect what's visible
+  const divCountSource = triageQ ? bids.filter(matchesQ) : bids;
+  const divCounts = new Map<string, number>();
+  for (const b of divCountSource) {
+    const code = selectedDivision[b.id] ?? b.divisionCode;
+    divCounts.set(code, (divCounts.get(code) ?? 0) + 1);
+  }
+  const triageDivs = ALL_DIVISIONS
+    .filter(d => divCounts.has(d.code))
+    .sort((a, b) => a.code.localeCompare(b.code));
+
   return (
     <>
       <div className="flex items-center gap-2 mb-3">
@@ -369,6 +382,31 @@ export default function BidTriage({
           {triageQ ? `of ${bids.length} bids match` : "bids remaining"}
         </span>
       </div>
+
+      {/* Division filter pills — counts of pending triage bids per division so user picks which to tackle first */}
+      {triageDivs.length > 0 && (
+        <div className="flex gap-2 flex-wrap mb-4">
+          <button
+            onClick={() => onFilterDivChange?.("ALL")}
+            className="px-3 py-1 rounded-full text-xs font-medium"
+            style={filterDiv === "ALL"
+              ? { background: "#C9A84C", color: "#0d1117" }
+              : { background: "transparent", color: "#8b949e", border: "1px solid #30373f" }}>
+            All ({divCountSource.length})
+          </button>
+          {triageDivs.map(d => (
+            <button
+              key={d.code}
+              onClick={() => onFilterDivChange?.(d.code)}
+              className="px-3 py-1 rounded-full text-xs font-medium"
+              style={filterDiv === d.code
+                ? { background: "#C9A84C", color: "#0d1117" }
+                : { background: "transparent", color: "#8b949e", border: "1px solid #30373f" }}>
+              {d.code.slice(0, 2)} – {d.name} ({divCounts.get(d.code) ?? 0})
+            </button>
+          ))}
+        </div>
+      )}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
         {visibleBids.map(bid => {
           const divCode = selectedDivision[bid.id] ?? bid.divisionCode;
