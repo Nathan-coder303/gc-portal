@@ -12,27 +12,16 @@ export async function GET(
   const session = await auth();
   if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-  const [bids, existingSubs] = await Promise.all([
-    prisma.subBid.findMany({
-      where: { companyId: params.companyId, status: "TRIAGE" },
-      orderBy: { createdAt: "desc" },
-    }),
-    prisma.subContractor.findMany({
-      where: { companyId: params.companyId },
-      select: { name: true },
-    }),
-  ]);
-
-  // Build a normalized set of existing sub names for fast lookup
-  const existingNames = new Set(existingSubs.map(s => s.name.toLowerCase().trim()));
-
-  // Filter out bids whose contractor name already exists in the subs database
-  const dedupedBids = bids.filter(b => {
-    if (!b.contractorName) return true;
-    return !existingNames.has(b.contractorName.toLowerCase().trim());
+  const bids = await prisma.subBid.findMany({
+    where: { companyId: params.companyId, status: "TRIAGE" },
+    orderBy: { createdAt: "desc" },
   });
 
-  return NextResponse.json(dedupedBids.map(b => ({
+  // Note: we used to filter out bids whose contractor already exists in the subs DB,
+  // but that hid pills for divisions where every triage bid happened to be a returning
+  // contractor (e.g. HVAC). The bid still needs to be routed to a client / project, so
+  // show them all. The "add sub" step in the assign flow already handles existing subs.
+  return NextResponse.json(bids.map(b => ({
     id: b.id,
     contractorName: b.contractorName,
     divisionCode: b.divisionCode,
