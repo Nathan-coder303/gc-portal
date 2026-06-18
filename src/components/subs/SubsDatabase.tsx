@@ -786,16 +786,35 @@ function BidEmailModal({
           className="flex items-center justify-between px-5 py-3"
           style={{ background: "#252830", borderBottom: "1px solid #30373f" }}
         >
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-3 min-w-0">
             <span className="text-sm font-semibold" style={{ color: "#e6edf3" }}>New Message</span>
             <span
-              className="text-[11px] px-2 py-0.5 rounded-full"
+              className="text-[11px] px-2 py-0.5 rounded-full truncate"
               style={{ background: "#1e2736", color: "#8b949e", border: "1px solid #30373f" }}
             >
               {emails.length} recipient{emails.length !== 1 ? "s" : ""} · {divName}
             </span>
           </div>
-          <button onClick={onClose} className="text-xl leading-none hover:opacity-70" style={{ color: "#8b949e" }}>×</button>
+          <div className="flex items-center gap-2 shrink-0">
+            {/* Send + Attach pinned to the header so they stay visible above mobile browser chrome */}
+            <button
+              onClick={() => fileInputRef.current?.click()}
+              className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-medium transition-all hover:opacity-80"
+              style={{ background: "#1e2736", border: "1px solid #30373f", color: "#8b949e" }}
+              title="Attach files"
+            >
+              📎
+            </button>
+            <button
+              onClick={handleSend}
+              disabled={sending || sent}
+              className="px-4 py-1.5 rounded-full text-xs font-semibold disabled:opacity-60 transition-all"
+              style={{ background: sent ? "#22c55e" : "#1a73e8", color: "#fff" }}
+            >
+              {sent ? "✓ Sent" : sending ? "Sending…" : `Send (${emails.length})`}
+            </button>
+            <button onClick={onClose} className="text-xl leading-none hover:opacity-70" style={{ color: "#8b949e" }}>×</button>
+          </div>
         </div>
 
         <div className="overflow-y-auto flex-1">
