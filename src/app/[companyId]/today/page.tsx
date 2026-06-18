@@ -9,6 +9,7 @@ import TodayLeadCard from "@/components/leads/TodayLeadCard";
 import TodayTaskCard, { FollowUpItem } from "@/components/today/TodayTaskCard";
 import PendingCountersignsCard from "@/components/today/PendingCountersignsCard";
 import AppointmentsCard from "@/components/today/AppointmentsCard";
+import DailyLogsCard from "@/components/today/DailyLogsCard";
 import BarometerSection, { type ClientIncomeSummary } from "@/components/today/BarometerSection";
 
 type DivisionLike = { manualTotal?: unknown; items: { defaultQty: unknown; defaultUnitCost: unknown; defaultMarkupPct: unknown }[]; groups: { items: { defaultQty: unknown; defaultUnitCost: unknown; defaultMarkupPct: unknown }[] }[] };
@@ -68,7 +69,7 @@ export default async function TodayPage({
   if (verifyHour !== 0) todayStart = new Date(Date.UTC(etY, etM - 1, etD, 5, 0, 0, 0));
   const todayEnd = new Date(todayStart.getTime() + 24 * 60 * 60 * 1000 - 1);
 
-  const [todayLeads, allLeadsCount, followUps, clients, leads, urgentLeads, untriaged, pendingCountersigns, todayAppointments, upcomingAppointments, pastAppointments, activeClients, upcomingTasks, activeClientCount, prospectCount, allClientSubs, allClientInvoices] = await Promise.all([
+  const [todayLeads, allLeadsCount, followUps, clients, leads, urgentLeads, untriaged, pendingCountersigns, todayAppointments, upcomingAppointments, pastAppointments, activeClients, upcomingTasks, activeClientCount, prospectCount, allClientSubs, allClientInvoices, activeClientsForLogs] = await Promise.all([
     // Leads received today from email
     prisma.lead.findMany({
       where: {
@@ -219,6 +220,22 @@ export default async function TodayPage({
       where: { companyId: params.companyId, client: { status: "ACTIVE" } },
       select: { amount: true, payments: { select: { amount: true } } },
     }),
+    // Active clients with their most recent daily log — drives the Daily Logs card
+    prisma.client.findMany({
+      where: { companyId: params.companyId, status: "ACTIVE" },
+      select: {
+        id: true,
+        name: true,
+        projectName: true,
+        dailyLogs: {
+          select: { arrivalDate: true, status: true },
+          orderBy: { arrivalDate: "desc" },
+          take: 1,
+        },
+        _count: { select: { dailyLogs: true } },
+      },
+      orderBy: { name: "asc" },
+    }),
   ]);
 
   const today = new Date().toLocaleDateString("en-US", {
@@ -325,6 +342,20 @@ export default async function TodayPage({
 
       {/* MIBH Income 2026 Barometer */}
       <BarometerSection mibhIncome={mibhIncome} clients={clientIncomeSummaries} />
+
+      {/* Daily Logs — one tile per active client */}
+      <DailyLogsCard
+        companyId={params.companyId}
+        todayDateStr={etDateStr}
+        clients={activeClientsForLogs.map(c => ({
+          id: c.id,
+          name: c.name,
+          projectName: c.projectName ?? null,
+          lastLogDate: c.dailyLogs[0]?.arrivalDate ? c.dailyLogs[0].arrivalDate.toISOString() : null,
+          lastLogStatus: c.dailyLogs[0]?.status ?? null,
+          logCount: c._count.dailyLogs,
+        }))}
+      />
 
       {/* Today's Appointments */}
       <AppointmentsCard
