@@ -1,0 +1,1 @@
+ALTER TABLE "ChangeOrder" ADD COLUMN IF NOT EXISTS "attachments" TEXT;

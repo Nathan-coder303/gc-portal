@@ -476,6 +476,7 @@ export default async function ClientDetailPage({
                 paidDate: p.paidDate.toISOString(),
                 notes: p.notes,
               })),
+              attachments: co.attachments ?? null,
             })),
             contracts: executedContracts
               .filter(c => c.counterSignedAt && c.executedPdfUrl)

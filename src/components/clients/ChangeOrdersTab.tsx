@@ -69,7 +69,21 @@ type ChangeOrder = {
     sortOrder: number;
   }[];
   payments?: { id: string; amount: number; method: string; paidDate: string; notes: string | null }[];
+  attachments?: string | null; // JSON array
 };
+
+type COAttachment = { id: string; name: string; url: string; size: number; mimeType: string };
+
+function parseCOAttachments(raw: string | null | undefined): COAttachment[] {
+  if (!raw) return [];
+  try { return JSON.parse(raw) as COAttachment[]; } catch { return []; }
+}
+
+function fmtFileSize(bytes: number): string {
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(0)} KB`;
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+}
 
 function calcTotal(items: COItem[]): number {
   return items.reduce((sum, it) => {
@@ -292,6 +306,117 @@ function ItemRow({
 
 // ── Change Order editor modal ────────────────────────────────────────────────
 
+// ── Reusable attachments zone for change orders ─────────────────────────────
+function COAttachmentsZone({
+  companyId, clientId, changeOrderId, initial, onChange,
+}: {
+  companyId: string;
+  clientId: string;
+  changeOrderId: string;
+  initial: COAttachment[];
+  onChange?: (next: COAttachment[]) => void;
+}) {
+  const [attachments, setAttachments] = useState<COAttachment[]>(initial);
+  const [dragOver, setDragOver] = useState(false);
+  const [uploading, setUploading] = useState(false);
+  const [err, setErr] = useState<string | null>(null);
+  const fileRef = useRef<HTMLInputElement>(null);
+
+  function notify(next: COAttachment[]) {
+    setAttachments(next);
+    onChange?.(next);
+  }
+
+  async function uploadOne(file: File) {
+    setUploading(true);
+    setErr(null);
+    try {
+      const fd = new FormData();
+      fd.append("file", file);
+      const res = await fetch(`/api/${companyId}/clients/${clientId}/change-orders/${changeOrderId}/attachments`, {
+        method: "POST", body: fd,
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data.error ?? `Upload failed (${res.status})`);
+      }
+      const a = await res.json() as COAttachment;
+      notify([...attachments, a]);
+    } catch (e) {
+      setErr(e instanceof Error ? e.message : "Upload failed");
+    } finally {
+      setUploading(false);
+    }
+  }
+
+  async function handleFiles(files: FileList | null) {
+    if (!files || files.length === 0) return;
+    for (const f of Array.from(files)) {
+      await uploadOne(f);
+    }
+  }
+
+  async function removeOne(id: string) {
+    if (!confirm("Remove this attachment?")) return;
+    const res = await fetch(`/api/${companyId}/clients/${clientId}/change-orders/${changeOrderId}/attachments?id=${id}`, {
+      method: "DELETE",
+    });
+    if (res.ok) notify(attachments.filter(a => a.id !== id));
+  }
+
+  return (
+    <div className="space-y-2">
+      {attachments.length > 0 && (
+        <div className="space-y-1.5">
+          {attachments.map(a => {
+            const isImg = a.mimeType.startsWith("image/");
+            return (
+              <div key={a.id} className="flex items-center gap-2 rounded-lg px-3 py-2" style={{ background: "#0d1117", border: "1px solid #30373f" }}>
+                <span className="text-base shrink-0">{isImg ? "🖼" : "📎"}</span>
+                <a href={a.url} target="_blank" rel="noopener noreferrer" className="flex-1 min-w-0">
+                  <p className="text-xs font-semibold truncate" style={{ color: GOLD }}>{a.name}</p>
+                  <p className="text-[10px]" style={{ color: "#8b949e" }}>{fmtFileSize(a.size)}</p>
+                </a>
+                <button onClick={() => removeOne(a.id)} className="text-xs px-2 py-0.5 rounded shrink-0" style={{ color: "#f87171", background: "#2d1010" }}>✕</button>
+              </div>
+            );
+          })}
+        </div>
+      )}
+
+      <div
+        onDragOver={e => { e.preventDefault(); setDragOver(true); }}
+        onDragLeave={() => setDragOver(false)}
+        onDrop={e => {
+          e.preventDefault();
+          setDragOver(false);
+          handleFiles(e.dataTransfer.files);
+        }}
+        onClick={() => fileRef.current?.click()}
+        className="rounded-xl px-3 py-3 text-center cursor-pointer transition-colors"
+        style={{
+          background: dragOver ? `${GOLD}11` : "#0d1117",
+          border: `1px dashed ${dragOver ? GOLD : "#30373f"}`,
+        }}
+      >
+        <p className="text-xs font-semibold" style={{ color: dragOver ? GOLD : "#8b949e" }}>
+          {uploading ? "Uploading…" : dragOver ? "Drop to attach" : "+ Attach PDF / photo / file (or drag & drop)"}
+        </p>
+        <input
+          ref={fileRef}
+          type="file"
+          multiple
+          className="sr-only"
+          accept="application/pdf,image/*,.doc,.docx,.txt,.heic"
+          onChange={e => { handleFiles(e.target.files); e.target.value = ""; }}
+        />
+      </div>
+
+      {err && <p className="text-[11px]" style={{ color: "#f87171" }}>{err}</p>}
+    </div>
+  );
+}
+
 function ChangeOrderEditor({
   companyId,
   clientId,
@@ -462,6 +587,23 @@ function ChangeOrderEditor({
             />
           </div>
         </div>
+
+        {/* Attachments — only available after the CO has been saved at least once */}
+        {initial ? (
+          <div className="mb-4">
+            <label className="block text-xs font-medium mb-1" style={{ color: "#8b949e" }}>Attachments</label>
+            <COAttachmentsZone
+              companyId={companyId}
+              clientId={clientId}
+              changeOrderId={initial.id}
+              initial={parseCOAttachments(initial.attachments)}
+            />
+          </div>
+        ) : (
+          <div className="mb-4 rounded-lg p-3 text-xs" style={{ background: "#0d1117", border: "1px dashed #30373f", color: "#8b949e" }}>
+            💡 Save this change order first to attach PDFs, photos, or files.
+          </div>
+        )}
 
         {/* Division picker */}
         <div className="rounded-xl p-3 mb-4" style={{ background: "#1e2736", border: "1px solid #30373f" }}>
