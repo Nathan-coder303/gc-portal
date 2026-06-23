@@ -86,6 +86,36 @@ export async function POST(
   return NextResponse.json(newAttachment, { status: 201 });
 }
 
+export async function PATCH(
+  req: NextRequest,
+  { params }: { params: { companyId: string; clientId: string; changeOrderId: string } }
+) {
+  const session = await auth();
+  if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
+  const attachmentId = req.nextUrl.searchParams.get("id");
+  if (!attachmentId) return NextResponse.json({ error: "id required" }, { status: 400 });
+
+  const body = await req.json().catch(() => ({})) as { name?: string };
+  const newName = body.name?.trim();
+  if (!newName) return NextResponse.json({ error: "name required" }, { status: 400 });
+
+  const co = await loadCo(params.companyId, params.clientId, params.changeOrderId);
+  if (!co) return NextResponse.json({ error: "Not found" }, { status: 404 });
+
+  const existing = parseAttachments(co.attachments);
+  const target = existing.find(a => a.id === attachmentId);
+  if (!target) return NextResponse.json({ error: "Attachment not found" }, { status: 404 });
+
+  const updated = existing.map(a => a.id === attachmentId ? { ...a, name: newName } : a);
+  await prisma.changeOrder.update({
+    where: { id: params.changeOrderId },
+    data: { attachments: JSON.stringify(updated) },
+  });
+
+  return NextResponse.json(updated.find(a => a.id === attachmentId));
+}
+
 export async function DELETE(
   req: NextRequest,
   { params }: { params: { companyId: string; clientId: string; changeOrderId: string } }

@@ -368,19 +368,58 @@ function COAttachmentsZone({
     if (res.ok) notify(attachments.filter(a => a.id !== id));
   }
 
+  const [renamingId, setRenamingId] = useState<string | null>(null);
+  const [renameValue, setRenameValue] = useState("");
+
+  async function saveRename(id: string) {
+    const name = renameValue.trim();
+    if (!name) { setRenamingId(null); return; }
+    const res = await fetch(`/api/${companyId}/clients/${clientId}/change-orders/${changeOrderId}/attachments?id=${id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ name }),
+    });
+    if (res.ok) {
+      notify(attachments.map(a => a.id === id ? { ...a, name } : a));
+    }
+    setRenamingId(null);
+  }
+
   return (
     <div className="space-y-2">
       {attachments.length > 0 && (
         <div className="space-y-1.5">
           {attachments.map(a => {
             const isImg = a.mimeType.startsWith("image/");
+            const proxyHref = `/api/co-attachment/${changeOrderId}/${a.id}`;
+            const isRenaming = renamingId === a.id;
             return (
               <div key={a.id} className="flex items-center gap-2 rounded-lg px-3 py-2" style={{ background: "#0d1117", border: "1px solid #30373f" }}>
                 <span className="text-base shrink-0">{isImg ? "🖼" : "📎"}</span>
-                <a href={a.url} target="_blank" rel="noopener noreferrer" className="flex-1 min-w-0">
-                  <p className="text-xs font-semibold truncate" style={{ color: GOLD }}>{a.name}</p>
-                  <p className="text-[10px]" style={{ color: "#8b949e" }}>{fmtFileSize(a.size)}</p>
-                </a>
+                {isRenaming ? (
+                  <input
+                    autoFocus
+                    value={renameValue}
+                    onChange={e => setRenameValue(e.target.value)}
+                    onBlur={() => saveRename(a.id)}
+                    onKeyDown={e => {
+                      if (e.key === "Enter") { e.preventDefault(); saveRename(a.id); }
+                      else if (e.key === "Escape") setRenamingId(null);
+                    }}
+                    className="flex-1 text-xs rounded px-2 py-1 outline-none"
+                    style={{ background: "#1e2736", border: `1px solid ${GOLD}66`, color: "#e6edf3" }}
+                  />
+                ) : (
+                  <a href={proxyHref} target="_blank" rel="noopener noreferrer" className="flex-1 min-w-0">
+                    <p className="text-xs font-semibold truncate" style={{ color: GOLD }}>{a.name}</p>
+                    <p className="text-[10px]" style={{ color: "#8b949e" }}>{fmtFileSize(a.size)}</p>
+                  </a>
+                )}
+                {!isRenaming && (
+                  <button onClick={() => { setRenamingId(a.id); setRenameValue(a.name); }} className="text-xs px-2 py-0.5 rounded shrink-0" style={{ color: GOLD, background: `${GOLD}11` }} title="Rename">
+                    ✎
+                  </button>
+                )}
                 <button onClick={() => removeOne(a.id)} className="text-xs px-2 py-0.5 rounded shrink-0" style={{ color: "#f87171", background: "#2d1010" }}>✕</button>
               </div>
             );
