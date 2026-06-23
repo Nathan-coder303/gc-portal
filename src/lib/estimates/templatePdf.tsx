@@ -1,4 +1,4 @@
-import { Document, Page, Text, View, StyleSheet, renderToBuffer, Image, Font, Svg, Path } from "@react-pdf/renderer";
+import { Document, Page, Text, View, StyleSheet, renderToBuffer, Image, Font, Svg, Path, Link } from "@react-pdf/renderer";
 import React from "react";
 import path from "path";
 
@@ -262,6 +262,9 @@ type TemplatePdfProps = {
   progressPaymentPct?: number | null;
   progressPaymentPhase?: string | null;
   progressInvoiceNumber?: string | null;
+  // Optional list of attachment links rendered as a final "Attachments" page (used by Change Orders).
+  // Each link becomes a clickable tile in the emailed PDF; URLs should be publicly accessible.
+  attachments?: { name: string; url: string; mimeType?: string | null }[] | null;
 };
 
 function ItemTableHeader({ showLineNum }: { showLineNum?: boolean }) {
@@ -1579,7 +1582,7 @@ function ScopeOfWorkPage({ title, body, client }: { title: string; body: string;
   );
 }
 
-function TemplatePdfDocument({ companyName, template, client, divisions, showTerms, termsContent, paymentSchedule, gcFeePercent, summaryGroups, clientSignatureData, clientSignedByName, clientSignedAt, contractorSignatureData, contractorSignedAt, includeRoofUpgradesPage, includeCoverPage, includeAdditionPages, includePermitPages, includeRetailPages, includeDivisionSummary, insertPageOffset, insulationType, clientCoverPhotoType, clientCoverPhotoUrl, clientCoverTitle, forcedBreakCsiPrefixes = [], forcedBreakTerms = false, scopeOfWork, scopeTitle, hideEstimateLabel = false, changeOrderNotes, hideContractorSignature = false }: TemplatePdfProps) {
+function TemplatePdfDocument({ companyName, template, client, divisions, showTerms, termsContent, paymentSchedule, gcFeePercent, summaryGroups, clientSignatureData, clientSignedByName, clientSignedAt, contractorSignatureData, contractorSignedAt, includeRoofUpgradesPage, includeCoverPage, includeAdditionPages, includePermitPages, includeRetailPages, includeDivisionSummary, insertPageOffset, insulationType, clientCoverPhotoType, clientCoverPhotoUrl, clientCoverTitle, forcedBreakCsiPrefixes = [], forcedBreakTerms = false, scopeOfWork, scopeTitle, hideEstimateLabel = false, changeOrderNotes, hideContractorSignature = false, attachments }: TemplatePdfProps) {
   const branding = useBranding();
   const grouped = groupDivisions(divisions);
 
@@ -2110,6 +2113,47 @@ function TemplatePdfDocument({ companyName, template, client, divisions, showTer
             <Text style={{ fontSize: 8, color: "#94a3b8" }} render={({ pageNumber, totalPages }) => `Page ${pageNumber} of ${totalPages}`} />
           </View>
           {paymentTermsSignatureBlock}
+        </Page>
+      )}
+
+      {/* Attachments page — used by Change Orders. Renders a grid of clickable file tiles. */}
+      {attachments && attachments.length > 0 && (
+        <Page size="LETTER" style={[styles.page, { paddingTop: 36, paddingBottom: 96 }]}>
+          <View fixed style={{ position: "absolute", bottom: 0, left: 0, right: 0, backgroundColor: DARK, paddingHorizontal: 24, paddingVertical: 9, flexDirection: "row", alignItems: "center", gap: 12 }}>
+            <Text style={{ fontSize: 8.5, color: GOLD, fontFamily: "Helvetica-Bold" }}>{branding.name.toUpperCase()}</Text>
+            <Text style={{ fontSize: 7, color: "#94a3b8" }}>|</Text>
+            <Text style={{ fontSize: 8.5, color: "#94a3b8" }}>{branding.email}</Text>
+            <View style={{ flex: 1 }} />
+            <Text style={{ fontSize: 8, color: "#94a3b8" }} render={({ pageNumber, totalPages }) => `Page ${pageNumber} of ${totalPages}`} />
+          </View>
+
+          <View style={{ paddingHorizontal: 36 }}>
+            <Text style={{ fontSize: 14, fontFamily: "Helvetica-Bold", color: DARK, marginBottom: 4 }}>Attachments</Text>
+            <Text style={{ fontSize: 9, color: "#64748b", marginBottom: 16 }}>
+              Click any file below to open it.
+            </Text>
+
+            <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 14 }}>
+              {attachments.map((a, idx) => {
+                const m = (a.mimeType ?? "").toLowerCase();
+                const isPdf = m.includes("pdf");
+                const isImg = m.startsWith("image/");
+                const label = isPdf ? "PDF" : isImg ? "IMG" : ((a.name.split(".").pop() ?? "FILE").toUpperCase().slice(0, 4));
+                const color = isPdf ? "#dc2626" : isImg ? "#0ea5e9" : "#6366f1";
+                return (
+                  <Link key={idx} src={a.url} style={{ width: 110, textDecoration: "none" }}>
+                    <View style={{ alignItems: "center" }}>
+                      <View style={{ width: 72, height: 92, backgroundColor: color, borderRadius: 6, justifyContent: "center", alignItems: "center", marginBottom: 6 }}>
+                        <Text style={{ color: "#fff", fontFamily: "Helvetica-Bold", fontSize: 12 }}>{label}</Text>
+                      </View>
+                      <Text style={{ fontSize: 8, color: DARK, textAlign: "center" }}>{a.name}</Text>
+                      <Text style={{ fontSize: 7, color: GOLD, marginTop: 2, textAlign: "center", textDecoration: "underline" }}>Open file</Text>
+                    </View>
+                  </Link>
+                );
+              })}
+            </View>
+          </View>
         </Page>
       )}
     </Document>

@@ -1087,8 +1087,9 @@ function CODetailModal({
                       const isPdf = a.mimeType.includes("pdf");
                       const label = isPdf ? "PDF" : isImg ? "IMG" : (a.name.split(".").pop() ?? "FILE").slice(0, 4).toUpperCase();
                       const color = isPdf ? "#dc2626" : isImg ? "#0ea5e9" : "#6366f1";
+                      const href = `/api/co-attachment/${order.id}/${a.id}`;
                       return (
-                        <a key={a.id} href={a.url} target="_blank" rel="noopener noreferrer"
+                        <a key={a.id} href={href} target="_blank" rel="noopener noreferrer"
                           className="flex flex-col items-center"
                           style={{ width: 80 }}
                         >

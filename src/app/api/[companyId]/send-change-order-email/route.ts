@@ -3,19 +3,54 @@ import { google } from "googleapis";
 import crypto from "crypto";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { renderChangeOrderPdfBuffer, ChangeOrderPdfItem, ChangeOrderPdfAttachment } from "@/lib/changeOrderPdf";
+import { renderTemplatePdf } from "@/lib/estimates/templatePdf";
 import { getGmailOAuth } from "@/lib/gmail";
+import { STANDARD_TEMPLATE_DIVISIONS, BATHROOM_TEMPLATE_DIVISIONS, KITCHEN_TEMPLATE_DIVISIONS } from "@/lib/standardTemplateData";
 
 export const runtime = "nodejs";
 export const maxDuration = 30;
 
-function parseAttachments(raw: string | null): ChangeOrderPdfAttachment[] {
-  if (!raw) return [];
-  try {
-    const arr = JSON.parse(raw);
-    if (!Array.isArray(arr)) return [];
-    return arr.map(a => ({ name: a.name, url: a.url, mimeType: a.mimeType ?? null }));
-  } catch { return []; }
+const _ALL = [...STANDARD_TEMPLATE_DIVISIONS, ...BATHROOM_TEMPLATE_DIVISIONS, ...KITCHEN_TEMPLATE_DIVISIONS];
+const DIV_NAME_LOOKUP: Record<string, string> = {};
+for (const d of _ALL) {
+  const p = d.csiCode.replace(/\s/g, "").substring(0, 2);
+  if (!DIV_NAME_LOOKUP[p]) DIV_NAME_LOOKUP[p] = d.name;
+}
+
+function resolveItems(items: { id: string; csiCode: string | null; divisionName: string; name: string; description: string | null; qty: unknown; unit: string | null; unitCost: unknown; markupPct: unknown; sortOrder: number }[]) {
+  const divMap = new Map<string, { id: string; csiCode: string | null; name: string; groups: never[]; items: { id: string; name: string; detail: string | null; unit: string | null; csiCode: string | null; defaultQty: number | null; defaultUnitCost: number | null; defaultMarkupPct: number | null; visibleInPdf: boolean; notes: string | null }[] }>();
+
+  for (const it of items) {
+    const cleanCode = (it.csiCode ?? "").replace(/\s/g, "");
+    const divPrefix = cleanCode.substring(0, 2);
+    const mapKey = divPrefix || it.divisionName;
+    const divName = (divPrefix && DIV_NAME_LOOKUP[divPrefix]) ? DIV_NAME_LOOKUP[divPrefix] : it.divisionName;
+    const divCsiCode = divPrefix ? `${divPrefix} 00 00` : null;
+
+    if (!divMap.has(mapKey)) {
+      divMap.set(mapKey, {
+        id: mapKey,
+        csiCode: divCsiCode,
+        name: divName,
+        groups: [],
+        items: [],
+      });
+    }
+    divMap.get(mapKey)!.items.push({
+      id: it.id,
+      name: it.name,
+      detail: null,
+      unit: it.unit ?? null,
+      csiCode: null,
+      defaultQty: it.qty != null ? Number(it.qty) : null,
+      defaultUnitCost: it.unitCost != null ? Number(it.unitCost) : null,
+      defaultMarkupPct: it.markupPct != null ? Number(it.markupPct) : null,
+      visibleInPdf: true,
+      notes: it.description ?? null,
+    });
+  }
+
+  return Array.from(divMap.values());
 }
 
 async function resolvePrivateCoverUrl(blobUrl: string | null): Promise<string | null> {
@@ -31,6 +66,12 @@ async function resolvePrivateCoverUrl(blobUrl: string | null): Promise<string | 
   } catch {
     return null;
   }
+}
+
+type StoredAttachment = { id: string; name: string; url: string; size: number; mimeType: string };
+function parseStoredAttachments(raw: string | null): StoredAttachment[] {
+  if (!raw) return [];
+  try { const a = JSON.parse(raw); return Array.isArray(a) ? a : []; } catch { return []; }
 }
 
 export async function POST(
@@ -75,36 +116,37 @@ export async function POST(
     }
 
     const companyLogoDataUrl = company.logoUrl ? await resolvePrivateCoverUrl(company.logoUrl) : null;
+    const divisions = resolveItems(changeOrder.items);
 
-    const items: ChangeOrderPdfItem[] = changeOrder.items.map(it => ({
-      name: it.name,
-      description: it.description,
-      qty: it.qty != null ? Number(it.qty) : 0,
-      unit: it.unit,
-      unitCost: it.unitCost != null ? Number(it.unitCost) : 0,
-      markupPct: it.markupPct != null ? Number(it.markupPct) : 0,
+    // Public proxy URLs so the client can open attachments straight from the emailed PDF
+    const origin = new URL(req.url).origin;
+    const attachmentLinks = parseStoredAttachments(changeOrder.attachments).map(a => ({
+      name: a.name,
+      url: `${origin}/api/co-attachment/${changeOrder.id}/${a.id}`,
+      mimeType: a.mimeType ?? null,
     }));
 
-    const buffer = await renderChangeOrderPdfBuffer({
-      orderNumber: changeOrder.orderNumber,
-      createdAt: changeOrder.createdAt,
-      title: changeOrder.title,
-      notes: changeOrder.notes,
-      status: changeOrder.status,
-      signedAt: changeOrder.signedAt,
-      signedByName: changeOrder.signedByName,
-      signatureData: changeOrder.signatureData,
-      items,
-      attachments: parseAttachments(changeOrder.attachments),
-      company: {
-        name: company.name,
-        address: company.address,
-        phone: company.phone,
-        email: company.email,
-        licenses: company.licenses,
-        website: company.website,
-        logoSrc: companyLogoDataUrl ?? undefined,
+    const buffer = await renderTemplatePdf({
+      companyName: company.name,
+      branding: {
+        name: company.name || undefined,
+        address: company.address || undefined,
+        phone: company.phone || undefined,
+        email: company.email || undefined,
+        licenses: company.licenses || undefined,
+        tagline: company.tagline || undefined,
+        website: company.website || undefined,
+        contactName: company.contactName || undefined,
+        logoSrc: companyLogoDataUrl || undefined,
       },
+      template: {
+        name: changeOrder.orderNumber ? `Change Order ${changeOrder.orderNumber}` : changeOrder.title,
+        description: null,
+        estimateNumber: null,
+        estimateDate: changeOrder.createdAt.toISOString().split("T")[0],
+      },
+      hideEstimateLabel: true,
+      changeOrderNotes: changeOrder.notes ?? null,
       client: changeOrder.client
         ? {
             name: changeOrder.client.name,
@@ -112,9 +154,27 @@ export async function POST(
             city: changeOrder.client.city,
             state: changeOrder.client.state,
             zip: changeOrder.client.zip,
-            projectName: changeOrder.client.projectName,
+            phone: changeOrder.client.phone,
+            email: changeOrder.client.email,
           }
         : null,
+      divisions,
+      showTerms: false,
+      paymentSchedule: null,
+      gcFeePercent: null,
+      summaryGroups: null,
+      clientSignatureData: changeOrder.signatureData ?? null,
+      clientSignedByName: changeOrder.signedByName ?? null,
+      clientSignedAt: changeOrder.signedAt ?? null,
+      includeRoofUpgradesPage: false,
+      includeAdditionPages: false,
+      includeRetailPages: false,
+      includeCoverPage: false,
+      hideContractorSignature: true,
+      clientCoverPhotoType: null,
+      clientCoverPhotoUrl: null,
+      clientCoverTitle: null,
+      attachments: attachmentLinks.length > 0 ? attachmentLinks : null,
     });
 
     const envToken = process.env.GOOGLE_REFRESH_TOKEN;
@@ -149,7 +209,7 @@ export async function POST(
     }
     const signUrl = `https://portal.mibhconstruction.com/sign-co/${signToken}`;
 
-    // Split the body around the closing/greeting so the signing block lands in the middle
+    // Split body around the closing so the signing block lands in the middle
     let mainBody: string;
     let closing: string;
     const closingMatch = emailBody.match(/[^\n]*(any questions|let me know|thank you|sincerely|best regards|regards,)[^\n]*\n?/i);
