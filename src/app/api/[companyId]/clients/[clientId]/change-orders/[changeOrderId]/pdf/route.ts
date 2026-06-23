@@ -33,14 +33,25 @@ function resolveItems(items: { id: string; csiCode: string | null; divisionName:
         items: [],
       });
     }
+    // Normalize: if user entered only one of qty/unitCost, treat the value as the unit cost
+    // so a single-number entry still shows a non-zero line total in the PDF.
+    let qty = it.qty != null ? Number(it.qty) : null;
+    let unitCost = it.unitCost != null ? Number(it.unitCost) : null;
+    if (qty != null && qty > 0 && (unitCost == null || unitCost === 0)) {
+      unitCost = qty;
+      qty = 1;
+    } else if ((qty == null || qty === 0) && unitCost != null && unitCost > 0) {
+      qty = 1;
+    }
+
     divMap.get(mapKey)!.items.push({
       id: it.id,
       name: it.name,
       detail: null,
       unit: it.unit ?? null,
       csiCode: null,
-      defaultQty: it.qty != null ? Number(it.qty) : null,
-      defaultUnitCost: it.unitCost != null ? Number(it.unitCost) : null,
+      defaultQty: qty,
+      defaultUnitCost: unitCost,
       defaultMarkupPct: it.markupPct != null ? Number(it.markupPct) : null,
       visibleInPdf: true,
       notes: it.description ?? null,

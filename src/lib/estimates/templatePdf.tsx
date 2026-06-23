@@ -1688,9 +1688,6 @@ function TemplatePdfDocument({ companyName, template, client, divisions, showTer
       <View style={styles.sigSection} wrap={false}>
         <View style={[styles.sectionDivider, { marginTop: 2 }]} />
         <Text style={[styles.sectionTitle, { marginBottom: 3, paddingTop: 4 }]}>Agreement &amp; Authorization</Text>
-        <Text style={{ fontSize: 8, color: "#475569", marginBottom: 8 }}>
-          By signing below, both parties agree to the scope of work, pricing, and terms described in this document.
-        </Text>
 
         {contractorSignatureData ? (
           // ── Executed: card design showing actual signatures ───────────────
