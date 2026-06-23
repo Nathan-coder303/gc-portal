@@ -142,8 +142,44 @@ export default function InvoicesAndCoTab(props: {
     }),
   ];
 
+  async function refreshInvoicesAndOrders() {
+    try {
+      const [invRes, coRes] = await Promise.all([
+        fetch(`/api/${companyId}/clients/${clientId}/invoices`, { cache: "no-store" }),
+        fetch(`/api/${companyId}/clients/${clientId}/change-orders`, { cache: "no-store" }),
+      ]);
+      if (invRes.ok) {
+        const data = await invRes.json();
+        if (Array.isArray(data)) {
+          setInvoices(data.map((inv: { id: string; invoiceNumber: string; estimateId: string; phase: string; trigger: string | null; pct: number | string; amount: number | string; status: string; dueDate: string | null; notes: string | null; sentAt: string | null; paidAt: string | null; createdAt: string; payments: { id: string; amount: number | string; method: string; paidDate: string; notes: string | null }[] }) => ({
+            id: inv.id,
+            invoiceNumber: inv.invoiceNumber,
+            estimateId: inv.estimateId,
+            phase: inv.phase,
+            trigger: inv.trigger,
+            pct: Number(inv.pct),
+            amount: Number(inv.amount),
+            status: inv.status,
+            dueDate: inv.dueDate,
+            notes: inv.notes,
+            sentAt: inv.sentAt,
+            paidAt: inv.paidAt,
+            createdAt: inv.createdAt,
+            payments: (inv.payments ?? []).map(p => ({ id: p.id, amount: Number(p.amount), method: p.method, paidDate: p.paidDate, notes: p.notes })),
+          })));
+        }
+      }
+      if (coRes.ok) {
+        const data = await coRes.json();
+        if (Array.isArray(data)) setOrders(data);
+      }
+    } catch { /* non-fatal */ }
+  }
+
   function openAddPayment() {
     setEditing(null);
+    // Refetch in the background so newly created invoices / COs show up in the dropdown
+    void refreshInvoicesAndOrders();
     if (targetOptions.length === 0) {
       setPayError("Create an invoice or change order first.");
       setPayOpen(true);
