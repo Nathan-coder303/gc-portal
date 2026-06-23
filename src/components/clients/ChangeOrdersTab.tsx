@@ -1129,7 +1129,7 @@ function CODetailModal({
               </a>
             </div>
             <iframe
-              src={`/api/${companyId}/clients/${clientId}/change-orders/${order.id}/pdf?preview=1#toolbar=0&navpanes=0`}
+              src={`/api/${companyId}/clients/${clientId}/change-orders/${order.id}/pdf?preview=1&t=${encodeURIComponent(order.signedAt ?? order.createdAt)}#toolbar=0&navpanes=0`}
               title="Change Order PDF Preview"
               className="flex-1 w-full"
               style={{ border: "none", minHeight: 600 }}
