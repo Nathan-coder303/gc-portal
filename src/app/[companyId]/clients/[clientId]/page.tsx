@@ -477,6 +477,10 @@ export default async function ClientDetailPage({
                 notes: p.notes,
               })),
               attachments: co.attachments ?? null,
+              timeDelay: co.timeDelay,
+              daysDelayed: co.daysDelayed,
+              billingStatus: co.billingStatus,
+              approverIp: co.approverIp,
             })),
             contracts: executedContracts
               .filter(c => c.counterSignedAt && c.executedPdfUrl)

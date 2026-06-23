@@ -70,6 +70,10 @@ type ChangeOrder = {
   }[];
   payments?: { id: string; amount: number; method: string; paidDate: string; notes: string | null }[];
   attachments?: string | null; // JSON array
+  timeDelay?: boolean;
+  daysDelayed?: number | null;
+  billingStatus?: string | null;
+  approverIp?: string | null;
 };
 
 type COAttachment = { id: string; name: string; url: string; size: number; mimeType: string };
@@ -436,6 +440,9 @@ function ChangeOrderEditor({
   const [title, setTitle] = useState(initial?.title ?? "");
   const [orderNumber, setOrderNumber] = useState(initial?.orderNumber ?? defaultOrderNumber ?? "");
   const [notes, setNotes] = useState(initial?.notes ?? "");
+  const [timeDelay, setTimeDelay] = useState<boolean>(initial?.timeDelay ?? false);
+  const [daysDelayed, setDaysDelayed] = useState<string>(initial?.daysDelayed != null ? String(initial.daysDelayed) : "");
+  const [billingStatus, setBillingStatus] = useState<string>(initial?.billingStatus ?? "");
   const [error, setError] = useState("");
 
   const [items, setItems] = useState<COItem[]>(
@@ -498,6 +505,9 @@ function ChangeOrderEditor({
         title: title.trim(),
         orderNumber: orderNumber || null,
         notes: notes || null,
+        timeDelay,
+        daysDelayed: daysDelayed.trim() ? Number(daysDelayed) : null,
+        billingStatus: billingStatus.trim() || null,
         items: items.map((it, idx) => ({
           csiCode: it.csiCode || null,
           divisionName: it.divisionName,
@@ -585,6 +595,61 @@ function ChangeOrderEditor({
               style={{ ...inputStyle, resize: "none", overflow: "hidden" }}
               placeholder="Reason for change order…"
             />
+          </div>
+
+          {/* Time delay + days */}
+          <div className="col-span-2 sm:col-span-1">
+            <label className="block text-xs font-medium mb-1" style={{ color: "#8b949e" }}>Time Delay</label>
+            <div className="flex gap-2">
+              {([
+                { v: false, l: "No" },
+                { v: true, l: "Yes" },
+              ] as { v: boolean; l: string }[]).map(opt => (
+                <button
+                  key={opt.l}
+                  type="button"
+                  onClick={() => setTimeDelay(opt.v)}
+                  className="flex-1 py-2 rounded-lg text-sm font-semibold"
+                  style={timeDelay === opt.v
+                    ? { background: GOLD, color: "#0d1117" }
+                    : { background: "#1e2736", color: "#8b949e", border: "1px solid #30373f" }}
+                >
+                  {opt.l}
+                </button>
+              ))}
+            </div>
+          </div>
+          <div className="col-span-2 sm:col-span-1">
+            <label className="block text-xs font-medium mb-1" style={{ color: "#8b949e" }}>Days Delayed</label>
+            <input
+              type="number"
+              min={0}
+              value={daysDelayed}
+              onChange={e => setDaysDelayed(e.target.value)}
+              disabled={!timeDelay}
+              className="w-full rounded-lg px-3 py-2 text-sm disabled:opacity-50"
+              style={inputStyle}
+              placeholder={timeDelay ? "e.g. 10" : "—"}
+            />
+          </div>
+
+          <div className="col-span-2">
+            <label className="block text-xs font-medium mb-1" style={{ color: "#8b949e" }}>Billing Status</label>
+            <div className="flex gap-2 flex-wrap">
+              {["Unbilled", "Unbilled/Approved", "Billed", "Paid"].map(s => (
+                <button
+                  key={s}
+                  type="button"
+                  onClick={() => setBillingStatus(prev => prev === s ? "" : s)}
+                  className="px-3 py-1.5 rounded-full text-xs font-semibold"
+                  style={billingStatus === s
+                    ? { background: GOLD, color: "#0d1117" }
+                    : { background: "#1e2736", color: "#8b949e", border: "1px solid #30373f" }}
+                >
+                  {s}
+                </button>
+              ))}
+            </div>
           </div>
         </div>
 
@@ -804,7 +869,7 @@ function CODetailModal({
   onEdit: () => void;
   onSignatureSaved: (updated: ChangeOrder) => void;
 }) {
-  const [tab, setTab] = useState<"details" | "items">("details");
+  const [tab, setTab] = useState<"details" | "preview">("details");
   const [collectingSig, setCollectingSig] = useState(false);
   const [sigHasDrawn, setSigHasDrawn] = useState(false);
   const [sigSubmitting, setSigSubmitting] = useState(false);
@@ -878,16 +943,22 @@ function CODetailModal({
     setCollectingSig(false);
   }
 
-  const detailRows = [
+  const detailRows: [string, string][] = [
     ["Change Order #", order.orderNumber ?? "—"],
     ["Date", new Date(order.createdAt).toLocaleDateString("en-US", { month: "2-digit", day: "2-digit", year: "numeric" })],
-    ["Title", order.title],
+    ["Subject", order.title],
     ["Customer", clientName],
+    ["Time Delay", order.timeDelay ? "Yes" : "No"],
+    ...(order.timeDelay && order.daysDelayed != null ? [["Days Delayed", String(order.daysDelayed)] as [string, string]] : []),
+    ["Billing Status", order.billingStatus ?? (order.status === "APPROVED" ? "Unbilled/Approved" : "—")],
+    ...(order.signedByName ? [["Approved By", order.signedByName] as [string, string]] : []),
+    ...(order.signedAt
+      ? [["Online Approval", `Accepted: ${new Date(order.signedAt).toLocaleString("en-US", { month: "2-digit", day: "2-digit", year: "numeric", hour: "numeric", minute: "2-digit", hour12: true })}${order.approverIp ? `\n${order.approverIp}` : ""}`] as [string, string]]
+      : []),
     ["Status", order.status],
-    ["Items", String(order.items.length)],
-    ...(order.signedAt ? [["Signed", new Date(order.signedAt).toLocaleString("en-US", { month: "2-digit", day: "2-digit", year: "numeric", hour: "numeric", minute: "2-digit", hour12: true })]] : []),
-    ...(order.signedByName ? [["Signed By", order.signedByName]] : []),
   ];
+
+  const coAttachments = parseCOAttachments(order.attachments);
 
   return (
     <div className="fixed inset-0 z-50 flex flex-col" style={{ background: "#0d1117" }}>
@@ -923,10 +994,10 @@ function CODetailModal({
                 <span className="text-xs font-bold uppercase tracking-widest" style={{ color: "#8b949e" }}>Details</span>
               </div>
               {detailRows.map(([label, value], i) => (
-                <div key={label} className="flex items-center justify-between px-4 py-3"
+                <div key={label} className="flex items-start justify-between gap-3 px-4 py-3"
                   style={{ borderBottom: i < detailRows.length - 1 ? "1px solid #21262d" : "none" }}>
-                  <span className="text-xs" style={{ color: "#6e7681", minWidth: 110 }}>{label}</span>
-                  <span className="text-xs font-medium text-right flex-1" style={{ color: "#e6edf3" }}>{value}</span>
+                  <span className="text-xs shrink-0" style={{ color: "#6e7681", minWidth: 110 }}>{label}</span>
+                  <span className="text-xs font-medium text-right flex-1" style={{ color: "#e6edf3", whiteSpace: "pre-line" }}>{value}</span>
                 </div>
               ))}
             </div>
@@ -1002,87 +1073,76 @@ function CODetailModal({
                 </div>
               )}
             </div>
-          </div>
-        )}
 
-        {tab === "items" && (
-          <div className="pb-6">
-            {/* Total */}
-            <div className="px-4 pt-5 pb-3">
-              <span className="text-2xl font-bold" style={{ color: "#e6edf3" }}>
-                Total: <span style={{ color: total < 0 ? "#f87171" : total === 0 ? "#e6edf3" : GOLD }}>${fmt(total)}</span>
-              </span>
-            </div>
-
-            {/* Items table */}
-            {order.items.length > 0 ? (
-              <div className="mx-4 rounded-2xl overflow-hidden" style={{ border: "1px solid #21262d" }}>
-                {/* Header */}
-                <div className="grid px-4 py-2" style={{ gridTemplateColumns: "1fr 48px 90px", background: "#1a2030", borderBottom: "1px solid #21262d" }}>
-                  <span className="text-xs font-bold" style={{ color: "#8b949e" }}>Name</span>
-                  <span className="text-xs font-bold text-center" style={{ color: "#8b949e" }}>QTY</span>
-                  <span className="text-xs font-bold text-right" style={{ color: "#8b949e" }}>Total</span>
-                </div>
-                {order.items.map((it, i) => {
-                  const q = parseFloat(it.qty ?? "0") || 0;
-                  const c = parseFloat(it.unitCost ?? "0") || 0;
-                  const m = parseFloat(it.markupPct ?? "0") || 0;
-                  const lineTotal = q * c * (1 + m / 100);
-                  return (
-                    <div key={it.id} style={{ borderTop: i > 0 ? "1px solid #21262d" : "none", background: i % 2 === 0 ? "#161b22" : "#111519" }}>
-                      <div className="grid px-4 py-2.5 items-start" style={{ gridTemplateColumns: "1fr 48px 90px" }}>
-                        <div>
-                          <span className="text-xs font-medium" style={{ color: "#e6edf3" }}>{it.name}</span>
-                          {it.csiCode && <span className="ml-1.5 text-xs font-mono" style={{ color: "#484f58" }}>{it.csiCode}</span>}
-                        </div>
-                        <span className="text-xs text-center" style={{ color: "#8b949e" }}>{it.qty ?? "—"}</span>
-                        <span className="text-xs text-right font-semibold" style={{ color: lineTotal < 0 ? "#f87171" : lineTotal > 0 ? GOLD : "#8b949e" }}>
-                          {it.unitCost ? `$${fmt(lineTotal)}` : "—"}
-                        </span>
-                      </div>
-                      {it.description && (
-                        <div className="px-4 pb-2.5">
-                          <p className="text-xs italic" style={{ color: "#6e7681" }}>{it.description}</p>
-                        </div>
-                      )}
-                    </div>
-                  );
-                })}
+            {/* Files */}
+            <div className="mx-4 mt-4">
+              <p className="text-xs font-bold uppercase tracking-widest mb-2 px-1" style={{ color: "#8b949e" }}>Files</p>
+              <div className="rounded-2xl p-3" style={{ background: "#161b22", border: "1px solid #21262d" }}>
+                {coAttachments.length === 0 ? (
+                  <p className="text-xs text-center py-3" style={{ color: "#484f58" }}>No files attached</p>
+                ) : (
+                  <div className="flex flex-wrap gap-3">
+                    {coAttachments.map(a => {
+                      const isImg = a.mimeType.startsWith("image/");
+                      const isPdf = a.mimeType.includes("pdf");
+                      const label = isPdf ? "PDF" : isImg ? "IMG" : (a.name.split(".").pop() ?? "FILE").slice(0, 4).toUpperCase();
+                      const color = isPdf ? "#dc2626" : isImg ? "#0ea5e9" : "#6366f1";
+                      return (
+                        <a key={a.id} href={a.url} target="_blank" rel="noopener noreferrer"
+                          className="flex flex-col items-center"
+                          style={{ width: 80 }}
+                        >
+                          <div className="w-16 h-20 rounded-md flex items-center justify-center mb-1"
+                            style={{ background: color, color: "#fff", fontWeight: 700, fontSize: 12 }}>
+                            {label}
+                          </div>
+                          <span className="text-[10px] text-center truncate w-full" style={{ color: "#8b949e" }} title={a.name}>{a.name}</span>
+                        </a>
+                      );
+                    })}
+                  </div>
+                )}
               </div>
-            ) : (
-              <div className="mx-4 rounded-2xl px-4 py-6 text-center" style={{ background: "#161b22", border: "1px solid #21262d" }}>
-                <p className="text-sm" style={{ color: "#484f58" }}>No items</p>
-              </div>
-            )}
-
-            {/* Summary */}
-            <div className="mx-4 mt-3 rounded-2xl overflow-hidden" style={{ border: "1px solid #21262d" }}>
-              {[
-                { label: "Sub Total", value: `$${fmt(total)}`, bold: true },
-                { label: "Grand Total", value: `$${fmt(total)}`, bold: true, gold: true },
-              ].map(({ label, value, bold, gold }, i) => (
-                <div key={label} className="flex items-center justify-between px-4 py-3"
-                  style={{ background: i % 2 === 0 ? "#161b22" : "#111519", borderTop: i > 0 ? "1px solid #21262d" : "none" }}>
-                  <span className={`text-sm ${bold ? "font-bold" : ""}`} style={{ color: bold ? "#e6edf3" : "#8b949e" }}>{label}</span>
-                  <span className={`text-sm ${bold ? "font-bold" : ""}`} style={{ color: gold ? GOLD : "#e6edf3" }}>{value}</span>
-                </div>
-              ))}
             </div>
 
             {/* Created footer */}
-            <p className="text-xs text-center italic mt-4 px-4" style={{ color: "#484f58" }}>
+            <p className="text-xs text-center italic mt-6 px-4" style={{ color: "#484f58" }}>
               Created: {new Date(order.createdAt).toLocaleString("en-US", { month: "2-digit", day: "2-digit", year: "numeric", hour: "numeric", minute: "2-digit", hour12: true })}
             </p>
+          </div>
+        )}
+
+        {tab === "preview" && (
+          <div className="flex-1 flex flex-col" style={{ background: "#1e1e1e", minHeight: 600 }}>
+            <div className="flex items-center justify-between px-4 py-2" style={{ background: "#161b22", borderBottom: "1px solid #21262d" }}>
+              <span className="text-xs font-semibold" style={{ color: "#8b949e" }}>
+                Total: <span style={{ color: GOLD }}>${fmt(total)}</span>
+              </span>
+              <a
+                href={`/api/${companyId}/clients/${clientId}/change-orders/${order.id}/pdf`}
+                target="_blank" rel="noopener noreferrer"
+                className="text-xs px-3 py-1 rounded-full font-semibold"
+                style={{ background: "#C9A84C22", color: GOLD, border: `1px solid ${GOLD}44` }}
+              >
+                ↓ Download PDF
+              </a>
+            </div>
+            <iframe
+              src={`/api/${companyId}/clients/${clientId}/change-orders/${order.id}/pdf?preview=1#toolbar=0&navpanes=0`}
+              title="Change Order PDF Preview"
+              className="flex-1 w-full"
+              style={{ border: "none", minHeight: 600 }}
+            />
           </div>
         )}
       </div>
 
       {/* Bottom tab bar */}
       <div className="flex shrink-0" style={{ background: "#161b22", borderTop: "1px solid #21262d" }}>
-        {(["details", "items"] as const).map(t => (
+        {(["details", "preview"] as const).map(t => (
           <button key={t} onClick={() => setTab(t)} className="flex-1 py-3 text-sm font-semibold capitalize transition-colors"
             style={{ color: tab === t ? GOLD : "#6e7681", borderTop: tab === t ? `2px solid ${GOLD}` : "2px solid transparent" }}>
-            {t === "details" ? "Details" : `Items (${order.items.length})`}
+            {t === "details" ? "Details" : "Preview"}
           </button>
         ))}
       </div>

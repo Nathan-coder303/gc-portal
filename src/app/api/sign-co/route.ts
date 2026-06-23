@@ -54,9 +54,12 @@ export async function PATCH(req: NextRequest) {
   if (co.signedAt) return NextResponse.json({ error: "Already signed" }, { status: 409 });
 
   const signedAt = new Date();
+  // Capture the client's IP from upstream headers (Vercel sets x-forwarded-for / x-real-ip)
+  const fwd = req.headers.get("x-forwarded-for") ?? "";
+  const approverIp = (fwd.split(",")[0].trim() || req.headers.get("x-real-ip") || "").slice(0, 64) || null;
   await prisma.changeOrder.update({
     where: { id: co.id },
-    data: { signatureData, signedByName, signedAt, status: "APPROVED" },
+    data: { signatureData, signedByName, signedAt, status: "APPROVED", approverIp },
   });
 
   // Notify Mike

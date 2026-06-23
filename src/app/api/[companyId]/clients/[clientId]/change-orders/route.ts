@@ -33,10 +33,13 @@ export async function POST(
   if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const body = await req.json();
-  const { title, orderNumber, notes, items } = body as {
+  const { title, orderNumber, notes, items, timeDelay, daysDelayed, billingStatus } = body as {
     title: string;
     orderNumber?: string;
     notes?: string;
+    timeDelay?: boolean;
+    daysDelayed?: number | null;
+    billingStatus?: string | null;
     items?: { csiCode?: string; divisionName: string; name: string; description?: string; qty?: number; unit?: string; unitCost?: number; markupPct?: number; sortOrder?: number }[];
   };
 
@@ -51,6 +54,9 @@ export async function POST(
       title: title.trim(),
       orderNumber: orderNumber || null,
       notes: notes || null,
+      timeDelay: !!timeDelay,
+      daysDelayed: daysDelayed == null ? null : Number(daysDelayed),
+      billingStatus: billingStatus || null,
       items: items?.length
         ? {
             create: items.map((it, idx) => ({

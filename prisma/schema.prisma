@@ -1177,10 +1177,14 @@ model ChangeOrder {
   status        String            @default("DRAFT") // DRAFT | SENT | APPROVED | REJECTED
   notes         String?
   attachments    String?          @db.Text   // JSON array: [{ id, name, url, size, mimeType }]
+  timeDelay      Boolean          @default(false)
+  daysDelayed    Int?
+  billingStatus  String?          // "Unbilled", "Unbilled/Approved", "Billed", "Paid", etc.
   signatureToken String?          @unique
   signatureData String?           @db.Text
   signedAt      DateTime?
   signedByName  String?
+  approverIp    String?
   createdAt     DateTime          @default(now())
   updatedAt     DateTime          @updatedAt
   items         ChangeOrderItem[]
