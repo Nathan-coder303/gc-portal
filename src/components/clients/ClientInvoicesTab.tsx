@@ -995,6 +995,17 @@ export default function ClientInvoicesTab({
                         )}
                       </div>
                       <div className="flex items-center gap-2 shrink-0">
+                        {/* Mobile + desktop quick-pay button — always visible whenever there's a balance */}
+                        {balance > 0 && (
+                          <button
+                            onClick={(e) => { e.stopPropagation(); openPayment(inv); }}
+                            className="text-[10px] px-2 py-1 rounded font-semibold whitespace-nowrap"
+                            style={{ background: "#22c55e", color: "#0d1117" }}
+                            title="Record a payment for this invoice"
+                          >
+                            $ Pay
+                          </button>
+                        )}
                         {/* Desktop-only inline actions — always visible on sm+ */}
                         <div className="hidden sm:flex items-center gap-1" onClick={e => e.stopPropagation()}>
                           <a
@@ -1009,13 +1020,6 @@ export default function ClientInvoicesTab({
                             style={{ background: "#C9A84C22", color: GOLD, border: `1px solid ${GOLD}44` }}>
                             ✉ Send
                           </button>
-                          {balance > 0 && (
-                            <button onClick={() => openPayment(inv)}
-                              className="text-[10px] px-2 py-1 rounded font-semibold"
-                              style={{ background: "#22c55e22", color: "#22c55e", border: "1px solid #22c55e44" }}>
-                              $ Pay
-                            </button>
-                          )}
                           <button onClick={() => openEdit(inv)}
                             className="text-[10px] px-2 py-1 rounded font-semibold"
                             style={{ background: "#1e2736", color: "#8b949e", border: "1px solid #30373f" }}>
