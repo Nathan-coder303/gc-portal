@@ -5,38 +5,67 @@ import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { renderTemplatePdf } from "@/lib/estimates/templatePdf";
 import { getGmailOAuth } from "@/lib/gmail";
+import { STANDARD_TEMPLATE_DIVISIONS, BATHROOM_TEMPLATE_DIVISIONS, KITCHEN_TEMPLATE_DIVISIONS } from "@/lib/standardTemplateData";
 
 export const runtime = "nodejs";
 export const maxDuration = 30;
 
-function buildDivisions(items: { id: string; csiCode: string | null; divisionName: string; name: string; description: string | null; qty: unknown; unit: string | null; unitCost: unknown; markupPct: unknown; sortOrder: number }[]) {
+const _ALL = [...STANDARD_TEMPLATE_DIVISIONS, ...BATHROOM_TEMPLATE_DIVISIONS, ...KITCHEN_TEMPLATE_DIVISIONS];
+const DIV_NAME_LOOKUP: Record<string, string> = {};
+for (const d of _ALL) {
+  const p = d.csiCode.replace(/\s/g, "").substring(0, 2);
+  if (!DIV_NAME_LOOKUP[p]) DIV_NAME_LOOKUP[p] = d.name;
+}
+
+function resolveItems(items: { id: string; csiCode: string | null; divisionName: string; name: string; description: string | null; qty: unknown; unit: string | null; unitCost: unknown; markupPct: unknown; sortOrder: number }[]) {
   const divMap = new Map<string, { id: string; csiCode: string | null; name: string; groups: never[]; items: { id: string; name: string; detail: string | null; unit: string | null; csiCode: string | null; defaultQty: number | null; defaultUnitCost: number | null; defaultMarkupPct: number | null; visibleInPdf: boolean; notes: string | null }[] }>();
 
   for (const it of items) {
-    if (!divMap.has(it.divisionName)) {
-      divMap.set(it.divisionName, {
-        id: it.divisionName,
-        csiCode: it.csiCode ? it.csiCode.substring(0, 2) : null,
-        name: it.divisionName,
+    const cleanCode = (it.csiCode ?? "").replace(/\s/g, "");
+    const divPrefix = cleanCode.substring(0, 2);
+    const mapKey = divPrefix || it.divisionName;
+    const divName = (divPrefix && DIV_NAME_LOOKUP[divPrefix]) ? DIV_NAME_LOOKUP[divPrefix] : it.divisionName;
+    const divCsiCode = divPrefix ? `${divPrefix} 00 00` : null;
+
+    if (!divMap.has(mapKey)) {
+      divMap.set(mapKey, {
+        id: mapKey,
+        csiCode: divCsiCode,
+        name: divName,
         groups: [],
         items: [],
       });
     }
-    divMap.get(it.divisionName)!.items.push({
+    divMap.get(mapKey)!.items.push({
       id: it.id,
       name: it.name,
-      detail: it.description ?? null,
+      detail: null,
       unit: it.unit ?? null,
-      csiCode: it.csiCode ?? null,
+      csiCode: null,
       defaultQty: it.qty != null ? Number(it.qty) : null,
       defaultUnitCost: it.unitCost != null ? Number(it.unitCost) : null,
       defaultMarkupPct: it.markupPct != null ? Number(it.markupPct) : null,
       visibleInPdf: true,
-      notes: null,
+      notes: it.description ?? null,
     });
   }
 
   return Array.from(divMap.values());
+}
+
+async function resolvePrivateCoverUrl(blobUrl: string | null): Promise<string | null> {
+  if (!blobUrl) return null;
+  try {
+    const res = await fetch(blobUrl, {
+      headers: { Authorization: `Bearer ${process.env.BLOB_READ_WRITE_TOKEN}` },
+    });
+    if (!res.ok) return null;
+    const ab = await res.arrayBuffer();
+    const mt = res.headers.get("content-type") ?? "image/jpeg";
+    return `data:${mt};base64,${Buffer.from(ab).toString("base64")}`;
+  } catch {
+    return null;
+  }
 }
 
 export async function POST(
@@ -48,7 +77,7 @@ export async function POST(
     if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
     const body = await req.json().catch(() => ({}));
-    const { changeOrderId, clientId, to, cc, bcc, subject, body: emailBody, coverType, page2 } = body as {
+    const { changeOrderId, clientId, to, cc, bcc, subject, body: emailBody } = body as {
       changeOrderId?: string;
       clientId?: string;
       to?: string;
@@ -56,8 +85,6 @@ export async function POST(
       bcc?: string;
       subject?: string;
       body?: string;
-      coverType?: string;
-      page2?: string;
     };
 
     if (!changeOrderId || !clientId || !to || !subject || !emailBody) {
@@ -82,16 +109,30 @@ export async function POST(
       return NextResponse.json({ error: "Not found" }, { status: 404 });
     }
 
-    const divisions = buildDivisions(changeOrder.items);
+    const companyLogoDataUrl = company.logoUrl ? await resolvePrivateCoverUrl(company.logoUrl) : null;
+    const divisions = resolveItems(changeOrder.items);
 
     const buffer = await renderTemplatePdf({
       companyName: company.name,
+      branding: {
+        name: company.name || undefined,
+        address: company.address || undefined,
+        phone: company.phone || undefined,
+        email: company.email || undefined,
+        licenses: company.licenses || undefined,
+        tagline: company.tagline || undefined,
+        website: company.website || undefined,
+        contactName: company.contactName || undefined,
+        logoSrc: companyLogoDataUrl || undefined,
+      },
       template: {
-        name: changeOrder.orderNumber ? `Change Order ${changeOrder.orderNumber}` : "Change Order",
-        description: changeOrder.title,
-        estimateNumber: changeOrder.orderNumber ?? null,
+        name: changeOrder.orderNumber ? `Change Order ${changeOrder.orderNumber}` : changeOrder.title,
+        description: null,
+        estimateNumber: null,
         estimateDate: changeOrder.createdAt.toISOString().split("T")[0],
       },
+      hideEstimateLabel: true,
+      changeOrderNotes: changeOrder.notes ?? null,
       client: changeOrder.client
         ? {
             name: changeOrder.client.name,
@@ -108,14 +149,17 @@ export async function POST(
       paymentSchedule: null,
       gcFeePercent: null,
       summaryGroups: null,
+      clientSignatureData: changeOrder.signatureData ?? null,
+      clientSignedByName: changeOrder.signedByName ?? null,
+      clientSignedAt: changeOrder.signedAt ?? null,
+      includeRoofUpgradesPage: false,
+      includeAdditionPages: false,
+      includeRetailPages: false,
+      includeCoverPage: false,
       hideContractorSignature: true,
-      includeRoofUpgradesPage: page2 === "ROOF",
-      includeAdditionPages: page2 === "ADDITION",
-      includeRetailPages: page2 === "RETAIL",
-      includeCoverPage: coverType !== "NONE",
-      clientCoverPhotoType: coverType ?? changeOrder.client?.coverPhotoType ?? null,
+      clientCoverPhotoType: null,
       clientCoverPhotoUrl: null,
-      clientCoverTitle: changeOrder.client?.coverTitle ?? null,
+      clientCoverTitle: null,
     });
 
     const envToken = process.env.GOOGLE_REFRESH_TOKEN;
@@ -149,9 +193,49 @@ export async function POST(
       });
     }
     const signUrl = `https://portal.mibhconstruction.com/sign-co/${signToken}`;
-    const fullEmailBody = `${emailBody}\n\n---\nApprove & sign this change order here: ${signUrl}`;
 
-    const boundary = `----=_Part_${Date.now()}`;
+    // Split the body around the closing/greeting so the signing block lands in the middle
+    let mainBody: string;
+    let closing: string;
+    const closingMatch = emailBody.match(/[^\n]*(any questions|let me know|thank you|sincerely|best regards|regards,)[^\n]*\n?/i);
+    if (closingMatch && closingMatch.index !== undefined) {
+      const splitAt = closingMatch.index;
+      mainBody = emailBody.slice(0, splitAt).replace(/\s+$/, "");
+      closing = emailBody.slice(splitAt).replace(/^\s+/, "");
+    } else {
+      const lastBreak = emailBody.lastIndexOf("\n\n");
+      mainBody = lastBreak >= 0 ? emailBody.slice(0, lastBreak) : emailBody;
+      closing = lastBreak >= 0 ? emailBody.slice(lastBreak + 2) : "";
+    }
+
+    const fullEmailBody = [
+      mainBody,
+      "",
+      "─────────────────────────────",
+      "✅ READY TO APPROVE & SIGN THIS CHANGE ORDER?",
+      `Click here to review and sign electronically: ${signUrl}`,
+      "─────────────────────────────",
+      "",
+      closing,
+    ].join("\n");
+
+    const mainBodyHtml = mainBody.split("\n")
+      .map(l => l.trim() === "" ? "<br>" : `<p style="margin:0 0 8px">${l}</p>`)
+      .join("\n");
+    const closingHtml = closing.split("\n")
+      .map(l => l.trim() === "" ? "<br>" : `<p style="margin:0 0 8px">${l}</p>`)
+      .join("\n");
+    const signingBlock = `
+<div style="background:#fffbf0;border:2px solid #C9A84C;border-radius:10px;padding:20px 24px;margin:20px 0;text-align:center">
+  <p style="margin:0 0 6px;font-size:16px;font-weight:700;color:#1e293b">Your Change Order is Ready to Sign</p>
+  <p style="margin:0 0 16px;color:#475569;font-size:14px">Please review the attached PDF change order. When you are ready to proceed, click the button below to approve and sign electronically.</p>
+  <a href="${signUrl}" style="display:inline-block;background:#C9A84C;color:#0d1117;font-weight:bold;padding:14px 32px;border-radius:8px;text-decoration:none;font-size:15px">Approve &amp; Sign Change Order →</a>
+  <p style="margin:12px 0 0;font-size:12px;color:#94a3b8">Or copy this link: ${signUrl}</p>
+</div>`;
+    const htmlBody = mainBodyHtml + signingBlock + (closing.trim() ? "\n" + closingHtml : "");
+
+    const outerBoundary = `----=_Mixed_${Date.now()}`;
+    const altBoundary = `----=_Alt_${Date.now() + 1}`;
     const clientSlug = changeOrder.client ? `-${changeOrder.client.name.replace(/[^a-z0-9]/gi, "-")}` : "";
     const coSlug = changeOrder.orderNumber ?? "ChangeOrder";
     const filename = `${coSlug}${clientSlug}.pdf`;
@@ -168,20 +252,32 @@ export async function POST(
       ...(bcc ? [`Bcc: ${bcc}`] : []),
       `Subject: ${encodedSubject}`,
       `MIME-Version: 1.0`,
-      `Content-Type: multipart/mixed; boundary="${boundary}"`,
+      `Content-Type: multipart/mixed; boundary="${outerBoundary}"`,
       ``,
-      `--${boundary}`,
+      `--${outerBoundary}`,
+      `Content-Type: multipart/alternative; boundary="${altBoundary}"`,
+      ``,
+      `--${altBoundary}`,
       `Content-Type: text/plain; charset=UTF-8`,
       ``,
       fullEmailBody,
       ``,
-      `--${boundary}`,
+      `--${altBoundary}`,
+      `Content-Type: text/html; charset=UTF-8`,
+      ``,
+      `<html><body style="font-family:sans-serif;font-size:14px;color:#1e293b">`,
+      htmlBody,
+      `</body></html>`,
+      ``,
+      `--${altBoundary}--`,
+      ``,
+      `--${outerBoundary}`,
       `Content-Type: application/pdf; name="${filename}"`,
       `Content-Transfer-Encoding: base64`,
       `Content-Disposition: attachment; filename="${filename}"`,
       ``,
       pdfBase64,
-      `--${boundary}--`,
+      `--${outerBoundary}--`,
     ];
     const raw = Buffer.from(mimeLines.join("\r\n")).toString("base64url");
 
