@@ -864,7 +864,7 @@ type Attachment = { id: string; name: string; url: string; size: number; mimeTyp
 
 type UploadingFile = { name: string; pct: number };
 
-function FilesSection({ companyId, clientId, logId }: { companyId: string; clientId: string; logId?: string }) {
+function FilesSection({ companyId, clientId, logId, pendingFiles = [], onPendingChange }: { companyId: string; clientId: string; logId?: string; pendingFiles?: File[]; onPendingChange?: (files: File[]) => void }) {
   const [attachments, setAttachments] = useState<Attachment[]>([]);
   const [uploading, setUploading] = useState<UploadingFile[]>([]);
   const [error, setError] = useState("");
@@ -932,8 +932,39 @@ function FilesSection({ companyId, clientId, logId }: { companyId: string; clien
     return (
       <div className="space-y-4">
         <SectionCard>
-          <p className="text-xs font-bold uppercase tracking-widest mb-2" style={{ color: GOLD }}>Attachments</p>
-          <p className="text-sm" style={{ color: MUTED }}>Save the log first, then you can attach photos and files.</p>
+          <p className="text-xs font-bold uppercase tracking-widest mb-3" style={{ color: GOLD }}>Attachments</p>
+          {pendingFiles.length > 0 && (
+            <div className="space-y-1.5 mb-3">
+              {pendingFiles.map((f, i) => (
+                <div key={`${f.name}-${i}`} className="flex items-center gap-2 rounded-lg px-3 py-2" style={{ background: "#0d1117", border: `1px solid ${BORDER}` }}>
+                  <span className="text-base shrink-0">{f.type.startsWith("image/") ? "🖼" : "📎"}</span>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-xs font-semibold truncate" style={{ color: GOLD }}>{f.name}</p>
+                    <p className="text-[10px]" style={{ color: MUTED }}>{fmtSize(f.size)} · uploads on save</p>
+                  </div>
+                  <button onClick={() => onPendingChange?.(pendingFiles.filter((_, j) => j !== i))} className="text-xs px-2 py-0.5 rounded shrink-0" style={{ color: "#f87171", background: "#2d1010" }}>✕</button>
+                </div>
+              ))}
+            </div>
+          )}
+          <button
+            onClick={() => fileInputRef.current?.click()}
+            className="w-full rounded-xl px-3 py-3 text-center cursor-pointer"
+            style={{ background: "#0d1117", border: `1px dashed ${BORDER}`, color: MUTED }}
+          >
+            <p className="text-xs font-semibold">+ Attach PDF / photo / file</p>
+            <p className="text-[10px] mt-1" style={{ color: "#484f58" }}>Files upload when you save the log.</p>
+          </button>
+          <input
+            ref={fileInputRef}
+            type="file"
+            multiple
+            className="sr-only"
+            onChange={e => {
+              if (e.target.files) onPendingChange?.([...pendingFiles, ...Array.from(e.target.files)]);
+              e.target.value = "";
+            }}
+          />
         </SectionCard>
       </div>
     );
@@ -1180,10 +1211,31 @@ function LogEditor({
   const [form, setForm] = useState<LogForm>(initial ? logToForm(initial) : blankForm());
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
+  const [pendingFiles, setPendingFiles] = useState<File[]>([]);
 
   const setField = useCallback(<K extends keyof LogForm>(k: K, v: LogForm[K]) => {
     setForm(f => ({ ...f, [k]: v }));
   }, []);
+
+  async function uploadPendingFiles(logId: string) {
+    if (pendingFiles.length === 0) return;
+    for (const file of pendingFiles) {
+      try {
+        const tokenRes = await fetch(`/api/${companyId}/clients/${clientId}/daily-logs/${logId}/attachments/upload-token`, {
+          method: "POST", headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ filename: file.name }),
+        });
+        if (!tokenRes.ok) continue;
+        const { token, pathname } = await tokenRes.json() as { token: string; pathname: string };
+        const blob = await put(pathname, file, { access: "private", token });
+        await fetch(`/api/${companyId}/clients/${clientId}/daily-logs/${logId}/attachments`, {
+          method: "POST", headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ name: file.name, url: blob.url, size: file.size, mimeType: file.type || "application/octet-stream" }),
+        });
+      } catch { /* swallow individual file failures so save still succeeds */ }
+    }
+    setPendingFiles([]);
+  }
 
   async function handleSave() {
     setSaving(true);
@@ -1200,6 +1252,7 @@ function LogEditor({
       });
       const data = await res.json();
       if (!res.ok) { setError(data.error ?? "Save failed"); return; }
+      await uploadPendingFiles(data.id);
       onSave(data);
     } catch { setError("Network error"); }
     finally { setSaving(false); }
@@ -1211,7 +1264,7 @@ function LogEditor({
     notes: <NotesSection form={form} set={setField} />,
     mtl: <MaterialSection form={form} set={setField} />,
     equip: <EquipmentSection form={form} set={setField} />,
-    files: <FilesSection companyId={companyId} clientId={clientId} logId={initial?.id} />,
+    files: <FilesSection companyId={companyId} clientId={clientId} logId={initial?.id} pendingFiles={pendingFiles} onPendingChange={setPendingFiles} />,
     custom: <CustomSection form={form} set={setField} />,
   };
 

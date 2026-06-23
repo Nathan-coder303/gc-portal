@@ -460,6 +460,70 @@ function COAttachmentsZone({
   );
 }
 
+// ── Pending attachments zone (used by the editor when no CO id exists yet) ──
+function PendingAttachmentsZone({ files, setFiles }: { files: File[]; setFiles: (f: File[]) => void }) {
+  const [dragOver, setDragOver] = useState(false);
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  function add(list: FileList | null) {
+    if (!list) return;
+    setFiles([...files, ...Array.from(list)]);
+  }
+  function removeAt(idx: number) {
+    setFiles(files.filter((_, i) => i !== idx));
+  }
+
+  return (
+    <div className="space-y-2">
+      {files.length > 0 && (
+        <div className="space-y-1.5">
+          {files.map((f, i) => (
+            <div key={`${f.name}-${i}`} className="flex items-center gap-2 rounded-lg px-3 py-2" style={{ background: "#0d1117", border: "1px solid #30373f" }}>
+              <span className="text-base shrink-0">{f.type.startsWith("image/") ? "🖼" : "📎"}</span>
+              <div className="flex-1 min-w-0">
+                <p className="text-xs font-semibold truncate" style={{ color: GOLD }}>{f.name}</p>
+                <p className="text-[10px]" style={{ color: "#8b949e" }}>
+                  {fmtFileSize(f.size)} · uploads on save
+                </p>
+              </div>
+              <button onClick={() => removeAt(i)} className="text-xs px-2 py-0.5 rounded shrink-0" style={{ color: "#f87171", background: "#2d1010" }}>✕</button>
+            </div>
+          ))}
+        </div>
+      )}
+
+      <div
+        onDragOver={e => { e.preventDefault(); setDragOver(true); }}
+        onDragLeave={() => setDragOver(false)}
+        onDrop={e => {
+          e.preventDefault();
+          setDragOver(false);
+          add(e.dataTransfer.files);
+        }}
+        onClick={() => inputRef.current?.click()}
+        className="rounded-xl px-3 py-3 text-center cursor-pointer transition-colors"
+        style={{
+          background: dragOver ? `${GOLD}11` : "#0d1117",
+          border: `1px dashed ${dragOver ? GOLD : "#30373f"}`,
+        }}
+      >
+        <p className="text-xs font-semibold" style={{ color: dragOver ? GOLD : "#8b949e" }}>
+          {dragOver ? "Drop to queue" : "+ Attach PDF / photo / file (or drag & drop)"}
+        </p>
+        <p className="text-[10px] mt-1" style={{ color: "#484f58" }}>Files upload when you save the change order.</p>
+        <input
+          ref={inputRef}
+          type="file"
+          multiple
+          className="sr-only"
+          accept="application/pdf,image/*,.doc,.docx,.txt,.heic"
+          onChange={e => { add(e.target.files); e.target.value = ""; }}
+        />
+      </div>
+    </div>
+  );
+}
+
 function ChangeOrderEditor({
   companyId,
   clientId,
@@ -482,6 +546,7 @@ function ChangeOrderEditor({
   const [timeDelay, setTimeDelay] = useState<boolean>(initial?.timeDelay ?? false);
   const [daysDelayed, setDaysDelayed] = useState<string>(initial?.daysDelayed != null ? String(initial.daysDelayed) : "");
   const [billingStatus, setBillingStatus] = useState<string>(initial?.billingStatus ?? "");
+  const [pendingFiles, setPendingFiles] = useState<File[]>([]);
   const [error, setError] = useState("");
 
   const [items, setItems] = useState<COItem[]>(
@@ -561,6 +626,20 @@ function ChangeOrderEditor({
       };
 
       let res: Response;
+      async function flushPendingAttachments(coId: string) {
+        if (pendingFiles.length === 0) return;
+        for (const file of pendingFiles) {
+          const fd = new FormData();
+          fd.append("file", file);
+          try {
+            await fetch(`/api/${companyId}/clients/${clientId}/change-orders/${coId}/attachments`, {
+              method: "POST", body: fd,
+            });
+          } catch { /* swallow individual file failures so the CO still saves */ }
+        }
+        setPendingFiles([]);
+      }
+
       if (initial) {
         res = await fetch(`/api/${companyId}/clients/${clientId}/change-orders/${initial.id}`, {
           method: "PATCH", headers: { "Content-Type": "application/json" },
@@ -574,6 +653,7 @@ function ChangeOrderEditor({
       }
       if (!res.ok) { setError("Failed to save"); return; }
       const saved = await res.json();
+      await flushPendingAttachments(saved.id);
       onSave(saved);
     });
   }
@@ -692,22 +772,21 @@ function ChangeOrderEditor({
           </div>
         </div>
 
-        {/* Attachments — only available after the CO has been saved at least once */}
-        {initial ? (
-          <div className="mb-4">
-            <label className="block text-xs font-medium mb-1" style={{ color: "#8b949e" }}>Attachments</label>
+        {/* Attachments — works on new CO too: files are queued in pendingFiles
+            and uploaded after the CO is created on first save. */}
+        <div className="mb-4">
+          <label className="block text-xs font-medium mb-1" style={{ color: "#8b949e" }}>Attachments</label>
+          {initial ? (
             <COAttachmentsZone
               companyId={companyId}
               clientId={clientId}
               changeOrderId={initial.id}
               initial={parseCOAttachments(initial.attachments)}
             />
-          </div>
-        ) : (
-          <div className="mb-4 rounded-lg p-3 text-xs" style={{ background: "#0d1117", border: "1px dashed #30373f", color: "#8b949e" }}>
-            💡 Save this change order first to attach PDFs, photos, or files.
-          </div>
-        )}
+          ) : (
+            <PendingAttachmentsZone files={pendingFiles} setFiles={setPendingFiles} />
+          )}
+        </div>
 
         {/* Division picker */}
         <div className="rounded-xl p-3 mb-4" style={{ background: "#1e2736", border: "1px solid #30373f" }}>
