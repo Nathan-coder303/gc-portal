@@ -52,7 +52,9 @@ function resolveItems(items: { id: string; csiCode: string | null; divisionName:
       csiCode: null,
       defaultQty: qty,
       defaultUnitCost: unitCost,
-      defaultMarkupPct: it.markupPct != null ? Number(it.markupPct) : null,
+      // Per-item markup is intentionally suppressed for CO PDFs — the GC fee renders as a
+      // separate line below the items, matching how estimates are presented to the client.
+      defaultMarkupPct: 0,
       visibleInPdf: true,
       notes: it.description ?? null,
     });
@@ -91,7 +93,7 @@ export async function GET(
 
   const isPreview = req.nextUrl.searchParams.get("preview") === "1";
 
-  const [changeOrder, company] = await Promise.all([
+  const [changeOrder, company, contractEstimate] = await Promise.all([
     prisma.changeOrder.findFirst({
       where: { id: params.changeOrderId, companyId: params.companyId, clientId: params.clientId },
       include: {
@@ -100,9 +102,16 @@ export async function GET(
       },
     }),
     prisma.company.findFirst({ where: { id: params.companyId } }),
+    // Pull the active contract estimate to get its GC fee % — same fee applies to change orders
+    prisma.estimateTemplate.findFirst({
+      where: { companyId: params.companyId, clientId: params.clientId, archivedAt: null, type: "CLIENT_ESTIMATE", gcFeePercent: { not: null } },
+      orderBy: [{ signedAt: "desc" }, { lastSentAt: "desc" }, { updatedAt: "desc" }],
+      select: { gcFeePercent: true },
+    }),
   ]);
 
   if (!changeOrder || !company) return NextResponse.json({ error: "Not found" }, { status: 404 });
+  const gcFeePercent = contractEstimate?.gcFeePercent != null ? Number(contractEstimate.gcFeePercent) : null;
 
   const companyLogoDataUrl = company.logoUrl ? await resolvePrivateBlobUrl(company.logoUrl) : null;
   const divisions = resolveItems(changeOrder.items);
@@ -150,7 +159,7 @@ export async function GET(
     divisions,
     showTerms: false,
     paymentSchedule: null,
-    gcFeePercent: null,
+    gcFeePercent,
     summaryGroups: null,
     clientSignatureData: changeOrder.signatureData ?? null,
     clientSignedByName: changeOrder.signedByName ?? null,

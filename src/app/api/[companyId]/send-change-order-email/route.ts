@@ -53,7 +53,8 @@ function resolveItems(items: { id: string; csiCode: string | null; divisionName:
       csiCode: null,
       defaultQty: qty,
       defaultUnitCost: unitCost,
-      defaultMarkupPct: it.markupPct != null ? Number(it.markupPct) : null,
+      // Suppress per-item markup so the GC fee renders as a separate line, like estimates.
+      defaultMarkupPct: 0,
       visibleInPdf: true,
       notes: it.description ?? null,
     });
@@ -109,7 +110,7 @@ export async function POST(
       );
     }
 
-    const [changeOrder, company] = await Promise.all([
+    const [changeOrder, company, contractEstimate] = await Promise.all([
       prisma.changeOrder.findFirst({
         where: { id: changeOrderId, companyId: params.companyId, clientId },
         include: {
@@ -118,11 +119,17 @@ export async function POST(
         },
       }),
       prisma.company.findFirst({ where: { id: params.companyId } }),
+      prisma.estimateTemplate.findFirst({
+        where: { companyId: params.companyId, clientId, archivedAt: null, type: "CLIENT_ESTIMATE", gcFeePercent: { not: null } },
+        orderBy: [{ signedAt: "desc" }, { lastSentAt: "desc" }, { updatedAt: "desc" }],
+        select: { gcFeePercent: true },
+      }),
     ]);
 
     if (!changeOrder || !company) {
       return NextResponse.json({ error: "Not found" }, { status: 404 });
     }
+    const gcFeePercent = contractEstimate?.gcFeePercent != null ? Number(contractEstimate.gcFeePercent) : null;
 
     const companyLogoDataUrl = company.logoUrl ? await resolvePrivateCoverUrl(company.logoUrl) : null;
     const divisions = resolveItems(changeOrder.items);
@@ -170,7 +177,7 @@ export async function POST(
       divisions,
       showTerms: false,
       paymentSchedule: null,
-      gcFeePercent: null,
+      gcFeePercent,
       summaryGroups: null,
       clientSignatureData: changeOrder.signatureData ?? null,
       clientSignedByName: changeOrder.signedByName ?? null,
