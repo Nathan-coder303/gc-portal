@@ -10,14 +10,20 @@ function getOAuth2Client() {
 }
 
 async function getAuthedClient(companyId: string) {
-  const company = await prisma.company.findUnique({
-    where: { id: companyId },
-    select: { googleRefreshToken: true },
-  });
-  if (!company?.googleRefreshToken) return null;
+  // Prefer the env-level refresh token (same source used by Gmail) so a single token
+  // rotation covers both Gmail + Calendar. Fall back to the per-company DB token.
+  let refreshToken = process.env.GOOGLE_REFRESH_TOKEN ?? null;
+  if (!refreshToken) {
+    const company = await prisma.company.findUnique({
+      where: { id: companyId },
+      select: { googleRefreshToken: true },
+    });
+    refreshToken = company?.googleRefreshToken ?? null;
+  }
+  if (!refreshToken) return null;
 
   const auth = getOAuth2Client();
-  auth.setCredentials({ refresh_token: company.googleRefreshToken });
+  auth.setCredentials({ refresh_token: refreshToken });
   return auth;
 }
 
