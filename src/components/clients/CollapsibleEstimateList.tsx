@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import DeleteEstimateButton from "@/components/clients/DeleteEstimateButton";
 import EditEstimateModal from "@/components/clients/EditEstimateModal";
 import CoverPagePickerModal, { PdfOptions, Page2Type, CoverType, COVER_OPTIONS } from "@/components/clients/CoverPagePickerModal";
+import SignInSheetCard from "@/components/clients/SignInSheetCard";
 import { duplicateTemplate } from "@/app/[companyId]/estimates/actions";
 import EstimateVersionDiff, { Snapshot } from "@/components/clients/EstimateVersionDiff";
 import CountersignModal from "@/components/estimates/CountersignModal";
@@ -231,6 +232,10 @@ function EstimateCard({
 
   return (
     <>
+      {/* Sign-in sheet sits on top of every estimate — collapsed by default, click to expand */}
+      <div onClick={e => e.stopPropagation()}>
+        <SignInSheetCard companyId={companyId} estimateId={est.id} estimateName={est.name} />
+      </div>
       <div
         className="rounded-xl cursor-pointer transition-all"
         style={{ background: "#1e2736", border: `1px solid ${hovered ? "#C9A84C" : "#30373f"}` }}

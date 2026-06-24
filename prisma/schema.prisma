@@ -116,6 +116,18 @@ model MarketingAgency {
   @@index([companyId])
 }
 
+model SignInSheet {
+  id                 String   @id @default(cuid())
+  companyId          String
+  estimateTemplateId String   @unique
+  estimate           EstimateTemplate @relation(fields: [estimateTemplateId], references: [id], onDelete: Cascade)
+  // JSON shape: { dates: [ "YYYY-MM-DD", ... ], employees: [ { id, name, payPerDay, attendance: { "YYYY-MM-DD": true } } ] }
+  data               String   @db.Text
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+  @@index([companyId])
+}
+
 model Formula {
   id         String   @id @default(cuid())
   companyId  String
@@ -881,6 +893,7 @@ model EstimateTemplate {
   combinationType        String?
   brandingName           String?
   divisions       EstimateTemplateDivision[]
+  signInSheet     SignInSheet?
   estimates   ProjectEstimate[]
   invoices    Invoice[]
   versions    EstimateVersion[]
