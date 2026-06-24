@@ -1882,7 +1882,8 @@ export default function TemplateEditor({
                 {/* Contractor selector */}
                 <div className="mt-3 flex items-center gap-2">
                   <span className="text-xs" style={{ color: "#8b949e" }}>Contractor:</span>
-                  {([null, "Precision Construction"] as const).map((opt) => (
+                  {/* Precision Construction option is hidden by request — re-enable by adding "Precision Construction" back to the array */}
+                  {([null] as const).map((opt) => (
                     <button
                       key={opt ?? "mibh"}
                       onClick={() => {
