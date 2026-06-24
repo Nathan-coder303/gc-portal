@@ -50,15 +50,15 @@ function fmtDateLabel(s: string): string {
 
 export async function GET(
   _req: NextRequest,
-  { params }: { params: { companyId: string; estimateId: string } }
+  { params }: { params: { companyId: string; templateId: string } }
 ) {
   const session = await auth();
   if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   if (session.user.companyId !== params.companyId) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
   const [sheet, est, company] = await Promise.all([
-    prisma.signInSheet.findUnique({ where: { estimateTemplateId: params.estimateId } }),
-    prisma.estimateTemplate.findFirst({ where: { id: params.estimateId, companyId: params.companyId }, include: { client: true } }),
+    prisma.signInSheet.findUnique({ where: { estimateTemplateId: params.templateId } }),
+    prisma.estimateTemplate.findFirst({ where: { id: params.templateId, companyId: params.companyId }, include: { client: true } }),
     prisma.company.findFirst({ where: { id: params.companyId } }),
   ]);
 

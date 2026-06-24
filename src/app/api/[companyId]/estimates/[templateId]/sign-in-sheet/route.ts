@@ -13,14 +13,14 @@ function blank(): SheetData { return { dates: [], employees: [] }; }
 
 export async function GET(
   _req: NextRequest,
-  { params }: { params: { companyId: string; estimateId: string } }
+  { params }: { params: { companyId: string; templateId: string } }
 ) {
   const session = await auth();
   if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   if (session.user.companyId !== params.companyId) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
   const sheet = await prisma.signInSheet.findUnique({
-    where: { estimateTemplateId: params.estimateId },
+    where: { estimateTemplateId: params.templateId },
   });
   if (!sheet) return NextResponse.json(blank());
   try { return NextResponse.json(JSON.parse(sheet.data) as SheetData); }
@@ -29,7 +29,7 @@ export async function GET(
 
 export async function PUT(
   req: NextRequest,
-  { params }: { params: { companyId: string; estimateId: string } }
+  { params }: { params: { companyId: string; templateId: string } }
 ) {
   const session = await auth();
   if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -42,16 +42,16 @@ export async function PUT(
 
   // Verify the estimate belongs to this company
   const est = await prisma.estimateTemplate.findFirst({
-    where: { id: params.estimateId, companyId: params.companyId },
+    where: { id: params.templateId, companyId: params.companyId },
     select: { id: true },
   });
   if (!est) return NextResponse.json({ error: "Not found" }, { status: 404 });
 
   await prisma.signInSheet.upsert({
-    where: { estimateTemplateId: params.estimateId },
+    where: { estimateTemplateId: params.templateId },
     create: {
       companyId: params.companyId,
-      estimateTemplateId: params.estimateId,
+      estimateTemplateId: params.templateId,
       data: JSON.stringify(body),
     },
     update: { data: JSON.stringify(body) },
