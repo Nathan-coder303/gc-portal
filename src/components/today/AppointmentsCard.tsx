@@ -229,22 +229,77 @@ export default function AppointmentsCard({
   const [popupSaveError, setPopupSaveError] = useState("");
 
   async function openPicker() {
-    setShowPicker(true); setShowForm(false); setSearch(""); setError("");
+    setShowPicker(true); setShowForm(false); setShowNewContact(false); setSearch(""); setError("");
     setLoadingLeads(true);
     try {
-      const [pr, lr] = await Promise.all([
+      const [pr, lr, cr] = await Promise.all([
         fetch(`/api/${companyId}/pipeline?type=sales`),
         fetch(`/api/${companyId}/leads`),
+        fetch(`/api/${companyId}/clients?status=PROSPECT,PIPELINE,ACTIVE`),
       ]);
       const cards: PipelineLead[] = await pr.json();
       const raws: RawLead[] = await lr.json();
+      const clients: { id: string; name: string; email: string | null; phone: string | null; address: string | null; city: string | null; state: string | null; status: string }[] = cr.ok ? await cr.json() : [];
       const rawCards: PipelineLead[] = raws.map(l => ({
         id: `raw_${l.id}`, displayName: l.name, notes: null, source: null,
         lead: { id: l.id, name: l.name, email: l.email, phone: l.phone, projectType: l.projectType, address: l.address, city: l.city },
       }));
-      setLeads([...cards, ...rawCards]);
+      const clientCards: PipelineLead[] = clients.map(c => ({
+        id: `client_${c.id}`,
+        displayName: c.name,
+        notes: null,
+        source: c.status, // PROSPECT / PIPELINE / ACTIVE
+        lead: { id: c.id, name: c.name, email: c.email, phone: c.phone, projectType: null, address: c.address, city: c.city },
+      }));
+      setLeads([...cards, ...rawCards, ...clientCards]);
     } catch { /**/ }
     setLoadingLeads(false);
+  }
+
+  // ── New contact inline form ──────────────────────────────────────────────────
+  const [showNewContact, setShowNewContact] = useState(false);
+  const [newName, setNewName] = useState("");
+  const [newPhone, setNewPhone] = useState("");
+  const [newEmail, setNewEmail] = useState("");
+  const [newSaving, setNewSaving] = useState(false);
+  const [newError, setNewError] = useState("");
+
+  function openNewContact() {
+    setShowPicker(false); setShowNewContact(true);
+    setNewName(search); // preserve whatever they typed in the search box
+    setNewPhone(""); setNewEmail(""); setNewError("");
+  }
+
+  async function saveNewContact() {
+    const name = newName.trim();
+    if (!name) { setNewError("Name required"); return; }
+    setNewSaving(true); setNewError("");
+    try {
+      const res = await fetch(`/api/${companyId}/clients`, {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name, phone: newPhone.trim() || undefined, email: newEmail.trim() || undefined, status: "PROSPECT" }),
+      });
+      if (!res.ok) {
+        const e = await res.json().catch(() => ({}));
+        throw new Error(e.error || "Failed to save");
+      }
+      const c = await res.json() as { id: string; name: string; email: string | null; phone: string | null; address: string | null; city: string | null; status: string };
+      // Build PipelineLead-shaped wrapper and continue to appointment form
+      const wrapped: PipelineLead = {
+        id: `client_${c.id}`,
+        displayName: c.name,
+        notes: null,
+        source: c.status,
+        lead: { id: c.id, name: c.name, email: c.email, phone: c.phone, projectType: null, address: c.address, city: c.city },
+      };
+      setLeads(prev => [wrapped, ...prev]);
+      setShowNewContact(false);
+      selectLead(wrapped);
+    } catch (e) {
+      setNewError(String(e));
+    } finally {
+      setNewSaving(false);
+    }
   }
 
   function selectLead(lead: PipelineLead) {
@@ -457,11 +512,11 @@ export default function AppointmentsCard({
           Today&apos;s appointments
         </div>
         <button
-          onClick={showPicker || showForm ? () => { setShowPicker(false); setShowForm(false); setSelectedLead(null); setError(""); } : openPicker}
+          onClick={showPicker || showForm || showNewContact ? () => { setShowPicker(false); setShowForm(false); setShowNewContact(false); setSelectedLead(null); setError(""); } : openPicker}
           className="shrink-0 text-sm px-3 py-1 rounded font-medium transition-colors"
-          style={{ border: "1px solid #C9A84C66", color: "#C9A84C", background: (showPicker || showForm) ? "#C9A84C22" : "transparent" }}
+          style={{ border: "1px solid #C9A84C66", color: "#C9A84C", background: (showPicker || showForm || showNewContact) ? "#C9A84C22" : "transparent" }}
         >
-          {showPicker || showForm ? "×" : "+"}
+          {showPicker || showForm || showNewContact ? "×" : "+"}
         </button>
       </div>
 
@@ -469,27 +524,80 @@ export default function AppointmentsCard({
       {showPicker && (
         <div className="mt-4 rounded-xl flex flex-col gap-2" style={{ background: "#161b22", border: "1px solid #C9A84C33" }}>
           <div className="p-3 pb-0">
-            <input type="text" placeholder="Search by name, phone, or email…" value={search} onChange={e => setSearch(e.target.value)}
+            <input type="text" placeholder="Search leads, prospects, clients…" value={search} onChange={e => setSearch(e.target.value)}
               autoFocus className="w-full bg-transparent text-sm px-3 py-2 rounded-lg outline-none"
               style={{ border: "1px solid #30373f", color: "#e6edf3" }} />
           </div>
           <div className="overflow-y-auto px-3 pb-3" style={{ maxHeight: 300 }}>
-            {loadingLeads && <p className="text-xs py-4 text-center" style={{ color: "#8b949e" }}>Loading leads…</p>}
-            {!loadingLeads && filteredLeads.length === 0 && <p className="text-xs py-4 text-center" style={{ color: "#484f58" }}>No leads found</p>}
-            {filteredLeads.map(lead => (
-              <button key={lead.id} onClick={() => selectLead(lead)}
-                className="w-full text-left px-3 py-2.5 rounded-lg transition-colors hover:bg-[#1e2736] flex items-center justify-between gap-3">
-                <div className="min-w-0">
-                  <div className="text-sm font-semibold truncate" style={{ color: "#e6edf3" }}>{lead.displayName}</div>
-                  <div className="flex gap-2 mt-0.5 flex-wrap">
-                    {lead.lead?.projectType && <span className="text-[10px] px-1.5 py-0.5 rounded-full" style={{ background: "#C9A84C22", color: "#C9A84C" }}>{lead.lead.projectType}</span>}
-                    {lead.lead?.phone && <span className="text-[10px]" style={{ color: "#8b949e" }}>{lead.lead.phone}</span>}
+            {loadingLeads && <p className="text-xs py-4 text-center" style={{ color: "#8b949e" }}>Loading contacts…</p>}
+            {!loadingLeads && filteredLeads.length === 0 && (
+              <p className="text-xs py-3 text-center" style={{ color: "#484f58" }}>
+                No contact matches{search ? ` "${search}"` : ""}
+              </p>
+            )}
+            {filteredLeads.map(lead => {
+              const isClient = lead.id.startsWith("client_");
+              return (
+                <button key={lead.id} onClick={() => selectLead(lead)}
+                  className="w-full text-left px-3 py-2.5 rounded-lg transition-colors hover:bg-[#1e2736] flex items-center justify-between gap-3">
+                  <div className="min-w-0">
+                    <div className="text-sm font-semibold truncate" style={{ color: "#e6edf3" }}>{lead.displayName}</div>
+                    <div className="flex gap-2 mt-0.5 flex-wrap items-center">
+                      {isClient && lead.source && (
+                        <span className="text-[10px] px-1.5 py-0.5 rounded-full" style={{
+                          background: lead.source === "ACTIVE" ? "#22c55e22" : lead.source === "PIPELINE" ? "#3b82f622" : "#C9A84C22",
+                          color: lead.source === "ACTIVE" ? "#22c55e" : lead.source === "PIPELINE" ? "#3b82f6" : "#C9A84C",
+                        }}>
+                          {lead.source.charAt(0) + lead.source.slice(1).toLowerCase()}
+                        </span>
+                      )}
+                      {lead.lead?.projectType && <span className="text-[10px] px-1.5 py-0.5 rounded-full" style={{ background: "#C9A84C22", color: "#C9A84C" }}>{lead.lead.projectType}</span>}
+                      {lead.lead?.phone && <span className="text-[10px]" style={{ color: "#8b949e" }}>{lead.lead.phone}</span>}
+                    </div>
                   </div>
-                </div>
-                <span className="text-[10px] shrink-0" style={{ color: "#C9A84C" }}>Select →</span>
-              </button>
-            ))}
+                  <span className="text-[10px] shrink-0" style={{ color: "#C9A84C" }}>Select →</span>
+                </button>
+              );
+            })}
+
+            {/* Always-visible "create new contact" button */}
+            <button onClick={openNewContact}
+              className="w-full text-center mt-2 px-3 py-2.5 rounded-lg transition-colors"
+              style={{ background: "#0d1117", border: "1px dashed #C9A84C44", color: "#C9A84C" }}>
+              + Create new contact{search ? ` "${search}"` : ""} as Prospect
+            </button>
           </div>
+        </div>
+      )}
+
+      {/* New contact inline form */}
+      {showNewContact && (
+        <div className="mt-4 p-4 rounded-xl flex flex-col gap-3" style={{ background: "#161b22", border: "1px solid #C9A84C33" }}>
+          <div className="text-xs font-semibold" style={{ color: "#C9A84C" }}>
+            Create new prospect
+          </div>
+          <input type="text" placeholder="Name *" value={newName} onChange={e => setNewName(e.target.value)} autoFocus
+            className="w-full bg-transparent text-sm px-3 py-2 rounded-lg outline-none"
+            style={{ border: "1px solid #30373f", color: "#e6edf3" }} />
+          <input type="tel" placeholder="Phone (optional)" value={newPhone} onChange={e => setNewPhone(e.target.value)}
+            className="w-full bg-transparent text-sm px-3 py-2 rounded-lg outline-none"
+            style={{ border: "1px solid #30373f", color: "#e6edf3" }} />
+          <input type="email" placeholder="Email (optional)" value={newEmail} onChange={e => setNewEmail(e.target.value)}
+            className="w-full bg-transparent text-sm px-3 py-2 rounded-lg outline-none"
+            style={{ border: "1px solid #30373f", color: "#e6edf3" }} />
+          <div className="flex gap-2">
+            <button onClick={saveNewContact} disabled={newSaving || !newName.trim()}
+              className="flex-1 text-sm font-bold py-2 rounded-lg disabled:opacity-50"
+              style={{ background: "#C9A84C", color: "#0d1117" }}>
+              {newSaving ? "Saving…" : "Add as Prospect & continue"}
+            </button>
+            <button onClick={() => { setShowNewContact(false); setShowPicker(true); }}
+              className="text-sm px-3 py-2 rounded-lg"
+              style={{ color: "#8b949e", border: "1px solid #30373f" }}>
+              ← Back
+            </button>
+          </div>
+          {newError && <p className="text-xs" style={{ color: "#ef4444" }}>{newError}</p>}
         </div>
       )}
 
