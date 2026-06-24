@@ -44,7 +44,7 @@ const S = StyleSheet.create({
 });
 
 function fmtDateLabel(s: string): string {
-  const [y, m, d] = s.split("-").map(Number);
+  const [, m, d] = s.split("-").map(Number);
   return `${m}/${d}`;
 }
 
