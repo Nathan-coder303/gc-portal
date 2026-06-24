@@ -430,7 +430,9 @@ function PayForm({ subId, companyId, clientId, payment, onSave, onCancel }: {
       <div className="grid grid-cols-2 gap-2">
         <div>
           <label className="text-xs font-semibold mb-1 block" style={{ color: "#8b949e" }}>Amount</label>
-          <FormulaInput value={amount} onChange={n => setAmount(String(n))} placeholder="0.00 or =100+50" className="w-full rounded-lg px-3 py-2 text-sm" style={{ background: "#0d1117", border: "1px solid #30373f", color: "#e6edf3" }} />
+          <FormulaInput value={amount} onChange={n => setAmount(String(n))} placeholder="0.00 or =100+50" className="w-full rounded-lg px-3 py-2 text-sm" style={{ background: "#0d1117", border: "1px solid #30373f", color: "#e6edf3" }}
+            companyId={companyId} scope={payment?.id ? `subPayment:${payment.id}:amount` : `subPayment:new:${subId}:amount`}
+          />
         </div>
         <div>
           <label className="text-xs font-semibold mb-1 block" style={{ color: "#8b949e" }}>Method</label>
@@ -684,6 +686,8 @@ ${payRows}
                         onKeyDown={e => { if (e.key === "Enter") saveScopeItemAmount(item.id, editingItemAmt); if (e.key === "Escape") setEditingItemId(null); }}
                         className="w-20 rounded px-1.5 py-0.5 text-xs text-right shrink-0"
                         style={{ background: "#161b22", border: "1px solid #C9A84C", color: "#C9A84C" }}
+                        companyId={companyId}
+                        scope={`subScopeItem:${item.id}:amount`}
                       />
                       <button onClick={() => saveScopeItemAmount(item.id, editingItemAmt)} className="text-xs px-1.5 py-0.5 rounded font-bold shrink-0" style={{ background: "#C9A84C", color: "#0d1117" }}>✓</button>
                       <button onClick={() => setEditingItemId(null)} className="text-xs px-1.5 py-0.5 rounded shrink-0" style={{ background: "#30373f", color: "#8b949e" }}>✕</button>

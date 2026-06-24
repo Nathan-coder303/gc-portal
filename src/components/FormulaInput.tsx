@@ -32,7 +32,11 @@ function fxKey(storageKey: string) { return `fx:${storageKey}`; }
 interface FormulaInputProps {
   value: number | string;
   onChange: (value: number) => void;
+  /** Local-only formula persistence (per browser). */
   storageKey?: string;
+  /** Server-side persistence: pair with `scope` so the formula survives across devices. */
+  companyId?: string;
+  scope?: string;
   className?: string;
   style?: React.CSSProperties;
   placeholder?: string;
@@ -41,12 +45,33 @@ interface FormulaInputProps {
   disabled?: boolean;
 }
 
-export function FormulaInput({ value, onChange, storageKey, className = "", style, placeholder = "0", autoFocus, onKeyDown, disabled }: FormulaInputProps) {
+export function FormulaInput({ value, onChange, storageKey, companyId, scope, className = "", style, placeholder = "0", autoFocus, onKeyDown, disabled }: FormulaInputProps) {
   const getStored = () => storageKey && typeof window !== "undefined" ? localStorage.getItem(fxKey(storageKey)) : null;
 
   const [raw, setRaw] = useState<string>(() => getStored() ?? String(value ?? ""));
   const [focused, setFocused] = useState(false);
   const prevValue = useRef(value);
+  const serverLoaded = useRef(false);
+  const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Load server-stored formula on mount (cross-device persistence)
+  useEffect(() => {
+    if (!companyId || !scope || serverLoaded.current) return;
+    serverLoaded.current = true;
+    fetch(`/api/${companyId}/formulas?scope=${encodeURIComponent(scope)}`, { cache: "no-store" })
+      .then(r => r.ok ? r.json() : null)
+      .then((data: { expression: string } | null) => {
+        if (data?.expression && !focused) {
+          setRaw(data.expression);
+          // Mirror to localStorage so subsequent loads on this device are instant
+          if (storageKey && typeof window !== "undefined") {
+            localStorage.setItem(fxKey(storageKey), data.expression);
+          }
+        }
+      })
+      .catch(() => { /* non-fatal */ });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [companyId, scope]);
 
   // Sync when external value changes (e.g. after save/reload)
   useEffect(() => {
@@ -67,6 +92,24 @@ export function FormulaInput({ value, onChange, storageKey, className = "", styl
     if (stored) setRaw(stored);
   }
 
+  // Debounced server save — only after a short pause so we don't hammer the API while typing
+  function queueServerSave(rawValue: string) {
+    if (!companyId || !scope) return;
+    if (saveTimer.current) clearTimeout(saveTimer.current);
+    saveTimer.current = setTimeout(() => {
+      if (rawValue.startsWith("=")) {
+        fetch(`/api/${companyId}/formulas`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ scope, expression: rawValue }),
+        }).catch(() => { /* non-fatal */ });
+      } else {
+        fetch(`/api/${companyId}/formulas?scope=${encodeURIComponent(scope)}`, { method: "DELETE" })
+          .catch(() => { /* non-fatal */ });
+      }
+    }, 600);
+  }
+
   function handleChange(e: React.ChangeEvent<HTMLInputElement>) {
     const v = e.target.value;
     setRaw(v);
@@ -74,6 +117,7 @@ export function FormulaInput({ value, onChange, storageKey, className = "", styl
       if (v.startsWith("=")) localStorage.setItem(fxKey(storageKey), v);
       else localStorage.removeItem(fxKey(storageKey));
     }
+    queueServerSave(v);
     const num = parseRaw(v);
     if (num != null) onChange(num);
   }

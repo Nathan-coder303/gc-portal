@@ -116,6 +116,16 @@ model MarketingAgency {
   @@index([companyId])
 }
 
+model Formula {
+  id         String   @id @default(cuid())
+  companyId  String
+  scope      String   // e.g. "subScopeItem:cmq...:amount", "coItem:abc:unitCost"
+  expression String   @db.Text
+  updatedAt  DateTime @updatedAt
+  @@unique([companyId, scope])
+  @@index([companyId])
+}
+
 model ScopeOfWork {
   id        String   @id @default(cuid())
   companyId String

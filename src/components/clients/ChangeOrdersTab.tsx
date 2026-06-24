@@ -167,12 +167,14 @@ function ItemRow({
   item,
   index,
   coId,
+  companyId,
   onChange,
   onDelete,
 }: {
   item: COItem;
   index: number;
   coId?: string;
+  companyId?: string;
   onChange: (idx: number, field: keyof COItem, value: string) => void;
   onDelete: (idx: number) => void;
 }) {
@@ -259,6 +261,8 @@ function ItemRow({
           <label className="block text-xs mb-0.5" style={{ color: "#8b949e" }}>Qty</label>
           <FormulaInput
             storageKey={item.id ? `co:${item.id}:qty` : coId ? `co:${coId}:item:${index}:qty` : undefined}
+            companyId={item.id ? companyId : undefined}
+            scope={item.id ? `coItem:${item.id}:qty` : undefined}
             value={item.qty}
             onChange={v => onChange(index, "qty", String(v))}
             className="w-full rounded px-2 py-1 text-sm"
@@ -280,6 +284,8 @@ function ItemRow({
           <label className="block text-xs mb-0.5" style={{ color: "#8b949e" }}>Unit Cost ($)</label>
           <FormulaInput
             storageKey={item.id ? `co:${item.id}:unitCost` : coId ? `co:${coId}:item:${index}:unitCost` : undefined}
+            companyId={item.id ? companyId : undefined}
+            scope={item.id ? `coItem:${item.id}:unitCost` : undefined}
             value={item.unitCost}
             onChange={v => onChange(index, "unitCost", String(v))}
             className="w-full rounded px-2 py-1 text-sm"
@@ -292,6 +298,8 @@ function ItemRow({
           <div className="flex items-center gap-2">
             <FormulaInput
               storageKey={item.id ? `co:${item.id}:markup` : coId ? `co:${coId}:item:${index}:markup` : undefined}
+              companyId={item.id ? companyId : undefined}
+              scope={item.id ? `coItem:${item.id}:markupPct` : undefined}
               value={item.markupPct}
               onChange={v => onChange(index, "markupPct", String(v))}
               className="w-full rounded px-2 py-1 text-sm"
@@ -811,7 +819,7 @@ function ChangeOrderEditor({
           )}
 
           {items.map((item, idx) => (
-            <ItemRow key={idx} item={item} index={idx} coId={initial?.id} onChange={handleChange} onDelete={handleDelete} />
+            <ItemRow key={idx} item={item} index={idx} coId={initial?.id} companyId={companyId} onChange={handleChange} onDelete={handleDelete} />
           ))}
 
           <button
