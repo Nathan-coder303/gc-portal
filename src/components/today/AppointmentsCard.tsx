@@ -154,6 +154,9 @@ export default function AppointmentsCard({
   const [addAp, setAddAp] = useState<"AM" | "PM">("AM");
   const [addDate, setAddDate] = useState(todayDateStr);
   const [addAddress, setAddAddress] = useState("");
+  const [addCity, setAddCity] = useState("");
+  const [addState, setAddState] = useState("FL");
+  const [addZip, setAddZip] = useState("");
   const [addNotes, setAddNotes] = useState("");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
@@ -257,27 +260,51 @@ export default function AppointmentsCard({
   }
 
   // ── New contact inline form ──────────────────────────────────────────────────
+  type NewContactForm = {
+    name: string;
+    contactName: string;
+    phone: string;
+    email: string;
+    address: string;
+    city: string;
+    state: string;
+    zip: string;
+    projectName: string;
+  };
+  const blankContact = (): NewContactForm => ({
+    name: "", contactName: "", phone: "", email: "",
+    address: "", city: "", state: "FL", zip: "", projectName: "",
+  });
   const [showNewContact, setShowNewContact] = useState(false);
-  const [newName, setNewName] = useState("");
-  const [newPhone, setNewPhone] = useState("");
-  const [newEmail, setNewEmail] = useState("");
+  const [newContact, setNewContact] = useState<NewContactForm>(blankContact);
   const [newSaving, setNewSaving] = useState(false);
   const [newError, setNewError] = useState("");
 
   function openNewContact() {
     setShowPicker(false); setShowNewContact(true);
-    setNewName(search); // preserve whatever they typed in the search box
-    setNewPhone(""); setNewEmail(""); setNewError("");
+    setNewContact({ ...blankContact(), name: search }); // preserve whatever they typed in the search box
+    setNewError("");
   }
 
   async function saveNewContact() {
-    const name = newName.trim();
+    const name = newContact.name.trim();
     if (!name) { setNewError("Name required"); return; }
     setNewSaving(true); setNewError("");
     try {
       const res = await fetch(`/api/${companyId}/clients`, {
         method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name, phone: newPhone.trim() || undefined, email: newEmail.trim() || undefined, status: "PROSPECT" }),
+        body: JSON.stringify({
+          name,
+          contactName: newContact.contactName.trim() || undefined,
+          phone: newContact.phone.trim() || undefined,
+          email: newContact.email.trim() || undefined,
+          address: newContact.address.trim() || undefined,
+          city: newContact.city.trim() || undefined,
+          state: newContact.state.trim() || undefined,
+          zip: newContact.zip.trim() || undefined,
+          projectName: newContact.projectName.trim() || undefined,
+          status: "PROSPECT",
+        }),
       });
       if (!res.ok) {
         const e = await res.json().catch(() => ({}));
@@ -305,6 +332,9 @@ export default function AppointmentsCard({
   function selectLead(lead: PipelineLead) {
     setSelectedLead(lead);
     setAddAddress(lead.lead?.address ?? "");
+    setAddCity(lead.lead?.city ?? "");
+    setAddState(""); // we don't have state on the picker lead shape; user fills if desired
+    setAddZip("");
     setAddH(""); setAddM(""); setAddAp("AM");
     setAddDate(todayDateStr); setAddNotes("");
     setShowPicker(false); setShowForm(true);
@@ -313,7 +343,11 @@ export default function AppointmentsCard({
   async function handleSave() {
     if (!selectedLead) return;
     const timeStr = buildTime(addH, addM, addAp);
-    const mainLine = [selectedLead.displayName, timeStr, selectedLead.lead?.phone ?? "", addAddress]
+    // Compose a full address string from address + city, state zip
+    const cityStateZip = [addCity.trim(), [addState.trim(), addZip.trim()].filter(Boolean).join(" ")]
+      .filter(Boolean).join(", ");
+    const fullAddress = [addAddress.trim(), cityStateZip].filter(Boolean).join(", ");
+    const mainLine = [selectedLead.displayName, timeStr, selectedLead.lead?.phone ?? "", fullAddress]
       .map(s => s.trim()).filter(Boolean).join(" · ");
     const fullText = `📅 Appointment – ${mainLine}${addNotes.trim() ? `\n${addNotes.trim()}` : ""}`;
     setSaving(true); setError("");
@@ -571,22 +605,60 @@ export default function AppointmentsCard({
       )}
 
       {/* New contact inline form */}
-      {showNewContact && (
+      {showNewContact && (() => {
+        const inputCls = "w-full bg-transparent text-sm px-3 py-2 rounded-lg outline-none";
+        const inputSt = { border: "1px solid #30373f", color: "#e6edf3" } as React.CSSProperties;
+        const labelSt = { fontSize: 10, fontWeight: 600, letterSpacing: 0.5, color: "#8b949e", textTransform: "uppercase" as const, marginBottom: 4, display: "block" };
+        const setField = (k: keyof NewContactForm, v: string) => setNewContact(prev => ({ ...prev, [k]: v }));
+        return (
         <div className="mt-4 p-4 rounded-xl flex flex-col gap-3" style={{ background: "#161b22", border: "1px solid #C9A84C33" }}>
           <div className="text-xs font-semibold" style={{ color: "#C9A84C" }}>
             Create new prospect
           </div>
-          <input type="text" placeholder="Name *" value={newName} onChange={e => setNewName(e.target.value)} autoFocus
-            className="w-full bg-transparent text-sm px-3 py-2 rounded-lg outline-none"
-            style={{ border: "1px solid #30373f", color: "#e6edf3" }} />
-          <input type="tel" placeholder="Phone (optional)" value={newPhone} onChange={e => setNewPhone(e.target.value)}
-            className="w-full bg-transparent text-sm px-3 py-2 rounded-lg outline-none"
-            style={{ border: "1px solid #30373f", color: "#e6edf3" }} />
-          <input type="email" placeholder="Email (optional)" value={newEmail} onChange={e => setNewEmail(e.target.value)}
-            className="w-full bg-transparent text-sm px-3 py-2 rounded-lg outline-none"
-            style={{ border: "1px solid #30373f", color: "#e6edf3" }} />
-          <div className="flex gap-2">
-            <button onClick={saveNewContact} disabled={newSaving || !newName.trim()}
+
+          <div>
+            <label style={labelSt}>Name *</label>
+            <input type="text" value={newContact.name} onChange={e => setField("name", e.target.value)} autoFocus className={inputCls} style={inputSt} />
+          </div>
+          <div>
+            <label style={labelSt}>Contact Person</label>
+            <input type="text" value={newContact.contactName} onChange={e => setField("contactName", e.target.value)} className={inputCls} style={inputSt} />
+          </div>
+          <div>
+            <label style={labelSt}>Project Name</label>
+            <input type="text" value={newContact.projectName} onChange={e => setField("projectName", e.target.value)} className={inputCls} style={inputSt} />
+          </div>
+          <div className="grid grid-cols-2 gap-2">
+            <div>
+              <label style={labelSt}>Phone</label>
+              <input type="tel" value={newContact.phone} onChange={e => setField("phone", e.target.value)} className={inputCls} style={inputSt} />
+            </div>
+            <div>
+              <label style={labelSt}>Email</label>
+              <input type="email" value={newContact.email} onChange={e => setField("email", e.target.value)} className={inputCls} style={inputSt} />
+            </div>
+          </div>
+          <div>
+            <label style={labelSt}>Address</label>
+            <input type="text" value={newContact.address} onChange={e => setField("address", e.target.value)} className={inputCls} style={inputSt} />
+          </div>
+          <div className="grid grid-cols-3 gap-2">
+            <div className="col-span-2">
+              <label style={labelSt}>City</label>
+              <input type="text" value={newContact.city} onChange={e => setField("city", e.target.value)} className={inputCls} style={inputSt} />
+            </div>
+            <div>
+              <label style={labelSt}>State</label>
+              <input type="text" value={newContact.state} onChange={e => setField("state", e.target.value)} className={inputCls} style={inputSt} />
+            </div>
+          </div>
+          <div>
+            <label style={labelSt}>ZIP</label>
+            <input type="text" value={newContact.zip} onChange={e => setField("zip", e.target.value)} className={inputCls} style={inputSt} />
+          </div>
+
+          <div className="flex gap-2 mt-1">
+            <button onClick={saveNewContact} disabled={newSaving || !newContact.name.trim()}
               className="flex-1 text-sm font-bold py-2 rounded-lg disabled:opacity-50"
               style={{ background: "#C9A84C", color: "#0d1117" }}>
               {newSaving ? "Saving…" : "Add as Prospect & continue"}
@@ -599,7 +671,8 @@ export default function AppointmentsCard({
           </div>
           {newError && <p className="text-xs" style={{ color: "#ef4444" }}>{newError}</p>}
         </div>
-      )}
+        );
+      })()}
 
       {/* Compose form */}
       {showForm && selectedLead && (
@@ -608,10 +681,33 @@ export default function AppointmentsCard({
             Appointment for <span style={{ color: "#e6edf3" }}>{selectedLead.displayName}</span>
           </div>
           {timeRow(addH, addM, addAp, setAddH, setAddM, setAddAp, addDate, setAddDate)}
-          <input type="text" placeholder="Address (optional)" value={addAddress} onChange={e => setAddAddress(e.target.value)}
-            className="w-full bg-transparent text-sm px-3 py-2 rounded-lg outline-none"
-            style={{ border: "1px solid #30373f", color: "#e6edf3" }} />
-          <textarea rows={3} placeholder="Notes (optional)…" value={addNotes} onChange={e => setAddNotes(e.target.value)}
+          <div>
+            <label className="block" style={{ fontSize: 10, fontWeight: 600, letterSpacing: 0.5, color: "#8b949e", textTransform: "uppercase", marginBottom: 4 }}>Address</label>
+            <input type="text" value={addAddress} onChange={e => setAddAddress(e.target.value)}
+              className="w-full bg-transparent text-sm px-3 py-2 rounded-lg outline-none"
+              style={{ border: "1px solid #30373f", color: "#e6edf3" }} />
+          </div>
+          <div className="grid grid-cols-3 gap-2">
+            <div className="col-span-2">
+              <label className="block" style={{ fontSize: 10, fontWeight: 600, letterSpacing: 0.5, color: "#8b949e", textTransform: "uppercase", marginBottom: 4 }}>City</label>
+              <input type="text" value={addCity} onChange={e => setAddCity(e.target.value)}
+                className="w-full bg-transparent text-sm px-3 py-2 rounded-lg outline-none"
+                style={{ border: "1px solid #30373f", color: "#e6edf3" }} />
+            </div>
+            <div>
+              <label className="block" style={{ fontSize: 10, fontWeight: 600, letterSpacing: 0.5, color: "#8b949e", textTransform: "uppercase", marginBottom: 4 }}>State</label>
+              <input type="text" value={addState} onChange={e => setAddState(e.target.value)}
+                className="w-full bg-transparent text-sm px-3 py-2 rounded-lg outline-none"
+                style={{ border: "1px solid #30373f", color: "#e6edf3" }} />
+            </div>
+          </div>
+          <div>
+            <label className="block" style={{ fontSize: 10, fontWeight: 600, letterSpacing: 0.5, color: "#8b949e", textTransform: "uppercase", marginBottom: 4 }}>ZIP</label>
+            <input type="text" value={addZip} onChange={e => setAddZip(e.target.value)}
+              className="w-full bg-transparent text-sm px-3 py-2 rounded-lg outline-none"
+              style={{ border: "1px solid #30373f", color: "#e6edf3" }} />
+          </div>
+          <textarea rows={3} placeholder="Notes…" value={addNotes} onChange={e => setAddNotes(e.target.value)}
             className="w-full bg-transparent text-sm px-3 py-2 rounded-lg outline-none resize-none"
             style={{ border: "1px solid #30373f", color: "#e6edf3" }} />
           <div className="flex gap-2">
