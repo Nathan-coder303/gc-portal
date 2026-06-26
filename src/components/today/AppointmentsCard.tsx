@@ -226,8 +226,13 @@ export default function AppointmentsCard({
   const [popupNewNote, setPopupNewNote] = useState("");
   const [popupSaving, setPopupSaving] = useState(false);
 
-  type FullLeadForm = { name: string; email: string; phone: string; address: string; city: string; state: string; zip: string; projectType: string; message: string };
-  const [popupEditForm, setPopupEditForm] = useState<FullLeadForm>({ name: "", email: "", phone: "", address: "", city: "", state: "FL", zip: "", projectType: "", message: "" });
+  // Form covers BOTH lead fields (projectType, message) and client fields (contactName, projectName).
+  // We render/save the right subset based on whether the popup is a Lead or a Client.
+  type FullLeadForm = { name: string; email: string; phone: string; address: string; city: string; state: string; zip: string; projectType: string; message: string; contactName: string; projectName: string };
+  const blankPopupForm = (): FullLeadForm => ({ name: "", email: "", phone: "", address: "", city: "", state: "FL", zip: "", projectType: "", message: "", contactName: "", projectName: "" });
+  const [popupEditForm, setPopupEditForm] = useState<FullLeadForm>(blankPopupForm);
+  // When the contact is a Client (not a Lead) we keep its id here so save routes to the right endpoint.
+  const [popupClientId, setPopupClientId] = useState<string | null>(null);
   const [popupFormLoading, setPopupFormLoading] = useState(false);
   const [popupSaveError, setPopupSaveError] = useState("");
 
@@ -368,15 +373,17 @@ export default function AppointmentsCard({
   const openLeadPopup = useCallback(async (appt: Appointment) => {
     const { name } = parseAppt(appt.text);
     setPopupAppt(appt); setPopupLoading(true);
-    setPopupLead(null); setPopupLeadId(null); setPopupNotes([]);
+    setPopupLead(null); setPopupLeadId(null); setPopupClientId(null); setPopupNotes([]);
     setPopupEditing(false); setPopupNewNote("");
     try {
-      const [pr, lr] = await Promise.all([
+      const [pr, lr, cr] = await Promise.all([
         fetch(`/api/${companyId}/pipeline?type=sales`),
         fetch(`/api/${companyId}/leads`),
+        fetch(`/api/${companyId}/clients?status=PROSPECT,PIPELINE,ACTIVE`),
       ]);
       const cards: PipelineLead[] = await pr.json();
       const raws: RawLead[] = await lr.json();
+      const clients: { id: string; name: string; email: string | null; phone: string | null; address: string | null; city: string | null; state: string | null; status: string }[] = cr.ok ? await cr.json() : [];
       const nl = name.toLowerCase();
 
       const card = cards.find(c =>
@@ -384,16 +391,27 @@ export default function AppointmentsCard({
         (c.lead?.name ?? "").toLowerCase().includes(nl)
       );
       const raw = raws.find(l => (l.name ?? "").toLowerCase().includes(nl) || nl.includes((l.name ?? "").toLowerCase()));
+      const client = clients.find(c =>
+        c.name.toLowerCase().includes(nl) || nl.includes(c.name.toLowerCase())
+      );
 
       let found: PipelineLead | null = null;
       let leadId: string | null = null;
-      if (card) {
+      let clientId: string | null = null;
+      // Prefer client match (richer field set), then pipeline card, then raw lead.
+      if (client) {
+        found = {
+          id: `client_${client.id}`, displayName: client.name, notes: null, source: client.status,
+          lead: { id: client.id, name: client.name, email: client.email, phone: client.phone, projectType: null, address: client.address, city: client.city },
+        };
+        clientId = client.id;
+      } else if (card) {
         found = card; leadId = card.lead?.id ?? null;
       } else if (raw) {
         found = { id: `raw_${raw.id}`, displayName: raw.name, notes: null, source: null, lead: { ...raw } };
         leadId = raw.id;
       }
-      setPopupLead(found); setPopupLeadId(leadId);
+      setPopupLead(found); setPopupLeadId(leadId); setPopupClientId(clientId);
       if (leadId) {
         const nr = await fetch(`/api/${companyId}/notes?leadId=${leadId}`);
         if (nr.ok) setPopupNotes(await nr.json());
@@ -405,13 +423,27 @@ export default function AppointmentsCard({
   async function openPopupEdit() {
     setPopupEditing(true);
     setPopupFormLoading(true);
-    const blank: FullLeadForm = { name: "", email: "", phone: "", address: "", city: "", state: "FL", zip: "", projectType: "", message: "" };
-    if (popupLeadId) {
+    const blank = blankPopupForm();
+    if (popupClientId) {
+      try {
+        const res = await fetch(`/api/${companyId}/clients/${popupClientId}`);
+        if (res.ok) {
+          const d = await res.json();
+          setPopupEditForm({
+            ...blank,
+            name: d.name ?? "", email: d.email ?? "", phone: d.phone ?? "",
+            address: d.address ?? "", city: d.city ?? "",
+            state: d.state ?? "FL", zip: d.zip ?? "",
+            contactName: d.contactName ?? "", projectName: d.projectName ?? "",
+          });
+        } else { setPopupEditForm(blank); }
+      } catch { setPopupEditForm(blank); }
+    } else if (popupLeadId) {
       try {
         const res = await fetch(`/api/${companyId}/leads/${popupLeadId}`);
         if (res.ok) {
           const d = await res.json();
-          setPopupEditForm({ name: d.name ?? "", email: d.email ?? "", phone: d.phone ?? "", address: d.address ?? "", city: d.city ?? "", state: d.state ?? "FL", zip: d.zip ?? "", projectType: d.projectType ?? "", message: d.message ?? "" });
+          setPopupEditForm({ ...blank, name: d.name ?? "", email: d.email ?? "", phone: d.phone ?? "", address: d.address ?? "", city: d.city ?? "", state: d.state ?? "FL", zip: d.zip ?? "", projectType: d.projectType ?? "", message: d.message ?? "" });
         } else { setPopupEditForm(blank); }
       } catch { setPopupEditForm(blank); }
     } else {
@@ -421,15 +453,33 @@ export default function AppointmentsCard({
   }
 
   async function savePopupEdits() {
-    if (!popupLeadId) return;
+    if (!popupLeadId && !popupClientId) return;
     setPopupSaving(true);
     setPopupSaveError("");
     try {
-      await fetch(`/api/${companyId}/leads/${popupLeadId}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(popupEditForm),
-      });
+      if (popupClientId) {
+        await fetch(`/api/${companyId}/clients/${popupClientId}`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            name: popupEditForm.name,
+            email: popupEditForm.email,
+            phone: popupEditForm.phone,
+            address: popupEditForm.address,
+            city: popupEditForm.city,
+            state: popupEditForm.state,
+            zip: popupEditForm.zip,
+            contactName: popupEditForm.contactName,
+            projectName: popupEditForm.projectName,
+          }),
+        });
+      } else if (popupLeadId) {
+        await fetch(`/api/${companyId}/leads/${popupLeadId}`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(popupEditForm),
+        });
+      }
 
       // Save new note if provided
       if (popupNewNote.trim()) {
@@ -999,6 +1049,7 @@ export default function AppointmentsCard({
                         <p className="text-xs text-center py-2" style={{ color: "#484f58" }}>Loading…</p>
                       ) : (
                         <>
+                          {/* Common fields for both Leads and Clients */}
                           {(["name", "email", "phone", "address", "city", "state", "zip"] as const).map(field => (
                             <div key={field}>
                               <label className="text-[10px] font-semibold block mb-1 capitalize" style={{ color: "#8b949e" }}>{field}</label>
@@ -1011,17 +1062,41 @@ export default function AppointmentsCard({
                               />
                             </div>
                           ))}
-                          <div>
-                            <label className="text-[10px] font-semibold block mb-1" style={{ color: "#8b949e" }}>Project Type</label>
-                            <ProjectTypeSelector value={popupEditForm.projectType} onChange={v => setPopupEditForm(f => ({ ...f, projectType: v }))} />
-                          </div>
-                          <div>
-                            <label className="text-[10px] font-semibold block mb-1" style={{ color: "#8b949e" }}>Message</label>
-                            <textarea rows={3} value={popupEditForm.message}
-                              onChange={e => setPopupEditForm(f => ({ ...f, message: e.target.value }))}
-                              className="w-full bg-transparent text-sm px-3 py-2 rounded-lg outline-none resize-none"
-                              style={{ border: "1px solid #30373f", color: "#e6edf3", background: "#0d1117", boxSizing: "border-box" as const }} />
-                          </div>
+                          {/* Client-only fields (PROSPECT / PIPELINE / ACTIVE in the Clients table) */}
+                          {popupClientId && (
+                            <>
+                              <div>
+                                <label className="text-[10px] font-semibold block mb-1" style={{ color: "#8b949e" }}>Contact Person</label>
+                                <input type="text" value={popupEditForm.contactName}
+                                  onChange={e => setPopupEditForm(f => ({ ...f, contactName: e.target.value }))}
+                                  className="w-full bg-transparent text-sm px-3 py-2 rounded-lg outline-none"
+                                  style={{ border: "1px solid #30373f", color: "#e6edf3", background: "#0d1117", boxSizing: "border-box" as const }} />
+                              </div>
+                              <div>
+                                <label className="text-[10px] font-semibold block mb-1" style={{ color: "#8b949e" }}>Project Name</label>
+                                <input type="text" value={popupEditForm.projectName}
+                                  onChange={e => setPopupEditForm(f => ({ ...f, projectName: e.target.value }))}
+                                  className="w-full bg-transparent text-sm px-3 py-2 rounded-lg outline-none"
+                                  style={{ border: "1px solid #30373f", color: "#e6edf3", background: "#0d1117", boxSizing: "border-box" as const }} />
+                              </div>
+                            </>
+                          )}
+                          {/* Lead-only fields */}
+                          {!popupClientId && (
+                            <>
+                              <div>
+                                <label className="text-[10px] font-semibold block mb-1" style={{ color: "#8b949e" }}>Project Type</label>
+                                <ProjectTypeSelector value={popupEditForm.projectType} onChange={v => setPopupEditForm(f => ({ ...f, projectType: v }))} />
+                              </div>
+                              <div>
+                                <label className="text-[10px] font-semibold block mb-1" style={{ color: "#8b949e" }}>Message</label>
+                                <textarea rows={3} value={popupEditForm.message}
+                                  onChange={e => setPopupEditForm(f => ({ ...f, message: e.target.value }))}
+                                  className="w-full bg-transparent text-sm px-3 py-2 rounded-lg outline-none resize-none"
+                                  style={{ border: "1px solid #30373f", color: "#e6edf3", background: "#0d1117", boxSizing: "border-box" as const }} />
+                              </div>
+                            </>
+                          )}
                           <div style={{ borderTop: "1px solid #30373f", paddingTop: 10 }}>
                             <label className="text-[10px] font-semibold block mb-1" style={{ color: "#8b949e" }}>Add note</label>
                             <textarea rows={2} value={popupNewNote} onChange={e => setPopupNewNote(e.target.value)}
@@ -1031,11 +1106,11 @@ export default function AppointmentsCard({
                           </div>
                         </>
                       )}
-                      {!popupLeadId && (
-                        <p className="text-xs" style={{ color: "#ef4444" }}>⚠️ Lead record not found — changes cannot be saved</p>
+                      {!popupLeadId && !popupClientId && (
+                        <p className="text-xs" style={{ color: "#ef4444" }}>⚠️ Contact record not found — changes cannot be saved</p>
                       )}
                       <div className="flex gap-2">
-                        <button onClick={savePopupEdits} disabled={popupSaving || !popupLeadId || popupFormLoading}
+                        <button onClick={savePopupEdits} disabled={popupSaving || (!popupLeadId && !popupClientId) || popupFormLoading}
                           className="flex-1 text-sm font-bold py-2 rounded-lg disabled:opacity-50"
                           style={{ background: "#C9A84C", color: "#0d1117" }}>
                           {popupSaving ? "Saving…" : "Save"}
