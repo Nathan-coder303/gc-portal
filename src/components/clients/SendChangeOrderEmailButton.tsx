@@ -68,9 +68,12 @@ export default function SendChangeOrderEmailButton({
   const [sending, setSending] = useState(false);
   const [result, setResult] = useState<{ ok: boolean; msg: string } | null>(null);
 
-  function openCoverPicker() {
+  // Go straight to writing the email. The cover defaults to whatever was
+  // last used (persisted in localStorage); the small "Cover: …" chip in the
+  // email modal header still lets you swap covers if you actually need to.
+  function openEmail() {
     setResult(null);
-    setStep("cover");
+    setStep("email");
   }
 
   function handleCoverConfirm(opts: PdfOptions) {
@@ -112,7 +115,7 @@ export default function SendChangeOrderEmailButton({
   return (
     <>
       <button
-        onClick={openCoverPicker}
+        onClick={openEmail}
         className="text-xs px-2 py-1 rounded-lg font-medium transition-colors"
         style={{ background: "#1a2436", border: "1px solid #30373f", color: "#8b949e" }}
         title="Send change order via email"
