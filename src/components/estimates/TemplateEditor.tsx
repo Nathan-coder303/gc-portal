@@ -435,7 +435,24 @@ function ItemRow({ item, divisionId, groupId, canEdit }: { item: Item; divisionI
       <td className="px-2 py-1"><FormulaInput storageKey={`tmpl:${item.id}:unitCost`} className={INPUT} style={{ ...inputStyle, width: "80px" }} value={form.defaultUnitCost} onChange={(v) => setForm({ ...form, defaultUnitCost: String(v) })} /></td>
       <td className="px-2 py-1"><FormulaInput storageKey={`tmpl:${item.id}:markup`} className={INPUT} style={{ ...inputStyle, width: "56px" }} value={form.defaultMarkupPct} onChange={(v) => setForm({ ...form, defaultMarkupPct: String(v) })} /></td>
       <td className="px-2 py-1 text-xs font-semibold text-right" style={{ color: "#C9A84C" }}>{previewTotal > 0 ? `$${fmt(previewTotal)}` : "—"}</td>
-      <td className="px-2 py-1"><input className={INPUT} style={inputStyleSm} value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} placeholder="notes" /></td>
+      <td className="px-2 py-1" style={{ minWidth: 240 }}>
+        <textarea
+          className={INPUT}
+          style={{ ...inputStyleSm, resize: "vertical", lineHeight: "1.35", overflow: "hidden", minHeight: 30 }}
+          value={form.notes}
+          ref={el => {
+            if (el) { el.style.height = "auto"; el.style.height = Math.max(30, el.scrollHeight) + "px"; }
+          }}
+          onInput={e => {
+            const el = e.currentTarget;
+            el.style.height = "auto";
+            el.style.height = Math.max(30, el.scrollHeight) + "px";
+          }}
+          onChange={e => setForm({ ...form, notes: e.target.value })}
+          rows={1}
+          placeholder="notes"
+        />
+      </td>
       <td className="px-2 py-1">
         <div className="flex gap-1 justify-end items-center">
           {isPending && <span className="text-xs" style={{ color: "#8b949e" }}>Saving…</span>}
@@ -516,7 +533,24 @@ function AddTemplateItemRow({ divisionId, groupId, canEdit }: { divisionId: stri
       <td className="px-2 py-1"><FormulaInput className={INPUT} style={{ ...inputStyle, width: "80px" }} value={form.defaultUnitCost} onChange={(v) => setForm({ ...form, defaultUnitCost: String(v) })} /></td>
       <td className="px-2 py-1"><FormulaInput className={INPUT} style={{ ...inputStyle, width: "56px" }} value={form.defaultMarkupPct} onChange={(v) => setForm({ ...form, defaultMarkupPct: String(v) })} /></td>
       <td />
-      <td className="px-2 py-1"><input className={INPUT} style={inputStyleSm} value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} placeholder="notes" /></td>
+      <td className="px-2 py-1" style={{ minWidth: 240 }}>
+        <textarea
+          className={INPUT}
+          style={{ ...inputStyleSm, resize: "vertical", lineHeight: "1.35", overflow: "hidden", minHeight: 30 }}
+          value={form.notes}
+          ref={el => {
+            if (el) { el.style.height = "auto"; el.style.height = Math.max(30, el.scrollHeight) + "px"; }
+          }}
+          onInput={e => {
+            const el = e.currentTarget;
+            el.style.height = "auto";
+            el.style.height = Math.max(30, el.scrollHeight) + "px";
+          }}
+          onChange={e => setForm({ ...form, notes: e.target.value })}
+          rows={1}
+          placeholder="notes"
+        />
+      </td>
       <td className="px-2 py-1">
         <div className="flex gap-1 justify-end">
           <button onClick={save} disabled={isPending} className="text-xs px-2 py-1 rounded font-medium" style={{ background: "#22c55e", color: "#fff" }}>Add</button>
