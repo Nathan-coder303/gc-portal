@@ -71,6 +71,59 @@ const INPUT = "rounded px-2 py-1 text-xs" as const;
 const inputStyle = { background: "#0d1117", border: "1px solid #30373f", color: "#e6edf3" };
 const inputStyleSm = { background: "#0d1117", border: "1px solid #30373f", color: "#e6edf3", width: "100%" };
 
+/**
+ * Bullet-list helper for note textareas.
+ * Enter on a bulleted line → next line is pre-bulleted.
+ * Enter on an empty bulleted line → exits the list (removes the bullet).
+ * Enter on a first non-empty plain line of multi-line text → converts existing
+ *   plain lines to bullets and starts a new bulleted line.
+ * Shift+Enter still inserts a plain newline.
+ */
+function handleBulletEnter(
+  e: React.KeyboardEvent<HTMLTextAreaElement>,
+  setValue: (v: string) => void,
+) {
+  if (e.key !== "Enter" || e.shiftKey) return;
+  const ta = e.currentTarget;
+  const start = ta.selectionStart;
+  const before = ta.value.slice(0, start);
+  const after = ta.value.slice(ta.selectionEnd);
+  const lines = before.split("\n");
+  const currentLine = lines[lines.length - 1];
+  const bulletMatch = currentLine.match(/^(\s*)([•\-\*])\s*(.*)$/);
+  if (bulletMatch) {
+    const [, indent, mark, text] = bulletMatch;
+    if (text.trim() === "") {
+      // Empty bullet line → exit the list (drop the bullet, just newline)
+      e.preventDefault();
+      const newBefore = before.slice(0, before.length - currentLine.length);
+      const newValue = newBefore + after;
+      setValue(newValue);
+      requestAnimationFrame(() => { ta.selectionStart = ta.selectionEnd = newBefore.length; });
+      return;
+    }
+    e.preventDefault();
+    const insertion = `\n${indent}${mark} `;
+    const newValue = before + insertion + after;
+    setValue(newValue);
+    const pos = before.length + insertion.length;
+    requestAnimationFrame(() => { ta.selectionStart = ta.selectionEnd = pos; });
+    return;
+  }
+  // First Enter on multi-line plain text → convert prior lines + this line to bullets
+  if (lines.length === 0 || currentLine.trim() === "") return;
+  e.preventDefault();
+  const allLinesSoFar = lines.slice(0, -1);
+  const prefixed = [...allLinesSoFar, currentLine]
+    .map(l => (l.trim() === "" || /^(\s*)([•\-\*])\s*/.test(l)) ? l : `• ${l}`)
+    .join("\n");
+  const insertion = "\n• ";
+  const newValue = prefixed + insertion + after;
+  setValue(newValue);
+  const pos = prefixed.length + insertion.length;
+  requestAnimationFrame(() => { ta.selectionStart = ta.selectionEnd = pos; });
+}
+
 function fmt(n: number) {
   return n.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 }
@@ -448,9 +501,10 @@ function ItemRow({ item, divisionId, groupId, canEdit }: { item: Item; divisionI
             el.style.height = "auto";
             el.style.height = Math.max(30, el.scrollHeight) + "px";
           }}
+          onKeyDown={e => handleBulletEnter(e, v => setForm({ ...form, notes: v }))}
           onChange={e => setForm({ ...form, notes: e.target.value })}
           rows={1}
-          placeholder="notes"
+          placeholder="notes (press Enter to start bullets)"
         />
       </td>
       <td className="px-2 py-1">
@@ -546,9 +600,10 @@ function AddTemplateItemRow({ divisionId, groupId, canEdit }: { divisionId: stri
             el.style.height = "auto";
             el.style.height = Math.max(30, el.scrollHeight) + "px";
           }}
+          onKeyDown={e => handleBulletEnter(e, v => setForm({ ...form, notes: v }))}
           onChange={e => setForm({ ...form, notes: e.target.value })}
           rows={1}
-          placeholder="notes"
+          placeholder="notes (press Enter to start bullets)"
         />
       </td>
       <td className="px-2 py-1">
