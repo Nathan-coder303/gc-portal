@@ -375,7 +375,7 @@ export default async function TodayPage({
         >
           <div className="flex items-center gap-3">
             <Link href={`/${params.companyId}/clients`} className="flex-1 text-center text-[22px] sm:text-6xl font-black leading-none tracking-tight hover:opacity-80 transition-opacity" style={{ color: "#C9A84C" }}>Clients</Link>
-            <Link href={`/${params.companyId}/clients`} className="text-xs px-2 py-0.5 rounded font-medium shrink-0" style={{ border: "1px solid #C9A84C66", color: "#C9A84C" }}>+</Link>
+            <Link href={`/${params.companyId}/clients?new=1`} className="text-xs px-2 py-0.5 rounded font-medium shrink-0" style={{ border: "1px solid #C9A84C66", color: "#C9A84C" }}>+</Link>
           </div>
           <div className="grid grid-cols-2 gap-3 mt-2">
             <Link

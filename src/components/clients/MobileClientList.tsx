@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
+import { useRouter, useSearchParams } from "next/navigation";
 
 type Client = {
   id: string;
@@ -160,10 +161,82 @@ function StageCard({
   );
 }
 
+type NewClientForm = {
+  name: string; contactName: string; phone: string; email: string;
+  address: string; city: string; state: string; zip: string;
+  projectName: string; status: string;
+};
+const blankNewClient = (): NewClientForm => ({
+  name: "", contactName: "", phone: "", email: "",
+  address: "", city: "", state: "FL", zip: "", projectName: "", status: "PROSPECT",
+});
+
 export default function MobileClientList({ companyId, clients: initialClients }: { companyId: string; clients: Client[] }) {
+  const router = useRouter();
+  const searchParams = useSearchParams();
   const [clients, setClients] = useState<Client[]>(initialClients);
   const [search, setSearch] = useState("");
   const [drag, setDrag] = useState<DragState | null>(null);
+  const [adding, setAdding] = useState(false);
+  const [newForm, setNewForm] = useState<NewClientForm>(blankNewClient);
+  const [newSaving, setNewSaving] = useState(false);
+  const [newError, setNewError] = useState<string | null>(null);
+
+  // Auto-open the new-client form when ?new=1 is in the URL (used by the
+  // Today dashboard "+ Add client" button).
+  useEffect(() => {
+    if (searchParams?.get("new") === "1") {
+      setNewForm(blankNewClient());
+      setAdding(true);
+      // strip the param so refreshes don't keep re-opening it
+      const url = new URL(window.location.href);
+      url.searchParams.delete("new");
+      router.replace(url.pathname + (url.search ? url.search : ""));
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  async function saveNewClient() {
+    const name = newForm.name.trim();
+    if (!name) { setNewError("Name is required"); return; }
+    setNewSaving(true); setNewError(null);
+    try {
+      const res = await fetch(`/api/${companyId}/clients`, {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name,
+          contactName: newForm.contactName.trim() || undefined,
+          phone: newForm.phone.trim() || undefined,
+          email: newForm.email.trim() || undefined,
+          address: newForm.address.trim() || undefined,
+          city: newForm.city.trim() || undefined,
+          state: newForm.state.trim() || undefined,
+          zip: newForm.zip.trim() || undefined,
+          projectName: newForm.projectName.trim() || undefined,
+          status: newForm.status,
+        }),
+      });
+      if (!res.ok) {
+        const e = await res.json().catch(() => ({}));
+        throw new Error(e.error || `HTTP ${res.status}`);
+      }
+      const c = await res.json() as { id: string; name: string; address: string | null; city: string | null; state: string | null; status: string };
+      // Inject into the list immediately
+      const added: Client = {
+        id: c.id, name: c.name, address: c.address, city: c.city, state: c.state,
+        estimateCount: 0, estimateTotal: 0, status: c.status,
+        updatedAt: new Date().toISOString(),
+      };
+      setClients(prev => [added, ...prev]);
+      setAdding(false);
+      // Background server refetch so other fields land
+      try { router.refresh(); } catch { /* */ }
+    } catch (e) {
+      setNewError(e instanceof Error ? e.message : "Save failed");
+    } finally {
+      setNewSaving(false);
+    }
+  }
   const dragRef = useRef<DragState | null>(null);
   dragRef.current = drag;
   const longPressTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -308,12 +381,21 @@ export default function MobileClientList({ companyId, clients: initialClients }:
 
   return (
     <div className="flex flex-col w-full max-w-full overflow-x-hidden">
-      <div className="mb-4">
-        <h1 className="text-xl font-bold" style={{ color: "#e6edf3" }}>Clients</h1>
-        <p className="text-xs mt-0.5" style={{ color: "#8b949e" }}>
-          {filtered.length} client{filtered.length !== 1 ? "s" : ""}
-          <span className="ml-2" style={{ color: "#484f58" }}>· hold a card to drag between stages</span>
-        </p>
+      <div className="mb-4 flex items-start justify-between gap-3">
+        <div>
+          <h1 className="text-xl font-bold" style={{ color: "#e6edf3" }}>Clients</h1>
+          <p className="text-xs mt-0.5" style={{ color: "#8b949e" }}>
+            {filtered.length} client{filtered.length !== 1 ? "s" : ""}
+            <span className="ml-2" style={{ color: "#484f58" }}>· hold a card to drag between stages</span>
+          </p>
+        </div>
+        <button
+          onClick={() => { setNewForm(blankNewClient()); setNewError(null); setAdding(true); }}
+          className="text-sm font-bold px-3 py-2 rounded-xl shrink-0"
+          style={{ background: "#C9A84C", color: "#0d1117" }}
+        >
+          + New
+        </button>
       </div>
 
       <div className="relative mb-4">
@@ -377,6 +459,101 @@ export default function MobileClientList({ companyId, clients: initialClients }:
           </span>
         </div>
       )}
+
+      {/* New client modal */}
+      {adding && (() => {
+        const inputCls = "w-full text-sm px-3 py-2 rounded-lg outline-none";
+        const inputSt = { background: "#0d1117", border: "1px solid #30373f", color: "#e6edf3" } as React.CSSProperties;
+        const labelSt = { fontSize: 10, fontWeight: 600, letterSpacing: 0.5, color: "#8b949e", textTransform: "uppercase" as const, marginBottom: 4, display: "block" };
+        const STAGE_OPTIONS = STAGES.map(s => ({ value: s.key, label: s.title, color: s.accent }));
+        return (
+          <div style={{ position: "fixed", inset: 0, zIndex: 60, background: "rgba(0,0,0,0.75)", display: "flex", alignItems: "flex-end", justifyContent: "center", padding: 0 }}
+               onClick={() => { if (!newSaving) setAdding(false); }}>
+            <div onClick={e => e.stopPropagation()}
+                 style={{ background: "#161b22", borderTop: "1px solid #C9A84C55", borderTopLeftRadius: 16, borderTopRightRadius: 16, padding: 18, width: "100%", maxWidth: 540, maxHeight: "92vh", overflowY: "auto" }}>
+              <div className="flex items-center justify-between mb-3">
+                <h2 className="text-base font-bold" style={{ color: "#C9A84C" }}>New Client</h2>
+                <button onClick={() => setAdding(false)} className="text-xl leading-none" style={{ color: "#8b949e" }}>×</button>
+              </div>
+
+              <div className="flex flex-col gap-3">
+                <div>
+                  <label style={labelSt}>Stage</label>
+                  <div className="flex flex-wrap gap-1.5">
+                    {STAGE_OPTIONS.map(o => (
+                      <button key={o.value}
+                        onClick={() => setNewForm(f => ({ ...f, status: o.value }))}
+                        className="text-[11px] font-semibold px-2.5 py-1.5 rounded-full"
+                        style={{
+                          background: newForm.status === o.value ? `${o.color}22` : "#1e2736",
+                          color: newForm.status === o.value ? o.color : "#8b949e",
+                          border: `1px solid ${newForm.status === o.value ? o.color : "#30373f"}`,
+                        }}
+                      >{o.label}</button>
+                    ))}
+                  </div>
+                </div>
+
+                <div>
+                  <label style={labelSt}>Name *</label>
+                  <input autoFocus type="text" value={newForm.name} onChange={e => setNewForm(f => ({ ...f, name: e.target.value }))} className={inputCls} style={inputSt} />
+                </div>
+                <div>
+                  <label style={labelSt}>Contact Person</label>
+                  <input type="text" value={newForm.contactName} onChange={e => setNewForm(f => ({ ...f, contactName: e.target.value }))} className={inputCls} style={inputSt} />
+                </div>
+                <div>
+                  <label style={labelSt}>Project Name</label>
+                  <input type="text" value={newForm.projectName} onChange={e => setNewForm(f => ({ ...f, projectName: e.target.value }))} className={inputCls} style={inputSt} />
+                </div>
+                <div className="grid grid-cols-2 gap-2">
+                  <div>
+                    <label style={labelSt}>Phone</label>
+                    <input type="tel" value={newForm.phone} onChange={e => setNewForm(f => ({ ...f, phone: e.target.value }))} className={inputCls} style={inputSt} />
+                  </div>
+                  <div>
+                    <label style={labelSt}>Email</label>
+                    <input type="email" value={newForm.email} onChange={e => setNewForm(f => ({ ...f, email: e.target.value }))} className={inputCls} style={inputSt} />
+                  </div>
+                </div>
+                <div>
+                  <label style={labelSt}>Address</label>
+                  <input type="text" value={newForm.address} onChange={e => setNewForm(f => ({ ...f, address: e.target.value }))} className={inputCls} style={inputSt} />
+                </div>
+                <div className="grid grid-cols-3 gap-2">
+                  <div className="col-span-2">
+                    <label style={labelSt}>City</label>
+                    <input type="text" value={newForm.city} onChange={e => setNewForm(f => ({ ...f, city: e.target.value }))} className={inputCls} style={inputSt} />
+                  </div>
+                  <div>
+                    <label style={labelSt}>State</label>
+                    <input type="text" value={newForm.state} onChange={e => setNewForm(f => ({ ...f, state: e.target.value }))} className={inputCls} style={inputSt} />
+                  </div>
+                </div>
+                <div>
+                  <label style={labelSt}>ZIP</label>
+                  <input type="text" value={newForm.zip} onChange={e => setNewForm(f => ({ ...f, zip: e.target.value }))} className={inputCls} style={inputSt} />
+                </div>
+
+                {newError && <p className="text-xs" style={{ color: "#f87171" }}>{newError}</p>}
+
+                <div className="flex gap-2 pt-1">
+                  <button onClick={saveNewClient} disabled={newSaving || !newForm.name.trim()}
+                    className="flex-1 text-sm font-bold py-2.5 rounded-xl disabled:opacity-50"
+                    style={{ background: "#C9A84C", color: "#0d1117" }}>
+                    {newSaving ? "Saving…" : "Save Client"}
+                  </button>
+                  <button onClick={() => setAdding(false)} disabled={newSaving}
+                    className="text-sm px-4 py-2.5 rounded-xl"
+                    style={{ background: "#30373f", color: "#8b949e" }}>
+                    Cancel
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
     </div>
   );
 }
