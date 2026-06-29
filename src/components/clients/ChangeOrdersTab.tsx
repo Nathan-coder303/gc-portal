@@ -818,9 +818,112 @@ function ChangeOrderEditor({
             </p>
           )}
 
-          {items.map((item, idx) => (
-            <ItemRow key={idx} item={item} index={idx} coId={initial?.id} companyId={companyId} onChange={handleChange} onDelete={handleDelete} />
-          ))}
+          {(() => {
+            // ─ Group items into divisions so they can be drag-reordered as a block.
+            type DivGroup = { key: string; csiPrefix: string; divisionName: string; itemIndices: number[] };
+            const groups: DivGroup[] = [];
+            const groupByKey = new Map<string, DivGroup>();
+            items.forEach((it, idx) => {
+              const csi = (it.csiCode ?? "").replace(/\s/g, "");
+              const prefix = csi.substring(0, 2) || "ZZ";
+              const divName = it.divisionName?.trim() || "Custom";
+              const key = `${prefix}::${divName}`;
+              let g = groupByKey.get(key);
+              if (!g) { g = { key, csiPrefix: prefix, divisionName: divName, itemIndices: [] }; groupByKey.set(key, g); groups.push(g); }
+              g.itemIndices.push(idx);
+            });
+
+            function reorderDivisions(fromKey: string, toKey: string, dropAfter: boolean) {
+              if (fromKey === toKey) return;
+              const order = groups.map(g => g.key);
+              const fromIdx = order.indexOf(fromKey);
+              const toIdxRaw = order.indexOf(toKey);
+              if (fromIdx === -1 || toIdxRaw === -1) return;
+              const reordered = [...order];
+              reordered.splice(fromIdx, 1);
+              let target = reordered.indexOf(toKey);
+              if (dropAfter) target += 1;
+              reordered.splice(target, 0, fromKey);
+              const newItems: COItem[] = [];
+              for (const k of reordered) {
+                const g = groupByKey.get(k);
+                if (!g) continue;
+                for (const i of g.itemIndices) newItems.push(items[i]);
+              }
+              setItems(newItems);
+            }
+
+            function moveDivisionRel(key: string, delta: -1 | 1) {
+              const order = groups.map(g => g.key);
+              const idx = order.indexOf(key);
+              const target = idx + delta;
+              if (idx === -1 || target < 0 || target >= order.length) return;
+              const reordered = [...order];
+              reordered.splice(idx, 1);
+              reordered.splice(target, 0, key);
+              const newItems: COItem[] = [];
+              for (const k of reordered) {
+                const g = groupByKey.get(k);
+                if (!g) continue;
+                for (const i of g.itemIndices) newItems.push(items[i]);
+              }
+              setItems(newItems);
+            }
+
+            return groups.map((g, gi) => (
+              <div
+                key={g.key}
+                draggable={true}
+                onDragStart={e => { e.dataTransfer.setData("application/x-co-div", g.key); e.dataTransfer.effectAllowed = "move"; }}
+                onDragOver={e => {
+                  if (Array.from(e.dataTransfer.types).includes("application/x-co-div")) { e.preventDefault(); e.dataTransfer.dropEffect = "move"; }
+                }}
+                onDrop={e => {
+                  const fromKey = e.dataTransfer.getData("application/x-co-div");
+                  if (!fromKey) return;
+                  e.preventDefault();
+                  const rect = (e.currentTarget as HTMLDivElement).getBoundingClientRect();
+                  const dropAfter = e.clientY > rect.top + rect.height / 2;
+                  reorderDivisions(fromKey, g.key, dropAfter);
+                }}
+                className="rounded-xl mb-3"
+                style={{ background: "#0d1117", border: "1px solid #30373f", overflow: "hidden" }}
+              >
+                {/* Division header — drag handle + move arrows */}
+                <div
+                  className="flex items-center gap-2 px-3 py-2"
+                  style={{ background: "#1a2030", borderBottom: "1px solid #30373f", cursor: "grab", userSelect: "none" }}
+                >
+                  <span className="text-base" style={{ color: "#8b949e" }} title="Drag to reorder">⠿</span>
+                  <span className="text-[11px] font-mono px-1.5 py-0.5 rounded" style={{ background: "#1e2736", color: "#8b949e" }}>{g.csiPrefix}</span>
+                  <span className="text-xs font-semibold flex-1 truncate" style={{ color: GOLD }}>{g.divisionName}</span>
+                  <span className="text-[10px]" style={{ color: "#484f58" }}>{g.itemIndices.length} item{g.itemIndices.length === 1 ? "" : "s"}</span>
+                  <button
+                    type="button"
+                    onClick={() => moveDivisionRel(g.key, -1)}
+                    disabled={gi === 0}
+                    className="text-xs px-2 py-0.5 rounded disabled:opacity-30"
+                    style={{ background: "#1e2736", color: "#8b949e", border: "1px solid #30373f" }}
+                    title="Move up"
+                  >▲</button>
+                  <button
+                    type="button"
+                    onClick={() => moveDivisionRel(g.key, +1)}
+                    disabled={gi === groups.length - 1}
+                    className="text-xs px-2 py-0.5 rounded disabled:opacity-30"
+                    style={{ background: "#1e2736", color: "#8b949e", border: "1px solid #30373f" }}
+                    title="Move down"
+                  >▼</button>
+                </div>
+                {/* Items in this division */}
+                <div className="p-2 space-y-1">
+                  {g.itemIndices.map(idx => (
+                    <ItemRow key={idx} item={items[idx]} index={idx} coId={initial?.id} companyId={companyId} onChange={handleChange} onDelete={handleDelete} />
+                  ))}
+                </div>
+              </div>
+            ));
+          })()}
 
           <button
             onClick={handleAddBlankItem}
