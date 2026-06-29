@@ -21,6 +21,13 @@ export async function PATCH(
   if (body.upfrontFee !== undefined) data.upfrontFee = body.upfrontFee == null || body.upfrontFee === "" ? null : Number(body.upfrontFee);
   if (body.commitment !== undefined) data.commitment = body.commitment?.trim() || null;
   if (body.facebookFees !== undefined) data.facebookFees = body.facebookFees == null || body.facebookFees === "" ? null : Number(body.facebookFees);
+  if (body.appointmentsBooked !== undefined) data.appointmentsBooked = body.appointmentsBooked == null || body.appointmentsBooked === "" ? 0 : Number(body.appointmentsBooked);
+  if (body.adSpendAmount !== undefined) data.adSpendAmount = body.adSpendAmount == null || body.adSpendAmount === "" ? null : Number(body.adSpendAmount);
+  if (body.adSpendSinceDate !== undefined) data.adSpendSinceDate = body.adSpendSinceDate ? new Date(body.adSpendSinceDate) : null;
+  if (body.expectedSaleValue !== undefined) data.expectedSaleValue = body.expectedSaleValue == null || body.expectedSaleValue === "" ? null : Number(body.expectedSaleValue);
+  if (body.loginUrl !== undefined) data.loginUrl = body.loginUrl?.trim() || null;
+  if (body.loginEmail !== undefined) data.loginEmail = body.loginEmail?.trim() || null;
+  if (body.loginPassword !== undefined) data.loginPassword = body.loginPassword?.trim() || null;
   if (body.notes !== undefined) data.notes = body.notes?.trim() || null;
 
   const agency = await prisma.marketingAgency.update({

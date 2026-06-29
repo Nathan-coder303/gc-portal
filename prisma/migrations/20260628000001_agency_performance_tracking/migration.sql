@@ -1,0 +1,4 @@
+ALTER TABLE "MarketingAgency" ADD COLUMN IF NOT EXISTS "appointmentsBooked" INTEGER NOT NULL DEFAULT 0;
+ALTER TABLE "MarketingAgency" ADD COLUMN IF NOT EXISTS "adSpendAmount" DECIMAL(14,2);
+ALTER TABLE "MarketingAgency" ADD COLUMN IF NOT EXISTS "adSpendSinceDate" TIMESTAMP(3);
+ALTER TABLE "MarketingAgency" ADD COLUMN IF NOT EXISTS "expectedSaleValue" DECIMAL(14,2);

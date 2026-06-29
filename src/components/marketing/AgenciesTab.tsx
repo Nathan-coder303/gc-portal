@@ -13,6 +13,13 @@ type Agency = {
   upfrontFee: number | string | null;
   commitment: string | null;
   facebookFees: number | string | null;
+  appointmentsBooked: number;
+  adSpendAmount: number | string | null;
+  adSpendSinceDate: string | null;
+  expectedSaleValue: number | string | null;
+  loginUrl: string | null;
+  loginEmail: string | null;
+  loginPassword: string | null;
   notes: string | null;
   attachments: string | null; // JSON
 };
@@ -68,6 +75,13 @@ type FormState = {
   upfrontFee: string;
   commitment: string;
   facebookFees: string;
+  appointmentsBooked: string;
+  adSpendAmount: string;
+  adSpendSinceDate: string;
+  expectedSaleValue: string;
+  loginUrl: string;
+  loginEmail: string;
+  loginPassword: string;
   notes: string;
 };
 
@@ -80,8 +94,95 @@ function emptyForm(): FormState {
     upfrontFee: "",
     commitment: "",
     facebookFees: "",
+    appointmentsBooked: "",
+    adSpendAmount: "",
+    adSpendSinceDate: "",
+    expectedSaleValue: "",
+    loginUrl: "",
+    loginEmail: "",
+    loginPassword: "",
     notes: "",
   };
+}
+
+// Compute how much you currently owe the agency based on their pay model
+function amountOwedToAgency(a: Agency): number {
+  const upfront = a.upfrontFee != null ? Number(a.upfrontFee) : 0;
+  const pay = Number(a.payAmount) || 0;
+  const appts = a.appointmentsBooked ?? 0;
+  if (a.payFrequency === "APPOINTMENT") return upfront + (pay * appts);
+  if (a.payFrequency === "LEAD") return upfront + (pay * appts);
+  // For monthly / quarter / year / flat / other → just the upfront so far
+  // (recurring is tracked manually as it comes due).
+  return upfront;
+}
+
+// ── Credentials display block (used on each agency card) ───────────────────
+function CredentialsBlock({ url, email, password }: { url: string | null; email: string | null; password: string | null }) {
+  const [revealed, setRevealed] = useState(false);
+  const [copied, setCopied] = useState<string | null>(null);
+  if (!url && !email && !password) return null;
+
+  function copy(label: string, value: string) {
+    try {
+      navigator.clipboard?.writeText(value);
+      setCopied(label);
+      setTimeout(() => setCopied(null), 1500);
+    } catch { /* */ }
+  }
+
+  return (
+    <div className="rounded-lg p-3" style={{ background: "#0c1219", border: `1px solid ${BORDER}` }}>
+      <div className="flex items-center justify-between mb-2">
+        <p className="text-[10px] uppercase tracking-wider font-bold" style={{ color: GOLD }}>🔑 Login Credentials</p>
+        {url && (
+          <a href={url} target="_blank" rel="noopener noreferrer"
+            className="text-[10px] font-semibold px-2 py-1 rounded"
+            style={{ background: `${GOLD}22`, color: GOLD, border: `1px solid ${GOLD}55` }}>
+            Open ↗
+          </a>
+        )}
+      </div>
+      <div className="space-y-1.5 font-mono text-xs">
+        {email && (
+          <div className="flex items-center gap-2">
+            <span style={{ color: MUTED, minWidth: 64 }}>Email</span>
+            <button onClick={() => copy("email", email)} className="flex-1 text-left truncate" style={{ color: TEXT }}>
+              {email}
+            </button>
+            <span className="text-[10px]" style={{ color: copied === "email" ? "#22c55e" : MUTED }}>
+              {copied === "email" ? "✓ copied" : "tap to copy"}
+            </span>
+          </div>
+        )}
+        {password && (
+          <div className="flex items-center gap-2">
+            <span style={{ color: MUTED, minWidth: 64 }}>Password</span>
+            <button onClick={() => copy("password", password)} className="flex-1 text-left truncate" style={{ color: TEXT }}>
+              {revealed ? password : "•".repeat(Math.min(password.length, 16))}
+            </button>
+            <button onClick={() => setRevealed(r => !r)} className="text-[10px] px-1.5 py-0.5 rounded" style={{ background: "#1e2736", color: MUTED, border: `1px solid ${BORDER}` }}>
+              {revealed ? "Hide" : "Show"}
+            </button>
+            <span className="text-[10px]" style={{ color: copied === "password" ? "#22c55e" : MUTED }}>
+              {copied === "password" ? "✓" : ""}
+            </span>
+          </div>
+        )}
+        {url && (
+          <div className="flex items-center gap-2">
+            <span style={{ color: MUTED, minWidth: 64 }}>URL</span>
+            <button onClick={() => copy("url", url)} className="flex-1 text-left truncate" style={{ color: "#58a6ff", textDecoration: "underline" }}>
+              {url}
+            </button>
+            <span className="text-[10px]" style={{ color: copied === "url" ? "#22c55e" : MUTED }}>
+              {copied === "url" ? "✓" : ""}
+            </span>
+          </div>
+        )}
+      </div>
+    </div>
+  );
 }
 
 function AttachmentZone({
@@ -224,6 +325,13 @@ export default function AgenciesTab({ companyId }: { companyId: string }) {
       upfrontFee: a.upfrontFee != null ? String(a.upfrontFee) : "",
       commitment: a.commitment ?? "",
       facebookFees: a.facebookFees != null ? String(a.facebookFees) : "",
+      appointmentsBooked: a.appointmentsBooked ? String(a.appointmentsBooked) : "",
+      adSpendAmount: a.adSpendAmount != null ? String(a.adSpendAmount) : "",
+      adSpendSinceDate: a.adSpendSinceDate ? a.adSpendSinceDate.slice(0, 10) : "",
+      expectedSaleValue: a.expectedSaleValue != null ? String(a.expectedSaleValue) : "",
+      loginUrl: a.loginUrl ?? "",
+      loginEmail: a.loginEmail ?? "",
+      loginPassword: a.loginPassword ?? "",
       notes: a.notes ?? "",
     });
     setError(null);
@@ -252,6 +360,13 @@ export default function AgenciesTab({ companyId }: { companyId: string }) {
           upfrontFee: form.upfrontFee || null,
           commitment: form.commitment || null,
           facebookFees: form.facebookFees || null,
+          appointmentsBooked: form.appointmentsBooked || 0,
+          adSpendAmount: form.adSpendAmount || null,
+          adSpendSinceDate: form.adSpendSinceDate || null,
+          expectedSaleValue: form.expectedSaleValue || null,
+          loginUrl: form.loginUrl || null,
+          loginEmail: form.loginEmail || null,
+          loginPassword: form.loginPassword || null,
           notes: form.notes || null,
         }),
       });
@@ -346,6 +461,64 @@ export default function AgenciesTab({ companyId }: { companyId: string }) {
                   </p>
                 </div>
               </div>
+
+              {/* ── Performance / ROI section ──────────────────────────────── */}
+              {(() => {
+                const owed = amountOwedToAgency(a);
+                const sale = a.expectedSaleValue != null && a.expectedSaleValue !== "" ? Number(a.expectedSaleValue) : null;
+                const adSpend = a.adSpendAmount != null && a.adSpendAmount !== "" ? Number(a.adSpendAmount) : null;
+                const totalCost = owed + (adSpend ?? 0);
+                const roi = sale != null && totalCost > 0 ? sale - totalCost : null;
+                const hasPerf = a.appointmentsBooked > 0 || adSpend != null || sale != null;
+                if (!hasPerf) return null;
+                return (
+                  <div className="rounded-lg p-3" style={{ background: "#0c1219", border: `1px solid ${GOLD}33` }}>
+                    <div className="flex items-center gap-2 mb-2">
+                      <p className="text-[10px] uppercase tracking-wider font-bold" style={{ color: GOLD }}>📊 Performance</p>
+                    </div>
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                      <div>
+                        <p className="text-[10px] uppercase" style={{ color: MUTED }}>Appts</p>
+                        <p className="text-sm font-bold" style={{ color: a.appointmentsBooked > 0 ? "#22c55e" : MUTED }}>
+                          {a.appointmentsBooked}
+                        </p>
+                      </div>
+                      <div>
+                        <p className="text-[10px] uppercase" style={{ color: MUTED }}>
+                          Ad Spend{a.adSpendSinceDate ? ` · since ${fmtDate(a.adSpendSinceDate)}` : ""}
+                        </p>
+                        <p className="text-sm font-bold font-mono" style={{ color: adSpend != null ? "#3b82f6" : MUTED }}>
+                          {adSpend != null ? fmtMoney(adSpend) : "—"}
+                        </p>
+                      </div>
+                      <div>
+                        <p className="text-[10px] uppercase" style={{ color: MUTED }}>Owed to agency</p>
+                        <p className="text-sm font-bold font-mono" style={{ color: owed > 0 ? "#f59e0b" : MUTED }}>
+                          {owed > 0 ? fmtMoney(owed) : "—"}
+                        </p>
+                      </div>
+                      <div>
+                        <p className="text-[10px] uppercase" style={{ color: MUTED }}>Expected sale</p>
+                        <p className="text-sm font-bold font-mono" style={{ color: sale != null ? "#22c55e" : MUTED }}>
+                          {sale != null ? fmtMoney(sale) : "—"}
+                        </p>
+                      </div>
+                    </div>
+                    {roi != null && (
+                      <div className="mt-2 pt-2 flex items-center justify-between" style={{ borderTop: `1px solid ${BORDER}` }}>
+                        <span className="text-[11px] font-semibold uppercase tracking-wider" style={{ color: MUTED }}>
+                          Net (Sale − Cost)
+                        </span>
+                        <span className="text-base font-bold font-mono" style={{ color: roi >= 0 ? "#22c55e" : "#f87171" }}>
+                          {roi >= 0 ? "+" : ""}{fmtMoney(roi)}
+                        </span>
+                      </div>
+                    )}
+                  </div>
+                );
+              })()}
+
+              <CredentialsBlock url={a.loginUrl} email={a.loginEmail} password={a.loginPassword} />
 
               {a.notes && (
                 <p className="text-xs" style={{ color: MUTED }}>{a.notes}</p>
@@ -457,6 +630,86 @@ export default function AgenciesTab({ companyId }: { companyId: string }) {
                   className="w-full rounded-lg px-3 py-2 text-sm"
                   style={{ background: BG, border: `1px solid ${BORDER}`, color: TEXT, outline: "none" }}
                 />
+              </div>
+
+              {/* Performance tracking — record what's actually happening on this contract */}
+              <div className="rounded-lg p-3" style={{ background: "#0c1219", border: `1px solid ${GOLD}33` }}>
+                <p className="text-[10px] uppercase tracking-wider font-bold mb-2" style={{ color: GOLD }}>📊 Performance</p>
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-[11px] mb-1 uppercase tracking-wide" style={{ color: MUTED }}>Appointments booked</label>
+                    <input
+                      type="number" min={0} step={1}
+                      value={form.appointmentsBooked}
+                      onChange={e => setForm({ ...form, appointmentsBooked: e.target.value })}
+                      placeholder="0"
+                      className="w-full rounded-lg px-3 py-2 text-sm"
+                      style={{ background: BG, border: `1px solid ${BORDER}`, color: TEXT, outline: "none" }}
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[11px] mb-1 uppercase tracking-wide" style={{ color: MUTED }}>Expected sale value ($)</label>
+                    <input
+                      type="number" step="0.01"
+                      value={form.expectedSaleValue}
+                      onChange={e => setForm({ ...form, expectedSaleValue: e.target.value })}
+                      placeholder="From appts in pipeline"
+                      className="w-full rounded-lg px-3 py-2 text-sm"
+                      style={{ background: BG, border: `1px solid ${BORDER}`, color: TEXT, outline: "none" }}
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[11px] mb-1 uppercase tracking-wide" style={{ color: MUTED }}>Ad spend ($)</label>
+                    <input
+                      type="number" step="0.01"
+                      value={form.adSpendAmount}
+                      onChange={e => setForm({ ...form, adSpendAmount: e.target.value })}
+                      placeholder="Meta / Google ad spend"
+                      className="w-full rounded-lg px-3 py-2 text-sm"
+                      style={{ background: BG, border: `1px solid ${BORDER}`, color: TEXT, outline: "none" }}
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[11px] mb-1 uppercase tracking-wide" style={{ color: MUTED }}>Spending since</label>
+                    <input
+                      type="date"
+                      value={form.adSpendSinceDate}
+                      onChange={e => setForm({ ...form, adSpendSinceDate: e.target.value })}
+                      className="w-full rounded-lg px-3 py-2 text-sm"
+                      style={{ background: BG, border: `1px solid ${BORDER}`, color: TEXT, outline: "none" }}
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* Login credentials — so the dashboard is one tap away */}
+              <div className="rounded-lg p-3" style={{ background: "#0c1219", border: `1px solid ${BORDER}` }}>
+                <p className="text-[10px] uppercase tracking-wider font-bold mb-2" style={{ color: GOLD }}>🔑 Login Credentials</p>
+                <div className="space-y-2">
+                  <div>
+                    <label className="block text-[11px] mb-1 uppercase tracking-wide" style={{ color: MUTED }}>Login URL</label>
+                    <input type="url" value={form.loginUrl} onChange={e => setForm({ ...form, loginUrl: e.target.value })}
+                      placeholder="https://app.example.com/login"
+                      className="w-full rounded-lg px-3 py-2 text-sm"
+                      style={{ background: BG, border: `1px solid ${BORDER}`, color: TEXT, outline: "none" }} />
+                  </div>
+                  <div className="grid grid-cols-2 gap-2">
+                    <div>
+                      <label className="block text-[11px] mb-1 uppercase tracking-wide" style={{ color: MUTED }}>Email</label>
+                      <input type="email" value={form.loginEmail} onChange={e => setForm({ ...form, loginEmail: e.target.value })}
+                        autoComplete="off"
+                        className="w-full rounded-lg px-3 py-2 text-sm"
+                        style={{ background: BG, border: `1px solid ${BORDER}`, color: TEXT, outline: "none" }} />
+                    </div>
+                    <div>
+                      <label className="block text-[11px] mb-1 uppercase tracking-wide" style={{ color: MUTED }}>Password</label>
+                      <input type="text" value={form.loginPassword} onChange={e => setForm({ ...form, loginPassword: e.target.value })}
+                        autoComplete="off"
+                        className="w-full rounded-lg px-3 py-2 text-sm font-mono"
+                        style={{ background: BG, border: `1px solid ${BORDER}`, color: TEXT, outline: "none" }} />
+                    </div>
+                  </div>
+                </div>
               </div>
 
               <div>

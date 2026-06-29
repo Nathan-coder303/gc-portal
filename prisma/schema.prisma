@@ -108,6 +108,16 @@ model MarketingAgency {
   upfrontFee        Decimal?  @db.Decimal(14, 2)
   commitment        String?   // e.g. "6 months", "12 month minimum", "Month-to-month"
   facebookFees      Decimal?  @db.Decimal(14, 2)
+  // Running performance tracking: appts booked, ad spend, expected sale value
+  // (so the card can show owed-vs-sale at a glance)
+  appointmentsBooked Int      @default(0)
+  adSpendAmount     Decimal?  @db.Decimal(14, 2)
+  adSpendSinceDate  DateTime?
+  expectedSaleValue Decimal?  @db.Decimal(14, 2)
+  // Login credentials for the agency's client portal (so you don't have to dig)
+  loginUrl          String?
+  loginEmail        String?
+  loginPassword     String?
   notes             String?
   attachments       String?   @db.Text   // JSON array: [{ id, name, url, size, mimeType }]
   archivedAt        DateTime?

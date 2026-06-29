@@ -43,6 +43,13 @@ export async function POST(
       upfrontFee: body.upfrontFee != null && body.upfrontFee !== "" ? Number(body.upfrontFee) : null,
       commitment: body.commitment?.trim() || null,
       facebookFees: body.facebookFees != null && body.facebookFees !== "" ? Number(body.facebookFees) : null,
+      appointmentsBooked: body.appointmentsBooked != null && body.appointmentsBooked !== "" ? Number(body.appointmentsBooked) : 0,
+      adSpendAmount: body.adSpendAmount != null && body.adSpendAmount !== "" ? Number(body.adSpendAmount) : null,
+      adSpendSinceDate: body.adSpendSinceDate ? new Date(body.adSpendSinceDate) : null,
+      expectedSaleValue: body.expectedSaleValue != null && body.expectedSaleValue !== "" ? Number(body.expectedSaleValue) : null,
+      loginUrl: body.loginUrl?.trim() || null,
+      loginEmail: body.loginEmail?.trim() || null,
+      loginPassword: body.loginPassword?.trim() || null,
       notes: body.notes?.trim() || null,
     },
   });
