@@ -1945,11 +1945,70 @@ export default function TemplateEditor({
                       </div>
                       <textarea
                         value={termsContent}
-                        onChange={e => { setTermsContent(e.target.value); setTermsDirty(true); saveTermsContent(e.target.value); }}
-                        rows={5}
-                        placeholder="Enter Terms & Conditions text, or load a saved preset above..."
-                        className="w-full rounded-lg px-3 py-2 text-xs resize-y"
-                        style={{ background: "#0d1117", border: "1px solid #30373f", color: "#e6edf3" }}
+                        onChange={e => {
+                          const v = e.target.value;
+                          setTermsContent(v); setTermsDirty(true); saveTermsContent(v);
+                          // Auto-grow as text expands
+                          const el = e.currentTarget;
+                          el.style.height = "auto";
+                          el.style.height = Math.max(140, el.scrollHeight) + "px";
+                        }}
+                        onKeyDown={e => {
+                          // Bullet-list helper: when the previous (non-empty) lines start with "• ",
+                          // pressing Enter starts the next line with "• " too. Pressing Enter on an
+                          // empty bullet line clears the bullet and exits the list.
+                          if (e.key !== "Enter" || e.shiftKey) return;
+                          const ta = e.currentTarget;
+                          const start = ta.selectionStart;
+                          const before = ta.value.slice(0, start);
+                          const after = ta.value.slice(ta.selectionEnd);
+                          const lines = before.split("\n");
+                          const currentLine = lines[lines.length - 1];
+                          const bulletMatch = currentLine.match(/^(\s*)([•\-\*])\s*(.*)$/);
+                          if (bulletMatch) {
+                            const [, indent, mark, text] = bulletMatch;
+                            if (text.trim() === "") {
+                              // Empty bullet line → exit list: replace the empty bullet with just newline
+                              e.preventDefault();
+                              const newBefore = before.slice(0, before.length - currentLine.length);
+                              const newValue = newBefore + after;
+                              setTermsContent(newValue); setTermsDirty(true); saveTermsContent(newValue);
+                              requestAnimationFrame(() => { ta.selectionStart = ta.selectionEnd = newBefore.length; });
+                              return;
+                            }
+                            // Continue bullet
+                            e.preventDefault();
+                            const insertion = `\n${indent}${mark} `;
+                            const newValue = before + insertion + after;
+                            setTermsContent(newValue); setTermsDirty(true); saveTermsContent(newValue);
+                            const pos = before.length + insertion.length;
+                            requestAnimationFrame(() => { ta.selectionStart = ta.selectionEnd = pos; });
+                            return;
+                          }
+                          // Not in a bullet list yet — convert the current line to a bullet and start one on the new line
+                          // (only when the user has multi-line content; otherwise behave like normal Enter)
+                          if (lines.length === 0 || currentLine.trim() === "") return;
+                          e.preventDefault();
+                          const allLinesSoFar = lines.slice(0, -1);
+                          const allBefore = allLinesSoFar.join("\n");
+                          // Prefix existing non-bullet, non-empty lines + current line with "• "
+                          const prefixed = [...allLinesSoFar, currentLine]
+                            .map(l => (l.trim() === "" || /^(\s*)([•\-\*])\s*/.test(l)) ? l : `• ${l}`)
+                            .join("\n");
+                          const insertion = "\n• ";
+                          const newValue = prefixed + insertion + after;
+                          setTermsContent(newValue); setTermsDirty(true); saveTermsContent(newValue);
+                          const pos = prefixed.length + insertion.length;
+                          requestAnimationFrame(() => { ta.selectionStart = ta.selectionEnd = pos; });
+                          void allBefore;
+                        }}
+                        ref={el => {
+                          if (el) { el.style.height = "auto"; el.style.height = Math.max(140, el.scrollHeight) + "px"; }
+                        }}
+                        rows={6}
+                        placeholder={"Enter Terms & Conditions text, or load a saved preset above...\n\nTip: press Enter on a line to start a bullet list — subsequent Enters keep adding bullets. Empty Enter ends the list."}
+                        className="w-full rounded-lg px-3 py-2 text-sm leading-relaxed"
+                        style={{ background: "#0d1117", border: "1px solid #30373f", color: "#e6edf3", minHeight: 140, resize: "vertical", overflow: "hidden" }}
                       />
                       <p className="text-xs" style={{ color: "#8b949e" }}>
                         {termsDirty ? "Saving…" : "Auto-saved. Prints in PDF automatically."}
