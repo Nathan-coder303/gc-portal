@@ -1361,6 +1361,16 @@ export default function TemplateEditor({
   const [showTerms, setShowTerms] = useState(template.showTerms);
   const [termsContent, setTermsContent] = useState(template.termsContent ?? "");
   const [termsDirty, setTermsDirty] = useState(false);
+  const termsTextareaRef = useRef<HTMLTextAreaElement>(null);
+
+  // Auto-size the terms textarea to fit all of its content (also on first mount,
+  // after a template preset is loaded, and when the parent re-renders).
+  useEffect(() => {
+    const el = termsTextareaRef.current;
+    if (!el) return;
+    el.style.height = "auto";
+    el.style.height = Math.max(320, el.scrollHeight) + "px";
+  }, [termsContent]);
   const termsTemplates = initialTermsTemplates;
   const [selectedTermsTplId, setSelectedTermsTplId] = useState<string>(() => {
     // Pre-select whichever saved T&C matches the current content
@@ -2002,13 +2012,11 @@ export default function TemplateEditor({
                           requestAnimationFrame(() => { ta.selectionStart = ta.selectionEnd = pos; });
                           void allBefore;
                         }}
-                        ref={el => {
-                          if (el) { el.style.height = "auto"; el.style.height = Math.max(140, el.scrollHeight) + "px"; }
-                        }}
-                        rows={6}
+                        ref={termsTextareaRef}
+                        rows={14}
                         placeholder={"Enter Terms & Conditions text, or load a saved preset above...\n\nTip: press Enter on a line to start a bullet list — subsequent Enters keep adding bullets. Empty Enter ends the list."}
                         className="w-full rounded-lg px-3 py-2 text-sm leading-relaxed"
-                        style={{ background: "#0d1117", border: "1px solid #30373f", color: "#e6edf3", minHeight: 140, resize: "vertical", overflow: "hidden" }}
+                        style={{ background: "#0d1117", border: "1px solid #30373f", color: "#e6edf3", minHeight: 320, resize: "vertical", overflow: "hidden" }}
                       />
                       <p className="text-xs" style={{ color: "#8b949e" }}>
                         {termsDirty ? "Saving…" : "Auto-saved. Prints in PDF automatically."}
