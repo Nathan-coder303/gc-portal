@@ -1363,13 +1363,15 @@ export default function TemplateEditor({
   const [termsDirty, setTermsDirty] = useState(false);
   const termsTextareaRef = useRef<HTMLTextAreaElement>(null);
 
-  // Auto-size the terms textarea to fit all of its content (also on first mount,
-  // after a template preset is loaded, and when the parent re-renders).
+  // Grow the textarea only when content overflows the current height — that way
+  // a manual corner-drag (resize: vertical) is preserved and doesn't get fought
+  // by JS on every keystroke.
   useEffect(() => {
     const el = termsTextareaRef.current;
     if (!el) return;
-    el.style.height = "auto";
-    el.style.height = Math.max(320, el.scrollHeight) + "px";
+    if (el.scrollHeight > el.clientHeight + 2) {
+      el.style.height = el.scrollHeight + "px";
+    }
   }, [termsContent]);
   const termsTemplates = initialTermsTemplates;
   const [selectedTermsTplId, setSelectedTermsTplId] = useState<string>(() => {
@@ -1958,10 +1960,11 @@ export default function TemplateEditor({
                         onChange={e => {
                           const v = e.target.value;
                           setTermsContent(v); setTermsDirty(true); saveTermsContent(v);
-                          // Auto-grow as text expands
+                          // Grow only when content exceeds the current height — keeps any manual corner-drag in place
                           const el = e.currentTarget;
-                          el.style.height = "auto";
-                          el.style.height = Math.max(140, el.scrollHeight) + "px";
+                          if (el.scrollHeight > el.clientHeight + 2) {
+                            el.style.height = el.scrollHeight + "px";
+                          }
                         }}
                         onKeyDown={e => {
                           // Bullet-list helper: when the previous (non-empty) lines start with "• ",
@@ -2013,10 +2016,10 @@ export default function TemplateEditor({
                           void allBefore;
                         }}
                         ref={termsTextareaRef}
-                        rows={14}
-                        placeholder={"Enter Terms & Conditions text, or load a saved preset above...\n\nTip: press Enter on a line to start a bullet list — subsequent Enters keep adding bullets. Empty Enter ends the list."}
+                        rows={22}
+                        placeholder={"Enter Terms & Conditions text, or load a saved preset above...\n\nTip: press Enter on a line to start a bullet list — subsequent Enters keep adding bullets. Empty Enter ends the list. Drag the bottom-right corner to resize."}
                         className="w-full rounded-lg px-3 py-2 text-sm leading-relaxed"
-                        style={{ background: "#0d1117", border: "1px solid #30373f", color: "#e6edf3", minHeight: 320, resize: "vertical", overflow: "hidden" }}
+                        style={{ background: "#0d1117", border: "1px solid #30373f", color: "#e6edf3", minHeight: 480, resize: "vertical" }}
                       />
                       <p className="text-xs" style={{ color: "#8b949e" }}>
                         {termsDirty ? "Saving…" : "Auto-saved. Prints in PDF automatically."}
