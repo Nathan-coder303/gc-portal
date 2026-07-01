@@ -145,7 +145,7 @@ export default function PantryClient() {
         <div>
           <h1 style={{ margin: 0, fontSize: 24, fontWeight: 800, color: GOLD, letterSpacing: -0.3 }}>🥑 Pantry</h1>
           <p style={{ margin: "4px 0 0", fontSize: 12, color: MUTED }}>
-            Tap the mic and speak. Commas / "and" split into separate items.
+            Tap the mic and speak. Commas / &ldquo;and&rdquo; split into separate items.
           </p>
         </div>
         {doneItems.length > 0 && (
@@ -188,7 +188,7 @@ export default function PantryClient() {
         {err && <p style={{ margin: "8px 0 0", fontSize: 12, color: "#f87171" }}>{err}</p>}
         {supported === false && (
           <p style={{ margin: "8px 0 0", fontSize: 11, color: MUTED }}>
-            Speech isn't supported here — use the text box below or open on Safari (iPhone) / Chrome (desktop).
+            Speech isn&rsquo;t supported here &mdash; use the text box below or open on Safari (iPhone) / Chrome (desktop).
           </p>
         )}
       </div>
