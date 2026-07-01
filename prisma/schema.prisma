@@ -141,12 +141,14 @@ model SignInSheet {
 // Personal grocery / pantry list — voice-transcribed food items.
 // Not linked from any nav; accessible only if you know the /pantry URL.
 model PantryItem {
-  id        String   @id @default(cuid())
-  userId    String
-  text      String
-  done      Boolean  @default(false)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id            String   @id @default(cuid())
+  userId        String
+  text          String
+  qty           String?  // "3", "2 dozen", "1 kg" — free text so units come through
+  alwaysNeeded  Boolean  @default(false)   // Staple items (mark ★ so you don't forget)
+  done          Boolean  @default(false)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
   @@index([userId, done, createdAt])
 }
 

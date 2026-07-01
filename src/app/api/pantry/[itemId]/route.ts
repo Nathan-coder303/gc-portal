@@ -14,12 +14,14 @@ export async function PATCH(
   const item = await prisma.pantryItem.findUnique({ where: { id: params.itemId } });
   if (!item || item.userId !== session.user.id) return NextResponse.json({ error: "Not found" }, { status: 404 });
 
-  const body = await req.json().catch(() => ({})) as { text?: string; done?: boolean };
+  const body = await req.json().catch(() => ({})) as { text?: string; done?: boolean; qty?: string | null; alwaysNeeded?: boolean };
   const updated = await prisma.pantryItem.update({
     where: { id: params.itemId },
     data: {
       ...(body.text !== undefined ? { text: body.text.trim() } : {}),
       ...(body.done !== undefined ? { done: !!body.done } : {}),
+      ...(body.qty !== undefined ? { qty: body.qty?.trim() || null } : {}),
+      ...(body.alwaysNeeded !== undefined ? { alwaysNeeded: !!body.alwaysNeeded } : {}),
     },
   });
   return NextResponse.json(updated);
