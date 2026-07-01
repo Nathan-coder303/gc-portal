@@ -138,6 +138,18 @@ model SignInSheet {
   @@index([companyId])
 }
 
+// Personal grocery / pantry list — voice-transcribed food items.
+// Not linked from any nav; accessible only if you know the /pantry URL.
+model PantryItem {
+  id        String   @id @default(cuid())
+  userId    String
+  text      String
+  done      Boolean  @default(false)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  @@index([userId, done, createdAt])
+}
+
 model Formula {
   id         String   @id @default(cuid())
   companyId  String
