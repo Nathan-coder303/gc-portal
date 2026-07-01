@@ -27,18 +27,100 @@ const TEXT = "#e6edf3";
 const MUTED = "#8b949e";
 
 // ── Voice-to-rows parser ─────────────────────────────────────────────────────
-// Splits an utterance like "3 milk, two dozen eggs, bread I always need, olive oil"
-// into { text, qty, alwaysNeeded } rows.
+// Splits an utterance like "buy tomatoes big carrots avocados" or
+// "3 milk, two dozen eggs, bread I always need" into { text, qty, alwaysNeeded } rows.
 const NUMBER_WORDS: Record<string, number> = {
   one: 1, two: 2, three: 3, four: 4, five: 5, six: 6, seven: 7, eight: 8, nine: 9, ten: 10,
-  eleven: 11, twelve: 12, a: 1, an: 1, half: 0.5, "a half": 0.5,
+  eleven: 11, twelve: 12, a: 1, an: 1, half: 0.5,
 };
+const NUMBER_WORDS_SET = new Set(Object.keys(NUMBER_WORDS));
 const ALWAYS_RE = /(always\s+need(?:ed)?|need(?:ed)?\s+always|at\s+all\s+times|keep\s+on\s+hand|staple)/i;
-const UNIT_RE = "(?:dozen|kg|kilos?|kilograms?|g|grams?|lbs?|pounds?|oz|ounces?|packs?|boxes?|cans?|bottles?|jars?|bags?|loaves?|loaf|liters?|litres?|l|ml|gallons?)";
+
+// Adjectives / modifiers that should be grouped with the following noun.
+// Also includes noun-prefixes ("olive" oil, "almond" milk) that read like adjectives.
+const ADJECTIVES = new Set([
+  "big","small","large","little","mini","tiny","huge","giant","jumbo","baby","medium",
+  "red","green","yellow","orange","purple","black","white","brown","pink","blue","golden",
+  "organic","fresh","ripe","raw","whole","sliced","chopped","frozen","canned","dried","cooked","roasted","smoked","salted","unsalted",
+  "italian","greek","spanish","mexican","japanese","chinese","french","thai","american",
+  "extra","virgin","cold","warm","sweet","sour","spicy","hot","mild","dark","light",
+  "olive","sunflower","canola","vegetable","coconut","peanut","sesame","avocado",
+  "low","high","full","half","non","zero","free",
+  "gluten","dairy","sugar","carb",
+  "skim","almond","soy","oat","rice","cashew","hazelnut",
+  "plain","strawberry","vanilla","chocolate","natural","greek",
+  "basmati","jasmine","long","short","instant","brown","white",
+  "cherry","grape","roma","beefsteak","heirloom",
+  "boneless","skinless","ground","lean","fatty",
+]);
+
+// Units follow a qty ("two DOZEN eggs", "3 KG apples")
+const UNIT_WORDS = new Set([
+  "dozen","kg","kilo","kilos","kilogram","kilograms","g","gram","grams","lb","lbs","pound","pounds",
+  "oz","ounce","ounces","pack","packs","box","boxes","can","cans","bottle","bottles","jar","jars",
+  "bag","bags","loaf","loaves","liter","liters","litre","litres","l","ml","gallon","gallons","cup","cups",
+  "piece","pieces","pcs","bunch","bunches","carton","cartons","head","heads","stick","sticks",
+]);
+
+// Common lead-in verbs to strip
+const LEAD_IN_RE = /^\s*(please\s+)?(buy|get|grab|pick\s+up|need\s+to\s+(?:buy|get)|need|want|remember\s+to\s+(?:buy|get)|remind\s+me\s+to\s+(?:buy|get))\s+/i;
+
+function isNumericToken(w: string): boolean {
+  return /^\d+(?:\.\d+)?$/.test(w) || NUMBER_WORDS_SET.has(w.toLowerCase());
+}
+
+// Walk a word list and produce { text, qty } groups. Adjectives glue to the next noun.
+function splitWords(fragment: string): { text: string; qty: string }[] {
+  const words = fragment.split(/\s+/).filter(Boolean);
+  const groups: { text: string; qty: string }[] = [];
+  let bufferAdj: string[] = [];
+  let currentQty = "";
+
+  function pushGroup(nounWords: string[]) {
+    const text = [...bufferAdj, ...nounWords].join(" ").trim();
+    if (text) groups.push({ text, qty: currentQty });
+    bufferAdj = [];
+    currentQty = "";
+  }
+
+  for (let i = 0; i < words.length; i++) {
+    const w = words[i];
+    const lower = w.toLowerCase();
+
+    if (isNumericToken(w)) {
+      // A qty for the NEXT item — flush anything half-built with no qty
+      if (bufferAdj.length > 0) pushGroup([]);
+      currentQty = /^\d+(?:\.\d+)?$/.test(w) ? w : String(NUMBER_WORDS[lower] ?? 1);
+      continue;
+    }
+    if (UNIT_WORDS.has(lower)) {
+      // Append unit to the pending qty
+      if (currentQty) currentQty += " " + w;
+      // If no qty, treat unit as a noun (rare — e.g. someone literally says "cup")
+      else bufferAdj.push(w);
+      continue;
+    }
+    if (ADJECTIVES.has(lower)) {
+      bufferAdj.push(w);
+      continue;
+    }
+    // Noun → complete the group (adj buffer + this word)
+    pushGroup([w]);
+  }
+  // Trailing adjective(s) with no noun — treat them as their own item so we don't lose them
+  if (bufferAdj.length > 0) pushGroup([]);
+  return groups;
+}
+
+function titleCase(s: string): string {
+  return s.charAt(0).toUpperCase() + s.slice(1);
+}
 
 function parseUtterance(raw: string): PendingRow[] {
   if (!raw) return [];
-  const chunks = raw
+  const stripped = raw.replace(LEAD_IN_RE, "").trim();
+
+  const chunks = stripped
     .split(/\n+|,|;| and | & | plus | y | et /gi)
     .map(s => s.replace(/^[-•*]\s*/, "").trim())
     .filter(Boolean);
@@ -48,31 +130,16 @@ function parseUtterance(raw: string): PendingRow[] {
     const always = ALWAYS_RE.test(c);
     // Strip the "always/at all times" phrase from the item text
     const cleaned = c.replace(ALWAYS_RE, "").replace(/\s+/g, " ").trim();
+    if (!cleaned) continue;
 
-    // Numeric qty (with optional unit)
-    const numMatch = cleaned.match(new RegExp(`^(\\d+(?:\\.\\d+)?(?:\\s*${UNIT_RE})?)\\s+(?:of\\s+)?(.+)$`, "i"));
-    // Word qty ("two dozen eggs", "a bottle of wine")
-    const wordUnitMatch = cleaned.match(new RegExp(`^(one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve|a|an)\\s+(${UNIT_RE})\\s+(?:of\\s+)?(.+)$`, "i"));
-    const wordMatch = cleaned.match(/^(one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve|a|an)\s+(?:of\s+)?(.+)$/i);
-
-    let qty = "";
-    let text = cleaned;
-    if (numMatch) {
-      qty = numMatch[1].trim();
-      text = numMatch[2].trim();
-    } else if (wordUnitMatch) {
-      const n = NUMBER_WORDS[wordUnitMatch[1].toLowerCase()] ?? 1;
-      qty = `${n} ${wordUnitMatch[2]}`;
-      text = wordUnitMatch[3].trim();
-    } else if (wordMatch) {
-      const n = NUMBER_WORDS[wordMatch[1].toLowerCase()] ?? 1;
-      qty = String(n);
-      text = wordMatch[2].trim();
+    const groups = splitWords(cleaned);
+    if (groups.length === 0) {
+      rows.push({ text: titleCase(cleaned), qty: "", alwaysNeeded: always });
+      continue;
     }
-    // Sentence casing: lowercase common item words but keep short (max 2-3 words) as-is
-    text = text.charAt(0).toUpperCase() + text.slice(1);
-    if (!text) continue;
-    rows.push({ text, qty, alwaysNeeded: always });
+    for (const g of groups) {
+      rows.push({ text: titleCase(g.text), qty: g.qty, alwaysNeeded: always });
+    }
   }
   return rows;
 }
