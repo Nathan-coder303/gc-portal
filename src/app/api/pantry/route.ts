@@ -29,10 +29,10 @@ export async function POST(req: NextRequest) {
 
   const body = await req.json().catch(() => ({})) as {
     text?: string;
-    items?: { text: string; qty?: string | null; alwaysNeeded?: boolean }[];
+    items?: { text: string; qty?: string | null; alwaysNeeded?: boolean; store?: string | null }[];
   };
 
-  const rows: { text: string; qty: string | null; alwaysNeeded: boolean }[] = [];
+  const rows: { text: string; qty: string | null; alwaysNeeded: boolean; store: string | null }[] = [];
   if (Array.isArray(body.items)) {
     for (const it of body.items) {
       const text = (it.text ?? "").trim();
@@ -41,12 +41,13 @@ export async function POST(req: NextRequest) {
         text,
         qty: it.qty?.trim() || null,
         alwaysNeeded: !!it.alwaysNeeded,
+        store: it.store?.trim() || null,
       });
     }
   } else if (typeof body.text === "string") {
     for (const part of body.text.split(/\n+|,| and | y | et /gi)) {
       const t = part.replace(/^[-•*]\s*/, "").trim();
-      if (t) rows.push({ text: t, qty: null, alwaysNeeded: false });
+      if (t) rows.push({ text: t, qty: null, alwaysNeeded: false, store: null });
     }
   }
 
@@ -54,7 +55,7 @@ export async function POST(req: NextRequest) {
 
   const created = await Promise.all(
     rows.map(r => prisma.pantryItem.create({
-      data: { userId: session.user.id, text: r.text, qty: r.qty, alwaysNeeded: r.alwaysNeeded },
+      data: { userId: session.user.id, text: r.text, qty: r.qty, alwaysNeeded: r.alwaysNeeded, store: r.store },
     })),
   );
   return NextResponse.json(created);
