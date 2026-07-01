@@ -160,6 +160,9 @@ export default function PantryClient() {
   const [rawTranscript, setRawTranscript] = useState("");
   const [saving, setSaving] = useState(false);
 
+  // Send modal state
+  const [sendOpen, setSendOpen] = useState(false);
+
   const load = useCallback(async () => {
     setLoading(true);
     try {
@@ -294,12 +297,20 @@ export default function PantryClient() {
             Tap the mic and speak. When you stop, review the table before adding.
           </p>
         </div>
-        {doneItems.length > 0 && (
-          <button onClick={clearDone}
-            style={{ background: "#1e2736", border: `1px solid ${BORDER}`, color: MUTED, borderRadius: 8, padding: "6px 10px", fontSize: 11, cursor: "pointer" }}>
-            Clear bought ({doneItems.length})
-          </button>
-        )}
+        <div style={{ display: "flex", gap: 8 }}>
+          {activeItems.length > 0 && (
+            <button onClick={() => setSendOpen(true)}
+              style={{ background: GOLD, border: `1px solid ${GOLD}`, color: "#0d1117", borderRadius: 8, padding: "6px 12px", fontSize: 12, fontWeight: 700, cursor: "pointer" }}>
+              📧 Send
+            </button>
+          )}
+          {doneItems.length > 0 && (
+            <button onClick={clearDone}
+              style={{ background: "#1e2736", border: `1px solid ${BORDER}`, color: MUTED, borderRadius: 8, padding: "6px 10px", fontSize: 11, cursor: "pointer" }}>
+              Clear bought ({doneItems.length})
+            </button>
+          )}
+        </div>
       </div>
 
       {/* Mic button + live text */}
@@ -480,6 +491,181 @@ export default function PantryClient() {
           )}
         </>
       )}
+
+      {sendOpen && <SendModal items={activeItems} onClose={() => setSendOpen(false)} />}
+    </div>
+  );
+}
+
+// ── Build the statement-style HTML for both the on-screen preview
+//    and the actual email body. Kept identical so what you see is what you send.
+function buildPantryHtml(items: Item[], dateStr: string, note: string): string {
+  const staples = items.filter(i => i.alwaysNeeded);
+  const others = items.filter(i => !i.alwaysNeeded);
+
+  const rowHtml = (i: Item) => `
+    <tr>
+      <td style="padding:12px 16px;border-bottom:1px solid #f1f5f9;color:#0f172a;font-size:15px;">
+        ${i.alwaysNeeded ? '<span style="display:inline-block;width:16px;color:#C9A84C;font-weight:700;">★</span>' : '<span style="display:inline-block;width:16px;"></span>'}
+        ${escapeHtml(i.text)}
+      </td>
+      <td style="padding:12px 16px;border-bottom:1px solid #f1f5f9;text-align:right;font-size:18px;font-weight:800;color:#C9A84C;font-family:'SF Mono',Menlo,monospace;">
+        ${i.qty ? escapeHtml(i.qty) : '<span style="color:#cbd5e1;font-size:14px;font-weight:400;">—</span>'}
+      </td>
+    </tr>`;
+
+  const section = (title: string, list: Item[]) => list.length === 0 ? "" : `
+    <tr>
+      <td colspan="2" style="padding:14px 16px 8px;background:#f8fafc;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1.5px;color:#64748b;border-bottom:1px solid #e2e8f0;">
+        ${title} <span style="color:#94a3b8;font-weight:500;">(${list.length})</span>
+      </td>
+    </tr>
+    ${list.map(rowHtml).join("")}`;
+
+  return `<!DOCTYPE html>
+<html>
+<head><meta charset="utf-8" /><title>Pantry list</title></head>
+<body style="margin:0;padding:24px 12px;background:#f1f5f9;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;">
+  <div style="max-width:560px;margin:0 auto;background:#ffffff;border:1px solid #e2e8f0;border-radius:14px;overflow:hidden;box-shadow:0 4px 16px rgba(15,23,42,0.06);">
+    <div style="padding:22px 24px 18px;border-bottom:1px solid #e2e8f0;background:linear-gradient(180deg,#fdfbf3 0%,#ffffff 100%);">
+      <div style="display:flex;align-items:center;justify-content:space-between;">
+        <div>
+          <div style="font-size:11px;text-transform:uppercase;letter-spacing:2px;color:#C9A84C;font-weight:700;">Pantry</div>
+          <div style="font-size:22px;font-weight:800;color:#0f172a;margin-top:2px;letter-spacing:-0.3px;">Shopping List</div>
+        </div>
+        <div style="text-align:right;font-size:12px;color:#64748b;">
+          ${escapeHtml(dateStr)}<br/>
+          <span style="font-weight:700;color:#0f172a;">${items.length} item${items.length === 1 ? "" : "s"}</span>
+        </div>
+      </div>
+    </div>
+    ${note.trim() ? `<div style="padding:14px 24px;background:#fefce8;border-bottom:1px solid #fde68a;font-size:13px;color:#78350f;">${escapeHtml(note).replace(/\n/g, "<br/>")}</div>` : ""}
+    <table style="width:100%;border-collapse:collapse;">
+      <thead>
+        <tr>
+          <th style="text-align:left;padding:10px 16px;font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:1.5px;color:#94a3b8;background:#f8fafc;border-bottom:1px solid #e2e8f0;">Item</th>
+          <th style="text-align:right;padding:10px 16px;font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:1.5px;color:#94a3b8;background:#f8fafc;border-bottom:1px solid #e2e8f0;width:110px;">Qty</th>
+        </tr>
+      </thead>
+      <tbody>
+        ${section("Always needed", staples)}
+        ${section("This trip", others)}
+      </tbody>
+    </table>
+    <div style="padding:14px 24px;background:#f8fafc;border-top:1px solid #e2e8f0;font-size:11px;color:#94a3b8;text-align:center;letter-spacing:0.3px;">
+      ★ = keep on hand at all times
+    </div>
+  </div>
+</body>
+</html>`;
+}
+
+function escapeHtml(s: string): string {
+  return s.replace(/[&<>"']/g, ch => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" } as Record<string, string>)[ch]);
+}
+
+function SendModal({ items, onClose }: { items: Item[]; onClose: () => void }) {
+  const today = new Date().toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric", year: "numeric" });
+  const [to, setTo] = useState("");
+  const [subject, setSubject] = useState(`Pantry list — ${new Date().toLocaleDateString("en-US", { month: "short", day: "numeric" })}`);
+  const [note, setNote] = useState("");
+  const [sending, setSending] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [sent, setSent] = useState(false);
+
+  const html = buildPantryHtml(items, today, note);
+
+  async function send() {
+    if (!to.trim()) { setError("Enter a recipient email."); return; }
+    setSending(true); setError(null);
+    try {
+      const res = await fetch("/api/pantry/send", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ to: to.trim(), subject, html }),
+      });
+      if (!res.ok) {
+        const j = await res.json().catch(() => ({}));
+        setError(j.error || `Send failed (${res.status})`);
+      } else {
+        setSent(true);
+        setTimeout(onClose, 1200);
+      }
+    } catch (e) {
+      setError(String(e));
+    } finally {
+      setSending(false);
+    }
+  }
+
+  return (
+    <div
+      onClick={onClose}
+      style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.7)", zIndex: 100, display: "flex", alignItems: "flex-start", justifyContent: "center", padding: "24px 12px", overflowY: "auto" }}
+    >
+      <div
+        onClick={e => e.stopPropagation()}
+        style={{ background: CARD, border: `1px solid ${BORDER}`, borderRadius: 14, maxWidth: 620, width: "100%", padding: 18 }}
+      >
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14 }}>
+          <h2 style={{ margin: 0, fontSize: 16, fontWeight: 700, color: TEXT }}>📧 Send pantry list</h2>
+          <button onClick={onClose} style={{ background: "transparent", border: "none", color: MUTED, fontSize: 22, cursor: "pointer", padding: "0 4px" }}>×</button>
+        </div>
+
+        <label style={{ display: "block", fontSize: 10, textTransform: "uppercase", letterSpacing: 1.5, color: MUTED, fontWeight: 700, marginBottom: 4 }}>To</label>
+        <input
+          type="email"
+          value={to}
+          onChange={e => setTo(e.target.value)}
+          placeholder="someone@example.com"
+          style={{ width: "100%", padding: "10px 12px", background: BG, border: `1px solid ${BORDER}`, color: TEXT, borderRadius: 8, fontSize: 14, outline: "none", marginBottom: 10, boxSizing: "border-box" }}
+        />
+
+        <label style={{ display: "block", fontSize: 10, textTransform: "uppercase", letterSpacing: 1.5, color: MUTED, fontWeight: 700, marginBottom: 4 }}>Subject</label>
+        <input
+          value={subject}
+          onChange={e => setSubject(e.target.value)}
+          style={{ width: "100%", padding: "10px 12px", background: BG, border: `1px solid ${BORDER}`, color: TEXT, borderRadius: 8, fontSize: 14, outline: "none", marginBottom: 10, boxSizing: "border-box" }}
+        />
+
+        <label style={{ display: "block", fontSize: 10, textTransform: "uppercase", letterSpacing: 1.5, color: MUTED, fontWeight: 700, marginBottom: 4 }}>Note (optional)</label>
+        <textarea
+          value={note}
+          onChange={e => setNote(e.target.value)}
+          rows={2}
+          placeholder="Anything you want them to know…"
+          style={{ width: "100%", padding: "10px 12px", background: BG, border: `1px solid ${BORDER}`, color: TEXT, borderRadius: 8, fontSize: 14, outline: "none", marginBottom: 14, boxSizing: "border-box", resize: "vertical", fontFamily: "inherit" }}
+        />
+
+        <p style={{ fontSize: 10, textTransform: "uppercase", letterSpacing: 1.5, color: MUTED, fontWeight: 700, margin: "0 0 6px" }}>Preview</p>
+        <div style={{ border: `1px solid ${BORDER}`, borderRadius: 10, overflow: "hidden", background: "#f1f5f9", maxHeight: 400, overflowY: "auto" }}>
+          <iframe
+            title="preview"
+            srcDoc={html}
+            style={{ width: "100%", height: 400, border: "none", display: "block", background: "#f1f5f9" }}
+          />
+        </div>
+
+        {error && <p style={{ margin: "10px 0 0", fontSize: 12, color: "#f87171" }}>{error}</p>}
+        {sent && <p style={{ margin: "10px 0 0", fontSize: 12, color: "#22c55e", fontWeight: 700 }}>✓ Sent!</p>}
+
+        <div style={{ display: "flex", gap: 8, marginTop: 14 }}>
+          <button
+            onClick={send}
+            disabled={sending || sent || !to.trim() || items.length === 0}
+            style={{ flex: 1, padding: "12px", background: GOLD, color: "#0d1117", border: "none", borderRadius: 10, fontWeight: 800, fontSize: 14, cursor: "pointer", opacity: sending || sent || !to.trim() ? 0.5 : 1 }}
+          >
+            {sending ? "Sending…" : sent ? "Sent" : `Send to ${to.trim() || "…"}`}
+          </button>
+          <button
+            onClick={onClose}
+            disabled={sending}
+            style={{ padding: "12px 18px", background: "transparent", color: MUTED, border: `1px solid ${BORDER}`, borderRadius: 10, fontSize: 13, cursor: "pointer" }}
+          >
+            Cancel
+          </button>
+        </div>
+      </div>
     </div>
   );
 }
@@ -536,7 +722,7 @@ function PantryRow({ item, onToggle, onPatch, onDelete }: {
         >
           <span>{item.text}</span>
           {item.qty && (
-            <span style={{ fontSize: 11, padding: "2px 8px", background: "#1e2736", borderRadius: 12, color: MUTED, fontWeight: 600 }}>
+            <span style={{ fontSize: 16, padding: "3px 12px", background: "#1e2736", borderRadius: 14, color: GOLD, fontWeight: 800, letterSpacing: 0.2, lineHeight: 1.2 }}>
               {item.qty}
             </span>
           )}
