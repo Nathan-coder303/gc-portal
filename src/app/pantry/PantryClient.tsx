@@ -571,7 +571,106 @@ function PantryRow({ item, onToggle, onPatch, onDelete }: {
   const [editing, setEditing] = useState(false);
   const [draftText, setDraftText] = useState(item.text);
   const [draftQty, setDraftQty] = useState(item.qty ?? "");
+  const [draftStore, setDraftStore] = useState(item.store ?? "");
+  const [draftAlways, setDraftAlways] = useState(item.alwaysNeeded);
   const storeColor = item.store ? (STORE_COLORS[item.store] ?? MUTED) : null;
+
+  function beginEdit() {
+    setDraftText(item.text);
+    setDraftQty(item.qty ?? "");
+    setDraftStore(item.store ?? "");
+    setDraftAlways(item.alwaysNeeded);
+    setEditing(true);
+  }
+  function save() {
+    const t = draftText.trim();
+    if (!t) return;
+    onPatch(item.id, {
+      text: t,
+      qty: draftQty.trim() || null,
+      store: draftStore || null,
+      alwaysNeeded: draftAlways,
+    });
+    setEditing(false);
+  }
+
+  if (editing) {
+    return (
+      <div style={{ padding: 12, background: CARD, border: `2px solid ${GOLD}`, borderRadius: 12, display: "flex", flexDirection: "column", gap: 10 }}>
+        <div>
+          <label style={{ display: "block", fontSize: 10, textTransform: "uppercase", letterSpacing: 1.5, color: MUTED, fontWeight: 700, marginBottom: 4 }}>Item</label>
+          <input
+            autoFocus
+            value={draftText}
+            onChange={e => setDraftText(e.target.value)}
+            onKeyDown={e => { if (e.key === "Enter") save(); else if (e.key === "Escape") setEditing(false); }}
+            style={{ width: "100%", padding: "10px 12px", background: BG, border: `1px solid ${BORDER}`, color: TEXT, borderRadius: 8, fontSize: 15, outline: "none", boxSizing: "border-box" }}
+          />
+        </div>
+
+        <div style={{ display: "flex", gap: 8 }}>
+          <div style={{ flex: 1 }}>
+            <label style={{ display: "block", fontSize: 10, textTransform: "uppercase", letterSpacing: 1.5, color: MUTED, fontWeight: 700, marginBottom: 4 }}>Qty</label>
+            <input
+              value={draftQty}
+              onChange={e => setDraftQty(e.target.value)}
+              placeholder="—"
+              style={{ width: "100%", padding: "10px 12px", background: BG, border: `1px solid ${BORDER}`, color: TEXT, borderRadius: 8, fontSize: 15, outline: "none", boxSizing: "border-box", textAlign: "center", fontWeight: 700 }}
+            />
+          </div>
+          <div style={{ flex: 1.2 }}>
+            <label style={{ display: "block", fontSize: 10, textTransform: "uppercase", letterSpacing: 1.5, color: MUTED, fontWeight: 700, marginBottom: 4 }}>Store</label>
+            <select
+              value={draftStore}
+              onChange={e => setDraftStore(e.target.value)}
+              style={{ width: "100%", padding: "10px 8px", background: BG, border: `1px solid ${draftStore ? (STORE_COLORS[draftStore] ?? BORDER) : BORDER}`, color: draftStore ? (STORE_COLORS[draftStore] ?? TEXT) : MUTED, borderRadius: 8, fontSize: 14, fontWeight: draftStore ? 700 : 400, outline: "none", boxSizing: "border-box" }}
+            >
+              <option value="">— None —</option>
+              {STORES.map(s => <option key={s} value={s}>{s}</option>)}
+            </select>
+          </div>
+          <div>
+            <label style={{ display: "block", fontSize: 10, textTransform: "uppercase", letterSpacing: 1.5, color: MUTED, fontWeight: 700, marginBottom: 4 }}>Always</label>
+            <button
+              onClick={() => setDraftAlways(!draftAlways)}
+              style={{
+                width: 52, height: 42, borderRadius: 8,
+                background: draftAlways ? `${GOLD}22` : BG,
+                border: `1px solid ${draftAlways ? GOLD : BORDER}`,
+                color: draftAlways ? GOLD : MUTED,
+                fontSize: 18, fontWeight: 700, cursor: "pointer",
+              }}
+            >
+              {draftAlways ? "★" : "☆"}
+            </button>
+          </div>
+        </div>
+
+        <div style={{ display: "flex", gap: 8, marginTop: 4 }}>
+          <button
+            onClick={save}
+            disabled={!draftText.trim()}
+            style={{ flex: 1, padding: "10px", background: GOLD, color: "#0d1117", border: "none", borderRadius: 8, fontWeight: 800, fontSize: 14, cursor: "pointer", opacity: draftText.trim() ? 1 : 0.4 }}
+          >
+            Save
+          </button>
+          <button
+            onClick={() => setEditing(false)}
+            style={{ padding: "10px 16px", background: "transparent", color: MUTED, border: `1px solid ${BORDER}`, borderRadius: 8, fontSize: 13, cursor: "pointer" }}
+          >
+            Cancel
+          </button>
+          <button
+            onClick={() => { if (confirm(`Delete ${item.text}?`)) { onDelete(item.id); } }}
+            style={{ padding: "10px 12px", background: "transparent", color: "#f87171", border: `1px solid #7f1d1d`, borderRadius: 8, fontSize: 13, cursor: "pointer" }}
+          >
+            Delete
+          </button>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "10px 12px", background: CARD, border: `1px solid ${item.alwaysNeeded ? `${GOLD}55` : BORDER}`, borderRadius: 12 }}>
       <button
@@ -586,69 +685,35 @@ function PantryRow({ item, onToggle, onPatch, onDelete }: {
         }}
       >{item.done ? "✓" : ""}</button>
 
-      {editing ? (
-        <>
-          <input
-            autoFocus
-            value={draftText}
-            onChange={e => setDraftText(e.target.value)}
-            onKeyDown={e => { if (e.key === "Enter") e.currentTarget.blur(); else if (e.key === "Escape") { setDraftText(item.text); setEditing(false); } }}
-            onBlur={() => { setEditing(false); if (draftText.trim() && (draftText !== item.text || draftQty !== (item.qty ?? ""))) onPatch(item.id, { text: draftText, qty: draftQty || null }); }}
-            style={{ flex: 1, padding: "4px 6px", background: BG, border: `1px solid ${BORDER}`, color: TEXT, borderRadius: 6, fontSize: 15, outline: "none" }}
-          />
-          <input
-            value={draftQty}
-            onChange={e => setDraftQty(e.target.value)}
-            placeholder="qty"
-            style={{ width: 70, padding: "4px 6px", background: BG, border: `1px solid ${BORDER}`, color: TEXT, borderRadius: 6, fontSize: 13, outline: "none", textAlign: "center" }}
-          />
-        </>
-      ) : (
-        <span
-          onClick={() => setEditing(true)}
-          style={{
-            flex: 1, fontSize: 15, cursor: "text",
-            color: item.done ? MUTED : TEXT,
-            textDecoration: item.done ? "line-through" : "none",
-            display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap",
-          }}
-        >
-          <span>{item.text}</span>
-          {item.qty && (
-            <span style={{ fontSize: 16, padding: "3px 12px", background: "#1e2736", borderRadius: 14, color: GOLD, fontWeight: 800, letterSpacing: 0.2, lineHeight: 1.2 }}>
-              {item.qty}
-            </span>
-          )}
-          {item.store && (
-            <span style={{ fontSize: 11, padding: "2px 8px", background: `${storeColor}22`, border: `1px solid ${storeColor}55`, borderRadius: 10, color: storeColor ?? MUTED, fontWeight: 700, letterSpacing: 0.3 }}>
-              {item.store}
-            </span>
-          )}
-        </span>
-      )}
-
-      <select
-        value={item.store ?? ""}
-        onChange={e => onPatch(item.id, { store: e.target.value || null })}
-        aria-label="Store"
-        style={{ padding: "4px 6px", background: BG, border: `1px solid ${BORDER}`, color: item.store ? (STORE_COLORS[item.store] ?? TEXT) : MUTED, borderRadius: 6, fontSize: 11, fontWeight: 700, outline: "none" }}
+      <span
+        onClick={beginEdit}
+        style={{
+          flex: 1, fontSize: 15, cursor: "pointer",
+          color: item.done ? MUTED : TEXT,
+          textDecoration: item.done ? "line-through" : "none",
+          display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap",
+        }}
       >
-        <option value="">—</option>
-        {STORES.map(s => <option key={s} value={s}>{s}</option>)}
-      </select>
+        <span>{item.text}</span>
+        {item.qty && (
+          <span style={{ fontSize: 16, padding: "3px 12px", background: "#1e2736", borderRadius: 14, color: GOLD, fontWeight: 800, letterSpacing: 0.2, lineHeight: 1.2 }}>
+            {item.qty}
+          </span>
+        )}
+        {item.store && (
+          <span style={{ fontSize: 11, padding: "2px 8px", background: `${storeColor}22`, border: `1px solid ${storeColor}55`, borderRadius: 10, color: storeColor ?? MUTED, fontWeight: 700, letterSpacing: 0.3 }}>
+            {item.store}
+          </span>
+        )}
+      </span>
 
       <button
-        onClick={() => onPatch(item.id, { alwaysNeeded: !item.alwaysNeeded })}
-        aria-label={item.alwaysNeeded ? "Remove always-needed" : "Mark always needed"}
-        style={{ background: "transparent", border: "none", color: item.alwaysNeeded ? GOLD : "#484f58", fontSize: 16, cursor: "pointer", padding: "4px" }}
-        title={item.alwaysNeeded ? "Always needed" : "Mark as always needed"}
-      >{item.alwaysNeeded ? "★" : "☆"}</button>
-
-      <button
-        onClick={() => onDelete(item.id)}
-        aria-label="Delete"
-        style={{ background: "transparent", border: "none", color: "#f87171", fontSize: 18, cursor: "pointer", padding: "4px 6px", opacity: 0.7 }}
-      >×</button>
+        onClick={beginEdit}
+        aria-label="Edit"
+        style={{ background: "transparent", border: `1px solid ${BORDER}`, borderRadius: 6, color: MUTED, fontSize: 12, cursor: "pointer", padding: "4px 8px" }}
+      >
+        Edit
+      </button>
     </div>
   );
 }
