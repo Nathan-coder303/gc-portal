@@ -344,10 +344,10 @@ export default function PantryClient() {
 
   const activeItems = items.filter(i => !i.done);
   const doneItems = items.filter(i => i.done);
-  // Shopping list = one-off items + staples with low stock. This is what gets
-  // sent to the wife via WhatsApp.
-  const shoppingList = activeItems.filter(i => !i.alwaysNeeded || i.onHand < LOW_STOCK_THRESHOLD);
-  const wellStocked = activeItems.filter(i => i.alwaysNeeded && i.onHand >= LOW_STOCK_THRESHOLD);
+  // Shopping list = anything with fewer than 2 at home, staple or one-off.
+  // This is what gets sent to the wife via WhatsApp.
+  const shoppingList = activeItems.filter(i => i.onHand < LOW_STOCK_THRESHOLD);
+  const wellStocked = activeItems.filter(i => i.onHand >= LOW_STOCK_THRESHOLD);
   const liveTranscript = (finalText + " " + interim).trim();
 
   return (
@@ -577,7 +577,7 @@ export default function PantryClient() {
               <p style={{ fontSize: 10, textTransform: "uppercase", letterSpacing: 1.5, color: MUTED, marginBottom: 8, fontWeight: 700 }}>
                 🛒 Need to buy ({shoppingList.length})
                 <span style={{ marginLeft: 8, color: "#f87171", textTransform: "none", fontSize: 10, letterSpacing: 0 }}>
-                  {shoppingList.filter(i => i.alwaysNeeded).length > 0 && `${shoppingList.filter(i => i.alwaysNeeded).length} low-stock staple${shoppingList.filter(i => i.alwaysNeeded).length === 1 ? "" : "s"}`}
+                  low stock (&lt; {LOW_STOCK_THRESHOLD})
                 </span>
               </p>
               <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
@@ -635,7 +635,7 @@ function PantryRow({ item, onToggle, onPatch, onDelete, onAdjustOnHand }: {
   const [draftAlways, setDraftAlways] = useState(item.alwaysNeeded);
   const [draftOnHand, setDraftOnHand] = useState(item.onHand);
   const storeColor = item.store ? (STORE_COLORS[item.store] ?? MUTED) : null;
-  const isLow = item.alwaysNeeded && item.onHand < LOW_STOCK_THRESHOLD;
+  const isLow = item.onHand < LOW_STOCK_THRESHOLD;
 
   function beginEdit() {
     setDraftText(item.text);
@@ -717,7 +717,7 @@ function PantryRow({ item, onToggle, onPatch, onDelete, onAdjustOnHand }: {
         {/* On hand at home */}
         <div>
           <label style={{ display: "block", fontSize: 10, textTransform: "uppercase", letterSpacing: 1.5, color: MUTED, fontWeight: 700, marginBottom: 4 }}>
-            🏠 On hand at home {draftAlways && draftOnHand < LOW_STOCK_THRESHOLD && <span style={{ color: "#f87171", marginLeft: 6 }}>⚠ Low — will be on list</span>}
+            🏠 On hand at home {draftOnHand < LOW_STOCK_THRESHOLD && <span style={{ color: "#f87171", marginLeft: 6 }}>⚠ Low — will be on list</span>}
           </label>
           <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
             <button
@@ -730,7 +730,7 @@ function PantryRow({ item, onToggle, onPatch, onDelete, onAdjustOnHand }: {
               min={0}
               value={draftOnHand}
               onChange={e => setDraftOnHand(Math.max(0, parseInt(e.target.value) || 0))}
-              style={{ flex: 1, padding: "10px", background: BG, border: `1px solid ${draftAlways && draftOnHand < LOW_STOCK_THRESHOLD ? "#f87171" : BORDER}`, color: TEXT, borderRadius: 8, fontSize: 18, fontWeight: 800, textAlign: "center", outline: "none", boxSizing: "border-box" }}
+              style={{ flex: 1, padding: "10px", background: BG, border: `1px solid ${draftOnHand < LOW_STOCK_THRESHOLD ? "#f87171" : BORDER}`, color: TEXT, borderRadius: 8, fontSize: 18, fontWeight: 800, textAlign: "center", outline: "none", boxSizing: "border-box" }}
             />
             <button
               type="button"
@@ -808,28 +808,26 @@ function PantryRow({ item, onToggle, onPatch, onDelete, onAdjustOnHand }: {
             </span>
           )}
         </div>
-        {item.alwaysNeeded && (
-          <div
-            onClick={e => e.stopPropagation()}
-            style={{ display: "flex", alignItems: "center", gap: 4, fontSize: 11, color: MUTED }}
-          >
-            <span style={{ fontSize: 10, opacity: 0.7 }}>🏠 At home:</span>
-            <button
-              onClick={() => onAdjustOnHand(item.id, -1)}
-              disabled={item.onHand === 0}
-              aria-label="Decrement"
-              style={{ width: 24, height: 24, borderRadius: 6, background: BG, border: `1px solid ${BORDER}`, color: TEXT, fontSize: 14, cursor: "pointer", opacity: item.onHand === 0 ? 0.3 : 1 }}
-            >−</button>
-            <span style={{ minWidth: 22, textAlign: "center", fontWeight: 800, color: isLow ? "#f87171" : TEXT, fontSize: 13 }}>
-              {item.onHand}
-            </span>
-            <button
-              onClick={() => onAdjustOnHand(item.id, 1)}
-              aria-label="Increment"
-              style={{ width: 24, height: 24, borderRadius: 6, background: BG, border: `1px solid ${BORDER}`, color: TEXT, fontSize: 14, cursor: "pointer" }}
-            >+</button>
-          </div>
-        )}
+        <div
+          onClick={e => e.stopPropagation()}
+          style={{ display: "flex", alignItems: "center", gap: 4, fontSize: 11, color: MUTED }}
+        >
+          <span style={{ fontSize: 10, opacity: 0.7 }}>🏠 At home:</span>
+          <button
+            onClick={() => onAdjustOnHand(item.id, -1)}
+            disabled={item.onHand === 0}
+            aria-label="Decrement"
+            style={{ width: 24, height: 24, borderRadius: 6, background: BG, border: `1px solid ${BORDER}`, color: TEXT, fontSize: 14, cursor: "pointer", opacity: item.onHand === 0 ? 0.3 : 1 }}
+          >−</button>
+          <span style={{ minWidth: 22, textAlign: "center", fontWeight: 800, color: isLow ? "#f87171" : TEXT, fontSize: 13 }}>
+            {item.onHand}
+          </span>
+          <button
+            onClick={() => onAdjustOnHand(item.id, 1)}
+            aria-label="Increment"
+            style={{ width: 24, height: 24, borderRadius: 6, background: BG, border: `1px solid ${BORDER}`, color: TEXT, fontSize: 14, cursor: "pointer" }}
+          >+</button>
+        </div>
       </div>
 
       {/* Right: qty (big, right-aligned) + Edit */}
