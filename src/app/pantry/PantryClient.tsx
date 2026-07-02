@@ -186,6 +186,7 @@ export default function PantryClient() {
   const [pending, setPending] = useState<PendingRow[] | null>(null);
   const [rawTranscript, setRawTranscript] = useState("");
   const [saving, setSaving] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
 
   const [sendOpen, setSendOpen] = useState(false);
 
@@ -264,7 +265,7 @@ export default function PantryClient() {
     if (!pending) return;
     const rows = pending.filter(r => r.text.trim());
     if (rows.length === 0) { setPending(null); return; }
-    setSaving(true);
+    setSaving(true); setSaveError(null);
     try {
       const res = await fetch("/api/pantry", {
         method: "POST", headers: { "Content-Type": "application/json" },
@@ -274,7 +275,12 @@ export default function PantryClient() {
         const created: Item[] = await res.json();
         setItems(prev => [...created, ...prev]);
         setPending(null); setRawTranscript("");
+      } else {
+        const detail = await res.text().catch(() => "");
+        setSaveError(`Save failed (${res.status}). ${detail.slice(0, 200)}`);
       }
+    } catch (e) {
+      setSaveError(`Save failed: ${e instanceof Error ? e.message : String(e)}`);
     } finally { setSaving(false); }
   }
 
@@ -475,6 +481,12 @@ export default function PantryClient() {
             style={{ marginTop: 8, width: "100%", padding: "10px", background: "transparent", border: `1px dashed ${BORDER}`, borderRadius: 10, color: MUTED, cursor: "pointer", fontSize: 12 }}>
             + Add row
           </button>
+
+          {saveError && (
+            <p style={{ margin: "10px 0 0", padding: "8px 10px", background: "#3b1010", border: "1px solid #7f1d1d", borderRadius: 8, fontSize: 12, color: "#fecaca" }}>
+              {saveError}
+            </p>
+          )}
 
           <div style={{ display: "flex", gap: 8, marginTop: 12 }}>
             <button onClick={commitPending} disabled={saving || pending.every(r => !r.text.trim())}
