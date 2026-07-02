@@ -14,7 +14,7 @@ export async function PATCH(
   const item = await prisma.pantryItem.findUnique({ where: { id: params.itemId } });
   if (!item || item.userId !== session.user.id) return NextResponse.json({ error: "Not found" }, { status: 404 });
 
-  const body = await req.json().catch(() => ({})) as { text?: string; done?: boolean; qty?: string | null; alwaysNeeded?: boolean; store?: string | null };
+  const body = await req.json().catch(() => ({})) as { text?: string; done?: boolean; qty?: string | null; alwaysNeeded?: boolean; store?: string | null; onHand?: number };
   const updated = await prisma.pantryItem.update({
     where: { id: params.itemId },
     data: {
@@ -23,6 +23,7 @@ export async function PATCH(
       ...(body.qty !== undefined ? { qty: body.qty?.trim() || null } : {}),
       ...(body.alwaysNeeded !== undefined ? { alwaysNeeded: !!body.alwaysNeeded } : {}),
       ...(body.store !== undefined ? { store: body.store?.trim() || null } : {}),
+      ...(body.onHand !== undefined ? { onHand: Math.max(0, Math.floor(body.onHand)) } : {}),
     },
   });
   return NextResponse.json(updated);

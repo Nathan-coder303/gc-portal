@@ -29,10 +29,10 @@ export async function POST(req: NextRequest) {
 
   const body = await req.json().catch(() => ({})) as {
     text?: string;
-    items?: { text: string; qty?: string | null; alwaysNeeded?: boolean; store?: string | null }[];
+    items?: { text: string; qty?: string | null; alwaysNeeded?: boolean; store?: string | null; onHand?: number }[];
   };
 
-  const rows: { text: string; qty: string | null; alwaysNeeded: boolean; store: string | null }[] = [];
+  const rows: { text: string; qty: string | null; alwaysNeeded: boolean; store: string | null; onHand: number }[] = [];
   if (Array.isArray(body.items)) {
     for (const it of body.items) {
       const text = (it.text ?? "").trim();
@@ -42,12 +42,13 @@ export async function POST(req: NextRequest) {
         qty: it.qty?.trim() || null,
         alwaysNeeded: !!it.alwaysNeeded,
         store: it.store?.trim() || null,
+        onHand: Math.max(0, Math.floor(it.onHand ?? 0)),
       });
     }
   } else if (typeof body.text === "string") {
     for (const part of body.text.split(/\n+|,| and | y | et /gi)) {
       const t = part.replace(/^[-•*]\s*/, "").trim();
-      if (t) rows.push({ text: t, qty: null, alwaysNeeded: false, store: null });
+      if (t) rows.push({ text: t, qty: null, alwaysNeeded: false, store: null, onHand: 0 });
     }
   }
 
@@ -55,7 +56,7 @@ export async function POST(req: NextRequest) {
 
   const created = await Promise.all(
     rows.map(r => prisma.pantryItem.create({
-      data: { userId: session.user.id, text: r.text, qty: r.qty, alwaysNeeded: r.alwaysNeeded, store: r.store },
+      data: { userId: session.user.id, text: r.text, qty: r.qty, alwaysNeeded: r.alwaysNeeded, store: r.store, onHand: r.onHand },
     })),
   );
   return NextResponse.json(created);

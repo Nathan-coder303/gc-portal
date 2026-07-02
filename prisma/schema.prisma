@@ -146,7 +146,8 @@ model PantryItem {
   text          String
   qty           String?  // "3", "2 dozen", "1 kg" — free text so units come through
   alwaysNeeded  Boolean  @default(false)   // Staple items (mark ★ so you don't forget)
-  store         String?  // Publix / Costco / Kosher Choices / free text
+  store         String?  // Publix / Costco / Kosher / free text
+  onHand        Int      @default(0)       // how many are in the house right now (staples auto-add to list when < 2)
   done          Boolean  @default(false)
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt

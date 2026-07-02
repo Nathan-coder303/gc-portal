@@ -9,10 +9,26 @@ type Item = {
   qty: string | null;
   alwaysNeeded: boolean;
   store: string | null;
+  onHand: number;
   done: boolean;
   createdAt: string;
 };
-type PendingRow = { text: string; qty: string; alwaysNeeded: boolean; store: string };
+type PendingRow = { text: string; qty: string; alwaysNeeded: boolean; store: string; onHand: number };
+
+// Common qty presets — offered as a native <datalist> so users get a
+// dropdown but can still type anything.
+const QTY_PRESETS = [
+  "1", "2", "3", "4", "5", "6", "8", "10", "12", "24",
+  "1 dozen", "2 dozen",
+  "1 lb", "2 lb", "5 lb",
+  "1 kg", "2 kg",
+  "1 pack", "2 packs", "3 packs",
+  "1 bottle", "2 bottles",
+  "1 gallon", "2 gallons",
+  "1 bag", "2 bags",
+  "1 jar", "2 jars",
+];
+const LOW_STOCK_THRESHOLD = 2;
 
 // Minimal Web Speech API type surface (browsers differ; TS lib doesn't ship this)
 type SR = {
@@ -162,11 +178,11 @@ function parseUtterance(raw: string): PendingRow[] {
 
     const groups = splitWords(cleaned);
     if (groups.length === 0) {
-      rows.push({ text: titleCase(cleaned), qty: "", alwaysNeeded: always, store });
+      rows.push({ text: titleCase(cleaned), qty: "", alwaysNeeded: always, store, onHand: 0 });
       continue;
     }
     for (const g of groups) {
-      rows.push({ text: titleCase(g.text), qty: g.qty, alwaysNeeded: always, store });
+      rows.push({ text: titleCase(g.text), qty: g.qty, alwaysNeeded: always, store, onHand: 0 });
     }
   }
   return rows;
@@ -236,7 +252,7 @@ export default function PantryClient() {
       if (combined) {
         setRawTranscript(combined);
         const parsed = parseUtterance(combined);
-        setPending(parsed.length ? parsed : [{ text: combined, qty: "", alwaysNeeded: false, store: "" }]);
+        setPending(parsed.length ? parsed : [{ text: combined, qty: "", alwaysNeeded: false, store: "", onHand: 0 }]);
       }
     };
     recognitionRef.current = rec;
@@ -255,7 +271,7 @@ export default function PantryClient() {
     setPending(prev => prev ? prev.filter((_, i) => i !== idx) : prev);
   }
   function addPendingRow() {
-    setPending(prev => prev ? [...prev, { text: "", qty: "", alwaysNeeded: false, store: "" }] : [{ text: "", qty: "", alwaysNeeded: false, store: "" }]);
+    setPending(prev => prev ? [...prev, { text: "", qty: "", alwaysNeeded: false, store: "", onHand: 0 }] : [{ text: "", qty: "", alwaysNeeded: false, store: "", onHand: 0 }]);
   }
   function setStoreForAll(store: string) {
     setPending(prev => prev ? prev.map(r => ({ ...r, store })) : prev);
@@ -269,7 +285,7 @@ export default function PantryClient() {
     try {
       const res = await fetch("/api/pantry", {
         method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ items: rows.map(r => ({ text: r.text, qty: r.qty || null, alwaysNeeded: r.alwaysNeeded, store: r.store || null })) }),
+        body: JSON.stringify({ items: rows.map(r => ({ text: r.text, qty: r.qty || null, alwaysNeeded: r.alwaysNeeded, store: r.store || null, onHand: r.onHand })) }),
       });
       if (res.ok) {
         const created: Item[] = await res.json();
@@ -302,9 +318,17 @@ export default function PantryClient() {
     setItems(prev => prev.map(i => i.id === id ? { ...i, done } : i));
     await fetch(`/api/pantry/${id}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ done }) });
   }
-  async function patchItem(id: string, patch: { text?: string; qty?: string | null; alwaysNeeded?: boolean; store?: string | null }) {
+  async function patchItem(id: string, patch: { text?: string; qty?: string | null; alwaysNeeded?: boolean; store?: string | null; onHand?: number }) {
     setItems(prev => prev.map(i => i.id === id ? { ...i, ...patch } : i));
     await fetch(`/api/pantry/${id}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify(patch) });
+  }
+  async function adjustOnHand(id: string, delta: number) {
+    setItems(prev => prev.map(i => i.id === id ? { ...i, onHand: Math.max(0, i.onHand + delta) } : i));
+    const item = items.find(i => i.id === id);
+    if (item) {
+      const next = Math.max(0, item.onHand + delta);
+      await fetch(`/api/pantry/${id}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ onHand: next }) });
+    }
   }
   async function removeItem(id: string) {
     setItems(prev => prev.filter(i => i.id !== id));
@@ -320,6 +344,10 @@ export default function PantryClient() {
 
   const activeItems = items.filter(i => !i.done);
   const doneItems = items.filter(i => i.done);
+  // Shopping list = one-off items + staples with low stock. This is what gets
+  // sent to the wife via WhatsApp.
+  const shoppingList = activeItems.filter(i => !i.alwaysNeeded || i.onHand < LOW_STOCK_THRESHOLD);
+  const wellStocked = activeItems.filter(i => i.alwaysNeeded && i.onHand >= LOW_STOCK_THRESHOLD);
   const liveTranscript = (finalText + " " + interim).trim();
 
   return (
@@ -332,10 +360,10 @@ export default function PantryClient() {
           </p>
         </div>
         <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-          {activeItems.length > 0 && (
+          {shoppingList.length > 0 && (
             <button onClick={() => setSendOpen(true)}
               style={{ background: WA_GREEN, border: `1px solid ${WA_GREEN}`, color: "#fff", borderRadius: 8, padding: "6px 12px", fontSize: 12, fontWeight: 700, cursor: "pointer" }}>
-              💬 Send to WhatsApp
+              💬 Send {shoppingList.length} to WhatsApp
             </button>
           )}
           {doneItems.length > 0 && (
@@ -418,8 +446,9 @@ export default function PantryClient() {
                 <tr>
                   <th style={{ textAlign: "left", padding: "6px 8px", color: MUTED, fontWeight: 600, fontSize: 10, textTransform: "uppercase", letterSpacing: 1 }}>Item</th>
                   <th style={{ textAlign: "left", padding: "6px 8px", color: MUTED, fontWeight: 600, fontSize: 10, textTransform: "uppercase", letterSpacing: 1, width: 80 }}>Qty</th>
-                  <th style={{ textAlign: "left", padding: "6px 8px", color: MUTED, fontWeight: 600, fontSize: 10, textTransform: "uppercase", letterSpacing: 1, width: 100 }}>Store</th>
-                  <th style={{ textAlign: "center", padding: "6px 8px", color: MUTED, fontWeight: 600, fontSize: 10, textTransform: "uppercase", letterSpacing: 1, width: 50 }}>★</th>
+                  <th style={{ textAlign: "left", padding: "6px 8px", color: MUTED, fontWeight: 600, fontSize: 10, textTransform: "uppercase", letterSpacing: 1, width: 90 }}>Store</th>
+                  <th style={{ textAlign: "center", padding: "6px 8px", color: MUTED, fontWeight: 600, fontSize: 10, textTransform: "uppercase", letterSpacing: 1, width: 60 }} title="How many at home right now">🏠</th>
+                  <th style={{ textAlign: "center", padding: "6px 8px", color: MUTED, fontWeight: 600, fontSize: 10, textTransform: "uppercase", letterSpacing: 1, width: 40 }}>★</th>
                   <th style={{ width: 30 }} />
                 </tr>
               </thead>
@@ -438,6 +467,7 @@ export default function PantryClient() {
                       <input
                         value={r.qty}
                         onChange={e => updatePendingRow(i, { qty: e.target.value })}
+                        list="review-qty-presets"
                         placeholder="—"
                         style={{ width: "100%", padding: "8px 10px", background: BG, border: `1px solid ${BORDER}`, color: TEXT, borderRadius: 8, fontSize: 14, outline: "none", boxSizing: "border-box" }}
                       />
@@ -452,11 +482,20 @@ export default function PantryClient() {
                         {STORES.map(s => <option key={s} value={s}>{s}</option>)}
                       </select>
                     </td>
+                    <td style={{ padding: "4px 2px" }}>
+                      <input
+                        type="number"
+                        min={0}
+                        value={r.onHand}
+                        onChange={e => updatePendingRow(i, { onHand: Math.max(0, parseInt(e.target.value) || 0) })}
+                        style={{ width: "100%", padding: "8px 6px", background: BG, border: `1px solid ${BORDER}`, color: TEXT, borderRadius: 8, fontSize: 14, outline: "none", boxSizing: "border-box", textAlign: "center", fontWeight: 700 }}
+                      />
+                    </td>
                     <td style={{ padding: "4px 2px", textAlign: "center" }}>
                       <button
                         onClick={() => updatePendingRow(i, { alwaysNeeded: !r.alwaysNeeded })}
                         style={{
-                          width: 40, height: 32, borderRadius: 8,
+                          width: 36, height: 32, borderRadius: 8,
                           background: r.alwaysNeeded ? `${GOLD}22` : BG,
                           border: `1px solid ${r.alwaysNeeded ? GOLD : BORDER}`,
                           color: r.alwaysNeeded ? GOLD : MUTED,
@@ -476,6 +515,10 @@ export default function PantryClient() {
               </tbody>
             </table>
           </div>
+
+          <datalist id="review-qty-presets">
+            {QTY_PRESETS.map(q => <option key={q} value={q} />)}
+          </datalist>
 
           <button onClick={addPendingRow}
             style={{ marginTop: 8, width: "100%", padding: "10px", background: "transparent", border: `1px dashed ${BORDER}`, borderRadius: 10, color: MUTED, cursor: "pointer", fontSize: 12 }}>
@@ -529,14 +572,30 @@ export default function PantryClient() {
         </p>
       ) : (
         <>
-          {activeItems.length > 0 && (
+          {shoppingList.length > 0 && (
             <div style={{ marginBottom: 20 }}>
               <p style={{ fontSize: 10, textTransform: "uppercase", letterSpacing: 1.5, color: MUTED, marginBottom: 8, fontWeight: 700 }}>
-                To buy ({activeItems.length})
+                🛒 Need to buy ({shoppingList.length})
+                <span style={{ marginLeft: 8, color: "#f87171", textTransform: "none", fontSize: 10, letterSpacing: 0 }}>
+                  {shoppingList.filter(i => i.alwaysNeeded).length > 0 && `${shoppingList.filter(i => i.alwaysNeeded).length} low-stock staple${shoppingList.filter(i => i.alwaysNeeded).length === 1 ? "" : "s"}`}
+                </span>
               </p>
               <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-                {activeItems.map(it => (
-                  <PantryRow key={it.id} item={it} onToggle={toggleDone} onPatch={patchItem} onDelete={removeItem} />
+                {shoppingList.map(it => (
+                  <PantryRow key={it.id} item={it} onToggle={toggleDone} onPatch={patchItem} onDelete={removeItem} onAdjustOnHand={adjustOnHand} />
+                ))}
+              </div>
+            </div>
+          )}
+
+          {wellStocked.length > 0 && (
+            <div style={{ marginBottom: 20 }}>
+              <p style={{ fontSize: 10, textTransform: "uppercase", letterSpacing: 1.5, color: MUTED, marginBottom: 8, fontWeight: 700 }}>
+                ✓ Well stocked ({wellStocked.length})
+              </p>
+              <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                {wellStocked.map(it => (
+                  <PantryRow key={it.id} item={it} onToggle={toggleDone} onPatch={patchItem} onDelete={removeItem} onAdjustOnHand={adjustOnHand} />
                 ))}
               </div>
             </div>
@@ -549,7 +608,7 @@ export default function PantryClient() {
               </p>
               <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
                 {doneItems.map(it => (
-                  <PantryRow key={it.id} item={it} onToggle={toggleDone} onPatch={patchItem} onDelete={removeItem} />
+                  <PantryRow key={it.id} item={it} onToggle={toggleDone} onPatch={patchItem} onDelete={removeItem} onAdjustOnHand={adjustOnHand} />
                 ))}
               </div>
             </div>
@@ -557,29 +616,33 @@ export default function PantryClient() {
         </>
       )}
 
-      {sendOpen && <SendModal items={activeItems} onClose={() => setSendOpen(false)} />}
+      {sendOpen && <SendModal items={shoppingList} onClose={() => setSendOpen(false)} />}
     </div>
   );
 }
 
-function PantryRow({ item, onToggle, onPatch, onDelete }: {
+function PantryRow({ item, onToggle, onPatch, onDelete, onAdjustOnHand }: {
   item: Item;
   onToggle: (id: string, done: boolean) => void;
-  onPatch: (id: string, patch: { text?: string; qty?: string | null; alwaysNeeded?: boolean; store?: string | null }) => void;
+  onPatch: (id: string, patch: { text?: string; qty?: string | null; alwaysNeeded?: boolean; store?: string | null; onHand?: number }) => void;
   onDelete: (id: string) => void;
+  onAdjustOnHand: (id: string, delta: number) => void;
 }) {
   const [editing, setEditing] = useState(false);
   const [draftText, setDraftText] = useState(item.text);
   const [draftQty, setDraftQty] = useState(item.qty ?? "");
   const [draftStore, setDraftStore] = useState(item.store ?? "");
   const [draftAlways, setDraftAlways] = useState(item.alwaysNeeded);
+  const [draftOnHand, setDraftOnHand] = useState(item.onHand);
   const storeColor = item.store ? (STORE_COLORS[item.store] ?? MUTED) : null;
+  const isLow = item.alwaysNeeded && item.onHand < LOW_STOCK_THRESHOLD;
 
   function beginEdit() {
     setDraftText(item.text);
     setDraftQty(item.qty ?? "");
     setDraftStore(item.store ?? "");
     setDraftAlways(item.alwaysNeeded);
+    setDraftOnHand(item.onHand);
     setEditing(true);
   }
   function save() {
@@ -590,6 +653,7 @@ function PantryRow({ item, onToggle, onPatch, onDelete }: {
       qty: draftQty.trim() || null,
       store: draftStore || null,
       alwaysNeeded: draftAlways,
+      onHand: Math.max(0, Math.floor(draftOnHand)),
     });
     setEditing(false);
   }
@@ -610,13 +674,17 @@ function PantryRow({ item, onToggle, onPatch, onDelete }: {
 
         <div style={{ display: "flex", gap: 8 }}>
           <div style={{ flex: 1 }}>
-            <label style={{ display: "block", fontSize: 10, textTransform: "uppercase", letterSpacing: 1.5, color: MUTED, fontWeight: 700, marginBottom: 4 }}>Qty</label>
+            <label style={{ display: "block", fontSize: 10, textTransform: "uppercase", letterSpacing: 1.5, color: MUTED, fontWeight: 700, marginBottom: 4 }}>Qty to buy</label>
             <input
               value={draftQty}
               onChange={e => setDraftQty(e.target.value)}
+              list={`qty-presets-${item.id}`}
               placeholder="—"
               style={{ width: "100%", padding: "10px 12px", background: BG, border: `1px solid ${BORDER}`, color: TEXT, borderRadius: 8, fontSize: 15, outline: "none", boxSizing: "border-box", textAlign: "center", fontWeight: 700 }}
             />
+            <datalist id={`qty-presets-${item.id}`}>
+              {QTY_PRESETS.map(q => <option key={q} value={q} />)}
+            </datalist>
           </div>
           <div style={{ flex: 1.2 }}>
             <label style={{ display: "block", fontSize: 10, textTransform: "uppercase", letterSpacing: 1.5, color: MUTED, fontWeight: 700, marginBottom: 4 }}>Store</label>
@@ -646,6 +714,32 @@ function PantryRow({ item, onToggle, onPatch, onDelete }: {
           </div>
         </div>
 
+        {/* On hand at home */}
+        <div>
+          <label style={{ display: "block", fontSize: 10, textTransform: "uppercase", letterSpacing: 1.5, color: MUTED, fontWeight: 700, marginBottom: 4 }}>
+            🏠 On hand at home {draftAlways && draftOnHand < LOW_STOCK_THRESHOLD && <span style={{ color: "#f87171", marginLeft: 6 }}>⚠ Low — will be on list</span>}
+          </label>
+          <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
+            <button
+              type="button"
+              onClick={() => setDraftOnHand(Math.max(0, draftOnHand - 1))}
+              style={{ width: 42, height: 42, borderRadius: 8, background: BG, border: `1px solid ${BORDER}`, color: TEXT, fontSize: 20, fontWeight: 700, cursor: "pointer" }}
+            >−</button>
+            <input
+              type="number"
+              min={0}
+              value={draftOnHand}
+              onChange={e => setDraftOnHand(Math.max(0, parseInt(e.target.value) || 0))}
+              style={{ flex: 1, padding: "10px", background: BG, border: `1px solid ${draftAlways && draftOnHand < LOW_STOCK_THRESHOLD ? "#f87171" : BORDER}`, color: TEXT, borderRadius: 8, fontSize: 18, fontWeight: 800, textAlign: "center", outline: "none", boxSizing: "border-box" }}
+            />
+            <button
+              type="button"
+              onClick={() => setDraftOnHand(draftOnHand + 1)}
+              style={{ width: 42, height: 42, borderRadius: 8, background: BG, border: `1px solid ${BORDER}`, color: TEXT, fontSize: 20, fontWeight: 700, cursor: "pointer" }}
+            >+</button>
+          </div>
+        </div>
+
         <div style={{ display: "flex", gap: 8, marginTop: 4 }}>
           <button
             onClick={save}
@@ -671,8 +765,14 @@ function PantryRow({ item, onToggle, onPatch, onDelete }: {
     );
   }
 
+  const rowBorder = isLow && !item.done ? "#f87171" : (item.alwaysNeeded ? `${GOLD}55` : BORDER);
+
   return (
-    <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "10px 12px", background: CARD, border: `1px solid ${item.alwaysNeeded ? `${GOLD}55` : BORDER}`, borderRadius: 12 }}>
+    <div style={{
+      display: "flex", alignItems: "center", gap: 10, padding: "10px 12px",
+      background: isLow && !item.done ? "#2a1414" : CARD,
+      border: `1px solid ${rowBorder}`, borderRadius: 12,
+    }}>
       <button
         onClick={() => onToggle(item.id, !item.done)}
         aria-label={item.done ? "Mark not bought" : "Mark bought"}
@@ -685,35 +785,75 @@ function PantryRow({ item, onToggle, onPatch, onDelete }: {
         }}
       >{item.done ? "✓" : ""}</button>
 
-      <span
+      {/* Left: name + store + on-hand controls */}
+      <div
         onClick={beginEdit}
-        style={{
-          flex: 1, fontSize: 15, cursor: "pointer",
-          color: item.done ? MUTED : TEXT,
-          textDecoration: item.done ? "line-through" : "none",
-          display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap",
-        }}
+        style={{ flex: 1, cursor: "pointer", display: "flex", flexDirection: "column", gap: 4, minWidth: 0 }}
       >
-        <span>{item.text}</span>
-        {item.qty && (
-          <span style={{ fontSize: 16, padding: "3px 12px", background: "#1e2736", borderRadius: 14, color: GOLD, fontWeight: 800, letterSpacing: 0.2, lineHeight: 1.2 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap" }}>
+          {item.alwaysNeeded && <span style={{ color: GOLD, fontSize: 14, lineHeight: 1 }}>★</span>}
+          <span style={{
+            fontSize: 15, fontWeight: 600,
+            color: item.done ? MUTED : TEXT,
+            textDecoration: item.done ? "line-through" : "none",
+          }}>{item.text}</span>
+          {item.store && (
+            <span style={{ fontSize: 10, padding: "1px 7px", background: `${storeColor}22`, border: `1px solid ${storeColor}55`, borderRadius: 8, color: storeColor ?? MUTED, fontWeight: 700, letterSpacing: 0.3 }}>
+              {item.store}
+            </span>
+          )}
+          {isLow && !item.done && (
+            <span style={{ fontSize: 10, padding: "1px 7px", background: "#7f1d1d", border: "1px solid #f87171", borderRadius: 8, color: "#fecaca", fontWeight: 800, letterSpacing: 0.5, textTransform: "uppercase" }}>
+              ⚠ Low
+            </span>
+          )}
+        </div>
+        {item.alwaysNeeded && (
+          <div
+            onClick={e => e.stopPropagation()}
+            style={{ display: "flex", alignItems: "center", gap: 4, fontSize: 11, color: MUTED }}
+          >
+            <span style={{ fontSize: 10, opacity: 0.7 }}>🏠 At home:</span>
+            <button
+              onClick={() => onAdjustOnHand(item.id, -1)}
+              disabled={item.onHand === 0}
+              aria-label="Decrement"
+              style={{ width: 24, height: 24, borderRadius: 6, background: BG, border: `1px solid ${BORDER}`, color: TEXT, fontSize: 14, cursor: "pointer", opacity: item.onHand === 0 ? 0.3 : 1 }}
+            >−</button>
+            <span style={{ minWidth: 22, textAlign: "center", fontWeight: 800, color: isLow ? "#f87171" : TEXT, fontSize: 13 }}>
+              {item.onHand}
+            </span>
+            <button
+              onClick={() => onAdjustOnHand(item.id, 1)}
+              aria-label="Increment"
+              style={{ width: 24, height: 24, borderRadius: 6, background: BG, border: `1px solid ${BORDER}`, color: TEXT, fontSize: 14, cursor: "pointer" }}
+            >+</button>
+          </div>
+        )}
+      </div>
+
+      {/* Right: qty (big, right-aligned) + Edit */}
+      <div style={{ display: "flex", alignItems: "center", gap: 8, flexShrink: 0 }}>
+        {item.qty ? (
+          <span style={{
+            fontSize: 18, padding: "4px 12px", minWidth: 40,
+            background: "#1e2736", borderRadius: 12, color: GOLD,
+            fontWeight: 800, letterSpacing: 0.3, lineHeight: 1.2,
+            textAlign: "right", fontFamily: "'SF Mono', Menlo, monospace",
+          }}>
             {item.qty}
           </span>
+        ) : (
+          <span style={{ color: "#484f58", fontSize: 12, minWidth: 30, textAlign: "right" }}>—</span>
         )}
-        {item.store && (
-          <span style={{ fontSize: 11, padding: "2px 8px", background: `${storeColor}22`, border: `1px solid ${storeColor}55`, borderRadius: 10, color: storeColor ?? MUTED, fontWeight: 700, letterSpacing: 0.3 }}>
-            {item.store}
-          </span>
-        )}
-      </span>
-
-      <button
-        onClick={beginEdit}
-        aria-label="Edit"
-        style={{ background: "transparent", border: `1px solid ${BORDER}`, borderRadius: 6, color: MUTED, fontSize: 12, cursor: "pointer", padding: "4px 8px" }}
-      >
-        Edit
-      </button>
+        <button
+          onClick={beginEdit}
+          aria-label="Edit"
+          style={{ background: "transparent", border: `1px solid ${BORDER}`, borderRadius: 6, color: MUTED, fontSize: 12, cursor: "pointer", padding: "4px 8px" }}
+        >
+          Edit
+        </button>
+      </div>
     </div>
   );
 }
