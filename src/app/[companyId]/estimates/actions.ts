@@ -64,7 +64,7 @@ export async function createTemplate(formData: FormData) {
     userName: session.user.name ?? session.user.email ?? "",
   });
 
-  revalidatePath(`/${session.user.companyId}/estimates`);
+  revalidatePath(`/${session.user.companyId}/estimates`, "layout");
   return { success: true, id: template.id };
 }
 
@@ -108,7 +108,7 @@ export async function createStandardTemplate(name: string, description?: string,
     }
   }
 
-  revalidatePath(`/${session.user.companyId}/estimates`);
+  revalidatePath(`/${session.user.companyId}/estimates`, "layout");
   return { success: true, id: template.id };
 }
 
@@ -117,7 +117,7 @@ export async function renameTemplate(templateId: string, name: string) {
   if (!session) throw new Error("Unauthorized");
   requirePermission(session, "estimateTemplate:edit");
   await prisma.estimateTemplate.update({ where: { id: templateId }, data: { name: name.trim(), updatedBy: session.user.id } });
-  revalidatePath(`/${session.user.companyId}/estimates`);
+  revalidatePath(`/${session.user.companyId}/estimates`, "layout");
   return { success: true };
 }
 
@@ -227,7 +227,7 @@ export async function duplicateTemplate(templateId: string) {
     }
   }
 
-  revalidatePath(`/${session.user.companyId}/estimates`);
+  revalidatePath(`/${session.user.companyId}/estimates`, "layout");
   return { id: copy.id };
 }
 
@@ -253,7 +253,7 @@ export async function updateTemplate(
     },
   });
 
-  revalidatePath(`/${session.user.companyId}/estimates`);
+  revalidatePath(`/${session.user.companyId}/estimates`, "layout");
   return { success: true };
 }
 
@@ -267,7 +267,7 @@ export async function archiveTemplate(templateId: string) {
     data: { archivedAt: new Date(), archivedBy: session.user.id, updatedBy: session.user.id },
   });
 
-  revalidatePath(`/${session.user.companyId}/estimates`);
+  revalidatePath(`/${session.user.companyId}/estimates`, "layout");
   return { success: true };
 }
 
@@ -320,7 +320,7 @@ export async function upsertTemplateDivision(
       );
     }
     await touchTemplate(templateId, session.user.id);
-    revalidatePath(`/${session.user.companyId}/estimates`);
+    revalidatePath(`/${session.user.companyId}/estimates`, "layout");
     return { success: true, id: data.id };
   }
 
@@ -339,7 +339,7 @@ export async function upsertTemplateDivision(
   });
 
   await touchTemplate(templateId, session.user.id);
-  revalidatePath(`/${session.user.companyId}/estimates`);
+  revalidatePath(`/${session.user.companyId}/estimates`, "layout");
   return { success: true, id: division.id };
 }
 
@@ -405,7 +405,7 @@ export async function seedTemplateDivisionFromHistory(divisionId: string, csiCod
     })),
   });
 
-  revalidatePath(`/${companyId}/estimates`);
+  revalidatePath(`/${companyId}/estimates`, "layout");
   return { count: unique.length };
 }
 
@@ -418,7 +418,7 @@ export async function archiveTemplateDivision(divisionId: string) {
     where: { id: divisionId },
     data: { archivedAt: new Date(), archivedBy: session.user.id },
   });
-  revalidatePath(`/${session.user.companyId}/estimates`);
+  revalidatePath(`/${session.user.companyId}/estimates`, "layout");
   return { success: true };
 }
 
@@ -442,7 +442,7 @@ export async function mergeTemplateDivisionInto(sourceDivisionId: string, target
     where: { id: sourceDivisionId },
     data: { archivedAt: new Date(), archivedBy: session.user.id },
   });
-  revalidatePath(`/${session.user.companyId}/estimates`);
+  revalidatePath(`/${session.user.companyId}/estimates`, "layout");
   return { success: true };
 }
 
@@ -456,7 +456,7 @@ export async function reorderTemplateDivisions(templateId: string, orderedIds: s
       prisma.estimateTemplateDivision.update({ where: { id }, data: { sortOrder: idx } })
     )
   );
-  revalidatePath(`/${session.user.companyId}/estimates`);
+  revalidatePath(`/${session.user.companyId}/estimates`, "layout");
   return { success: true };
 }
 
@@ -472,7 +472,7 @@ export async function upsertTemplateGroup(
 
   if (data.id) {
     await prisma.estimateTemplateGroup.update({ where: { id: data.id }, data: { name: data.name } });
-    revalidatePath(`/${session.user.companyId}/estimates`);
+    revalidatePath(`/${session.user.companyId}/estimates`, "layout");
     return { success: true, id: data.id };
   }
 
@@ -485,7 +485,7 @@ export async function upsertTemplateGroup(
     data: { divisionId, name: data.name, sortOrder: (maxOrder._max.sortOrder ?? -1) + 1 },
   });
 
-  revalidatePath(`/${session.user.companyId}/estimates`);
+  revalidatePath(`/${session.user.companyId}/estimates`, "layout");
   return { success: true, id: group.id };
 }
 
@@ -498,7 +498,7 @@ export async function archiveTemplateGroup(groupId: string) {
     where: { id: groupId },
     data: { archivedAt: new Date(), archivedBy: session.user.id },
   });
-  revalidatePath(`/${session.user.companyId}/estimates`);
+  revalidatePath(`/${session.user.companyId}/estimates`, "layout");
   return { success: true };
 }
 
@@ -512,7 +512,7 @@ export async function reorderTemplateGroups(divisionId: string, orderedIds: stri
       prisma.estimateTemplateGroup.update({ where: { id }, data: { sortOrder: idx } })
     )
   );
-  revalidatePath(`/${session.user.companyId}/estimates`);
+  revalidatePath(`/${session.user.companyId}/estimates`, "layout");
   return { success: true };
 }
 
@@ -588,7 +588,7 @@ export async function upsertTemplateItem(
   if (data.id) {
     await prisma.estimateTemplateItem.update({ where: { id: data.id }, data: payload });
     if (division?.templateId) await touchTemplate(division.templateId, session.user.id);
-    revalidatePath(`/${session.user.companyId}/estimates`);
+    revalidatePath(`/${session.user.companyId}/estimates`, "layout");
     return { success: true, id: data.id };
   }
 
@@ -626,7 +626,7 @@ export async function upsertTemplateItem(
   );
 
   if (division?.templateId) await touchTemplate(division.templateId, session.user.id);
-  revalidatePath(`/${session.user.companyId}/estimates`);
+  revalidatePath(`/${session.user.companyId}/estimates`, "layout");
   return { success: true, id: item.id };
 }
 
@@ -639,7 +639,7 @@ export async function archiveTemplateItem(itemId: string) {
     where: { id: itemId },
     data: { archivedAt: new Date(), archivedBy: session.user.id },
   });
-  revalidatePath(`/${session.user.companyId}/estimates`);
+  revalidatePath(`/${session.user.companyId}/estimates`, "layout");
   return { success: true };
 }
 
@@ -648,7 +648,7 @@ export async function restoreTemplateItem(itemId: string) {
   if (!session) throw new Error("Unauthorized");
   requirePermission(session, "estimateTemplate:edit");
   await prisma.estimateTemplateItem.update({ where: { id: itemId }, data: { archivedAt: null, archivedBy: null } });
-  revalidatePath(`/${session.user.companyId}/estimates`);
+  revalidatePath(`/${session.user.companyId}/estimates`, "layout");
   return { success: true };
 }
 
@@ -660,7 +660,7 @@ export async function restoreTemplateGroup(groupId: string) {
     prisma.estimateTemplateGroup.update({ where: { id: groupId }, data: { archivedAt: null, archivedBy: null } }),
     prisma.estimateTemplateItem.updateMany({ where: { groupId }, data: { archivedAt: null, archivedBy: null } }),
   ]);
-  revalidatePath(`/${session.user.companyId}/estimates`);
+  revalidatePath(`/${session.user.companyId}/estimates`, "layout");
   return { success: true };
 }
 
@@ -673,7 +673,7 @@ export async function restoreTemplateDivision(divisionId: string) {
     prisma.estimateTemplateGroup.updateMany({ where: { divisionId }, data: { archivedAt: null, archivedBy: null } }),
     prisma.estimateTemplateItem.updateMany({ where: { divisionId }, data: { archivedAt: null, archivedBy: null } }),
   ]);
-  revalidatePath(`/${session.user.companyId}/estimates`);
+  revalidatePath(`/${session.user.companyId}/estimates`, "layout");
   return { success: true };
 }
 
@@ -690,7 +690,7 @@ export async function resetTemplateDivisionItems(divisionId: string) {
     data: { unit: null, defaultQty: null, defaultUnitCost: null, defaultLaborCost: null, defaultMaterialCost: null, defaultMarkupPct: null },
   });
   if (division?.templateId) await touchTemplate(division.templateId, session.user.id);
-  revalidatePath(`/${session.user.companyId}/estimates`);
+  revalidatePath(`/${session.user.companyId}/estimates`, "layout");
 }
 
 export async function moveItemBetweenDivisions(itemId: string, newDivisionId: string) {
@@ -711,7 +711,7 @@ export async function moveItemBetweenDivisions(itemId: string, newDivisionId: st
       sortOrder: (maxOrder._max.sortOrder ?? -1) + 1,
     },
   });
-  revalidatePath(`/${session.user.companyId}/estimates`);
+  revalidatePath(`/${session.user.companyId}/estimates`, "layout");
   return { success: true };
 }
 
@@ -733,7 +733,7 @@ export async function moveItemToGroup(itemId: string, groupId: string, divisionI
       sortOrder: (maxOrder._max.sortOrder ?? -1) + 1,
     },
   });
-  revalidatePath(`/${session.user.companyId}/estimates`);
+  revalidatePath(`/${session.user.companyId}/estimates`, "layout");
   return { success: true };
 }
 
@@ -747,7 +747,7 @@ export async function reorderTemplateItems(parentId: string, parentType: "divisi
       prisma.estimateTemplateItem.update({ where: { id }, data: { sortOrder: idx } })
     )
   );
-  revalidatePath(`/${session.user.companyId}/estimates`);
+  revalidatePath(`/${session.user.companyId}/estimates`, "layout");
   return { success: true };
 }
 
@@ -824,7 +824,7 @@ export async function setTemplateClient(templateId: string, clientId: string | n
     data: { clientId, updatedBy: session.user.id },
   });
 
-  revalidatePath(`/${session.user.companyId}/estimates`);
+  revalidatePath(`/${session.user.companyId}/estimates`, "layout");
   return { success: true };
 }
 
@@ -922,7 +922,7 @@ export async function saveAsNewTemplate(sourceTemplateId: string, newName: strin
     return tpl;
   });
 
-  revalidatePath(`/${session.user.companyId}/estimates`);
+  revalidatePath(`/${session.user.companyId}/estimates`, "layout");
   return { success: true, id: newTemplate.id };
 }
 
@@ -962,7 +962,7 @@ export async function updateTemplatePaymentSchedule(templateId: string, rows: { 
     data: { paymentSchedule: rows, updatedBy: session.user.id },
   });
 
-  revalidatePath(`/${session.user.companyId}/estimates`);
+  revalidatePath(`/${session.user.companyId}/estimates`, "layout");
   return { success: true };
 }
 
@@ -976,7 +976,7 @@ export async function updateTemplateTermsContent(templateId: string, termsConten
     data: { termsContent: termsContent || null, updatedBy: session.user.id },
   });
 
-  revalidatePath(`/${session.user.companyId}/estimates`);
+  revalidatePath(`/${session.user.companyId}/estimates`, "layout");
   return { success: true };
 }
 
@@ -990,7 +990,7 @@ export async function updateTemplateShowTerms(templateId: string, showTerms: boo
     data: { showTerms, updatedBy: session.user.id },
   });
 
-  revalidatePath(`/${session.user.companyId}/estimates`);
+  revalidatePath(`/${session.user.companyId}/estimates`, "layout");
   return { success: true };
 }
 
@@ -1004,7 +1004,7 @@ export async function updateTemplateGcFee(templateId: string, gcFeePercent: numb
     data: { gcFeePercent: gcFeePercent ?? null, updatedBy: session.user.id },
   });
 
-  revalidatePath(`/${session.user.companyId}/estimates`);
+  revalidatePath(`/${session.user.companyId}/estimates`, "layout");
   return { success: true };
 }
 
@@ -1018,7 +1018,7 @@ export async function updateTemplateInternalProfit(templateId: string, internalP
     data: { internalProfitOverride: internalProfitOverride ?? null, updatedBy: session.user.id },
   });
 
-  revalidatePath(`/${session.user.companyId}/estimates`);
+  revalidatePath(`/${session.user.companyId}/estimates`, "layout");
   return { success: true };
 }
 
@@ -1055,7 +1055,7 @@ export async function updateTemplateSqFt(templateId: string, sqFt: number | null
     }
   }
 
-  revalidatePath(`/${session.user.companyId}/estimates`);
+  revalidatePath(`/${session.user.companyId}/estimates`, "layout");
   return { success: true };
 }
 
@@ -1089,7 +1089,7 @@ export async function updateTemplateDurationMonths(templateId: string, months: n
     }
   }
 
-  revalidatePath(`/${session.user.companyId}/estimates`);
+  revalidatePath(`/${session.user.companyId}/estimates`, "layout");
   return { success: true };
 }
 
@@ -1098,7 +1098,7 @@ export async function updateTemplateHasSkylights(templateId: string, value: bool
   if (!session) throw new Error("Unauthorized");
   requirePermission(session, "estimateTemplate:edit");
   await prisma.estimateTemplate.update({ where: { id: templateId }, data: { hasSkylights: value, updatedBy: session.user.id } });
-  revalidatePath(`/${session.user.companyId}/estimates`);
+  revalidatePath(`/${session.user.companyId}/estimates`, "layout");
   return { success: true };
 }
 
@@ -1107,7 +1107,7 @@ export async function updateTemplateHasRoofDrains(templateId: string, value: boo
   if (!session) throw new Error("Unauthorized");
   requirePermission(session, "estimateTemplate:edit");
   await prisma.estimateTemplate.update({ where: { id: templateId }, data: { hasRoofDrains: value, updatedBy: session.user.id } });
-  revalidatePath(`/${session.user.companyId}/estimates`);
+  revalidatePath(`/${session.user.companyId}/estimates`, "layout");
   return { success: true };
 }
 
@@ -1116,7 +1116,7 @@ export async function updateTemplateInsulationType(templateId: string, value: st
   if (!session) throw new Error("Unauthorized");
   requirePermission(session, "estimateTemplate:edit");
   await prisma.estimateTemplate.update({ where: { id: templateId }, data: { insulationType: value, updatedBy: session.user.id } });
-  revalidatePath(`/${session.user.companyId}/estimates`);
+  revalidatePath(`/${session.user.companyId}/estimates`, "layout");
   return { success: true };
 }
 
@@ -1125,7 +1125,7 @@ export async function updateTemplateCombinationType(templateId: string, value: s
   if (!session) throw new Error("Unauthorized");
   requirePermission(session, "estimateTemplate:edit");
   await prisma.estimateTemplate.update({ where: { id: templateId }, data: { combinationType: value, updatedBy: session.user.id } });
-  revalidatePath(`/${session.user.companyId}/estimates`);
+  revalidatePath(`/${session.user.companyId}/estimates`, "layout");
   return { success: true };
 }
 
@@ -1134,7 +1134,7 @@ export async function updateTemplateBrandingName(templateId: string, value: stri
   if (!session) throw new Error("Unauthorized");
   requirePermission(session, "estimateTemplate:edit");
   await prisma.estimateTemplate.update({ where: { id: templateId }, data: { brandingName: value, updatedBy: session.user.id } });
-  revalidatePath(`/${session.user.companyId}/estimates`);
+  revalidatePath(`/${session.user.companyId}/estimates`, "layout");
   return { success: true };
 }
 
@@ -1155,7 +1155,7 @@ export async function updateTemplateSummaryGroup(templateId: string, label: stri
     current[label] = data;
   }
   await prisma.estimateTemplate.update({ where: { id: templateId }, data: { summaryGroups: current, updatedBy: session.user.id } });
-  revalidatePath(`/${session.user.companyId}/estimates`);
+  revalidatePath(`/${session.user.companyId}/estimates`, "layout");
   return { success: true };
 }
 
@@ -1178,11 +1178,11 @@ export async function upsertTermsTemplate(data: { id?: string; name: string; con
 
   if (data.id) {
     await prisma.termsTemplate.update({ where: { id: data.id }, data: { name: data.name.trim(), content: data.content } });
-    revalidatePath(`/${session.user.companyId}/estimates`);
+    revalidatePath(`/${session.user.companyId}/estimates`, "layout");
     return { success: true, id: data.id };
   } else {
     const created = await prisma.termsTemplate.create({ data: { companyId: session.user.companyId, name: data.name.trim(), content: data.content } });
-    revalidatePath(`/${session.user.companyId}/estimates`);
+    revalidatePath(`/${session.user.companyId}/estimates`, "layout");
     return { success: true, id: created.id };
   }
 }
@@ -1192,7 +1192,7 @@ export async function deleteTermsTemplate(id: string) {
   if (!session) throw new Error("Unauthorized");
   requirePermission(session, "estimateTemplate:edit");
   await prisma.termsTemplate.delete({ where: { id } });
-  revalidatePath(`/${session.user.companyId}/estimates`);
+  revalidatePath(`/${session.user.companyId}/estimates`, "layout");
   return { success: true };
 }
 
@@ -1385,5 +1385,5 @@ export async function reorderTemplates(orderedIds: string[]) {
       prisma.estimateTemplate.update({ where: { id }, data: { sortOrder: idx } })
     )
   );
-  revalidatePath(`/${session.user.companyId}/estimates`);
+  revalidatePath(`/${session.user.companyId}/estimates`, "layout");
 }

@@ -358,6 +358,20 @@ function ItemRow({ item, divisionId, groupId, canEdit }: { item: Item; divisionI
   }, [resetAllSignal]); // eslint-disable-line react-hooks/exhaustive-deps
 
   function doReset() {
+    // Also reset the local edit-mode form state so if this row is currently
+    // being edited, the inputs clear too and the auto-save won't fire 1.5s
+    // later with stale values that would overwrite the reset.
+    setForm({
+      name: item.name,
+      csiCode: item.csiCode ?? "",
+      detail: "",
+      unit: "",
+      defaultQty: "",
+      defaultUnitCost: "",
+      defaultMarkupPct: "",
+      notes: item.notes ?? "",
+      visibleInPdf: item.visibleInPdf,
+    });
     startTransition(async () => {
       await upsertTemplateItem(divisionId, {
         id: item.id,
