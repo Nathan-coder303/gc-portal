@@ -1451,17 +1451,6 @@ export default function TemplateEditor({
   const [termsContent, setTermsContent] = useState(template.termsContent ?? "");
   const [termsDirty, setTermsDirty] = useState(false);
   const termsTextareaRef = useRef<HTMLTextAreaElement>(null);
-
-  // Grow the textarea only when content overflows the current height — that way
-  // a manual corner-drag (resize: vertical) is preserved and doesn't get fought
-  // by JS on every keystroke.
-  useEffect(() => {
-    const el = termsTextareaRef.current;
-    if (!el) return;
-    if (el.scrollHeight > el.clientHeight + 2) {
-      el.style.height = el.scrollHeight + "px";
-    }
-  }, [termsContent]);
   const termsTemplates = initialTermsTemplates;
   const [selectedTermsTplId, setSelectedTermsTplId] = useState<string>(() => {
     // Pre-select whichever saved T&C matches the current content
@@ -2049,11 +2038,6 @@ export default function TemplateEditor({
                         onChange={e => {
                           const v = e.target.value;
                           setTermsContent(v); setTermsDirty(true); saveTermsContent(v);
-                          // Grow only when content exceeds the current height — keeps any manual corner-drag in place
-                          const el = e.currentTarget;
-                          if (el.scrollHeight > el.clientHeight + 2) {
-                            el.style.height = el.scrollHeight + "px";
-                          }
                         }}
                         onKeyDown={e => {
                           // Bullet-list helper: when the previous (non-empty) lines start with "• ",
@@ -2105,10 +2089,10 @@ export default function TemplateEditor({
                           void allBefore;
                         }}
                         ref={termsTextareaRef}
-                        rows={22}
+                        rows={6}
                         placeholder={"Enter Terms & Conditions text, or load a saved preset above...\n\nTip: press Enter on a line to start a bullet list — subsequent Enters keep adding bullets. Empty Enter ends the list. Drag the bottom-right corner to resize."}
                         className="w-full rounded-lg px-3 py-2 text-sm leading-relaxed"
-                        style={{ background: "#0d1117", border: "1px solid #30373f", color: "#e6edf3", minHeight: 480, resize: "vertical" }}
+                        style={{ background: "#0d1117", border: "1px solid #30373f", color: "#e6edf3", minHeight: 140, maxWidth: "100%", resize: "both" }}
                       />
                       <p className="text-xs" style={{ color: "#8b949e" }}>
                         {termsDirty ? "Saving…" : "Auto-saved. Prints in PDF automatically."}

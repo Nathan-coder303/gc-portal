@@ -86,7 +86,7 @@ export default function InvoicesAndCoTab(props: {
   const fullyInvoiced = totalInvoicePct >= 99.5 || (estimateTotal > 0 && Math.abs(estimateTotal - rawInvoiced) <= Math.max(200, estimateTotal * 0.005));
   const totalInvoiced = fullyInvoiced ? estimateTotal : rawInvoiced;
   const totalChangeOrders = approvedChangeOrders.reduce((s, co) => s + coTotal(co), 0);
-  const totalClientPaid = allPayments.reduce((s, r) => s + r.payment.amount, 0);
+  const totalClientPaid = allPayments.reduce((s, r) => s + Number(r.payment.amount), 0);
   const totalBilled = totalInvoiced + totalChangeOrders;
   const clientBalance = totalBilled - totalClientPaid;
 
@@ -130,13 +130,13 @@ export default function InvoicesAndCoTab(props: {
   // Build dropdown options: every invoice + every change order (only approved/signed ones for clarity)
   const targetOptions = [
     ...invoices.map(inv => {
-      const paid = inv.payments.reduce((s, p) => s + p.amount, 0);
+      const paid = inv.payments.reduce((s, p) => s + Number(p.amount), 0);
       const bal = inv.amount - paid;
       return { key: `inv:${inv.id}`, label: `Invoice #${inv.invoiceNumber} · ${inv.phase} · $${fmt(inv.amount)} (${bal <= 0 ? "Paid" : `$${fmt(bal)} due`})` };
     }),
     ...orders.map(co => {
       const total = coTotal(co);
-      const paid = (co.payments ?? []).reduce((s, p) => s + p.amount, 0);
+      const paid = (co.payments ?? []).reduce((s, p) => s + Number(p.amount), 0);
       const bal = total - paid;
       return { key: `co:${co.id}`, label: `CO ${co.orderNumber ? `#${co.orderNumber} ` : ""}— ${co.title} · $${fmt(total)} (${bal <= 0 ? "Paid" : `$${fmt(bal)} due`})` };
     }),
