@@ -821,13 +821,17 @@ function PantryRow({ item, onToggle, onPatch, onDelete, onAdjustOnHand }: {
   const rowBorder = isLow && !item.done ? "#f87171" : (item.alwaysNeeded ? `${GOLD}55` : BORDER);
 
   return (
-    <div style={{
-      display: "flex", alignItems: "center", gap: 10, padding: "10px 12px",
-      background: isLow && !item.done ? "#2a1414" : CARD,
-      border: `1px solid ${rowBorder}`, borderRadius: 12,
-    }}>
+    <div
+      onClick={beginEdit}
+      style={{
+        display: "flex", alignItems: "center", gap: 10, padding: "10px 12px",
+        background: isLow && !item.done ? "#2a1414" : CARD,
+        border: `1px solid ${rowBorder}`, borderRadius: 12,
+        cursor: "pointer",
+      }}
+    >
       <button
-        onClick={() => onToggle(item.id, !item.done)}
+        onClick={e => { e.stopPropagation(); onToggle(item.id, !item.done); }}
         aria-label={item.done ? "Mark not bought" : "Mark bought"}
         style={{
           width: 22, height: 22, borderRadius: 6,
@@ -839,10 +843,7 @@ function PantryRow({ item, onToggle, onPatch, onDelete, onAdjustOnHand }: {
       >{item.done ? "✓" : ""}</button>
 
       {/* Left: name + store + on-hand controls */}
-      <div
-        onClick={beginEdit}
-        style={{ flex: 1, cursor: "pointer", display: "flex", flexDirection: "column", gap: 4, minWidth: 0 }}
-      >
+      <div style={{ flex: 1, display: "flex", flexDirection: "column", gap: 4, minWidth: 0 }}>
         <div style={{ display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap" }}>
           {item.alwaysNeeded && <span style={{ color: GOLD, fontSize: 14, lineHeight: 1 }}>★</span>}
           <span style={{
