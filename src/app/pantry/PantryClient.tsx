@@ -10,10 +10,11 @@ type Item = {
   alwaysNeeded: boolean;
   store: string | null;
   onHand: number;
+  minAtHome: number;
   done: boolean;
   createdAt: string;
 };
-type PendingRow = { text: string; qty: string; alwaysNeeded: boolean; store: string; onHand: number };
+type PendingRow = { text: string; qty: string; alwaysNeeded: boolean; store: string; onHand: number; minAtHome: number };
 
 // Common qty presets — offered as a native <datalist> so users get a
 // dropdown but can still type anything.
@@ -178,11 +179,11 @@ function parseUtterance(raw: string): PendingRow[] {
 
     const groups = splitWords(cleaned);
     if (groups.length === 0) {
-      rows.push({ text: titleCase(cleaned), qty: "", alwaysNeeded: always, store, onHand: 0 });
+      rows.push({ text: titleCase(cleaned), qty: "", alwaysNeeded: always, store, onHand: 0, minAtHome: 2 });
       continue;
     }
     for (const g of groups) {
-      rows.push({ text: titleCase(g.text), qty: g.qty, alwaysNeeded: always, store, onHand: 0 });
+      rows.push({ text: titleCase(g.text), qty: g.qty, alwaysNeeded: always, store, onHand: 0, minAtHome: 2 });
     }
   }
   return rows;
@@ -205,6 +206,7 @@ export default function PantryClient() {
   const [saveError, setSaveError] = useState<string | null>(null);
 
   const [sendOpen, setSendOpen] = useState(false);
+  const [previewOpen, setPreviewOpen] = useState(false);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -252,7 +254,7 @@ export default function PantryClient() {
       if (combined) {
         setRawTranscript(combined);
         const parsed = parseUtterance(combined);
-        setPending(parsed.length ? parsed : [{ text: combined, qty: "", alwaysNeeded: false, store: "", onHand: 0 }]);
+        setPending(parsed.length ? parsed : [{ text: combined, qty: "", alwaysNeeded: false, store: "", onHand: 0, minAtHome: 2 }]);
       }
     };
     recognitionRef.current = rec;
@@ -271,7 +273,7 @@ export default function PantryClient() {
     setPending(prev => prev ? prev.filter((_, i) => i !== idx) : prev);
   }
   function addPendingRow() {
-    setPending(prev => prev ? [...prev, { text: "", qty: "", alwaysNeeded: false, store: "", onHand: 0 }] : [{ text: "", qty: "", alwaysNeeded: false, store: "", onHand: 0 }]);
+    setPending(prev => prev ? [...prev, { text: "", qty: "", alwaysNeeded: false, store: "", onHand: 0, minAtHome: 2 }] : [{ text: "", qty: "", alwaysNeeded: false, store: "", onHand: 0, minAtHome: 2 }]);
   }
   function setStoreForAll(store: string) {
     setPending(prev => prev ? prev.map(r => ({ ...r, store })) : prev);
@@ -285,7 +287,7 @@ export default function PantryClient() {
     try {
       const res = await fetch("/api/pantry", {
         method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ items: rows.map(r => ({ text: r.text, qty: r.qty || null, alwaysNeeded: r.alwaysNeeded, store: r.store || null, onHand: r.onHand })) }),
+        body: JSON.stringify({ items: rows.map(r => ({ text: r.text, qty: r.qty || null, alwaysNeeded: r.alwaysNeeded, store: r.store || null, onHand: r.onHand, minAtHome: r.minAtHome })) }),
       });
       if (res.ok) {
         const created: Item[] = await res.json();
@@ -318,7 +320,7 @@ export default function PantryClient() {
     setItems(prev => prev.map(i => i.id === id ? { ...i, done } : i));
     await fetch(`/api/pantry/${id}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ done }) });
   }
-  async function patchItem(id: string, patch: { text?: string; qty?: string | null; alwaysNeeded?: boolean; store?: string | null; onHand?: number }) {
+  async function patchItem(id: string, patch: { text?: string; qty?: string | null; alwaysNeeded?: boolean; store?: string | null; onHand?: number; minAtHome?: number }) {
     setItems(prev => prev.map(i => i.id === id ? { ...i, ...patch } : i));
     await fetch(`/api/pantry/${id}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify(patch) });
   }
@@ -344,10 +346,10 @@ export default function PantryClient() {
 
   const activeItems = items.filter(i => !i.done);
   const doneItems = items.filter(i => i.done);
-  // Shopping list = anything with fewer than 2 at home, staple or one-off.
+  // Shopping list = anything under its own per-item minimum threshold.
   // This is what gets sent to the wife via WhatsApp.
-  const shoppingList = activeItems.filter(i => i.onHand < LOW_STOCK_THRESHOLD);
-  const wellStocked = activeItems.filter(i => i.onHand >= LOW_STOCK_THRESHOLD);
+  const shoppingList = activeItems.filter(i => i.onHand < i.minAtHome);
+  const wellStocked = activeItems.filter(i => i.onHand >= i.minAtHome);
   const liveTranscript = (finalText + " " + interim).trim();
 
   return (
@@ -361,10 +363,16 @@ export default function PantryClient() {
         </div>
         <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
           {shoppingList.length > 0 && (
-            <button onClick={() => setSendOpen(true)}
-              style={{ background: WA_GREEN, border: `1px solid ${WA_GREEN}`, color: "#fff", borderRadius: 8, padding: "6px 12px", fontSize: 12, fontWeight: 700, cursor: "pointer" }}>
-              💬 Send {shoppingList.length} to WhatsApp
-            </button>
+            <>
+              <button onClick={() => setPreviewOpen(true)}
+                style={{ background: "transparent", border: `1px solid ${GOLD}`, color: GOLD, borderRadius: 8, padding: "6px 12px", fontSize: 12, fontWeight: 700, cursor: "pointer" }}>
+                👁 Preview list
+              </button>
+              <button onClick={() => setSendOpen(true)}
+                style={{ background: WA_GREEN, border: `1px solid ${WA_GREEN}`, color: "#fff", borderRadius: 8, padding: "6px 12px", fontSize: 12, fontWeight: 700, cursor: "pointer" }}>
+                💬 Send {shoppingList.length}
+              </button>
+            </>
           )}
           {doneItems.length > 0 && (
             <button onClick={clearDone}
@@ -447,7 +455,8 @@ export default function PantryClient() {
                   <th style={{ textAlign: "left", padding: "6px 8px", color: MUTED, fontWeight: 600, fontSize: 10, textTransform: "uppercase", letterSpacing: 1 }}>Item</th>
                   <th style={{ textAlign: "left", padding: "6px 8px", color: MUTED, fontWeight: 600, fontSize: 10, textTransform: "uppercase", letterSpacing: 1, width: 80 }}>Qty</th>
                   <th style={{ textAlign: "left", padding: "6px 8px", color: MUTED, fontWeight: 600, fontSize: 10, textTransform: "uppercase", letterSpacing: 1, width: 90 }}>Store</th>
-                  <th style={{ textAlign: "center", padding: "6px 8px", color: MUTED, fontWeight: 600, fontSize: 10, textTransform: "uppercase", letterSpacing: 1, width: 60 }} title="How many at home right now">🏠</th>
+                  <th style={{ textAlign: "center", padding: "6px 8px", color: MUTED, fontWeight: 600, fontSize: 10, textTransform: "uppercase", letterSpacing: 1, width: 52 }} title="How many at home right now">🏠</th>
+                  <th style={{ textAlign: "center", padding: "6px 8px", color: MUTED, fontWeight: 600, fontSize: 10, textTransform: "uppercase", letterSpacing: 1, width: 52 }} title="Alert threshold: when at-home drops below this, item goes on the shopping list">⚠ Min</th>
                   <th style={{ textAlign: "center", padding: "6px 8px", color: MUTED, fontWeight: 600, fontSize: 10, textTransform: "uppercase", letterSpacing: 1, width: 40 }}>★</th>
                   <th style={{ width: 30 }} />
                 </tr>
@@ -488,6 +497,15 @@ export default function PantryClient() {
                         min={0}
                         value={r.onHand}
                         onChange={e => updatePendingRow(i, { onHand: Math.max(0, parseInt(e.target.value) || 0) })}
+                        style={{ width: "100%", padding: "8px 6px", background: BG, border: `1px solid ${BORDER}`, color: TEXT, borderRadius: 8, fontSize: 14, outline: "none", boxSizing: "border-box", textAlign: "center", fontWeight: 700 }}
+                      />
+                    </td>
+                    <td style={{ padding: "4px 2px" }}>
+                      <input
+                        type="number"
+                        min={0}
+                        value={r.minAtHome}
+                        onChange={e => updatePendingRow(i, { minAtHome: Math.max(0, parseInt(e.target.value) || 0) })}
                         style={{ width: "100%", padding: "8px 6px", background: BG, border: `1px solid ${BORDER}`, color: TEXT, borderRadius: 8, fontSize: 14, outline: "none", boxSizing: "border-box", textAlign: "center", fontWeight: 700 }}
                       />
                     </td>
@@ -617,6 +635,7 @@ export default function PantryClient() {
       )}
 
       {sendOpen && <SendModal items={shoppingList} onClose={() => setSendOpen(false)} />}
+      {previewOpen && <PreviewModal items={shoppingList} onClose={() => setPreviewOpen(false)} onSend={() => { setPreviewOpen(false); setSendOpen(true); }} />}
     </div>
   );
 }
@@ -624,7 +643,7 @@ export default function PantryClient() {
 function PantryRow({ item, onToggle, onPatch, onDelete, onAdjustOnHand }: {
   item: Item;
   onToggle: (id: string, done: boolean) => void;
-  onPatch: (id: string, patch: { text?: string; qty?: string | null; alwaysNeeded?: boolean; store?: string | null; onHand?: number }) => void;
+  onPatch: (id: string, patch: { text?: string; qty?: string | null; alwaysNeeded?: boolean; store?: string | null; onHand?: number; minAtHome?: number }) => void;
   onDelete: (id: string) => void;
   onAdjustOnHand: (id: string, delta: number) => void;
 }) {
@@ -634,8 +653,9 @@ function PantryRow({ item, onToggle, onPatch, onDelete, onAdjustOnHand }: {
   const [draftStore, setDraftStore] = useState(item.store ?? "");
   const [draftAlways, setDraftAlways] = useState(item.alwaysNeeded);
   const [draftOnHand, setDraftOnHand] = useState(item.onHand);
+  const [draftMin, setDraftMin] = useState(item.minAtHome);
   const storeColor = item.store ? (STORE_COLORS[item.store] ?? MUTED) : null;
-  const isLow = item.onHand < LOW_STOCK_THRESHOLD;
+  const isLow = item.onHand < item.minAtHome;
 
   function beginEdit() {
     setDraftText(item.text);
@@ -643,6 +663,7 @@ function PantryRow({ item, onToggle, onPatch, onDelete, onAdjustOnHand }: {
     setDraftStore(item.store ?? "");
     setDraftAlways(item.alwaysNeeded);
     setDraftOnHand(item.onHand);
+    setDraftMin(item.minAtHome);
     setEditing(true);
   }
   function save() {
@@ -654,6 +675,7 @@ function PantryRow({ item, onToggle, onPatch, onDelete, onAdjustOnHand }: {
       store: draftStore || null,
       alwaysNeeded: draftAlways,
       onHand: Math.max(0, Math.floor(draftOnHand)),
+      minAtHome: Math.max(0, Math.floor(draftMin)),
     });
     setEditing(false);
   }
@@ -714,31 +736,62 @@ function PantryRow({ item, onToggle, onPatch, onDelete, onAdjustOnHand }: {
           </div>
         </div>
 
-        {/* On hand at home */}
-        <div>
-          <label style={{ display: "block", fontSize: 10, textTransform: "uppercase", letterSpacing: 1.5, color: MUTED, fontWeight: 700, marginBottom: 4 }}>
-            🏠 On hand at home {draftOnHand < LOW_STOCK_THRESHOLD && <span style={{ color: "#f87171", marginLeft: 6 }}>⚠ Low — will be on list</span>}
-          </label>
-          <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
-            <button
-              type="button"
-              onClick={() => setDraftOnHand(Math.max(0, draftOnHand - 1))}
-              style={{ width: 42, height: 42, borderRadius: 8, background: BG, border: `1px solid ${BORDER}`, color: TEXT, fontSize: 20, fontWeight: 700, cursor: "pointer" }}
-            >−</button>
-            <input
-              type="number"
-              min={0}
-              value={draftOnHand}
-              onChange={e => setDraftOnHand(Math.max(0, parseInt(e.target.value) || 0))}
-              style={{ flex: 1, padding: "10px", background: BG, border: `1px solid ${draftOnHand < LOW_STOCK_THRESHOLD ? "#f87171" : BORDER}`, color: TEXT, borderRadius: 8, fontSize: 18, fontWeight: 800, textAlign: "center", outline: "none", boxSizing: "border-box" }}
-            />
-            <button
-              type="button"
-              onClick={() => setDraftOnHand(draftOnHand + 1)}
-              style={{ width: 42, height: 42, borderRadius: 8, background: BG, border: `1px solid ${BORDER}`, color: TEXT, fontSize: 20, fontWeight: 700, cursor: "pointer" }}
-            >+</button>
+        {/* On hand + Minimum threshold */}
+        <div style={{ display: "flex", gap: 8 }}>
+          <div style={{ flex: 1 }}>
+            <label style={{ display: "block", fontSize: 10, textTransform: "uppercase", letterSpacing: 1.5, color: MUTED, fontWeight: 700, marginBottom: 4 }}>
+              🏠 At home
+            </label>
+            <div style={{ display: "flex", gap: 4, alignItems: "center" }}>
+              <button
+                type="button"
+                onClick={() => setDraftOnHand(Math.max(0, draftOnHand - 1))}
+                style={{ width: 36, height: 42, borderRadius: 8, background: BG, border: `1px solid ${BORDER}`, color: TEXT, fontSize: 18, fontWeight: 700, cursor: "pointer" }}
+              >−</button>
+              <input
+                type="number"
+                min={0}
+                value={draftOnHand}
+                onChange={e => setDraftOnHand(Math.max(0, parseInt(e.target.value) || 0))}
+                style={{ flex: 1, padding: "10px", background: BG, border: `1px solid ${draftOnHand < draftMin ? "#f87171" : BORDER}`, color: TEXT, borderRadius: 8, fontSize: 18, fontWeight: 800, textAlign: "center", outline: "none", boxSizing: "border-box", minWidth: 0 }}
+              />
+              <button
+                type="button"
+                onClick={() => setDraftOnHand(draftOnHand + 1)}
+                style={{ width: 36, height: 42, borderRadius: 8, background: BG, border: `1px solid ${BORDER}`, color: TEXT, fontSize: 18, fontWeight: 700, cursor: "pointer" }}
+              >+</button>
+            </div>
+          </div>
+          <div style={{ flex: 1 }}>
+            <label style={{ display: "block", fontSize: 10, textTransform: "uppercase", letterSpacing: 1.5, color: MUTED, fontWeight: 700, marginBottom: 4 }}>
+              ⚠ Min. threshold
+            </label>
+            <div style={{ display: "flex", gap: 4, alignItems: "center" }}>
+              <button
+                type="button"
+                onClick={() => setDraftMin(Math.max(0, draftMin - 1))}
+                style={{ width: 36, height: 42, borderRadius: 8, background: BG, border: `1px solid ${BORDER}`, color: TEXT, fontSize: 18, fontWeight: 700, cursor: "pointer" }}
+              >−</button>
+              <input
+                type="number"
+                min={0}
+                value={draftMin}
+                onChange={e => setDraftMin(Math.max(0, parseInt(e.target.value) || 0))}
+                style={{ flex: 1, padding: "10px", background: BG, border: `1px solid ${BORDER}`, color: TEXT, borderRadius: 8, fontSize: 18, fontWeight: 800, textAlign: "center", outline: "none", boxSizing: "border-box", minWidth: 0 }}
+              />
+              <button
+                type="button"
+                onClick={() => setDraftMin(draftMin + 1)}
+                style={{ width: 36, height: 42, borderRadius: 8, background: BG, border: `1px solid ${BORDER}`, color: TEXT, fontSize: 18, fontWeight: 700, cursor: "pointer" }}
+              >+</button>
+            </div>
           </div>
         </div>
+        {draftOnHand < draftMin && (
+          <p style={{ margin: 0, fontSize: 11, color: "#f87171", fontWeight: 600 }}>
+            ⚠ Below threshold — will be on the shopping list.
+          </p>
+        )}
 
         <div style={{ display: "flex", gap: 8, marginTop: 4 }}>
           <button
@@ -810,7 +863,7 @@ function PantryRow({ item, onToggle, onPatch, onDelete, onAdjustOnHand }: {
         </div>
         <div
           onClick={e => e.stopPropagation()}
-          style={{ display: "flex", alignItems: "center", gap: 4, fontSize: 11, color: MUTED }}
+          style={{ display: "flex", alignItems: "center", gap: 4, fontSize: 11, color: MUTED, flexWrap: "wrap" }}
         >
           <span style={{ fontSize: 10, opacity: 0.7 }}>🏠 At home:</span>
           <button
@@ -827,6 +880,9 @@ function PantryRow({ item, onToggle, onPatch, onDelete, onAdjustOnHand }: {
             aria-label="Increment"
             style={{ width: 24, height: 24, borderRadius: 6, background: BG, border: `1px solid ${BORDER}`, color: TEXT, fontSize: 14, cursor: "pointer" }}
           >+</button>
+          <span style={{ fontSize: 10, opacity: 0.7, marginLeft: 4 }}>
+            min <span style={{ fontWeight: 700, color: TEXT }}>{item.minAtHome}</span>
+          </span>
         </div>
       </div>
 
@@ -1019,6 +1075,73 @@ function SendModal({ items, onClose }: { items: Item[]; onClose: () => void }) {
           <div ref={statementRef} style={{ width: 560, background: "#ffffff", fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" }}>
             <StatementBody grouped={grouped} totalCount={items.length} dateStr={todayLong} note={note} />
           </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// Group items by store for the statement view. Publix → Costco → Kosher → Any.
+function groupByStore(items: Item[]): { store: string; items: Item[] }[] {
+  const grouped: { store: string; items: Item[] }[] = [];
+  const seen = new Set<string>();
+  for (const it of items) {
+    const key = it.store || "Any";
+    if (!seen.has(key)) { seen.add(key); grouped.push({ store: key, items: [] }); }
+    grouped.find(g => g.store === key)!.items.push(it);
+  }
+  grouped.sort((a, b) => {
+    const rank = (s: string) => s === "Publix" ? 0 : s === "Costco" ? 1 : s === "Kosher" ? 2 : s === "Any" ? 99 : 50;
+    return rank(a.store) - rank(b.store);
+  });
+  return grouped;
+}
+
+// Preview modal — read-only view of the auto-generated shopping list.
+// Same statement-style rendering as SendModal, but no recipient fields;
+// user clicks "Send to WhatsApp" to hand off to the send flow.
+function PreviewModal({ items, onClose, onSend }: { items: Item[]; onClose: () => void; onSend: () => void }) {
+  const dateStr = new Date().toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric", year: "numeric" });
+  const grouped = groupByStore(items);
+  return (
+    <div
+      onClick={onClose}
+      style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.7)", zIndex: 100, display: "flex", alignItems: "flex-start", justifyContent: "center", padding: "24px 12px", overflowY: "auto" }}
+    >
+      <div
+        onClick={e => e.stopPropagation()}
+        style={{ background: CARD, border: `1px solid ${BORDER}`, borderRadius: 14, maxWidth: 620, width: "100%", padding: 18 }}
+      >
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14 }}>
+          <div>
+            <h2 style={{ margin: 0, fontSize: 16, fontWeight: 700, color: TEXT }}>👁 Shopping list preview</h2>
+            <p style={{ margin: "2px 0 0", fontSize: 11, color: MUTED }}>
+              Auto-generated from items below their minimum threshold. {items.length} item{items.length === 1 ? "" : "s"}.
+            </p>
+          </div>
+          <button onClick={onClose} style={{ background: "transparent", border: "none", color: MUTED, fontSize: 22, cursor: "pointer", padding: "0 4px" }}>×</button>
+        </div>
+
+        <div style={{ border: `1px solid ${BORDER}`, borderRadius: 10, overflow: "hidden", background: "#f1f5f9", maxHeight: 500, overflowY: "auto" }}>
+          <div style={{ background: "#ffffff", fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" }}>
+            <StatementBody grouped={grouped} totalCount={items.length} dateStr={dateStr} note="" />
+          </div>
+        </div>
+
+        <div style={{ display: "flex", gap: 8, marginTop: 14 }}>
+          <button
+            onClick={onSend}
+            disabled={items.length === 0}
+            style={{ flex: 1, padding: "12px", background: WA_GREEN, color: "#fff", border: "none", borderRadius: 10, fontWeight: 800, fontSize: 14, cursor: "pointer", opacity: items.length === 0 ? 0.5 : 1 }}
+          >
+            💬 Send to WhatsApp
+          </button>
+          <button
+            onClick={onClose}
+            style={{ padding: "12px 18px", background: "transparent", color: MUTED, border: `1px solid ${BORDER}`, borderRadius: 10, fontSize: 13, cursor: "pointer" }}
+          >
+            Close
+          </button>
         </div>
       </div>
     </div>
