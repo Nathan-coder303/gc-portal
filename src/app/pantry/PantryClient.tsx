@@ -640,6 +640,43 @@ export default function PantryClient() {
   );
 }
 
+// Compact labeled stepper (− [value] +) used for on-hand / min-threshold.
+// Fixed content widths so it never gets squeezed weird by flex siblings.
+function StepperField({ label, value, onChange, warn }: { label: string; value: number; onChange: (n: number) => void; warn?: boolean }) {
+  return (
+    <div style={{ flex: "1 1 160px", minWidth: 160 }}>
+      <label style={{ display: "block", fontSize: 10, textTransform: "uppercase", letterSpacing: 1.5, color: MUTED, fontWeight: 700, marginBottom: 4 }}>
+        {label}
+      </label>
+      <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+        <button
+          type="button"
+          onClick={() => onChange(Math.max(0, value - 1))}
+          style={{ width: 40, height: 44, borderRadius: 8, background: BG, border: `1px solid ${BORDER}`, color: TEXT, fontSize: 20, fontWeight: 700, cursor: "pointer", flexShrink: 0, boxSizing: "border-box", padding: 0 }}
+        >−</button>
+        <input
+          type="number"
+          min={0}
+          value={value}
+          onChange={e => onChange(Math.max(0, parseInt(e.target.value) || 0))}
+          style={{
+            flex: 1, minWidth: 0, height: 44, padding: "0 8px",
+            background: BG,
+            border: `1px solid ${warn ? "#f87171" : BORDER}`,
+            color: TEXT, borderRadius: 8, fontSize: 20, fontWeight: 800,
+            textAlign: "center", outline: "none", boxSizing: "border-box",
+          }}
+        />
+        <button
+          type="button"
+          onClick={() => onChange(value + 1)}
+          style={{ width: 40, height: 44, borderRadius: 8, background: BG, border: `1px solid ${BORDER}`, color: TEXT, fontSize: 20, fontWeight: 700, cursor: "pointer", flexShrink: 0, boxSizing: "border-box", padding: 0 }}
+        >+</button>
+      </div>
+    </div>
+  );
+}
+
 function PantryRow({ item, onToggle, onPatch, onDelete, onAdjustOnHand }: {
   item: Item;
   onToggle: (id: string, done: boolean) => void;
@@ -736,56 +773,19 @@ function PantryRow({ item, onToggle, onPatch, onDelete, onAdjustOnHand }: {
           </div>
         </div>
 
-        {/* On hand + Minimum threshold */}
-        <div style={{ display: "flex", gap: 8 }}>
-          <div style={{ flex: 1 }}>
-            <label style={{ display: "block", fontSize: 10, textTransform: "uppercase", letterSpacing: 1.5, color: MUTED, fontWeight: 700, marginBottom: 4 }}>
-              🏠 At home
-            </label>
-            <div style={{ display: "flex", gap: 4, alignItems: "center" }}>
-              <button
-                type="button"
-                onClick={() => setDraftOnHand(Math.max(0, draftOnHand - 1))}
-                style={{ width: 36, height: 42, borderRadius: 8, background: BG, border: `1px solid ${BORDER}`, color: TEXT, fontSize: 18, fontWeight: 700, cursor: "pointer" }}
-              >−</button>
-              <input
-                type="number"
-                min={0}
-                value={draftOnHand}
-                onChange={e => setDraftOnHand(Math.max(0, parseInt(e.target.value) || 0))}
-                style={{ flex: 1, padding: "10px", background: BG, border: `1px solid ${draftOnHand < draftMin ? "#f87171" : BORDER}`, color: TEXT, borderRadius: 8, fontSize: 18, fontWeight: 800, textAlign: "center", outline: "none", boxSizing: "border-box", minWidth: 0 }}
-              />
-              <button
-                type="button"
-                onClick={() => setDraftOnHand(draftOnHand + 1)}
-                style={{ width: 36, height: 42, borderRadius: 8, background: BG, border: `1px solid ${BORDER}`, color: TEXT, fontSize: 18, fontWeight: 700, cursor: "pointer" }}
-              >+</button>
-            </div>
-          </div>
-          <div style={{ flex: 1 }}>
-            <label style={{ display: "block", fontSize: 10, textTransform: "uppercase", letterSpacing: 1.5, color: MUTED, fontWeight: 700, marginBottom: 4 }}>
-              ⚠ Min. threshold
-            </label>
-            <div style={{ display: "flex", gap: 4, alignItems: "center" }}>
-              <button
-                type="button"
-                onClick={() => setDraftMin(Math.max(0, draftMin - 1))}
-                style={{ width: 36, height: 42, borderRadius: 8, background: BG, border: `1px solid ${BORDER}`, color: TEXT, fontSize: 18, fontWeight: 700, cursor: "pointer" }}
-              >−</button>
-              <input
-                type="number"
-                min={0}
-                value={draftMin}
-                onChange={e => setDraftMin(Math.max(0, parseInt(e.target.value) || 0))}
-                style={{ flex: 1, padding: "10px", background: BG, border: `1px solid ${BORDER}`, color: TEXT, borderRadius: 8, fontSize: 18, fontWeight: 800, textAlign: "center", outline: "none", boxSizing: "border-box", minWidth: 0 }}
-              />
-              <button
-                type="button"
-                onClick={() => setDraftMin(draftMin + 1)}
-                style={{ width: 36, height: 42, borderRadius: 8, background: BG, border: `1px solid ${BORDER}`, color: TEXT, fontSize: 18, fontWeight: 700, cursor: "pointer" }}
-              >+</button>
-            </div>
-          </div>
+        {/* On hand + Minimum threshold — compact, symmetric, no overflow */}
+        <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
+          <StepperField
+            label="🏠 At home"
+            value={draftOnHand}
+            onChange={setDraftOnHand}
+            warn={draftOnHand < draftMin}
+          />
+          <StepperField
+            label="⚠ Min. threshold"
+            value={draftMin}
+            onChange={setDraftMin}
+          />
         </div>
         {draftOnHand < draftMin && (
           <p style={{ margin: 0, fontSize: 11, color: "#f87171", fontWeight: 600 }}>
