@@ -77,9 +77,28 @@ function saveSections(secs: NSection[]) {
   localStorage.setItem(SECTIONS_KEY, JSON.stringify(secs));
 }
 
+// Inject the client name AND make sure the message ends with the full estimate
+// signature. Templates historically ended with a short "Best,\n[Company Name]"
+// closer; strip anything that looks like a closer + swap in FULL_SIGNATURE so
+// every nurturing email matches the signature we use on estimate emails.
 function fillBody(body: string, clientName: string) {
-  return body.replace(/\[Client Name\]/g, clientName);
+  let out = body
+    .replace(/\[Client Name\]/g, clientName)
+    .replace(/\[Company Name\]/g, "MIBH Construction")
+    .replace(/\nYour project manager: \[PM Name \+ Phone\]\n/g, "\n");
+
+  // Swap "Best,\n<one line>" (or similar closers) at the end with the full signature.
+  const closerMatch = out.match(/\n(Best,|Best Regards,|Thank you for your patience,|Thank you again,|Thank you for trusting us with your home\.)\n[^\n]+\s*$/i);
+  if (closerMatch) {
+    out = out.slice(0, closerMatch.index).trimEnd() + "\n\n" + FULL_SIGNATURE;
+  } else if (!out.includes("Mike Baruh")) {
+    // No recognized closer and no signature yet — append.
+    out = out.trimEnd() + "\n\n" + FULL_SIGNATURE;
+  }
+  return out;
 }
+
+const DEFAULT_CC = "mikebaruh@gmail.com";
 
 function newId() {
   return `custom-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
@@ -95,6 +114,8 @@ export default function NurturingEmailTab({
   const [sections, setSections] = useState<NSection[]>([]);
   const [selectedId, setSelectedId] = useState("");
   const [toEmail, setToEmail] = useState(clientEmail ?? "");
+  const [ccEmail, setCcEmail] = useState(DEFAULT_CC);
+  const [bccEmail, setBccEmail] = useState("");
   const [subject, setSubject] = useState("");
   const [body, setBody] = useState("");
   const [sending, setSending] = useState(false);
@@ -257,10 +278,20 @@ export default function NurturingEmailTab({
       const res = await fetch(`/api/${companyId}/clients/${clientId}/send-nurturing`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ subject, body, toEmail }),
+        body: JSON.stringify({ subject, body, toEmail, cc: ccEmail, bcc: bccEmail }),
       });
       if (!res.ok) { const d = await res.json(); throw new Error(d.error ?? "Failed"); }
       setSendStatus("sent");
+      // Auto-close the compose window on success — matches the estimate/CO
+      // email flows. Keep a "sent" confirmation visible for a moment first.
+      setTimeout(() => {
+        setSelectedId("");
+        setSubject("");
+        setBody("");
+        setCcEmail(DEFAULT_CC);
+        setBccEmail("");
+        setSendStatus("");
+      }, 1200);
     } catch (err: unknown) {
       setSendError(err instanceof Error ? err.message : "Failed to send");
       setSendStatus("error");
@@ -426,6 +457,22 @@ export default function NurturingEmailTab({
           <div>
             <label className="block text-xs mb-1 font-medium" style={{ color: "#8b949e" }}>To</label>
             <input type="email" value={toEmail} onChange={e => setToEmail(e.target.value)} style={INPUT_STYLE} placeholder="client@email.com" />
+          </div>
+
+          {/* CC + BCC (side by side on desktop, stacked on mobile) */}
+          <div className="grid gap-3" style={{ gridTemplateColumns: "1fr 1fr" }}>
+            <div>
+              <label className="block text-xs mb-1 font-medium" style={{ color: "#8b949e" }}>
+                Cc <span className="text-[10px]" style={{ color: "#484f58" }}>(comma-separated)</span>
+              </label>
+              <input type="text" value={ccEmail} onChange={e => setCcEmail(e.target.value)} style={INPUT_STYLE} placeholder="mikebaruh@gmail.com" />
+            </div>
+            <div>
+              <label className="block text-xs mb-1 font-medium" style={{ color: "#8b949e" }}>
+                Bcc <span className="text-[10px]" style={{ color: "#484f58" }}>(comma-separated)</span>
+              </label>
+              <input type="text" value={bccEmail} onChange={e => setBccEmail(e.target.value)} style={INPUT_STYLE} placeholder="optional" />
+            </div>
           </div>
 
           {/* Subject */}

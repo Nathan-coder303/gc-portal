@@ -33,7 +33,9 @@ export async function POST(
     return NextResponse.json({ error: "Client has no email address" }, { status: 400 });
   }
 
-  const { subject, body, toEmail } = await req.json();
+  const { subject, body, toEmail, cc, bcc } = await req.json() as {
+    subject: string; body: string; toEmail?: string; cc?: string; bcc?: string;
+  };
   const to = toEmail || client.email;
 
   const oauth2Client = getOAuthClient();
@@ -51,6 +53,8 @@ ${body.split("\n").map((line: string) => line.trim() === "" ? "<br>" : `<p style
   const mimeLines = [
     `From: ${fromEmail}`,
     `To: ${to}`,
+    ...(cc?.trim() ? [`Cc: ${cc.trim()}`] : []),
+    ...(bcc?.trim() ? [`Bcc: ${bcc.trim()}`] : []),
     `Subject: ${subject}`,
     `MIME-Version: 1.0`,
     `Content-Type: multipart/alternative; boundary="${boundary}"`,
