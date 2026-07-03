@@ -80,5 +80,23 @@ ${body.split("\n").map((line: string) => line.trim() === "" ? "<br>" : `<p style
     return NextResponse.json({ error: "Failed to send email", detail: String(err) }, { status: 500 });
   }
 
+  // Log to Comms tab — same table the manual email composer writes to, so
+  // nurturing sends show up in the client's Comms history.
+  await prisma.clientEmail.create({
+    data: {
+      clientId: params.clientId,
+      companyId: params.companyId,
+      fromEmail,
+      to,
+      cc: cc?.trim() || null,
+      bcc: bcc?.trim() || null,
+      subject,
+      body,
+      sentBy: session.user?.name ?? session.user?.email ?? null,
+      context: "nurturing",
+      attachments: null,
+    },
+  });
+
   return NextResponse.json({ success: true });
 }
