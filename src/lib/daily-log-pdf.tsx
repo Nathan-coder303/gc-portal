@@ -48,6 +48,10 @@ const s = StyleSheet.create({
   photoCell: { flex: 1, borderRadius: 6, borderWidth: 4, borderColor: "#ffffff", overflow: "hidden", backgroundColor: CARD },
   photoImg: { width: "100%", height: 190 },
   photoName: { fontSize: 6.5, color: MUTED, textAlign: "center", paddingVertical: 3, paddingHorizontal: 2 },
+  // Video links
+  videoRow: { flexDirection: "row", alignItems: "center", gap: 6, marginBottom: 6 },
+  videoBadge: { fontSize: 6.5, fontFamily: "Helvetica-Bold", color: DARK, backgroundColor: GOLD, paddingHorizontal: 5, paddingVertical: 2, borderRadius: 3 },
+  videoLink: { flex: 1, fontSize: 8.5, color: GOLD, textDecoration: "underline" },
   // List item
   listItem: { flexDirection: "row", marginBottom: 4 },
   bullet: { width: 12, color: GOLD, fontSize: 8.5 },
@@ -146,7 +150,7 @@ function Section({ title, children }: { title: string; children: React.ReactNode
   );
 }
 
-function DailyLogDocument({ log, company, client, photoDataUrls }: { log: DailyLogData; company: CompanyInfo; client: ClientInfo; photoDataUrls?: { name: string; dataUrl: string; proxyUrl?: string }[] }) {
+function DailyLogDocument({ log, company, client, photoDataUrls, videoLinks }: { log: DailyLogData; company: CompanyInfo; client: ClientInfo; photoDataUrls?: { name: string; dataUrl: string; proxyUrl?: string }[]; videoLinks?: { name: string; proxyUrl?: string }[] }) {
   const logoPath = path.join(process.cwd(), "public", "logo.png");
   const date = new Date(log.arrivalDate);
   const TZ = "America/New_York";
@@ -430,6 +434,28 @@ function DailyLogDocument({ log, company, client, photoDataUrls }: { log: DailyL
           ))
         )}
 
+        {/* Site Videos — clickable links (a PDF can't embed playable video) */}
+        {videoLinks && videoLinks.length > 0 && (
+          <View style={s.section} break>
+            <View style={{ flexDirection: "row", alignItems: "baseline", marginBottom: 6 }}>
+              <Text style={[s.sectionTitle, { marginBottom: 0 }]}>Site Videos</Text>
+              <Text style={[s.sectionTitle, { marginBottom: 0, marginLeft: 6, color: MUTED }]}>(click to play or download)</Text>
+            </View>
+            <View style={s.sectionCard}>
+              {videoLinks.map((v, i) => (
+                <View key={i} style={s.videoRow}>
+                  <Text style={s.videoBadge}>VIDEO</Text>
+                  {v.proxyUrl ? (
+                    <Link src={v.proxyUrl} style={s.videoLink}>{v.name}</Link>
+                  ) : (
+                    <Text style={[s.videoLink, { color: WHITE, textDecoration: "none" }]}>{v.name}</Text>
+                  )}
+                </View>
+              ))}
+            </View>
+          </View>
+        )}
+
         {/* Footer */}
         <View style={s.footer} fixed>
           <Text style={s.footerText}>{company.name} · Daily Log · {dateStr}</Text>
@@ -488,6 +514,14 @@ export async function renderDailyLogPdf(
   const imageAttachments = rawAttachments.filter(a => a.mimeType?.startsWith("image/"));
   const photoTotal = imageAttachments.length;
 
+  // Videos can't play inside a PDF — list them as clickable links to play/download.
+  const videoLinks = rawAttachments
+    .filter(a => a.mimeType?.startsWith("video/"))
+    .map(a => ({
+      name: a.name,
+      proxyUrl: attachmentBaseUrl ? `${attachmentBaseUrl}/${a.id}` : undefined,
+    }));
+
   const photoDataUrls: { name: string; dataUrl: string; proxyUrl?: string }[] = [];
   await Promise.all(
     imageAttachments.map(async (a) => {
@@ -502,7 +536,7 @@ export async function renderDailyLogPdf(
   const photoLoaded = photoDataUrls.length;
 
   const buf = await renderToBuffer(
-    <DailyLogDocument log={log} company={company} client={client} photoDataUrls={photoDataUrls} />
+    <DailyLogDocument log={log} company={company} client={client} photoDataUrls={photoDataUrls} videoLinks={videoLinks} />
   );
   return { buffer: Buffer.from(buf), photoTotal, photoLoaded };
 }
