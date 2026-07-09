@@ -274,6 +274,7 @@ model Client {
   subAssignments    SubAssignment[]
   clientSubs        ClientSub[]
   materialPurchases MaterialPurchase[]
+  permitFees        PermitFee[]
   portalUsers       User[]             @relation("PortalUser")
   portalPhotos      ClientPortalPhoto[]
   portalDocs        ClientPortalDocument[]
@@ -368,6 +369,20 @@ model MaterialPurchase {
   amount      Decimal  @db.Decimal(14, 2)
   description String?
   purchasedAt DateTime
+  notes       String?
+  createdAt   DateTime @default(now())
+  @@index([clientId])
+  @@index([companyId])
+}
+
+model PermitFee {
+  id          String   @id @default(cuid())
+  companyId   String
+  clientId    String
+  client      Client   @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  description String?
+  amount      Decimal  @db.Decimal(14, 2)
+  incurredAt  DateTime
   notes       String?
   createdAt   DateTime @default(now())
   @@index([clientId])

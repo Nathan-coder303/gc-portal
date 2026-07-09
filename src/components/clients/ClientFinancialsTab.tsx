@@ -17,6 +17,7 @@ type EstimateDivision = { divisionId: string; divisionName: string; csiCode: str
 type ClientSub = { id: string; subContractorId: string | null; subName: string; scope: string | null; division: string | null; contractAmount: number; notes: string | null; payments: SubPayment[]; scopeItems: ScopeItem[] };
 type Supplier = { id: string; name: string };
 type MaterialPurchase = { id: string; supplierId: string; supplierName: string; amount: number; description: string | null; purchasedAt: string; notes: string | null };
+type PermitFee = { id: string; amount: number; description: string | null; incurredAt: string; notes: string | null };
 type InvoicePayment = { id: string; amount: number };
 type ClientInvoice = { id: string; amount: number; status: string; pct?: number | string | null; payments: InvoicePayment[] };
 type ChangeOrderItem = { id: string; name: string; csiCode: string | null; divisionName: string; qty: string | null; unitCost: string | null; markupPct: string | null };
@@ -936,6 +937,7 @@ export default function ClientFinancialsTab({
   const [allSubs, setAllSubs] = useState<SubContractor[]>([]);
   const [suppliers, setSuppliers] = useState<Supplier[]>([]);
   const [materials, setMaterials] = useState<MaterialPurchase[]>([]);
+  const [permitFees, setPermitFees] = useState<PermitFee[]>([]);
   const [estimateDivisions, setEstimateDivisions] = useState<EstimateDivision[]>([]);
   const [lienReleases, setLienReleases] = useState<LienRelease[]>([]);
   const [invoices, setInvoices] = useState<ClientInvoice[]>([]);
@@ -945,6 +947,7 @@ export default function ClientFinancialsTab({
   // Collapsible section state — collapsed by default
   const [scopeRemainingOpen, setScopeRemainingOpen] = useState(false);
   const [subsOpen, setSubsOpen] = useState(false);
+  const [permitFeesOpen, setPermitFeesOpen] = useState(false);
   const [materialsOpen, setMaterialsOpen] = useState(false);
 
   // Add sub form
@@ -1007,24 +1010,34 @@ export default function ClientFinancialsTab({
   const [addingMatForm, setAddingMatForm] = useState(false);
   const [savingMat, setSavingMat] = useState(false);
 
+  // Add permit/engineering fee form
+  const [permitAmount, setPermitAmount] = useState("");
+  const [permitDesc, setPermitDesc] = useState("");
+  const [permitDate, setPermitDate] = useState(today());
+  const [permitNotes, setPermitNotes] = useState("");
+  const [addingPermitForm, setAddingPermitForm] = useState(false);
+  const [savingPermit, setSavingPermit] = useState(false);
+
   const load = useCallback(async () => {
-    const [subsRes, allSubsRes, suppliersRes, matsRes, itemsRes, lienRes, invRes, coRes] = await Promise.all([
+    const [subsRes, allSubsRes, suppliersRes, matsRes, permitsRes, itemsRes, lienRes, invRes, coRes] = await Promise.all([
       fetch(`/api/${companyId}/clients/${clientId}/financials/subs`),
       fetch(`/api/${companyId}/subs`),
       fetch(`/api/${companyId}/suppliers`),
       fetch(`/api/${companyId}/clients/${clientId}/financials/materials`),
+      fetch(`/api/${companyId}/clients/${clientId}/financials/permit-fees`),
       fetch(`/api/${companyId}/clients/${clientId}/estimate-items`),
       fetch(`/api/${companyId}/clients/${clientId}/lien-releases`),
       fetch(`/api/${companyId}/clients/${clientId}/invoices`),
       fetch(`/api/${companyId}/clients/${clientId}/change-orders`),
     ]);
-    const [subs, allSubsList, suppliersList, matsList, itemsList, lienList, invList, coList] = await Promise.all([
-      subsRes.json(), allSubsRes.json(), suppliersRes.json(), matsRes.json(), itemsRes.json(), lienRes.json(), invRes.json(), coRes.json(),
+    const [subs, allSubsList, suppliersList, matsList, permitsList, itemsList, lienList, invList, coList] = await Promise.all([
+      subsRes.json(), allSubsRes.json(), suppliersRes.json(), matsRes.json(), permitsRes.json(), itemsRes.json(), lienRes.json(), invRes.json(), coRes.json(),
     ]);
     setClientSubs(subs);
     setAllSubs(Array.isArray(allSubsList) ? allSubsList.sort((a: SubContractor, b: SubContractor) => a.name.localeCompare(b.name)) : []);
     setSuppliers(Array.isArray(suppliersList) ? suppliersList : []);
     setMaterials(Array.isArray(matsList) ? matsList : []);
+    setPermitFees(Array.isArray(permitsList) ? permitsList : []);
     setEstimateDivisions(Array.isArray(itemsList) ? itemsList : []);
     setLienReleases(Array.isArray(lienList) ? lienList : []);
     setInvoices(Array.isArray(invList) ? invList : []);
@@ -1094,6 +1107,28 @@ export default function ClientFinancialsTab({
   async function deleteMaterial(id: string) {
     await fetch(`/api/${companyId}/clients/${clientId}/financials/materials?id=${id}`, { method: "DELETE" });
     setMaterials(prev => prev.filter(p => p.id !== id));
+  }
+
+  async function addPermitFee() {
+    if (!permitAmount || isNaN(Number(permitAmount))) return;
+    setSavingPermit(true);
+    try {
+      const res = await fetch(`/api/${companyId}/clients/${clientId}/financials/permit-fees`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ amount: Math.abs(Number(permitAmount)), description: permitDesc.trim() || null, incurredAt: permitDate, notes: permitNotes || null }),
+      });
+      if (res.ok) {
+        const fee = await res.json();
+        setPermitFees(prev => [fee, ...prev]);
+        setPermitAmount(""); setPermitDesc(""); setPermitDate(today()); setPermitNotes(""); setAddingPermitForm(false);
+      }
+    } finally { setSavingPermit(false); }
+  }
+
+  async function deletePermitFee(id: string) {
+    await fetch(`/api/${companyId}/clients/${clientId}/financials/permit-fees?id=${id}`, { method: "DELETE" });
+    setPermitFees(prev => prev.filter(f => f.id !== id));
   }
 
   function handleReleaseCreated(r: LienRelease) {
@@ -1207,7 +1242,8 @@ export default function ClientFinancialsTab({
   const totalLaborPaid = clientSubs.reduce((s, sub) => s + sub.payments.reduce((ps, p) => ps + p.amount, 0), 0);
   const totalLaborBalance = totalContracted - totalLaborPaid;
   const totalMaterials = materials.reduce((s, p) => s + p.amount, 0);
-  const totalExpenses = totalContracted + totalMaterials;
+  const totalPermits = permitFees.reduce((s, f) => s + f.amount, 0);
+  const totalExpenses = totalContracted + totalMaterials + totalPermits;
   const netProfit = contractTotal - totalExpenses;
   // Client statement totals
   function coTotal(co: ChangeOrder): number {
@@ -1344,12 +1380,13 @@ ${paymentRows}
       </div>
 
       {/* Sub breakdown under summary */}
-      <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
+      <div className="grid grid-cols-2 sm:grid-cols-6 gap-3">
         {[
           { label: "Sub Contracted", value: totalContracted, color: "#C9A84C" },
           { label: "Labor Paid", value: totalLaborPaid, color: "#22c55e" },
           { label: "Balance Owed to Subs", value: totalLaborBalance, color: "#f85149" },
           { label: "Balance Owed to MIBH", value: clientBalance, color: clientBalance < totalLaborBalance ? "#f85149" : "#22c55e", warn: clientBalance < totalLaborBalance, clickable: true },
+          { label: "Permits & Eng.", value: totalPermits, color: "#a371f7" },
           { label: "Materials", value: totalMaterials, color: "#3b82f6" },
         ].map(card => {
           const text = `$${fmt(card.value)}`;
@@ -1581,7 +1618,88 @@ ${paymentRows}
         )}
       </div>
 
-      {/* ── Section 2: Materials / COGS ── */}
+      {/* ── Section 2: Permit & Engineering Fees ── */}
+      <div className="space-y-4">
+        <div className="flex items-center justify-between gap-2">
+          <button
+            onClick={() => setPermitFeesOpen(v => !v)}
+            className="flex items-center gap-2 flex-1 text-left"
+          >
+            <span className="text-xs" style={{ color: "#a371f7" }}>{permitFeesOpen ? "▼" : "▶"}</span>
+            <h2 className="text-sm font-bold uppercase tracking-widest" style={{ color: "#a371f7" }}>Permit &amp; Engineering Fees</h2>
+            {permitFees.length > 0 && (
+              <span className="text-xs font-bold px-2 py-0.5 rounded-full" style={{ background: "#a371f722", color: "#a371f7", border: "1px solid #a371f744" }}>{permitFees.length}</span>
+            )}
+          </button>
+          {permitFeesOpen && !addingPermitForm && (
+            <button onClick={() => setAddingPermitForm(true)} className="px-3 py-1.5 rounded-xl text-xs font-semibold shrink-0" style={{ background: "#a371f722", color: "#a371f7", border: "1px solid #a371f744" }}>+ Add Fee</button>
+          )}
+        </div>
+
+        {permitFeesOpen && addingPermitForm && (
+          <div className="rounded-2xl p-5 space-y-3" style={{ background: "#0d1421", border: "1px solid #a371f744" }}>
+            <div className="text-xs font-bold uppercase tracking-widest" style={{ color: "#a371f7" }}>Add Permit / Engineering Fee</div>
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="text-xs font-semibold mb-1 block" style={{ color: "#8b949e" }}>Amount</label>
+                <FormulaInput value={permitAmount} onChange={n => setPermitAmount(String(n))} placeholder="0.00 or =100+50" className="w-full rounded-lg px-3 py-2 text-sm" style={{ background: "#0d1117", border: "1px solid #30373f", color: "#e6edf3" }} />
+              </div>
+              <div>
+                <label className="text-xs font-semibold mb-1 block" style={{ color: "#8b949e" }}>Date</label>
+                <DatePickerInput value={permitDate} onChange={setPermitDate} />
+              </div>
+            </div>
+            <div>
+              <label className="text-xs font-semibold mb-1 block" style={{ color: "#8b949e" }}>Description</label>
+              <input value={permitDesc} onChange={e => setPermitDesc(e.target.value)} placeholder="e.g. City building permit, structural engineering" className="w-full rounded-lg px-3 py-2 text-sm" style={{ background: "#0d1117", border: "1px solid #30373f", color: "#e6edf3" }} />
+            </div>
+            <input value={permitNotes} onChange={e => setPermitNotes(e.target.value)} placeholder="Notes (optional)" className="w-full rounded-lg px-3 py-2 text-sm" style={{ background: "#0d1117", border: "1px solid #30373f", color: "#e6edf3" }} />
+            <div className="flex gap-2">
+              <button
+                onClick={addPermitFee}
+                disabled={savingPermit || !permitAmount}
+                className="flex-1 py-2 rounded-xl text-sm font-bold disabled:opacity-50"
+                style={{ background: "#a371f7", color: "#fff" }}
+              >
+                {savingPermit ? "Saving…" : "Add Fee"}
+              </button>
+              <button onClick={() => setAddingPermitForm(false)} className="px-4 py-2 rounded-xl text-sm" style={{ background: "#30373f", color: "#8b949e" }}>Cancel</button>
+            </div>
+          </div>
+        )}
+
+        {permitFeesOpen && permitFees.length === 0 && !addingPermitForm && (
+          <p className="text-sm text-center py-6" style={{ color: "#8b949e" }}>No permit or engineering fees yet.</p>
+        )}
+
+        {permitFeesOpen && permitFees.length > 0 && (
+          <div className="rounded-2xl p-5 space-y-3" style={{ background: "#161b22", border: "1px solid #30373f" }}>
+            <div className="flex items-center justify-between">
+              <div className="text-sm font-bold" style={{ color: "#e6edf3" }}>Fees</div>
+              <div className="text-sm font-bold px-3 py-1 rounded-lg" style={{ background: "#a371f722", color: "#a371f7", border: "1px solid #a371f733" }}>
+                ${fmt(totalPermits)}
+              </div>
+            </div>
+            <div className="space-y-1">
+              {permitFees.map(f => (
+                <div key={f.id} className="flex items-center justify-between gap-2 rounded-xl px-3 py-2" style={{ background: "#0d1117", border: "1px solid #21262d" }}>
+                  <div className="flex items-center gap-3 flex-1 min-w-0">
+                    <span className="text-xs font-bold" style={{ color: "#a371f7" }}>${fmt(f.amount)}</span>
+                    <span className="text-xs" style={{ color: "#8b949e" }}>{new Date(f.incurredAt + "T00:00:00").toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}</span>
+                    {f.description && <span className="text-xs truncate" style={{ color: "#e6edf3" }}>{f.description}</span>}
+                    {f.notes && <span className="text-xs truncate" style={{ color: "#4d5566" }}>{f.notes}</span>}
+                  </div>
+                  <button onClick={() => deletePermitFee(f.id)} className="w-6 h-6 rounded flex items-center justify-center shrink-0" style={{ color: "#f85149" }}>
+                    <TrashIcon size={11} />
+                  </button>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* ── Section 3: Materials / COGS ── */}
       <div className="space-y-4">
         <div className="flex items-center justify-between gap-2">
           <button
