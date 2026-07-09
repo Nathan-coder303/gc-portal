@@ -864,6 +864,44 @@ type Attachment = { id: string; name: string; url: string; size: number; mimeTyp
 
 type UploadingFile = { name: string; pct: number };
 
+const MAX_VIDEO_SECONDS = 60;
+
+// Display order within the attachments list: photos first, then videos, then everything else.
+function rankAttachment(a: Attachment): number {
+  if (a.mimeType.startsWith("image/")) return 0;
+  if (a.mimeType.startsWith("video/")) return 1;
+  return 2;
+}
+
+// Read a video file's duration (seconds) from its metadata, client-side.
+function getVideoDuration(file: File): Promise<number> {
+  return new Promise((resolve, reject) => {
+    const url = URL.createObjectURL(file);
+    const v = document.createElement("video");
+    v.preload = "metadata";
+    v.onloadedmetadata = () => { URL.revokeObjectURL(url); resolve(v.duration); };
+    v.onerror = () => { URL.revokeObjectURL(url); reject(new Error("unreadable")); };
+    v.src = url;
+  });
+}
+
+// Drop any video longer than 1 minute; report which were skipped. Non-videos pass through.
+async function filterValidVideos(files: File[], setErr: (s: string) => void): Promise<File[]> {
+  const ok: File[] = [];
+  const rejected: string[] = [];
+  for (const f of files) {
+    if (f.type.startsWith("video/")) {
+      try {
+        const dur = await getVideoDuration(f);
+        if (dur > MAX_VIDEO_SECONDS + 0.5) { rejected.push(`${f.name} (${Math.round(dur)}s)`); continue; }
+      } catch { /* if duration can't be read, let it through */ }
+    }
+    ok.push(f);
+  }
+  if (rejected.length) setErr(`Videos must be 1 minute or less — skipped: ${rejected.join(", ")}`);
+  return ok;
+}
+
 function FilesSection({ companyId, clientId, logId, pendingFiles = [], onPendingChange }: { companyId: string; clientId: string; logId?: string; pendingFiles?: File[]; onPendingChange?: (files: File[]) => void }) {
   const [attachments, setAttachments] = useState<Attachment[]>([]);
   const [uploading, setUploading] = useState<UploadingFile[]>([]);
@@ -879,7 +917,8 @@ function FilesSection({ companyId, clientId, logId, pendingFiles = [], onPending
   async function handleFiles(files: FileList | null) {
     if (!files || !baseUrl) return;
     setError("");
-    for (const file of Array.from(files)) {
+    const valid = await filterValidVideos(Array.from(files), setError);
+    for (const file of valid) {
       setUploading(prev => [...prev, { name: file.name, pct: 0 }]);
       try {
         // Get a client token so the browser uploads directly to Vercel Blob
@@ -933,11 +972,12 @@ function FilesSection({ companyId, clientId, logId, pendingFiles = [], onPending
       <div className="space-y-4">
         <SectionCard>
           <p className="text-xs font-bold uppercase tracking-widest mb-3" style={{ color: GOLD }}>Attachments</p>
+          {error && <p className="text-xs p-2 rounded-lg mb-3" style={{ background: "#2a1010", color: "#ef4444" }}>{error}</p>}
           {pendingFiles.length > 0 && (
             <div className="space-y-1.5 mb-3">
               {pendingFiles.map((f, i) => (
                 <div key={`${f.name}-${i}`} className="flex items-center gap-2 rounded-lg px-3 py-2" style={{ background: "#0d1117", border: `1px solid ${BORDER}` }}>
-                  <span className="text-base shrink-0">{f.type.startsWith("image/") ? "🖼" : "📎"}</span>
+                  <span className="text-base shrink-0">{f.type.startsWith("image/") ? "🖼" : f.type.startsWith("video/") ? "🎬" : "📎"}</span>
                   <div className="flex-1 min-w-0">
                     <p className="text-xs font-semibold truncate" style={{ color: GOLD }}>{f.name}</p>
                     <p className="text-[10px]" style={{ color: MUTED }}>{fmtSize(f.size)} · uploads on save</p>
@@ -952,17 +992,21 @@ function FilesSection({ companyId, clientId, logId, pendingFiles = [], onPending
             className="w-full rounded-xl px-3 py-3 text-center cursor-pointer"
             style={{ background: "#0d1117", border: `1px dashed ${BORDER}`, color: MUTED }}
           >
-            <p className="text-xs font-semibold">+ Attach PDF / photo / file</p>
-            <p className="text-[10px] mt-1" style={{ color: "#484f58" }}>Files upload when you save the log.</p>
+            <p className="text-xs font-semibold">+ Attach photo / video / PDF / file</p>
+            <p className="text-[10px] mt-1" style={{ color: "#484f58" }}>Videos up to 1 min. Files upload when you save the log.</p>
           </button>
           <input
             ref={fileInputRef}
             type="file"
             multiple
+            accept="image/*,video/*,.mp4,.mov,.webm,application/pdf,.pdf,.doc,.docx,.xls,.xlsx,.txt,.csv"
             className="sr-only"
-            onChange={e => {
-              if (e.target.files) onPendingChange?.([...pendingFiles, ...Array.from(e.target.files)]);
+            onChange={async e => {
+              const picked = e.target.files ? Array.from(e.target.files) : [];
               e.target.value = "";
+              setError("");
+              const valid = await filterValidVideos(picked, setError);
+              if (valid.length) onPendingChange?.([...pendingFiles, ...valid]);
             }}
           />
         </SectionCard>
@@ -986,7 +1030,7 @@ function FilesSection({ companyId, clientId, logId, pendingFiles = [], onPending
           ref={fileInputRef}
           type="file"
           multiple
-          accept="image/*,application/pdf,.pdf,.doc,.docx,.xls,.xlsx,.txt,.csv"
+          accept="image/*,video/*,.mp4,.mov,.webm,application/pdf,.pdf,.doc,.docx,.xls,.xlsx,.txt,.csv"
           className="hidden"
           onChange={e => handleFiles(e.target.files)}
         />
@@ -1019,16 +1063,45 @@ function FilesSection({ companyId, clientId, logId, pendingFiles = [], onPending
           style={{ borderColor: BORDER, background: CARD }}>
           <p className="text-2xl mb-2">📎</p>
           <p className="text-sm font-semibold mb-1" style={{ color: TEXT }}>No attachments yet</p>
-          <p className="text-xs" style={{ color: MUTED }}>Tap to add photos, PDFs, or documents</p>
+          <p className="text-xs" style={{ color: MUTED }}>Tap to add photos, videos (≤1 min), PDFs, or documents</p>
         </button>
       )}
 
       {attachments.length > 0 && (
         <div className="space-y-2">
-          {attachments.map(a => {
+          {[...attachments]
+            .sort((a, b) => rankAttachment(a) - rankAttachment(b))
+            .map(a => {
             const isImage = a.mimeType.startsWith("image/");
+            const isVideo = a.mimeType.startsWith("video/");
             const isPdf = a.mimeType.includes("pdf");
             const displayUrl = `${baseUrl}/${a.id}`;
+            if (isVideo) {
+              return (
+                <div key={a.id} className="rounded-xl overflow-hidden"
+                  style={{ background: CARD, border: `1px solid ${BORDER}` }}>
+                  <video src={displayUrl} controls preload="metadata" playsInline
+                    className="w-full" style={{ maxHeight: 280, background: "#000" }} />
+                  <div className="flex items-center gap-3 p-3">
+                    <span className="text-lg shrink-0">🎬</span>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium truncate" style={{ color: TEXT }}>{a.name}</p>
+                      <p className="text-xs" style={{ color: MUTED }}>{fmtSize(a.size)}</p>
+                    </div>
+                    <a href={displayUrl} download={a.name}
+                      className="shrink-0 text-xs px-2 py-1 rounded font-semibold transition-opacity hover:opacity-80"
+                      style={{ color: GOLD, background: `${GOLD}22`, border: `1px solid ${GOLD}44` }}>
+                      Download
+                    </a>
+                    <button onClick={() => handleDelete(a.id)}
+                      className="shrink-0 text-xs px-2 py-1 rounded transition-opacity hover:opacity-80"
+                      style={{ color: "#ef4444", background: "#2a1010", border: "1px solid #ef444433" }}>
+                      Remove
+                    </button>
+                  </div>
+                </div>
+              );
+            }
             return (
               <div key={a.id} className="flex items-center gap-3 p-3 rounded-xl"
                 style={{ background: CARD, border: `1px solid ${BORDER}` }}>

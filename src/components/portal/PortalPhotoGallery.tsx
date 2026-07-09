@@ -10,11 +10,17 @@ const BORDER = "#30373f";
 const MUTED = "#8b949e";
 const TEXT = "#e6edf3";
 
+const isVideo = (p: Photo) => p.mimeType?.startsWith("video/");
+
 function groupByDate(photos: Photo[]) {
   const groups: Record<string, Photo[]> = {};
   for (const p of photos) {
     if (!groups[p.logDate]) groups[p.logDate] = [];
     groups[p.logDate].push(p);
+  }
+  // Within each day, show photos first then videos ("videos after pictures").
+  for (const list of Object.values(groups)) {
+    list.sort((a, b) => Number(isVideo(a)) - Number(isVideo(b)));
   }
   return Object.entries(groups).sort(([a], [b]) => b.localeCompare(a));
 }
@@ -60,13 +66,28 @@ export default function PortalPhotoGallery({ clientId }: { clientId: string }) {
                       style={{ background: CARD, border: `1px solid ${BORDER}` }}
                       onClick={() => setLightbox(photo)}
                     >
-                      {/* eslint-disable-next-line @next/next/no-img-element */}
-                      <img
-                        src={url}
-                        alt={photo.name}
-                        className="w-full object-cover"
-                        style={{ aspectRatio: "4/3" }}
-                      />
+                      {isVideo(photo) ? (
+                        <div className="relative w-full" style={{ aspectRatio: "4/3", background: "#0d1117" }}>
+                          <video
+                            src={`${url}#t=0.1`}
+                            className="w-full h-full object-cover"
+                            preload="metadata"
+                            muted
+                            playsInline
+                          />
+                          <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                            <span className="flex items-center justify-center rounded-full" style={{ width: 40, height: 40, background: "rgba(0,0,0,0.55)", color: "#fff", fontSize: 16 }}>▶</span>
+                          </div>
+                        </div>
+                      ) : (
+                        /* eslint-disable-next-line @next/next/no-img-element */
+                        <img
+                          src={url}
+                          alt={photo.name}
+                          className="w-full object-cover"
+                          style={{ aspectRatio: "4/3" }}
+                        />
+                      )}
                       <div className="px-2 py-1.5 flex items-center justify-between gap-1">
                         <span className="text-xs truncate" style={{ color: MUTED }}>{photo.name}</span>
                         <a
@@ -96,13 +117,24 @@ export default function PortalPhotoGallery({ clientId }: { clientId: string }) {
           onClick={() => setLightbox(null)}
         >
           <div className="relative max-w-3xl w-full" onClick={e => e.stopPropagation()}>
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
-              src={photoUrl(clientId, lightbox)}
-              alt={lightbox.name}
-              className="w-full rounded-2xl"
-              style={{ maxHeight: "80vh", objectFit: "contain", border: `1px solid ${BORDER}` }}
-            />
+            {isVideo(lightbox) ? (
+              <video
+                src={photoUrl(clientId, lightbox)}
+                className="w-full rounded-2xl"
+                style={{ maxHeight: "80vh", background: "#000", border: `1px solid ${BORDER}` }}
+                controls
+                autoPlay
+                playsInline
+              />
+            ) : (
+              /* eslint-disable-next-line @next/next/no-img-element */
+              <img
+                src={photoUrl(clientId, lightbox)}
+                alt={lightbox.name}
+                className="w-full rounded-2xl"
+                style={{ maxHeight: "80vh", objectFit: "contain", border: `1px solid ${BORDER}` }}
+              />
+            )}
             <div className="mt-3 flex items-center justify-between">
               <span className="text-sm" style={{ color: TEXT }}>{lightbox.name}</span>
               <div className="flex gap-2">

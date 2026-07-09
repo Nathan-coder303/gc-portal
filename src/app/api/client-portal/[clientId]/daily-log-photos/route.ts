@@ -28,7 +28,7 @@ export async function GET(
     try {
       const atts: RawAtt[] = JSON.parse(log.attachments);
       for (const att of atts) {
-        if (att.mimeType?.startsWith("image/")) {
+        if (att.mimeType?.startsWith("image/") || att.mimeType?.startsWith("video/")) {
           photos.push({
             logId: log.id,
             logDate: log.arrivalDate.toISOString().slice(0, 10),

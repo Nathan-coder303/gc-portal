@@ -28,16 +28,26 @@ export async function GET(
   const att = atts.find(a => a.id === attachmentId);
   if (!att) return new NextResponse("Not found", { status: 404 });
 
+  // Forward a Range header so <video> can seek/scrub (Blob storage supports range requests).
+  const range = req.headers.get("range");
   const res = await fetch(att.url, {
-    headers: { Authorization: `Bearer ${process.env.BLOB_READ_WRITE_TOKEN}` },
-  });
-  if (!res.ok) return new NextResponse("Failed", { status: 502 });
-
-  return new NextResponse(res.body, {
     headers: {
-      "Content-Type": att.mimeType || "image/jpeg",
-      "Content-Disposition": `inline; filename="${encodeURIComponent(att.name)}"`,
-      "Cache-Control": "private, max-age=3600",
+      Authorization: `Bearer ${process.env.BLOB_READ_WRITE_TOKEN}`,
+      ...(range ? { Range: range } : {}),
     },
   });
+  if (!res.ok && res.status !== 206) return new NextResponse("Failed", { status: 502 });
+
+  const headers: Record<string, string> = {
+    "Content-Type": att.mimeType || "image/jpeg",
+    "Content-Disposition": `inline; filename="${encodeURIComponent(att.name)}"`,
+    "Cache-Control": "private, max-age=3600",
+    "Accept-Ranges": "bytes",
+  };
+  const contentRange = res.headers.get("content-range");
+  const contentLength = res.headers.get("content-length");
+  if (contentRange) headers["Content-Range"] = contentRange;
+  if (contentLength) headers["Content-Length"] = contentLength;
+
+  return new NextResponse(res.body, { status: res.status === 206 ? 206 : 200, headers });
 }

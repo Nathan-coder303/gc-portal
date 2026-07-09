@@ -25,7 +25,7 @@ export async function POST(
   const token = await generateClientTokenFromReadWriteToken({
     token: process.env.BLOB_READ_WRITE_TOKEN!,
     pathname,
-    maximumSizeInBytes: 50 * 1024 * 1024,
+    maximumSizeInBytes: 200 * 1024 * 1024,
     addRandomSuffix: false,
     allowOverwrite: true,
   });
