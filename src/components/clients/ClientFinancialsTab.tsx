@@ -17,7 +17,7 @@ type EstimateDivision = { divisionId: string; divisionName: string; csiCode: str
 type ClientSub = { id: string; subContractorId: string | null; subName: string; scope: string | null; division: string | null; contractAmount: number; notes: string | null; payments: SubPayment[]; scopeItems: ScopeItem[] };
 type Supplier = { id: string; name: string };
 type MaterialPurchase = { id: string; supplierId: string; supplierName: string; amount: number; description: string | null; purchasedAt: string; notes: string | null };
-type PermitFee = { id: string; amount: number; description: string | null; incurredAt: string; notes: string | null };
+type PermitFee = { id: string; name: string | null; amount: number; description: string | null; incurredAt: string; notes: string | null };
 type InvoicePayment = { id: string; amount: number };
 type ClientInvoice = { id: string; amount: number; status: string; pct?: number | string | null; payments: InvoicePayment[] };
 type ChangeOrderItem = { id: string; name: string; csiCode: string | null; divisionName: string; qty: string | null; unitCost: string | null; markupPct: string | null };
@@ -1011,6 +1011,7 @@ export default function ClientFinancialsTab({
   const [savingMat, setSavingMat] = useState(false);
 
   // Add permit/engineering fee form
+  const [permitName, setPermitName] = useState("");
   const [permitAmount, setPermitAmount] = useState("");
   const [permitDesc, setPermitDesc] = useState("");
   const [permitDate, setPermitDate] = useState(today());
@@ -1116,12 +1117,12 @@ export default function ClientFinancialsTab({
       const res = await fetch(`/api/${companyId}/clients/${clientId}/financials/permit-fees`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ amount: Math.abs(Number(permitAmount)), description: permitDesc.trim() || null, incurredAt: permitDate, notes: permitNotes || null }),
+        body: JSON.stringify({ name: permitName.trim() || null, amount: Math.abs(Number(permitAmount)), description: permitDesc.trim() || null, incurredAt: permitDate, notes: permitNotes || null }),
       });
       if (res.ok) {
         const fee = await res.json();
         setPermitFees(prev => [fee, ...prev]);
-        setPermitAmount(""); setPermitDesc(""); setPermitDate(today()); setPermitNotes(""); setAddingPermitForm(false);
+        setPermitName(""); setPermitAmount(""); setPermitDesc(""); setPermitDate(today()); setPermitNotes(""); setAddingPermitForm(false);
       }
     } finally { setSavingPermit(false); }
   }
@@ -1639,6 +1640,10 @@ ${paymentRows}
         {permitFeesOpen && addingPermitForm && (
           <div className="rounded-2xl p-5 space-y-3" style={{ background: "#0d1421", border: "1px solid #a371f744" }}>
             <div className="text-xs font-bold uppercase tracking-widest" style={{ color: "#a371f7" }}>Add Permit / Engineering Fee</div>
+            <div>
+              <label className="text-xs font-semibold mb-1 block" style={{ color: "#8b949e" }}>Name</label>
+              <input value={permitName} onChange={e => setPermitName(e.target.value)} placeholder="e.g. Miami-Dade Permit Office, ABC Engineering" className="w-full rounded-lg px-3 py-2 text-sm" style={{ background: "#0d1117", border: "1px solid #30373f", color: "#e6edf3" }} />
+            </div>
             <div className="grid grid-cols-2 gap-3">
               <div>
                 <label className="text-xs font-semibold mb-1 block" style={{ color: "#8b949e" }}>Amount</label>
@@ -1685,8 +1690,9 @@ ${paymentRows}
                 <div key={f.id} className="flex items-center justify-between gap-2 rounded-xl px-3 py-2" style={{ background: "#0d1117", border: "1px solid #21262d" }}>
                   <div className="flex items-center gap-3 flex-1 min-w-0">
                     <span className="text-xs font-bold" style={{ color: "#a371f7" }}>${fmt(f.amount)}</span>
+                    {f.name && <span className="text-xs font-semibold truncate" style={{ color: "#e6edf3" }}>{f.name}</span>}
                     <span className="text-xs" style={{ color: "#8b949e" }}>{new Date(f.incurredAt + "T00:00:00").toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}</span>
-                    {f.description && <span className="text-xs truncate" style={{ color: "#e6edf3" }}>{f.description}</span>}
+                    {f.description && <span className="text-xs truncate" style={{ color: "#8b949e" }}>{f.description}</span>}
                     {f.notes && <span className="text-xs truncate" style={{ color: "#4d5566" }}>{f.notes}</span>}
                   </div>
                   <button onClick={() => deletePermitFee(f.id)} className="w-6 h-6 rounded flex items-center justify-center shrink-0" style={{ color: "#f85149" }}>

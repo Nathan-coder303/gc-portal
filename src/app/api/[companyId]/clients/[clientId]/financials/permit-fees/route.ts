@@ -15,6 +15,7 @@ export async function GET(_req: NextRequest, { params }: { params: { companyId: 
 
   return NextResponse.json(fees.map(f => ({
     id: f.id,
+    name: f.name,
     amount: Number(f.amount),
     description: f.description,
     incurredAt: f.incurredAt.toISOString().slice(0, 10),
@@ -31,6 +32,7 @@ export async function POST(req: NextRequest, { params }: { params: { companyId: 
     data: {
       companyId: params.companyId,
       clientId: params.clientId,
+      name: body.name || null,
       amount: body.amount,
       description: body.description || null,
       incurredAt: new Date(body.incurredAt),
@@ -40,6 +42,7 @@ export async function POST(req: NextRequest, { params }: { params: { companyId: 
 
   return NextResponse.json({
     id: fee.id,
+    name: fee.name,
     amount: Number(fee.amount),
     description: fee.description,
     incurredAt: fee.incurredAt.toISOString().slice(0, 10),
