@@ -16,23 +16,25 @@ export function computeItemTotal(item: ItemLike): number {
   return base * (1 + item.markupPct / 100);
 }
 
-export function computeGroupTotal(items: ItemLike[]): number {
+export function computeGroupTotal(items: ItemLike[], manualTotal?: number | null): number {
+  // A group lump-sum overrides the sum of its items (same behavior as divisions)
+  if (manualTotal !== null && manualTotal !== undefined) return manualTotal;
   return items.reduce((s, i) => s + computeItemTotal(i), 0);
 }
 
 export function computeDivisionTotal(
-  groups: { items: ItemLike[] }[],
+  groups: { items: ItemLike[]; manualTotal?: number | null }[],
   ungroupedItems: ItemLike[],
   manualTotal?: number | null
 ): number {
   if (manualTotal !== null && manualTotal !== undefined) return manualTotal;
-  const groupSum = groups.reduce((s, g) => s + computeGroupTotal(g.items), 0);
+  const groupSum = groups.reduce((s, g) => s + computeGroupTotal(g.items, g.manualTotal), 0);
   const itemSum = ungroupedItems.reduce((s, i) => s + computeItemTotal(i), 0);
   return groupSum + itemSum;
 }
 
 export function computeEstimateTotal(
-  divisions: { groups: { items: ItemLike[] }[]; items: ItemLike[]; manualTotal?: number | null }[]
+  divisions: { groups: { items: ItemLike[]; manualTotal?: number | null }[]; items: ItemLike[]; manualTotal?: number | null }[]
 ): number {
   return divisions.reduce(
     (s, d) => s + computeDivisionTotal(d.groups, d.items, d.manualTotal),

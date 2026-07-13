@@ -143,6 +143,7 @@ export async function POST(
     groups: d.groups.map((g) => ({
       id: g.id,
       name: g.name,
+      manualTotal: g.manualTotal ? Number(g.manualTotal) : null,
       items: g.items.map((i) => ({
         id: i.id,
         name: i.name,
@@ -397,21 +398,25 @@ export async function POST(
         const q = qty ?? 0; const c = cost ?? 0; const m = markup ?? 0;
         return q * c * (1 + m / 100);
       };
-      const divSubtotal = template.divisions.reduce((sum, div) => {
-        if (div.manualTotal != null) return sum + Number(div.manualTotal);
-        const allItems = [...div.items, ...div.groups.flatMap(g => g.items)];
-        return sum + allItems.reduce((s, i) => s + calcItemTotal(i.defaultQty ? Number(i.defaultQty) : null, i.defaultUnitCost ? Number(i.defaultUnitCost) : null, i.defaultMarkupPct ? Number(i.defaultMarkupPct) : null), 0);
-      }, 0);
+      type CalcItem = { defaultQty: unknown; defaultUnitCost: unknown; defaultMarkupPct: unknown };
+      const itemsTot = (items: CalcItem[]) =>
+        items.reduce((s, i) => s + calcItemTotal(i.defaultQty ? Number(i.defaultQty) : null, i.defaultUnitCost ? Number(i.defaultUnitCost) : null, i.defaultMarkupPct ? Number(i.defaultMarkupPct) : null), 0);
+      const groupTot = (g: { manualTotal: unknown; items: CalcItem[] }) =>
+        g.manualTotal != null ? Number(g.manualTotal) : itemsTot(g.items);
+      const divTot = (div: { manualTotal: unknown; items: CalcItem[]; groups: { manualTotal: unknown; items: CalcItem[] }[] }) =>
+        div.manualTotal != null ? Number(div.manualTotal) : itemsTot(div.items) + div.groups.reduce((s, g) => s + groupTot(g), 0);
+      const divSubtotal = template.divisions.reduce((sum, div) => sum + divTot(div), 0);
       const gcFeeAmt = gcFeePercent > 0 ? divSubtotal * gcFeePercent / 100 : 0;
       const versionTotal = divSubtotal + gcFeeAmt;
       const snapshot = {
         divisions: template.divisions.map(div => {
-          const divTotal = div.manualTotal != null ? Number(div.manualTotal)
-            : [...div.items, ...div.groups.flatMap(g => g.items)].reduce((s, i) => s + calcItemTotal(i.defaultQty ? Number(i.defaultQty) : null, i.defaultUnitCost ? Number(i.defaultUnitCost) : null, i.defaultMarkupPct ? Number(i.defaultMarkupPct) : null), 0);
+          const divTotal = divTot(div);
           return {
             name: div.name, csiCode: div.csiCode, manualTotal: div.manualTotal != null ? Number(div.manualTotal) : null, total: divTotal,
             groups: div.groups.map(g => ({
               name: g.name,
+              manualTotal: g.manualTotal != null ? Number(g.manualTotal) : null,
+              total: groupTot(g),
               items: g.items.map(i => ({ name: i.name, qty: i.defaultQty ? Number(i.defaultQty) : null, unitCost: i.defaultUnitCost ? Number(i.defaultUnitCost) : null, markup: i.defaultMarkupPct ? Number(i.defaultMarkupPct) : null, unit: i.unit, detail: i.detail, total: calcItemTotal(i.defaultQty ? Number(i.defaultQty) : null, i.defaultUnitCost ? Number(i.defaultUnitCost) : null, i.defaultMarkupPct ? Number(i.defaultMarkupPct) : null) })),
             })),
             items: div.items.map(i => ({ name: i.name, qty: i.defaultQty ? Number(i.defaultQty) : null, unitCost: i.defaultUnitCost ? Number(i.defaultUnitCost) : null, markup: i.defaultMarkupPct ? Number(i.defaultMarkupPct) : null, unit: i.unit, detail: i.detail, total: calcItemTotal(i.defaultQty ? Number(i.defaultQty) : null, i.defaultUnitCost ? Number(i.defaultUnitCost) : null, i.defaultMarkupPct ? Number(i.defaultMarkupPct) : null) })),

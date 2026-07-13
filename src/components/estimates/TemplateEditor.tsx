@@ -62,7 +62,7 @@ type Item = {
   notes: string | null;
   visibleInPdf: boolean;
 };
-type Group = { id: string; name: string; items: Item[] };
+type Group = { id: string; name: string; manualTotal: number | null; items: Item[] };
 type Division = { id: string; csiCode: string | null; name: string; manualTotal: number | null; groups: Group[]; items: Item[] };
 type PaymentRow = { payment: string; trigger: string; pct: number };
 type Template = { id: string; name: string; description: string | null; companyId: string; estimateNumber: string | null; estimateDate: string | null; paymentSchedule: PaymentRow[] | null; showTerms: boolean; termsContent: string | null; type: string; gcFeePercent: number | null; internalProfitOverride: number | null; sqFt: number | null; durationMonths: number | null; hasSkylights: boolean | null; hasRoofDrains: boolean | null; insulationType: string | null; combinationType: string | null; brandingName: string | null };
@@ -139,6 +139,11 @@ function itemTotal(item: Item): number {
 
 function groupTotal(items: Item[]): number {
   return items.reduce((s, i) => s + itemTotal(i), 0);
+}
+
+// A group's lump-sum override wins over the sum of its items (same as divisions)
+function groupSectionTotal(g: Group): number {
+  return g.manualTotal != null ? g.manualTotal : groupTotal(g.items);
 }
 
 const UNITS = ["_", "LS", "EA", "SF", "LF", "SY", "CY", "CF", "SQ", "MO", "HR", "DAY", "TN", "GAL"];
@@ -239,7 +244,7 @@ function UnitSelect({ value, onChange }: { value: string; onChange: (v: string) 
 
 function divisionTotal(div: Division): number {
   if (div.manualTotal !== null && div.manualTotal !== undefined) return div.manualTotal;
-  return div.groups.reduce((s, g) => s + groupTotal(g.items), 0) + groupTotal(div.items);
+  return div.groups.reduce((s, g) => s + groupSectionTotal(g), 0) + groupTotal(div.items);
 }
 
 function grandTotal(divisions: Division[]): number {
@@ -636,7 +641,7 @@ function TemplateItemTable({ divisionId, groupId, items, canEdit }: { divisionId
   return (
     <SortableContext items={itemIds} strategy={verticalListSortingStrategy}>
     <div className="overflow-x-auto">
-      <table className="w-full text-sm" style={{ minWidth: "960px" }}>
+      <table className="w-full text-sm" style={{ minWidth: "960px", tableLayout: "fixed" }}>
         <thead>
           <tr style={{ background: "#161b22" }}>
             {canEdit && <th style={{ width: "24px" }} />}
@@ -648,7 +653,7 @@ function TemplateItemTable({ divisionId, groupId, items, canEdit }: { divisionId
             <th className="px-3 py-1.5 text-right font-medium text-xs w-24" style={{ color: "#8b949e" }}>Cost</th>
             <th className="px-3 py-1.5 text-right font-medium text-xs w-16" style={{ color: "#8b949e" }}>Markup</th>
             <th className="px-3 py-1.5 text-right font-medium text-xs w-28" style={{ color: "#C9A84C" }}>TOTAL</th>
-            <th className="px-3 py-1.5 text-left font-medium text-xs" style={{ color: "#8b949e" }}>Notes</th>
+            <th className="px-3 py-1.5 text-left font-medium text-xs w-32" style={{ color: "#8b949e" }}>Notes</th>
             <th className="w-20 hidden sm:table-cell" />
           </tr>
         </thead>
@@ -669,8 +674,20 @@ function TemplateGroupSection({ group, divisionId, canEdit }: { group: Group; di
   const { pushUndo } = useContext(UndoCtx);
   const [editingName, setEditingName] = useState(false);
   const [nameInput, setNameInput] = useState(group.name);
-  const total = groupTotal(group.items);
+  const [lumpSumInput, setLumpSumInput] = useState(group.manualTotal != null ? String(group.manualTotal) : "");
+  const [lumpSumOpen, setLumpSumOpen] = useState(group.manualTotal != null);
+  const router = useRouter();
+  const total = groupSectionTotal(group);
   const { setNodeRef: setGroupDropRef, isOver: isGroupOver } = useDroppable({ id: `group:${group.id}:${divisionId}` });
+
+  function saveLumpSum(value: string) {
+    const parsed = value.trim() === "" ? null : parseFloat(value.replace(/,/g, ""));
+    if (value.trim() !== "" && isNaN(parsed!)) return;
+    startTransition(async () => {
+      await upsertTemplateGroup(divisionId, { id: group.id, name: group.name, manualTotal: parsed });
+      router.refresh();
+    });
+  }
 
   function commitRename() {
     const trimmed = nameInput.trim();
@@ -704,8 +721,25 @@ function TemplateGroupSection({ group, divisionId, canEdit }: { group: Group; di
             {group.name}
           </span>
         )}
-        <div className="flex items-center gap-3">
-          {total > 0 && <span className="text-xs font-semibold" style={{ color: "#C9A84C" }}>${fmt(total)}</span>}
+        <div className="flex items-center gap-2">
+          {total > 0 && (
+            <button
+              onClick={() => { if (canEdit) setLumpSumOpen(v => !v); }}
+              className="text-xs font-semibold"
+              style={{ color: "#C9A84C", background: "transparent", border: "none", padding: 0, cursor: canEdit ? "pointer" : "default" }}
+              title={canEdit ? "Set lump-sum total for this group" : undefined}
+            >
+              {group.manualTotal != null ? "≈ " : ""}${fmt(total)}
+            </button>
+          )}
+          {canEdit && (
+            <button
+              onClick={() => setLumpSumOpen(v => !v)}
+              className="text-xs px-1.5 py-0.5 rounded shrink-0"
+              style={{ background: lumpSumOpen ? "#C9A84C22" : "transparent", border: `1px solid ${lumpSumOpen ? "#C9A84C88" : "#30373f"}`, color: lumpSumOpen ? "#C9A84C" : "#484f58" }}
+              title="Set lump-sum total for this group"
+            >∑</button>
+          )}
           {canEdit && (
             <button onClick={() => { startTransition(async () => {
               await archiveTemplateGroup(group.id);
@@ -723,6 +757,24 @@ function TemplateGroupSection({ group, divisionId, canEdit }: { group: Group; di
           )}
         </div>
       </div>
+      {lumpSumOpen && canEdit && (
+        <div className="flex items-center gap-2 px-3 py-2" style={{ background: "#161b22", borderTop: "1px solid #30373f" }}>
+          <span className="text-xs shrink-0" style={{ color: "#8b949e" }}>Group lump sum override:</span>
+          <input
+            type="number"
+            className="rounded px-2 py-1 text-sm flex-1"
+            style={{ background: "#0d1117", border: "1px solid #C9A84C66", color: "#e6edf3", minWidth: 0 }}
+            placeholder="e.g. 12000"
+            value={lumpSumInput}
+            onChange={e => setLumpSumInput(e.target.value)}
+            onBlur={e => saveLumpSum(e.target.value)}
+            onKeyDown={e => { if (e.key === "Enter") { saveLumpSum(lumpSumInput); (e.target as HTMLInputElement).blur(); } }}
+          />
+          {lumpSumInput && (
+            <button onClick={() => { setLumpSumInput(""); saveLumpSum(""); setLumpSumOpen(false); }} className="text-xs shrink-0" style={{ color: "#ef4444" }}>✕ Clear</button>
+          )}
+        </div>
+      )}
       <TemplateItemTable divisionId={divisionId} groupId={group.id} items={group.items} canEdit={canEdit} />
     </div>
   );

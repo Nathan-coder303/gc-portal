@@ -8,7 +8,7 @@ export const runtime = "nodejs";
 export const maxDuration = 30;
 
 type SnapItem = { name: string; qty: number | null; unitCost: number | null; markup: number | null; unit: string | null; detail: string | null; total: number };
-type SnapGroup = { name: string; items: SnapItem[] };
+type SnapGroup = { name: string; manualTotal?: number | null; items: SnapItem[] };
 type SnapDivision = { name: string; csiCode: string | null; manualTotal: number | null; total: number; groups: SnapGroup[]; items: SnapItem[] };
 type Snapshot = { divisions: SnapDivision[]; subtotal: number; gcFee: number; total: number };
 
@@ -71,6 +71,7 @@ export async function GET(
     groups: d.groups.map((g, gi) => ({
       id: `snap-grp-${di}-${gi}`,
       name: g.name,
+      manualTotal: g.manualTotal ?? null,
       items: g.items.map((item, ii) => ({
         id: `snap-item-g-${di}-${gi}-${ii}`,
         name: item.name,

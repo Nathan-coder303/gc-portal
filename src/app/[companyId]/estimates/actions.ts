@@ -464,7 +464,7 @@ export async function reorderTemplateDivisions(templateId: string, orderedIds: s
 
 export async function upsertTemplateGroup(
   divisionId: string,
-  data: { id?: string; name: string }
+  data: { id?: string; name: string; manualTotal?: number | null }
 ) {
   const session = await auth();
   if (!session) throw new Error("Unauthorized");
@@ -472,6 +472,29 @@ export async function upsertTemplateGroup(
 
   if (data.id) {
     await prisma.estimateTemplateGroup.update({ where: { id: data.id }, data: { name: data.name } });
+    // Set manualTotal via raw SQL — Vercel can cache an older Prisma client that
+    // doesn't know this column, so using the ORM would throw "Unknown argument"
+    if (data.manualTotal !== undefined) {
+      if (data.manualTotal === null) {
+        await prisma.$executeRawUnsafe(
+          `UPDATE "EstimateTemplateGroup" SET "manualTotal" = NULL WHERE id = $1`,
+          data.id,
+        );
+      } else {
+        await prisma.$executeRawUnsafe(
+          `UPDATE "EstimateTemplateGroup" SET "manualTotal" = $1 WHERE id = $2`,
+          data.manualTotal,
+          data.id,
+        );
+      }
+    }
+    // Zero out this group's line items when a lump-sum override is applied
+    if (data.manualTotal != null) {
+      await prisma.estimateTemplateItem.updateMany({
+        where: { groupId: data.id, archivedAt: null },
+        data: { defaultUnitCost: 0 },
+      });
+    }
     revalidatePath(`/${session.user.companyId}/estimates`, "layout");
     return { success: true, id: data.id };
   }

@@ -40,6 +40,7 @@ export async function GET(
         groups: {
           where: { archivedAt: null },
           select: {
+            manualTotal: true,
             items: {
               where: { archivedAt: null },
               select: { defaultQty: true, defaultUnitCost: true, defaultMarkupPct: true },
@@ -50,12 +51,17 @@ export async function GET(
     }),
   ]);
 
+  const groupTotal = (g: { manualTotal: unknown; items: { defaultQty: unknown; defaultUnitCost: unknown; defaultMarkupPct: unknown }[] }) =>
+    g.manualTotal !== null && g.manualTotal !== undefined
+      ? Number(g.manualTotal)
+      : g.items.reduce((s, i) => s + itemTotal(i), 0);
+
   const lines = divisions.map(d => ({
     name: d.name,
     csiCode: d.csiCode ?? null,
     total: d.manualTotal !== null && d.manualTotal !== undefined
       ? Number(d.manualTotal)
-      : [...d.items, ...d.groups.flatMap(g => g.items)].reduce((s, i) => s + itemTotal(i), 0),
+      : d.items.reduce((s, i) => s + itemTotal(i), 0) + d.groups.reduce((s, g) => s + groupTotal(g), 0),
   }));
 
   // Append GC Fee line if the estimate has a GC fee percentage

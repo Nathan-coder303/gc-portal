@@ -219,7 +219,7 @@ type Item = {
   manualTotal: number | null;
   notes: string | null;
 };
-type Group = { id: string; name: string; items: Item[] };
+type Group = { id: string; name: string; manualTotal?: number | null; items: Item[] };
 
 type SummaryGroupOverride = { qty: number | null; unit: string | null; unitCost: number | null; markupPct: number | null; manualTotal: number | null };
 
@@ -438,7 +438,7 @@ export function EstimatePdfDocument({ companyName, projectName, estimate, divisi
           filledItems: div.items.filter(i => computeItemTotal(i) > 0 || !!i.detail),
           filledGroups: div.groups
             .map(g => ({ ...g, items: g.items.filter(i => computeItemTotal(i) > 0 || !!i.detail) }))
-            .filter(g => g.items.length > 0),
+            .filter(g => g.items.length > 0 || g.manualTotal != null),
         })).filter(({ filledItems, filledGroups }) => filledItems.length > 0 || filledGroups.length > 0);
 
         if (filteredDivs.length === 0) return null;
@@ -476,7 +476,7 @@ export function EstimatePdfDocument({ companyName, projectName, estimate, divisi
                   )}
 
                   {filledGroups.map((grp) => {
-                    const grpTotal = computeGroupTotal(grp.items);
+                    const grpTotal = computeGroupTotal(grp.items, grp.manualTotal);
                     return (
                       <View key={grp.id} minPresenceAhead={100}>
                         <View style={styles.groupHeader}>

@@ -980,11 +980,12 @@ model EstimateTemplateDivision {
 }
 
 model EstimateTemplateGroup {
-  id         String                   @id @default(cuid())
-  divisionId String
-  division   EstimateTemplateDivision @relation(fields: [divisionId], references: [id])
-  name       String
-  sortOrder  Int                      @default(0)
+  id          String                   @id @default(cuid())
+  divisionId  String
+  division    EstimateTemplateDivision @relation(fields: [divisionId], references: [id])
+  name        String
+  manualTotal Decimal?                 @db.Decimal(14, 2)
+  sortOrder   Int                      @default(0)
   archivedAt DateTime?
   archivedBy String?
   items      EstimateTemplateItem[]
@@ -1063,6 +1064,7 @@ model ProjectEstimateGroup {
   divisionId  String
   division    ProjectEstimateDivision @relation(fields: [divisionId], references: [id])
   name        String
+  manualTotal Decimal?                @db.Decimal(14, 2)
   sortOrder   Int                     @default(0)
   archivedAt  DateTime?
   archivedBy  String?

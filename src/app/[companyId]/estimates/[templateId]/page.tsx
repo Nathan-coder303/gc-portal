@@ -84,6 +84,7 @@ export default async function TemplateEditorPage({
     groups: d.groups.map((g) => ({
       id: g.id,
       name: g.name,
+      manualTotal: g.manualTotal ? Number(g.manualTotal) : null,
       items: g.items.map((i) => ({
         id: i.id,
         name: i.name,
