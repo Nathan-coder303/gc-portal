@@ -81,7 +81,7 @@ export async function POST(
   if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const body = await req.json().catch(() => ({}));
-  const { templateId, to, cc, bcc, subject, body: emailBody, coverType, page2, includeInsert, includeDivisionSummary, forcedBreakCsiPrefixes, forcedBreakTerms, noPresentation, scopeOfWorkId, scopeTitle } = body as {
+  const { templateId, to, cc, bcc, subject, body: emailBody, coverType, page2, includeInsert, includeDivisionSummary, includeAllowances, forcedBreakCsiPrefixes, forcedBreakTerms, noPresentation, scopeOfWorkId, scopeTitle } = body as {
     templateId?: string;
     to?: string;
     cc?: string;
@@ -92,6 +92,7 @@ export async function POST(
     page2?: string;
     includeInsert?: boolean;
     includeDivisionSummary?: boolean;
+    includeAllowances?: boolean;
     forcedBreakCsiPrefixes?: string[];
     forcedBreakTerms?: boolean;
     noPresentation?: boolean;
@@ -220,6 +221,7 @@ export async function POST(
     includeRetailPages: noPresentation ? false : (page2 ? page2 === "RETAIL" : template.name.toLowerCase().includes("retail")),
     includeCoverPage: !noPresentation && coverType !== "NONE",
     includeDivisionSummary: includeDivisionSummary ?? false,
+    includeAllowancesSummary: includeAllowances ?? false,
     showTerms: template.showTerms,
     forcedBreakCsiPrefixes: forcedBreakCsiPrefixes ?? [],
     forcedBreakTerms: forcedBreakTerms ?? false,

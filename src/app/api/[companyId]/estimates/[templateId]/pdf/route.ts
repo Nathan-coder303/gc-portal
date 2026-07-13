@@ -74,6 +74,7 @@ export async function GET(
   const page2Param = req.nextUrl.searchParams.get("page2"); // "ROOF" | "ADDITION" | "NONE" | null (auto)
   const isPreview = req.nextUrl.searchParams.get("preview") === "1";
   const includeDivisionSummary = req.nextUrl.searchParams.get("divSummary") === "1";
+  const includeAllowancesSummary = req.nextUrl.searchParams.get("allowances") === "1";
   const forcedBreakCsiPrefixes = (req.nextUrl.searchParams.get("forcedBreakCsi") ?? "").split(",").map(s => s.trim()).filter(Boolean);
   const forcedBreakTerms = req.nextUrl.searchParams.get("forcedBreakTerms") === "1";
 
@@ -187,6 +188,7 @@ export async function GET(
     includeRetailPages: page2Param ? page2Param === "RETAIL" : template.name.toLowerCase().includes("retail"),
     includeCoverPage: cover,
     includeDivisionSummary,
+    includeAllowancesSummary,
     insertPageOffset,
     insulationType: template.insulationType ?? "ISO",
     clientCoverPhotoType: coverTypeParam ?? template.client?.coverPhotoType ?? null,

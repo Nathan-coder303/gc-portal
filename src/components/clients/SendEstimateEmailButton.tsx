@@ -47,6 +47,7 @@ export default function SendEstimateEmailButton({ templateId, companyId, templat
   const [coverType, setCoverType] = useState<CoverType>(defaultCover);
   const [page2, setPage2] = useState<Page2Type>(defaultPage2);
   const [includeInsert, setIncludeInsert] = useState(true);
+  const [includeAllowances, setIncludeAllowances] = useState(false);
   const [to, setTo] = useState(clientEmail ?? "");
   const [cc, setCc] = useState("mikebaruh@gmail.com");
   const [bcc, setBcc] = useState("");
@@ -65,6 +66,7 @@ export default function SendEstimateEmailButton({ templateId, companyId, templat
     setCoverType(opts.coverType);
     setPage2(opts.page2);
     setIncludeInsert(opts.includeInsert);
+    setIncludeAllowances(opts.includeAllowances);
     setStep("email");
   }
 
@@ -76,7 +78,7 @@ export default function SendEstimateEmailButton({ templateId, companyId, templat
       const res = await fetch(`/api/${companyId}/send-estimate-email`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ templateId, to, cc: cc.trim() || undefined, bcc: bcc.trim() || undefined, subject, body, coverType, page2, includeInsert }),
+        body: JSON.stringify({ templateId, to, cc: cc.trim() || undefined, bcc: bcc.trim() || undefined, subject, body, coverType, page2, includeInsert, includeAllowances }),
       });
       const text = await res.text();
       let data: { error?: string; detail?: string } = {};

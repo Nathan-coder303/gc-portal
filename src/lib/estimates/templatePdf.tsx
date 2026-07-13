@@ -246,6 +246,7 @@ type TemplatePdfProps = {
   includePermitPages?: boolean;
   includeRetailPages?: boolean;
   includeDivisionSummary?: boolean;
+  includeAllowancesSummary?: boolean;
   insulationType?: string | null;
   clientCoverPhotoType?: string | null;
   clientCoverPhotoUrl?: string | null;
@@ -1523,6 +1524,76 @@ function DivisionSummaryPage({ template, client, divisions, gcFeePercent }: Pick
   );
 }
 
+function AllowancesSummaryPage({ template, client, divisions }: Pick<TemplatePdfProps, "template" | "client" | "divisions">) {
+  const { logoSrc: logoPath, name: companyDisplayName, phone: companyPhone, email: companyEmail, licenses: companyLicenses, contactName: companyContactName } = useBranding();
+
+  const lines: { csiCode: string; name: string; amount: number }[] = divisions.flatMap(div => [
+    ...div.items.filter(i => i.detail === "Allowances"),
+    ...div.groups.flatMap(g => g.items.filter(i => i.detail === "Allowances")),
+  ].map(item => ({
+    csiCode: item.csiCode ?? div.csiCode ?? "",
+    name: item.name,
+    amount: calcTotal(item.defaultQty, item.defaultUnitCost, item.defaultMarkupPct),
+  })));
+  const total = lines.reduce((s, l) => s + l.amount, 0);
+
+  return (
+    <Page size="LETTER" style={{ fontFamily: "Helvetica", paddingTop: 0, paddingBottom: 36 }}>
+      {/* Header bar */}
+      <View style={{ flexDirection: "row", alignItems: "center", backgroundColor: DARK, paddingHorizontal: 24, paddingVertical: 6, gap: 12 }}>
+        {/* eslint-disable-next-line jsx-a11y/alt-text */}
+        <Image src={logoPath} style={{ width: 36, height: 36 }} />
+        <View style={{ flex: 1 }}>
+          <Text style={{ fontSize: 14, fontFamily: "Helvetica-Bold", color: GOLD, letterSpacing: 2 }}>{companyDisplayName.toUpperCase()}</Text>
+          <Text style={{ fontSize: 7.5, color: "#94a3b8", marginTop: 1 }}>Licensed &amp; Insured  |  {companyLicenses}  |  {companyPhone}</Text>
+        </View>
+        {client ? <Text style={{ fontSize: 9, color: "#94a3b8", textAlign: "right" }}>{client.name}</Text> : null}
+      </View>
+      <View style={{ height: 3, backgroundColor: GOLD }} />
+
+      <View style={{ paddingHorizontal: 40, paddingTop: 12 }}>
+        {/* Title + grand allowances total, echoing the on-screen ALLOWANCES header */}
+        <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", backgroundColor: "#2d2410", paddingHorizontal: 14, paddingVertical: 8, borderRadius: 4 }}>
+          <Text style={{ fontSize: 12, fontFamily: "Helvetica-Bold", color: GOLD, letterSpacing: 1.5 }}>ALLOWANCES</Text>
+          <Text style={{ fontSize: 13, fontFamily: "Helvetica-Bold", color: GOLD }}>{total > 0 ? `$${fmt(total)}` : "—"}</Text>
+        </View>
+
+        {/* Rows: CSI · description · amount */}
+        <View style={{ marginTop: 6 }}>
+          {lines.map((line, idx) => (
+            <View key={idx} style={{ flexDirection: "row", alignItems: "center", paddingHorizontal: 14, paddingVertical: 3.5, borderBottomWidth: 1, borderBottomColor: "#eef1f4", backgroundColor: idx % 2 === 0 ? "#f8fafc" : "#ffffff" }}>
+              {line.csiCode ? <Text style={{ fontSize: 8, color: "#94a3b8", fontFamily: "Helvetica-Bold", width: 58 }}>{line.csiCode}</Text> : <Text style={{ width: 58 }} />}
+              <Text style={{ fontSize: 9, color: "#334155", flex: 1 }}>{line.name}</Text>
+              <Text style={{ fontSize: 9, fontFamily: "Helvetica-Bold", color: line.amount > 0 ? "#0f172a" : "#94a3b8", textAlign: "right", width: 80 }}>
+                {line.amount > 0 ? `$${fmt(line.amount)}` : "—"}
+              </Text>
+            </View>
+          ))}
+        </View>
+
+        {/* Total footer */}
+        <View wrap={false} style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", backgroundColor: DARK, paddingHorizontal: 14, paddingVertical: 9, borderRadius: 4, marginTop: 8 }}>
+          <Text style={{ fontSize: 11, fontFamily: "Helvetica-Bold", color: GOLD }}>TOTAL ALLOWANCES</Text>
+          <Text style={{ fontSize: 13, fontFamily: "Helvetica-Bold", color: GOLD }}>{total > 0 ? `$${fmt(total)}` : "—"}</Text>
+        </View>
+      </View>
+
+      {/* Footer */}
+      <View fixed style={{ position: "absolute", bottom: 0, left: 0, right: 0, backgroundColor: DARK, paddingHorizontal: 24, paddingVertical: 9, flexDirection: "row", alignItems: "center", gap: 12 }}>
+        <Text style={{ fontSize: 8.5, color: GOLD, fontFamily: "Helvetica-Bold" }}>{companyDisplayName.toUpperCase()}</Text>
+        <Text style={{ fontSize: 7, color: "#94a3b8" }}>|</Text>
+        <Text style={{ fontSize: 8.5, color: "#94a3b8" }}>{companyEmail}</Text>
+        <Text style={{ fontSize: 7, color: "#94a3b8" }}>|</Text>
+        <Text style={{ fontSize: 8.5, color: "#94a3b8" }}>{companyContactName}</Text>
+        <Text style={{ fontSize: 7, color: "#94a3b8" }}>|</Text>
+        <Text style={{ fontSize: 8.5, color: "#94a3b8" }}>{companyPhone}</Text>
+        <View style={{ flex: 1 }} />
+        <Text style={{ fontSize: 8, color: "#94a3b8" }} render={({ pageNumber, totalPages }) => `Page ${pageNumber} of ${totalPages}`} />
+      </View>
+    </Page>
+  );
+}
+
 function ScopeOfWorkPage({ title, body, client }: { title: string; body: string; client?: TemplatePdfProps["client"] }) {
   const { logoSrc: logoPath, name: companyDisplayName, address: companyAddress, phone: companyPhone, email: companyEmail, licenses: companyLicenses, contactName: companyContactName } = useBranding();
   const blocks = body.split(/\n\n+/).map(b => b.trim()).filter(Boolean);
@@ -1582,7 +1653,7 @@ function ScopeOfWorkPage({ title, body, client }: { title: string; body: string;
   );
 }
 
-function TemplatePdfDocument({ companyName, template, client, divisions, showTerms, termsContent, paymentSchedule, gcFeePercent, summaryGroups, clientSignatureData, clientSignedByName, clientSignedAt, contractorSignatureData, contractorSignedAt, includeRoofUpgradesPage, includeCoverPage, includeAdditionPages, includePermitPages, includeRetailPages, includeDivisionSummary, insertPageOffset, insulationType, clientCoverPhotoType, clientCoverPhotoUrl, clientCoverTitle, forcedBreakCsiPrefixes = [], forcedBreakTerms = false, scopeOfWork, scopeTitle, hideEstimateLabel = false, changeOrderNotes, hideContractorSignature = false, attachments }: TemplatePdfProps) {
+function TemplatePdfDocument({ companyName, template, client, divisions, showTerms, termsContent, paymentSchedule, gcFeePercent, summaryGroups, clientSignatureData, clientSignedByName, clientSignedAt, contractorSignatureData, contractorSignedAt, includeRoofUpgradesPage, includeCoverPage, includeAdditionPages, includePermitPages, includeRetailPages, includeDivisionSummary, includeAllowancesSummary, insertPageOffset, insulationType, clientCoverPhotoType, clientCoverPhotoUrl, clientCoverTitle, forcedBreakCsiPrefixes = [], forcedBreakTerms = false, scopeOfWork, scopeTitle, hideEstimateLabel = false, changeOrderNotes, hideContractorSignature = false, attachments }: TemplatePdfProps) {
   const branding = useBranding();
   const grouped = groupDivisions(divisions);
 
@@ -1792,6 +1863,9 @@ function TemplatePdfDocument({ companyName, template, client, divisions, showTer
       {includeDivisionSummary && !includeRoofUpgradesPage && (
         <DivisionSummaryPage template={template} client={client} divisions={divisions} gcFeePercent={gcFeePercent} />
       )}
+      {includeAllowancesSummary && divisions.some(div => [...div.items, ...div.groups.flatMap(g => g.items)].some(i => i.detail === "Allowances")) && (
+        <AllowancesSummaryPage template={template} client={client} divisions={divisions} />
+      )}
       <Page size="LETTER" style={styles.page}>
         {/* Fixed footer — renders on every page */}
         <View fixed style={{ position: "absolute", bottom: 0, left: 0, right: 0, backgroundColor: DARK, paddingHorizontal: 24, paddingVertical: 9, flexDirection: "row", alignItems: "center", gap: 12 }}>
@@ -1888,6 +1962,7 @@ function TemplatePdfDocument({ companyName, template, client, divisions, showTer
           if (includeRetailPages) prePages += 2;
           if (scopeOfWork) prePages++;
           if (includeDivisionSummary && !includeRoofUpgradesPage) prePages++;
+          if (includeAllowancesSummary && divisions.some(div => [...div.items, ...div.groups.flatMap(g => g.items)].some(i => i.detail === "Allowances"))) prePages++;
           // Insert file is spliced in after generation — it adds 1 page that shifts all subsequent pages
           prePages += (insertPageOffset ?? 0);
 

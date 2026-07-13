@@ -34,6 +34,7 @@ export type PdfOptions = {
   page2: Page2Type;
   includeInsert: boolean;
   includeDivisionSummary: boolean;
+  includeAllowances: boolean;
   forcedBreakCsiPrefixes: string[];
   forcedBreakTerms: boolean;
   noPresentation: boolean;
@@ -130,6 +131,15 @@ export default function CoverPagePickerModal({
     }
     return false;
   });
+  const [includeAllowances, setIncludeAllowances] = useState(() => {
+    if (companyId) {
+      try {
+        const saved = JSON.parse(localStorage.getItem(`gc-pdf-opts-${clientId ?? companyId}`) ?? "null");
+        if (saved?.includeAllowances != null) return saved.includeAllowances as boolean;
+      } catch {}
+    }
+    return false;
+  });
   const [forcedBreakCsiPrefixes, setForcedBreakCsiPrefixes] = useState<string[]>(() => {
     if (companyId) {
       try {
@@ -182,9 +192,9 @@ export default function CoverPagePickerModal({
   useEffect(() => {
     if (!companyId) return;
     try {
-      localStorage.setItem(`gc-pdf-opts-${clientId ?? companyId}`, JSON.stringify({ coverType: cover, page2, selectedBlobUrl, includeDivisionSummary, forcedBreakCsiPrefixes, forcedBreakTerms, scopeTitle }));
+      localStorage.setItem(`gc-pdf-opts-${clientId ?? companyId}`, JSON.stringify({ coverType: cover, page2, selectedBlobUrl, includeDivisionSummary, includeAllowances, forcedBreakCsiPrefixes, forcedBreakTerms, scopeTitle }));
     } catch {}
-  }, [cover, page2, selectedBlobUrl, includeDivisionSummary, forcedBreakCsiPrefixes, forcedBreakTerms, scopeTitle, companyId, clientId]);
+  }, [cover, page2, selectedBlobUrl, includeDivisionSummary, includeAllowances, forcedBreakCsiPrefixes, forcedBreakTerms, scopeTitle, companyId, clientId]);
 
   function getCoverName(c: CustomCover): string {
     return coverNames[c.blobUrl] ?? formatCoverName(c.filename);
@@ -253,6 +263,7 @@ export default function CoverPagePickerModal({
     page2,
     includeInsert,
     includeDivisionSummary,
+    includeAllowances,
     forcedBreakCsiPrefixes,
     forcedBreakTerms,
     noPresentation,
@@ -497,6 +508,22 @@ export default function CoverPagePickerModal({
                   style={{ border: `2px solid ${includeDivisionSummary === o.v ? "#C9A84C" : "#30373f"}`, background: includeDivisionSummary === o.v ? "#1e2a12" : "#1e2736", outline: "none" }}>
                   <div className="text-2xl mb-1">{o.icon}</div>
                   <div className="text-xs font-semibold" style={{ color: includeDivisionSummary === o.v ? "#C9A84C" : "#e6edf3" }}>{o.label}</div>
+                  <div className="text-[10px] mt-0.5" style={{ color: "#8b949e" }}>{o.desc}</div>
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* ── ALLOWANCES SUMMARY ── */}
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-widest mb-2" style={{ color: "#8b949e" }}>Include Allowances Summary Page?</p>
+            <div className="grid grid-cols-2 gap-2">
+              {[{ v: true, icon: "🧾", label: "Yes", desc: "Add a clean one-page allowances recap" }, { v: false, icon: "⊘", label: "No", desc: "Skip allowances page" }].map(o => (
+                <button key={String(o.v)} onClick={() => setIncludeAllowances(o.v)}
+                  className="rounded-xl p-3 text-left transition-all"
+                  style={{ border: `2px solid ${includeAllowances === o.v ? "#C9A84C" : "#30373f"}`, background: includeAllowances === o.v ? "#1e2a12" : "#1e2736", outline: "none" }}>
+                  <div className="text-2xl mb-1">{o.icon}</div>
+                  <div className="text-xs font-semibold" style={{ color: includeAllowances === o.v ? "#C9A84C" : "#e6edf3" }}>{o.label}</div>
                   <div className="text-[10px] mt-0.5" style={{ color: "#8b949e" }}>{o.desc}</div>
                 </button>
               ))}
