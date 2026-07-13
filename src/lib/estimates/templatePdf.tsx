@@ -1524,7 +1524,7 @@ function DivisionSummaryPage({ template, client, divisions, gcFeePercent }: Pick
   );
 }
 
-function AllowancesSummaryPage({ template, client, divisions }: Pick<TemplatePdfProps, "template" | "client" | "divisions">) {
+function AllowancesSummaryPage({ client, divisions }: Pick<TemplatePdfProps, "client" | "divisions">) {
   const { logoSrc: logoPath, name: companyDisplayName, phone: companyPhone, email: companyEmail, licenses: companyLicenses, contactName: companyContactName } = useBranding();
 
   const lines: { csiCode: string; name: string; amount: number }[] = divisions.flatMap(div => [
@@ -1864,7 +1864,7 @@ function TemplatePdfDocument({ companyName, template, client, divisions, showTer
         <DivisionSummaryPage template={template} client={client} divisions={divisions} gcFeePercent={gcFeePercent} />
       )}
       {includeAllowancesSummary && divisions.some(div => [...div.items, ...div.groups.flatMap(g => g.items)].some(i => i.detail === "Allowances")) && (
-        <AllowancesSummaryPage template={template} client={client} divisions={divisions} />
+        <AllowancesSummaryPage client={client} divisions={divisions} />
       )}
       <Page size="LETTER" style={styles.page}>
         {/* Fixed footer — renders on every page */}
