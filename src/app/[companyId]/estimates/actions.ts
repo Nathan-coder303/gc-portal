@@ -257,6 +257,23 @@ export async function updateTemplate(
   return { success: true };
 }
 
+// Admin toggle: mark an estimate as APPROVED or DRAFT.
+export async function setEstimateApprovalStatus(templateId: string, status: "DRAFT" | "APPROVED") {
+  const session = await auth();
+  if (!session) throw new Error("Unauthorized");
+  requirePermission(session, "estimateTemplate:edit");
+
+  // Raw SQL — Vercel can cache an older Prisma client that doesn't know this column yet.
+  await prisma.$executeRawUnsafe(
+    `UPDATE "EstimateTemplate" SET "approvalStatus" = $1, "updatedBy" = $2 WHERE id = $3`,
+    status, session.user.id, templateId,
+  );
+
+  revalidatePath(`/${session.user.companyId}/estimates`, "layout");
+  revalidatePath(`/${session.user.companyId}/clients`, "layout");
+  return { success: true, status };
+}
+
 export async function archiveTemplate(templateId: string) {
   const session = await auth();
   if (!session) throw new Error("Unauthorized");

@@ -6,7 +6,7 @@ import DeleteEstimateButton from "@/components/clients/DeleteEstimateButton";
 import EditEstimateModal from "@/components/clients/EditEstimateModal";
 import CoverPagePickerModal, { PdfOptions, Page2Type, CoverType, COVER_OPTIONS } from "@/components/clients/CoverPagePickerModal";
 import SignInSheetCard from "@/components/clients/SignInSheetCard";
-import { duplicateTemplate } from "@/app/[companyId]/estimates/actions";
+import { duplicateTemplate, setEstimateApprovalStatus } from "@/app/[companyId]/estimates/actions";
 import EstimateVersionDiff, { Snapshot } from "@/components/clients/EstimateVersionDiff";
 import CountersignModal from "@/components/estimates/CountersignModal";
 
@@ -46,6 +46,7 @@ type EstimateRow = {
   signedAt: string | null;
   signedByName: string | null;
   counterSignedAt: string | null;
+  approvalStatus: string;
   total: number;
   versions: EstimateVersion[];
 };
@@ -80,6 +81,18 @@ function EstimateCard({
   const [step, setStep] = useState<"cover" | "email" | null>(null);
   const [pdfOpts, setPdfOpts] = useState<PdfOptions | null>(null);
   const [duplicating, setDuplicating] = useState(false);
+  const [approvalStatus, setApprovalStatus] = useState(est.approvalStatus);
+  const [savingApproval, setSavingApproval] = useState(false);
+  async function toggleApproval(e: React.MouseEvent) {
+    e.stopPropagation();
+    if (savingApproval) return;
+    const next = approvalStatus === "APPROVED" ? "DRAFT" : "APPROVED";
+    setApprovalStatus(next);
+    setSavingApproval(true);
+    try { await setEstimateApprovalStatus(est.id, next); }
+    catch { setApprovalStatus(approvalStatus); }
+    finally { setSavingApproval(false); }
+  }
 
   // Record off-portal client signature → countersign flow
   const [showRecordSign, setShowRecordSign] = useState(false);
@@ -255,6 +268,26 @@ function EstimateCard({
               {sentStr && <div className="text-xs" style={{ color: "#C9A84C88" }}>Last sent {sentStr} ET</div>}
             </div>
             <div className="flex items-center gap-2 shrink-0">
+              {canEdit ? (
+                <button
+                  onClick={toggleApproval}
+                  disabled={savingApproval}
+                  className="text-xs px-2 py-0.5 rounded-full font-semibold disabled:opacity-60"
+                  style={approvalStatus === "APPROVED"
+                    ? { background: "#0d2318", color: "#22c55e", border: "1px solid #22c55e" }
+                    : { background: "#2a2410", color: "#C9A84C", border: "1px solid #C9A84C88" }}
+                  title="Click to toggle Approved / Draft"
+                >
+                  {approvalStatus === "APPROVED" ? "✓ Approved" : "◷ Draft"}
+                </button>
+              ) : (
+                <span className="text-xs px-2 py-0.5 rounded-full font-semibold"
+                  style={approvalStatus === "APPROVED"
+                    ? { background: "#0d2318", color: "#22c55e", border: "1px solid #22c55e" }
+                    : { background: "#2a2410", color: "#C9A84C", border: "1px solid #C9A84C88" }}>
+                  {approvalStatus === "APPROVED" ? "✓ Approved" : "◷ Draft"}
+                </span>
+              )}
               {statusBadge}
               <span className="font-bold text-sm" style={{ color: "#C9A84C" }}>${fmt(est.total)}</span>
             </div>

@@ -910,6 +910,7 @@ model EstimateTemplate {
   archivedAt  DateTime?
   archivedBy  String?
   type            String                     @default("TEMPLATE")
+  approvalStatus  String                     @default("DRAFT") // DRAFT | APPROVED (admin-set)
   estimateNumber  String?
   estimateDate    String?
   paymentSchedule Json?

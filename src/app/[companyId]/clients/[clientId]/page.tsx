@@ -348,6 +348,7 @@ export default async function ClientDetailPage({
             signedAt: est.signedAt?.toISOString() ?? null,
             signedByName: est.signedByName ?? null,
             counterSignedAt: est.counterSignedAt?.toISOString() ?? null,
+            approvalStatus: est.approvalStatus,
             total: calcEstimateTotal(est.divisions, est.gcFeePercent),
             versions: est.versions.map(v => ({
               id: v.id,
