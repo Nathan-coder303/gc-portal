@@ -1290,18 +1290,18 @@ function ExclusionsBlock({ exclusionLines, exclusionsSuggestedTotal }: { exclusi
 
 function PieBlock({ svgSlices, pieTotal }: { svgSlices: BottomSummaryProps["svgSlices"]; pieTotal: number }) {
   return (
-    <View style={{ width: 188, alignItems: "center" }}>
-      <View style={{ backgroundColor: DARK, paddingHorizontal: 8, paddingVertical: 6, borderRadius: 3, width: 188, marginBottom: 6 }}>
-        <Text style={{ fontSize: 9, fontFamily: "Helvetica-Bold", color: GOLD, letterSpacing: 1, textAlign: "center" }}>COST BREAKDOWN</Text>
+    <View wrap={false} style={{ width: 150, alignItems: "center" }}>
+      <View style={{ backgroundColor: DARK, paddingHorizontal: 8, paddingVertical: 5, borderRadius: 3, width: 150, marginBottom: 5 }}>
+        <Text style={{ fontSize: 8.5, fontFamily: "Helvetica-Bold", color: GOLD, letterSpacing: 1, textAlign: "center" }}>COST BREAKDOWN</Text>
       </View>
-      <View style={{ position: "relative", width: 160, height: 160 }}>
-        <Svg width={160} height={160} viewBox="0 0 160 160">
+      <View style={{ position: "relative", width: 120, height: 120 }}>
+        <Svg width={120} height={120} viewBox="0 0 120 120">
           {svgSlices.map((s, i) => (
             <Path key={i} d={s.d} fill={s.color} stroke="white" strokeWidth={1.5} />
           ))}
         </Svg>
         {svgSlices.map((s, i) => {
-          const centroid = polarToCartesian(80, 80, 44, s.startAngle + s.sweep / 2);
+          const centroid = polarToCartesian(60, 60, 33, s.startAngle + s.sweep / 2);
           const pct = pieTotal > 0 ? Math.round(s.amount / pieTotal * 100) : 0;
           const shortLabel = s.label === "Labor & Rough Material"
             ? `Labor &\nRough Material`
@@ -1309,14 +1309,14 @@ function PieBlock({ svgSlices, pieTotal }: { svgSlices: BottomSummaryProps["svgS
             ? `GC Overhead\n& Profit`
             : s.label;
           return (
-            <View key={`lbl-${i}`} style={{ position: "absolute", left: centroid.x - 22, top: centroid.y - 14, width: 44, alignItems: "center" }}>
-              <Text style={{ fontSize: 5.5, color: "white", textAlign: "center", lineHeight: 1.3 }}>{shortLabel}</Text>
-              <Text style={{ fontSize: 6.5, color: "white", fontFamily: "Helvetica-Bold", textAlign: "center", marginTop: 1 }}>{pct}%</Text>
+            <View key={`lbl-${i}`} style={{ position: "absolute", left: centroid.x - 18, top: centroid.y - 11, width: 36, alignItems: "center" }}>
+              <Text style={{ fontSize: 5, color: "white", textAlign: "center", lineHeight: 1.3 }}>{shortLabel}</Text>
+              <Text style={{ fontSize: 6, color: "white", fontFamily: "Helvetica-Bold", textAlign: "center", marginTop: 1 }}>{pct}%</Text>
             </View>
           );
         })}
       </View>
-      <View style={{ width: 188, paddingHorizontal: 4, marginTop: 4 }}>
+      <View style={{ width: 150, paddingHorizontal: 4, marginTop: 4 }}>
         {svgSlices.map((s, i) => (
           <View key={i} style={{ flexDirection: "row", alignItems: "center", marginTop: 4 }}>
             <View style={{ width: 10, height: 10, backgroundColor: s.color, borderRadius: 2, marginRight: 5 }} />
@@ -1365,7 +1365,7 @@ function BottomSummary(props: BottomSummaryProps) {
 }
 
 // ─── Division Summary Page ────────────────────────────────────────────────────
-function DivisionSummaryPage({ template, client, divisions, gcFeePercent }: Pick<TemplatePdfProps, "template" | "client" | "divisions" | "gcFeePercent">) {
+function DivisionSummaryPage({ template, client, divisions, gcFeePercent, includeAllowancesSummary }: Pick<TemplatePdfProps, "template" | "client" | "divisions" | "gcFeePercent" | "includeAllowancesSummary">) {
   const { logoSrc: logoPath, name: companyDisplayName, phone: companyPhone, email: companyEmail, licenses: companyLicenses, contactName: companyContactName } = useBranding();
 
   // Compute division totals (only divisions with items having a total)
@@ -1429,7 +1429,7 @@ function DivisionSummaryPage({ template, client, divisions, gcFeePercent }: Pick
   const svgSlices = rawPieSlices.map(s => {
     const sweep = pieTotal > 0 ? (s.amount / pieTotal) * 360 : 0;
     const startAngle = _pieAngle;
-    const d = pieSlicePath(80, 80, 72, startAngle, sweep);
+    const d = pieSlicePath(60, 60, 54, startAngle, sweep);
     _pieAngle += sweep;
     return { ...s, sweep, startAngle, d };
   });
@@ -1493,11 +1493,13 @@ function DivisionSummaryPage({ template, client, divisions, gcFeePercent }: Pick
             </View>
           </View>
         </View>
-          {/* Bottom summary: Allowances + Exclusions + Pie chart (breaks to next page when exclusions > 6) */}
-          {(hasAllowances || hasExclusions || svgSlices.length > 0) && (
+          {/* Bottom summary: Allowances + Exclusions + Pie chart.
+              When the dedicated Allowances Summary page is on, drop the allowance + exclusion
+              recap here (avoids duplication) and keep only the pie. */}
+          {((hasAllowances && !includeAllowancesSummary) || (hasExclusions && !includeAllowancesSummary) || svgSlices.length > 0) && (
             <BottomSummary
-              hasAllowances={hasAllowances}
-              hasExclusions={hasExclusions}
+              hasAllowances={hasAllowances && !includeAllowancesSummary}
+              hasExclusions={hasExclusions && !includeAllowancesSummary}
               allowanceLines={allowanceLines}
               allowancesTotal={allowancesTotal}
               exclusionLines={exclusionLines}
@@ -1861,7 +1863,7 @@ function TemplatePdfDocument({ companyName, template, client, divisions, showTer
       {includeRetailPages && <RetailPage2 client={client} />}
       {scopeOfWork && <ScopeOfWorkPage title={scopeOfWork.title} body={scopeOfWork.body} client={client} />}
       {includeDivisionSummary && !includeRoofUpgradesPage && (
-        <DivisionSummaryPage template={template} client={client} divisions={divisions} gcFeePercent={gcFeePercent} />
+        <DivisionSummaryPage template={template} client={client} divisions={divisions} gcFeePercent={gcFeePercent} includeAllowancesSummary={includeAllowancesSummary} />
       )}
       {includeAllowancesSummary && divisions.some(div => [...div.items, ...div.groups.flatMap(g => g.items)].some(i => i.detail === "Allowances")) && (
         <AllowancesSummaryPage client={client} divisions={divisions} />
