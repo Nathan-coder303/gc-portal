@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { revalidatePath } from "next/cache";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 
@@ -67,5 +68,9 @@ export async function PATCH(
       contactName: true, projectName: true, status: true,
     },
   });
+  // Refresh the client's pages so the updated email/details (e.g. the send-email "To"
+  // field, which reads the client record) reflect the change immediately.
+  revalidatePath(`/${params.companyId}/clients/${params.clientId}`, "layout");
+  revalidatePath(`/${params.companyId}/clients`, "layout");
   return NextResponse.json(updated);
 }

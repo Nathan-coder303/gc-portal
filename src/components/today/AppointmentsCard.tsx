@@ -338,7 +338,7 @@ export default function AppointmentsCard({
     setSelectedLead(lead);
     setAddAddress(lead.lead?.address ?? "");
     setAddCity(lead.lead?.city ?? "");
-    setAddState(""); // we don't have state on the picker lead shape; user fills if desired
+    setAddState("FL"); // default FL; user can change
     setAddZip("");
     setAddH(""); setAddM(""); setAddAp("AM");
     setAddDate(todayDateStr); setAddNotes("");
@@ -523,6 +523,9 @@ export default function AppointmentsCard({
         lead: prev.lead ? { ...prev.lead, name: popupEditForm.name || prev.lead.name, email: popupEditForm.email || null, phone: popupEditForm.phone || null, address: popupEditForm.address || null, city: popupEditForm.city || null, state: popupEditForm.state || null, zip: popupEditForm.zip || null, projectType: popupEditForm.projectType || null } : prev.lead,
       } : prev);
       setPopupEditing(false);
+      // Re-read from the server so the edited email/details show everywhere (and the
+      // send-email "To" field, which reads the client record, picks up the new email).
+      router.refresh();
     } catch (err) {
       setPopupSaveError(err instanceof Error ? err.message : "Save failed — please try again");
     } finally { setPopupSaving(false); }

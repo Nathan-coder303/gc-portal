@@ -62,7 +62,7 @@ function ClientCard({
   const router = useRouter();
   const [form, setForm] = useState({
     name: client.name, address: client.address ?? "", city: client.city ?? "",
-    state: client.state ?? "", zip: client.zip ?? "", email: client.email ?? "", phone: client.phone ?? "",
+    state: client.state ?? "FL", zip: client.zip ?? "", email: client.email ?? "", phone: client.phone ?? "",
   });
 
   function save() {
@@ -294,7 +294,7 @@ function FromLeadModal({ companyId, defaultStatus, onDone, onClose }: {
         name: selected.name!.trim(),
         address: selected.address ?? "",
         city: selected.city ?? "",
-        state: "",
+        state: "FL",
         zip: "",
         emailList: selected.email ? [selected.email] : [],
         phone: selected.phone ?? "",

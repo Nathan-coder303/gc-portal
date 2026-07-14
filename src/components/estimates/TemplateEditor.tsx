@@ -1871,6 +1871,7 @@ export default function TemplateEditor({
           page2: pdfOpts.page2,
           includeInsert: pdfOpts.includeInsert,
           includeDivisionSummary: pdfOpts.includeDivisionSummary,
+          includeAllowances: pdfOpts.includeAllowances,
           forcedBreakCsiPrefixes: pdfOpts.forcedBreakCsiPrefixes,
           forcedBreakTerms: pdfOpts.forcedBreakTerms,
           noPresentation: pdfOpts.noPresentation,

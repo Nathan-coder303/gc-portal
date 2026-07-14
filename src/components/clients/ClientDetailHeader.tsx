@@ -78,7 +78,7 @@ export default function ClientDetailHeader({
     name: client.name,
     address: client.address ?? "",
     city: client.city ?? "",
-    state: client.state ?? "",
+    state: client.state ?? "FL",
     zip: client.zip ?? "",
     phone: client.phone ?? "",
     contactName: client.contactName ?? "",

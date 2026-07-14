@@ -7,7 +7,7 @@ export default function AddLeadButton({ companyId }: { companyId: string }) {
   const [open, setOpen] = useState(false);
   const [saving, setSaving] = useState(false);
   const [form, setForm] = useState({
-    name: "", phone: "", email: "", address: "", city: "", state: "", zip: "", projectType: "", message: "",
+    name: "", phone: "", email: "", address: "", city: "", state: "FL", zip: "", projectType: "", message: "",
   });
   const router = useRouter();
 
@@ -33,7 +33,7 @@ export default function AddLeadButton({ companyId }: { companyId: string }) {
       });
       if (res.ok) {
         setOpen(false);
-        setForm({ name: "", phone: "", email: "", address: "", city: "", state: "", zip: "", projectType: "", message: "" });
+        setForm({ name: "", phone: "", email: "", address: "", city: "", state: "FL", zip: "", projectType: "", message: "" });
         router.refresh();
       }
     } finally {

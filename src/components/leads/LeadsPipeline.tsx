@@ -500,7 +500,7 @@ export default function LeadsPipeline({ companyId, triageLeads, stagedCards }: P
 
   async function openEdit(leadId: string) {
     setEditLeadId(leadId);
-    setEditForm({ name: "", email: "", phone: "", address: "", city: "", state: "", zip: "", projectType: "", message: "" });
+    setEditForm({ name: "", email: "", phone: "", address: "", city: "", state: "FL", zip: "", projectType: "", message: "" });
     try {
       const res = await fetch(`/api/${companyId}/leads/${leadId}`);
       if (res.ok) {

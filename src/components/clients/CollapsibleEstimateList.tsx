@@ -219,6 +219,7 @@ function EstimateCard({
           page2: pdfOpts.page2,
           includeInsert: pdfOpts.includeInsert,
           includeDivisionSummary: pdfOpts.includeDivisionSummary,
+          includeAllowances: pdfOpts.includeAllowances,
           noPresentation: pdfOpts.noPresentation,
           forcedBreakCsiPrefixes: pdfOpts.forcedBreakCsiPrefixes,
           scopeOfWorkId: pdfOpts.scopeOfWorkId ?? null,
