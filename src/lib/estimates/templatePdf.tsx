@@ -1417,8 +1417,13 @@ function DivisionSummaryPage({ template, client, divisions, gcFeePercent, includ
 
   // When the bottom summary breaks to its own page, enlarge the division rows so the summary page isn't sparse
   const bottomBreaks = !includeAllowancesSummary && exclusionLines.length > 6;
-  const divRowFs = bottomBreaks ? 13 : 10;
-  const divRowPadV = bottomBreaks ? 9 : 5;
+  // With many divisions the summary page fills up and the pie (which can't split)
+  // spills to a near-blank page. Compact the rows so everything fits on one page.
+  const rowCount = divTotals.length + (gcFeeAmount > 0 ? 1 : 0);
+  const compact = !bottomBreaks && rowCount > 12;
+  const divRowFs = bottomBreaks ? 13 : compact ? 8.5 : 10;
+  const divRowPadV = bottomBreaks ? 9 : compact ? 2.5 : 5;
+  const totalMarginTop = compact ? 8 : 20;
 
   // Pie chart slices: Labor & Rough Material, Allowances, GC Fee
   const laborAmount = Math.max(0, grandTotalWithGc - allowancesTotal - gcFeeAmount);
@@ -1481,7 +1486,7 @@ function DivisionSummaryPage({ template, client, divisions, gcFeePercent, includ
 
         {/* Gold divider + Grand total — kept together */}
         <View wrap={false} minPresenceAhead={40}>
-          <View style={{ height: 2, backgroundColor: GOLD, marginTop: 20, marginBottom: 0 }} />
+          <View style={{ height: 2, backgroundColor: GOLD, marginTop: totalMarginTop, marginBottom: 0 }} />
           <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", backgroundColor: DARK, paddingHorizontal: 16, paddingVertical: 12, borderRadius: 4, marginTop: 0 }}>
             <Text style={{ fontSize: 14, fontFamily: "Helvetica-Bold", color: GOLD }}>ESTIMATE TOTAL</Text>
             <View style={{ flexDirection: "row", alignItems: "center", gap: 16 }}>
