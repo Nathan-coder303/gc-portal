@@ -111,7 +111,7 @@ const STATUS_COLORS: Record<string, { bg: string; color: string }> = {
 
 // ── Division picker ─────────────────────────────────────────────────────────
 
-function DivisionPicker({ onAdd }: { onAdd: (items: COItem[]) => void }) {
+function DivisionPicker({ onAdd, defaultMarkup }: { onAdd: (items: COItem[]) => void; defaultMarkup: string }) {
   const [selectedDiv, setSelectedDiv] = useState("");
 
   function handleAdd() {
@@ -125,7 +125,7 @@ function DivisionPicker({ onAdd }: { onAdd: (items: COItem[]) => void }) {
       qty: "",
       unit: "LS",
       unitCost: "",
-      markupPct: "15",
+      markupPct: defaultMarkup,
     }));
     onAdd(newItems);
     setSelectedDiv("");
@@ -537,6 +537,7 @@ function ChangeOrderEditor({
   clientId,
   initial,
   defaultOrderNumber,
+  contractGcPct,
   onSave,
   onClose,
 }: {
@@ -544,9 +545,12 @@ function ChangeOrderEditor({
   clientId: string;
   initial: ChangeOrder | null;
   defaultOrderNumber?: string;
+  contractGcPct?: number;
   onSave: (order: ChangeOrder) => void;
   onClose: () => void;
 }) {
+  // Change orders carry the same GC % as the original contract (never a lower default).
+  const defaultMarkup = contractGcPct != null && contractGcPct > 0 ? String(contractGcPct) : "15";
   const [isPending, startTransition] = useTransition();
   const [title, setTitle] = useState(initial?.title ?? "");
   const [orderNumber, setOrderNumber] = useState(initial?.orderNumber ?? defaultOrderNumber ?? "");
@@ -567,7 +571,7 @@ function ChangeOrderEditor({
       qty: it.qty != null ? String(it.qty) : "",
       unit: it.unit ?? "LS",
       unitCost: it.unitCost != null ? String(it.unitCost) : "",
-      markupPct: it.markupPct != null ? String(it.markupPct) : "15",
+      markupPct: it.markupPct != null ? String(it.markupPct) : defaultMarkup,
     })) ?? []
   );
 
@@ -584,7 +588,7 @@ function ChangeOrderEditor({
       qty: "",
       unit: "LS",
       unitCost: "",
-      markupPct: "15",
+      markupPct: defaultMarkup,
     }]);
   }
 
@@ -798,7 +802,7 @@ function ChangeOrderEditor({
 
         {/* Division picker */}
         <div className="rounded-xl p-3 mb-4" style={{ background: "#1e2736", border: "1px solid #30373f" }}>
-          <DivisionPicker onAdd={handleAddDivisionItems} />
+          <DivisionPicker onAdd={handleAddDivisionItems} defaultMarkup={defaultMarkup} />
         </div>
 
         {/* Items */}
@@ -1415,6 +1419,7 @@ export default function ChangeOrdersTab({
   initialClientDocs,
   canEdit,
   hideExecutedSection = false,
+  contractGcPct,
 }: {
   companyId: string;
   clientId: string;
@@ -1427,6 +1432,7 @@ export default function ChangeOrdersTab({
   initialClientDocs?: ClientDoc[];
   canEdit: boolean;
   hideExecutedSection?: boolean;
+  contractGcPct?: number;
 }) {
   const [orders, setOrders] = useState<ChangeOrder[]>(initialOrders);
   const [editing, setEditing] = useState<ChangeOrder | null | "new">(null);
@@ -1979,6 +1985,7 @@ export default function ChangeOrdersTab({
           clientId={clientId}
           initial={editing === "new" ? null : editing}
           defaultOrderNumber={editing === "new" ? nextCoNumber() : undefined}
+          contractGcPct={contractGcPct}
           onSave={handleSaved}
           onClose={() => setEditing(null)}
         />

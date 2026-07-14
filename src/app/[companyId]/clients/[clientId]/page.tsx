@@ -449,6 +449,8 @@ export default async function ClientDetailPage({
             isCommercial: isCommercial,
             clientCoverPhotoType: safeClient.coverPhotoType ?? null,
             canEdit: canEdit,
+            // Change orders inherit the original contract's GC % (highest across the client's estimates), never lower.
+            contractGcPct: safeClient.templates.reduce((max, t) => Math.max(max, Number(t.gcFeePercent ?? 0)), 0) || undefined,
             initialOrders: changeOrders.map(co => ({
               id: co.id,
               title: co.title,
