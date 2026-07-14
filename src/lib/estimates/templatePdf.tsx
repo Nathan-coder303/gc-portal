@@ -210,7 +210,7 @@ const styles = StyleSheet.create({
 const GRAND_TOTAL_VALUE_STYLE = { fontSize: 13 as const, fontFamily: "Helvetica-Bold" as const, color: "#C9A84C" as const };
 
 type Item = { id: string; name: string; detail: string | null; unit: string | null; defaultQty: number | null; defaultUnitCost: number | null; defaultMarkupPct: number | null; visibleInPdf: boolean; notes: string | null; csiCode?: string | null };
-type Group = { id: string; name: string; items: Item[] };
+type Group = { id: string; name: string; manualTotal?: number | null; items: Item[] };
 type Division = { id: string; csiCode: string | null; name: string; manualTotal?: number | null; groups: Group[]; items: Item[] };
 
 type PaymentRow = { payment: string; trigger: string; pct: number };
@@ -1290,18 +1290,18 @@ function ExclusionsBlock({ exclusionLines, exclusionsSuggestedTotal }: { exclusi
 
 function PieBlock({ svgSlices, pieTotal }: { svgSlices: BottomSummaryProps["svgSlices"]; pieTotal: number }) {
   return (
-    <View wrap={false} style={{ width: 150, alignItems: "center" }}>
-      <View style={{ backgroundColor: DARK, paddingHorizontal: 8, paddingVertical: 5, borderRadius: 3, width: 150, marginBottom: 5 }}>
-        <Text style={{ fontSize: 8.5, fontFamily: "Helvetica-Bold", color: GOLD, letterSpacing: 1, textAlign: "center" }}>COST BREAKDOWN</Text>
+    <View wrap={false} style={{ width: 130, alignItems: "center" }}>
+      <View style={{ backgroundColor: DARK, paddingHorizontal: 8, paddingVertical: 4, borderRadius: 3, width: 130, marginBottom: 4 }}>
+        <Text style={{ fontSize: 8, fontFamily: "Helvetica-Bold", color: GOLD, letterSpacing: 1, textAlign: "center" }}>COST BREAKDOWN</Text>
       </View>
-      <View style={{ position: "relative", width: 120, height: 120 }}>
-        <Svg width={120} height={120} viewBox="0 0 120 120">
+      <View style={{ position: "relative", width: 100, height: 100 }}>
+        <Svg width={100} height={100} viewBox="0 0 100 100">
           {svgSlices.map((s, i) => (
             <Path key={i} d={s.d} fill={s.color} stroke="white" strokeWidth={1.5} />
           ))}
         </Svg>
         {svgSlices.map((s, i) => {
-          const centroid = polarToCartesian(60, 60, 33, s.startAngle + s.sweep / 2);
+          const centroid = polarToCartesian(50, 50, 28, s.startAngle + s.sweep / 2);
           const pct = pieTotal > 0 ? Math.round(s.amount / pieTotal * 100) : 0;
           const shortLabel = s.label === "Labor & Rough Material"
             ? `Labor &\nRough Material`
@@ -1309,14 +1309,14 @@ function PieBlock({ svgSlices, pieTotal }: { svgSlices: BottomSummaryProps["svgS
             ? `GC Overhead\n& Profit`
             : s.label;
           return (
-            <View key={`lbl-${i}`} style={{ position: "absolute", left: centroid.x - 18, top: centroid.y - 11, width: 36, alignItems: "center" }}>
-              <Text style={{ fontSize: 5, color: "white", textAlign: "center", lineHeight: 1.3 }}>{shortLabel}</Text>
-              <Text style={{ fontSize: 6, color: "white", fontFamily: "Helvetica-Bold", textAlign: "center", marginTop: 1 }}>{pct}%</Text>
+            <View key={`lbl-${i}`} style={{ position: "absolute", left: centroid.x - 16, top: centroid.y - 9, width: 32, alignItems: "center" }}>
+              <Text style={{ fontSize: 4.5, color: "white", textAlign: "center", lineHeight: 1.25 }}>{shortLabel}</Text>
+              <Text style={{ fontSize: 5.5, color: "white", fontFamily: "Helvetica-Bold", textAlign: "center", marginTop: 0.5 }}>{pct}%</Text>
             </View>
           );
         })}
       </View>
-      <View style={{ width: 150, paddingHorizontal: 4, marginTop: 4 }}>
+      <View style={{ width: 130, paddingHorizontal: 4, marginTop: 3 }}>
         {svgSlices.map((s, i) => (
           <View key={i} style={{ flexDirection: "row", alignItems: "center", marginTop: 4 }}>
             <View style={{ width: 10, height: 10, backgroundColor: s.color, borderRadius: 2, marginRight: 5 }} />
@@ -1371,22 +1371,22 @@ function BottomSummary(props: BottomSummaryProps) {
 function DivisionSummaryPage({ template, client, divisions, gcFeePercent, includeAllowancesSummary }: Pick<TemplatePdfProps, "template" | "client" | "divisions" | "gcFeePercent" | "includeAllowancesSummary">) {
   const { logoSrc: logoPath, name: companyDisplayName, phone: companyPhone, email: companyEmail, licenses: companyLicenses, contactName: companyContactName } = useBranding();
 
-  // Compute division totals (only divisions with items having a total)
+  // Compute division totals. Excluded items never add; group/division lump sums
+  // (which zero their items) must still count toward the division total.
+  const itemsTotal = (items: Item[]) => items
+    .filter(i => i.detail !== "Excluded")
+    .reduce((s, i) => s + calcTotal(i.defaultQty, i.defaultUnitCost, i.defaultMarkupPct), 0);
   const divTotals: { name: string; total: number }[] = [];
   for (const div of divisions) {
     if (div.manualTotal != null) {
-      if (div.manualTotal > 0) divTotals.push({ name: div.name, total: div.manualTotal });
+      if (div.manualTotal > 0) divTotals.push({ name: div.name, total: Number(div.manualTotal) });
       continue;
     }
-    const allItems = [
-      ...div.items.filter(isItemFilled),
-      ...div.groups.flatMap(g => g.items.filter(isItemFilled)),
-    ];
-    if (allItems.length === 0) continue;
-    // Excluded items must NEVER add to the estimate total
-    const total = allItems
-      .filter(i => i.detail !== "Excluded")
-      .reduce((s, i) => s + calcTotal(i.defaultQty, i.defaultUnitCost, i.defaultMarkupPct), 0);
+    const groupsTotal = div.groups.reduce(
+      (s, g) => s + (g.manualTotal != null ? Number(g.manualTotal) : itemsTotal(g.items)),
+      0,
+    );
+    const total = itemsTotal(div.items) + groupsTotal;
     if (total > 0) divTotals.push({ name: div.name, total });
   }
 
@@ -1432,7 +1432,7 @@ function DivisionSummaryPage({ template, client, divisions, gcFeePercent, includ
   const svgSlices = rawPieSlices.map(s => {
     const sweep = pieTotal > 0 ? (s.amount / pieTotal) * 360 : 0;
     const startAngle = _pieAngle;
-    const d = pieSlicePath(60, 60, 54, startAngle, sweep);
+    const d = pieSlicePath(50, 50, 45, startAngle, sweep);
     _pieAngle += sweep;
     return { ...s, sweep, startAngle, d };
   });
