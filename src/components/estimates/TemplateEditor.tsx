@@ -403,7 +403,7 @@ function ItemRow({ item, divisionId, groupId, canEdit }: { item: Item; divisionI
     return (
       <tr ref={setNodeRef} className="group text-sm" style={{ borderTop: "1px solid #30373f", opacity: isDragging ? 0.35 : 1, transform: CSS.Transform.toString(transform), transition }}>
         {canEdit && (
-          <td className="px-1 py-2 text-center select-none" style={{ color: "#8b949e", width: "28px" }}>
+          <td className="px-1 py-2 text-center select-none w-24 sm:w-7" style={{ color: "#8b949e" }}>
             <div className="flex flex-col items-center gap-1">
               <span style={{ cursor: "grab", fontSize: "14px" }} {...listeners} {...attributes}>⠿</span>
               {/* Mobile-only action buttons below drag handle */}
@@ -645,7 +645,7 @@ function TemplateItemTable({ divisionId, groupId, items, canEdit }: { divisionId
       <table className="w-full text-sm" style={{ minWidth: "960px", tableLayout: "fixed" }}>
         <thead>
           <tr style={{ background: "#161b22" }}>
-            {canEdit && <th style={{ width: "24px" }} />}
+            {canEdit && <th className="w-24 sm:w-7" />}
             <th className="px-3 py-1.5 text-left font-medium text-xs w-20" style={{ color: "#8b949e" }}>CSI</th>
             <th className="px-3 py-1.5 text-left font-medium text-xs" style={{ color: "#8b949e", minWidth: "260px" }}>Item</th>
             <th className="px-3 py-1.5 text-left font-medium text-xs w-28" style={{ color: "#8b949e" }}>Detail</th>
