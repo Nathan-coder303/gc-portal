@@ -1336,7 +1336,10 @@ function PieBlock({ svgSlices, pieTotal }: { svgSlices: BottomSummaryProps["svgS
 
 function BottomSummary(props: BottomSummaryProps) {
   const { hasAllowances, hasExclusions, allowanceLines, allowancesTotal, exclusionLines, exclusionsSuggestedTotal, svgSlices, pieTotal } = props;
-  const shouldBreak = exclusionLines.length > 6;
+  // Only break the bottom block to its own page when the allowance/exclusion tables are
+  // actually shown here (they're heavy). When suppressed (recap page on), keep the lone
+  // pie inline on the summary page instead of pushing it to a full blank page.
+  const shouldBreak = hasExclusions && exclusionLines.length > 6;
   const hasPie = svgSlices.length > 0;
 
   if (shouldBreak) {
@@ -1413,7 +1416,7 @@ function DivisionSummaryPage({ template, client, divisions, gcFeePercent, includ
   const exclusionsSuggestedTotal = exclusionLines.reduce((s, l) => s + l.suggested, 0);
 
   // When the bottom summary breaks to its own page, enlarge the division rows so the summary page isn't sparse
-  const bottomBreaks = exclusionLines.length > 6;
+  const bottomBreaks = !includeAllowancesSummary && exclusionLines.length > 6;
   const divRowFs = bottomBreaks ? 13 : 10;
   const divRowPadV = bottomBreaks ? 9 : 5;
 
