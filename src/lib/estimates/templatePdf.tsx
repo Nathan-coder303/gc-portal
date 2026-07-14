@@ -2081,13 +2081,13 @@ function TemplatePdfDocument({ companyName, template, client, divisions, showTer
                       {!groupLabel && <Text style={styles.divisionTotal}>${fmt(divTotal)}</Text>}
                     </View>
 
-                    {filledGroups.map((grp) => {
+                    {filledGroups.map((grp, gi) => {
                       const grpTotal = grp.items.filter(i => i.detail !== "Excluded").reduce((s, i) => s + calcTotal(i.defaultQty, i.defaultUnitCost, i.defaultMarkupPct), 0);
                       return (
                         <View key={grp.id} minPresenceAhead={70}>
                           {/* Group header row — light blue */}
                           <View wrap={false} style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", backgroundColor: "#dbeafe", paddingHorizontal: 8, paddingVertical: 4, marginTop: 4 }}>
-                            <Text style={{ fontSize: 7.5, fontFamily: "Helvetica-Bold", color: "#1e40af", textTransform: "uppercase", letterSpacing: 0.5 }}>{grp.name}</Text>
+                            <Text style={{ fontSize: 7.5, fontFamily: "Helvetica-Bold", color: "#1e40af", textTransform: "uppercase", letterSpacing: 0.5 }}>{gi + 1}. {grp.name}</Text>
                             {grpTotal > 0 && <Text style={{ fontSize: 7.5, fontFamily: "Helvetica-Bold", color: "#1e40af" }}>${fmt(grpTotal)}</Text>}
                           </View>
                           <ItemTableHeader showLineNum={isRoof} />
