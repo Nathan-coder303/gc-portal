@@ -80,9 +80,11 @@ export default function InvoicesAndCoTab(props: {
 
   const approvedChangeOrders = orders.filter(co => co.status === "APPROVED" || !!co.signedAt);
 
-  const rawInvoiced = invoices.reduce((s, i) => s + i.amount, 0);
+  // Draft invoices are not real yet — exclude them from the invoiced total / billed balance.
+  const countedInvoices = invoices.filter(i => i.status !== "DRAFT");
+  const rawInvoiced = countedInvoices.reduce((s, i) => s + i.amount, 0);
   const estimateTotal = (props.invoices.estimates ?? []).reduce((s, e) => s + (e.total ?? 0), 0);
-  const totalInvoicePct = invoices.reduce((s, i) => s + Number(i.pct ?? 0), 0);
+  const totalInvoicePct = countedInvoices.reduce((s, i) => s + Number(i.pct ?? 0), 0);
   const fullyInvoiced = totalInvoicePct >= 99.5 || (estimateTotal > 0 && Math.abs(estimateTotal - rawInvoiced) <= Math.max(200, estimateTotal * 0.005));
   const totalInvoiced = fullyInvoiced ? estimateTotal : rawInvoiced;
   const totalChangeOrders = approvedChangeOrders.reduce((s, co) => s + coTotal(co), 0);

@@ -218,7 +218,7 @@ export default async function TodayPage({
     }),
     prisma.invoice.findMany({
       where: { companyId: params.companyId, client: { status: "ACTIVE" } },
-      select: { amount: true, payments: { select: { amount: true } } },
+      select: { amount: true, status: true, payments: { select: { amount: true } } },
     }),
     // Active clients with their most recent daily log — drives the Daily Logs card
     prisma.client.findMany({
@@ -261,7 +261,7 @@ export default async function TodayPage({
     const paid = sub.payments.reduce((ps, p) => ps + Number(p.amount), 0);
     return s + Math.max(0, contractAmt - paid);
   }, 0);
-  const totalMibhOwed = allClientInvoices.reduce((s, inv) => {
+  const totalMibhOwed = allClientInvoices.filter(inv => inv.status !== "DRAFT").reduce((s, inv) => {
     const paid = inv.payments.reduce((ps, p) => ps + p.amount, 0);
     return s + Math.max(0, inv.amount - paid);
   }, 0);

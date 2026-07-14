@@ -1258,8 +1258,10 @@ export default function ClientFinancialsTab({
   // Only approved or signed change orders count toward what the client owes
   const approvedChangeOrders = changeOrders.filter(co => co.status === "APPROVED" || !!co.signedAt);
   const totalChangeOrders = approvedChangeOrders.reduce((s, co) => s + coTotal(co), 0);
-  const rawInvoiced = invoices.reduce((s, inv) => s + inv.amount, 0);
-  const totalInvoicePct = invoices.reduce((s, inv) => s + (typeof inv.pct === "number" ? inv.pct : Number(inv.pct ?? 0)), 0);
+  // Draft invoices aren't real yet — exclude them from the invoiced total.
+  const countedInvoices = invoices.filter(inv => inv.status !== "DRAFT");
+  const rawInvoiced = countedInvoices.reduce((s, inv) => s + inv.amount, 0);
+  const totalInvoicePct = countedInvoices.reduce((s, inv) => s + (typeof inv.pct === "number" ? inv.pct : Number(inv.pct ?? 0)), 0);
   const fullyInvoiced = totalInvoicePct >= 99.5 || (contractTotal > 0 && Math.abs(contractTotal - rawInvoiced) <= Math.max(200, contractTotal * 0.005));
   const totalInvoiced = fullyInvoiced ? contractTotal : rawInvoiced;
   const invoicePaid = invoices.reduce((s, inv) => s + inv.payments.reduce((ps, p) => ps + p.amount, 0), 0);

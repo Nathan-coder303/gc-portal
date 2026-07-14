@@ -49,8 +49,10 @@ export async function GET(
     return sum + raw + fee;
   }, 0);
 
-  const rawInvoiced = invoices.reduce((s, inv) => s + Number(inv.amount), 0);
-  const totalPct = invoices.reduce((s, inv) => s + Number(inv.pct ?? 0), 0);
+  // Draft invoices aren't real yet — don't count them as invoiced.
+  const countedInvoices = invoices.filter(inv => inv.status !== "DRAFT");
+  const rawInvoiced = countedInvoices.reduce((s, inv) => s + Number(inv.amount), 0);
+  const totalPct = countedInvoices.reduce((s, inv) => s + Number(inv.pct ?? 0), 0);
   const fullyInvoiced = totalPct >= 99.5 || (estimateTotal > 0 && Math.abs(estimateTotal - rawInvoiced) <= Math.max(200, estimateTotal * 0.005));
   const totalInvoiced = fullyInvoiced ? estimateTotal : rawInvoiced;
   const invoicePaid = invoices.reduce(

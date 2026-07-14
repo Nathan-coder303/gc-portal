@@ -237,8 +237,10 @@ export default async function ClientDetailPage({
         estimateTotal={safeClient.templates.reduce((sum, est) => sum + calcEstimateTotal(est.divisions, est.gcFeePercent), 0)}
         canEdit={canEdit}
         paymentSummary={(() => {
-          const rawInvoiced = clientInvoices.reduce((s, inv) => s + Number(inv.amount), 0);
-          const totalPct = clientInvoices.reduce((s, inv) => s + Number(inv.pct ?? 0), 0);
+          // Draft invoices aren't real yet — exclude them from the invoiced total.
+          const countedInvoices = clientInvoices.filter(inv => inv.status !== "DRAFT");
+          const rawInvoiced = countedInvoices.reduce((s, inv) => s + Number(inv.amount), 0);
+          const totalPct = countedInvoices.reduce((s, inv) => s + Number(inv.pct ?? 0), 0);
           const estimateTotal = safeClient.templates.reduce((sum, est) => sum + calcEstimateTotal(est.divisions, est.gcFeePercent), 0);
           // When the user has billed the full estimate (pct ≥ ~100% OR sum is within rounding of estimate),
           // show the contract amount exactly — pennies/rounding gaps from per-phase percentage math shouldn't leak.
