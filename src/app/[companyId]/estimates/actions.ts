@@ -512,6 +512,63 @@ export async function upsertTemplateGroup(
   return { success: true, id: group.id };
 }
 
+// Copy a named shell template's divisions/groups/items into a target estimate (append as new divisions).
+export async function applyShellToTemplate(targetTemplateId: string, shellName: string) {
+  const session = await auth();
+  if (!session) throw new Error("Unauthorized");
+  requirePermission(session, "estimateTemplate:edit");
+
+  const ITEM_SELECT = {
+    name: true, csiCode: true, detail: true, unit: true, defaultQty: true, defaultUnitCost: true,
+    defaultLaborCost: true, defaultMaterialCost: true, defaultMarkupPct: true, notes: true, visibleInPdf: true,
+  } as const;
+
+  const shell = await prisma.estimateTemplate.findFirst({
+    where: { companyId: session.user.companyId, name: shellName, clientId: null, archivedAt: null },
+    select: {
+      divisions: {
+        where: { archivedAt: null }, orderBy: { sortOrder: "asc" },
+        select: {
+          csiCode: true, name: true,
+          items: { where: { archivedAt: null, groupId: null }, orderBy: { sortOrder: "asc" }, select: ITEM_SELECT },
+          groups: {
+            where: { archivedAt: null }, orderBy: { sortOrder: "asc" },
+            select: { name: true, items: { where: { archivedAt: null }, orderBy: { sortOrder: "asc" }, select: ITEM_SELECT } },
+          },
+        },
+      },
+    },
+  });
+  if (!shell) throw new Error(`Shell "${shellName}" not found`);
+
+  const maxOrder = await prisma.estimateTemplateDivision.aggregate({
+    where: { templateId: targetTemplateId, archivedAt: null },
+    _max: { sortOrder: true },
+  });
+  let sort = (maxOrder._max.sortOrder ?? -1) + 1;
+
+  for (const d of shell.divisions) {
+    const nd = await prisma.estimateTemplateDivision.create({
+      data: { templateId: targetTemplateId, csiCode: d.csiCode, name: d.name, sortOrder: sort++ },
+      select: { id: true },
+    });
+    if (d.items.length) {
+      await prisma.estimateTemplateItem.createMany({ data: d.items.map((it, i) => ({ divisionId: nd.id, ...it, sortOrder: i })) });
+    }
+    let gs = 0;
+    for (const g of d.groups) {
+      const ng = await prisma.estimateTemplateGroup.create({ data: { divisionId: nd.id, name: g.name, sortOrder: gs++ }, select: { id: true } });
+      if (g.items.length) {
+        await prisma.estimateTemplateItem.createMany({ data: g.items.map((it, i) => ({ divisionId: nd.id, groupId: ng.id, ...it, sortOrder: i })) });
+      }
+    }
+  }
+
+  await touchTemplate(targetTemplateId, session.user.id);
+  revalidatePath(`/${session.user.companyId}/estimates`, "layout");
+  return { success: true, divisions: shell.divisions.length };
+}
+
 export async function archiveTemplateGroup(groupId: string) {
   const session = await auth();
   if (!session) throw new Error("Unauthorized");

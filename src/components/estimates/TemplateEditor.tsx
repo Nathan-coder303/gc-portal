@@ -20,6 +20,7 @@ import {
   mergeTemplateDivisionInto,
   upsertTemplateGroup,
   archiveTemplateGroup,
+  applyShellToTemplate,
   updateTemplate,
   saveAsNewTemplate,
   setTemplateClient,
@@ -1511,6 +1512,16 @@ export default function TemplateEditor({
 }) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
+  const [shellLoading, setShellLoading] = useState<string | null>(null);
+  function loadShell(shellName: string) {
+    if (shellLoading) return;
+    if (!confirm(`Load the "${shellName}" shell into this estimate?\nIts concrete/masonry divisions will be added as new divisions.`)) return;
+    setShellLoading(shellName);
+    startTransition(async () => {
+      try { await applyShellToTemplate(template.id, shellName); router.refresh(); }
+      finally { setShellLoading(null); }
+    });
+  }
   const [editingHeader, setEditingHeader] = useState(false);
   const [name, setName] = useState(template.name);
   const [showTerms, setShowTerms] = useState(template.showTerms);
@@ -1952,6 +1963,25 @@ export default function TemplateEditor({
           {undoPending && <span className="text-xs ml-auto" style={{ color: "#8b949e" }}>Saving…</span>}
         </div>
       )}
+      {/* Shell loader — append a predefined scope shell */}
+      {canEdit && (
+        <div className="flex items-center gap-3 flex-wrap rounded-xl px-4 py-3" style={{ background: "#161b22", border: "1px solid #30373f" }}>
+          <span className="text-xs font-bold uppercase tracking-widest" style={{ color: "#8b949e" }}>Shell</span>
+          {["FG", "Basic"].map(s => (
+            <button
+              key={s}
+              onClick={() => loadShell(s)}
+              disabled={!!shellLoading}
+              className="text-xs px-3 py-1.5 rounded-lg font-semibold disabled:opacity-50"
+              style={{ background: "#C9A84C22", color: "#C9A84C", border: "1px solid #C9A84C44" }}
+            >
+              {shellLoading === s ? "Loading…" : `Load ${s}`}
+            </button>
+          ))}
+          <span className="text-[11px]" style={{ color: "#4d5566" }}>Adds the shell&rsquo;s concrete/masonry divisions to this estimate.</span>
+        </div>
+      )}
+
       {/* Header card */}
       <div className="rounded-xl p-5" style={{ background: "#1e2736", border: "1px solid #30373f" }}>
         {editingHeader ? (
