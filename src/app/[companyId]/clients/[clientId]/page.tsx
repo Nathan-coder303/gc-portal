@@ -98,21 +98,14 @@ export default async function ClientDetailPage({
   }
 
   function calcEstimateTotal(divisions: typeof safeClient.templates[0]["divisions"], gcFeePercent: typeof safeClient.templates[0]["gcFeePercent"]): number {
+    // Excluded items never roll in; a group/division lump sum (which zeroes its items) does.
+    const itemsSum = (items: { defaultQty: unknown; defaultUnitCost: unknown; defaultMarkupPct: unknown; detail: string | null }[]) =>
+      items.filter(i => i.detail !== "Excluded").reduce((s, i) =>
+        s + Number(i.defaultQty ?? 0) * Number(i.defaultUnitCost ?? 0) * (1 + Number(i.defaultMarkupPct ?? 0) / 100), 0);
     const raw = divisions.reduce((sum, div) => {
       if (div.manualTotal != null) return sum + Number(div.manualTotal);
-      const allItems = [...div.items, ...div.groups.flatMap((g) => g.items)];
-      return (
-        sum +
-        allItems
-          // Excluded items must NEVER roll into the estimate total
-          .filter(i => i.detail !== "Excluded")
-          .reduce((s, i) => {
-            const qty = i.defaultQty ? Number(i.defaultQty) : 0;
-            const cost = i.defaultUnitCost ? Number(i.defaultUnitCost) : 0;
-            const markup = i.defaultMarkupPct ? Number(i.defaultMarkupPct) : 0;
-            return s + qty * cost * (1 + markup / 100);
-          }, 0)
-      );
+      const groupsTotal = div.groups.reduce((gs, g) => gs + (g.manualTotal != null ? Number(g.manualTotal) : itemsSum(g.items)), 0);
+      return sum + itemsSum(div.items) + groupsTotal;
     }, 0);
     const fee = gcFeePercent ? raw * Number(gcFeePercent) / 100 : 0;
     return raw + fee;
@@ -239,13 +232,23 @@ export default async function ClientDetailPage({
         paymentSummary={(() => {
           // Draft invoices aren't real yet — exclude them from the invoiced total.
           const countedInvoices = clientInvoices.filter(inv => inv.status !== "DRAFT");
-          const rawInvoiced = countedInvoices.reduce((s, inv) => s + Number(inv.amount), 0);
-          const totalPct = countedInvoices.reduce((s, inv) => s + Number(inv.pct ?? 0), 0);
-          const estimateTotal = safeClient.templates.reduce((sum, est) => sum + calcEstimateTotal(est.divisions, est.gcFeePercent), 0);
-          // When the user has billed the full estimate (pct ≥ ~100% OR sum is within rounding of estimate),
-          // show the contract amount exactly — pennies/rounding gaps from per-phase percentage math shouldn't leak.
-          const fullyInvoiced = totalPct >= 99.5 || (estimateTotal > 0 && Math.abs(estimateTotal - rawInvoiced) <= Math.max(200, estimateTotal * 0.005));
-          const totalInvoiced = fullyInvoiced ? estimateTotal : rawInvoiced;
+          // Per-estimate total, keyed by estimate id.
+          const estTotalById = new Map<string, number>();
+          for (const est of safeClient.templates) estTotalById.set(est.id, calcEstimateTotal(est.divisions, est.gcFeePercent));
+          // Snap PER ESTIMATE: a fully-invoiced estimate shows its own total (avoids rounding drift),
+          // but is never inflated to the sum of OTHER estimates the client has.
+          const invByEst = new Map<string, { raw: number; pct: number }>();
+          for (const inv of countedInvoices) {
+            const cur = invByEst.get(inv.estimateId) ?? { raw: 0, pct: 0 };
+            cur.raw += Number(inv.amount); cur.pct += Number(inv.pct ?? 0);
+            invByEst.set(inv.estimateId, cur);
+          }
+          let totalInvoiced = 0;
+          invByEst.forEach(({ raw, pct }, estId) => {
+            const estT = estTotalById.get(estId) ?? 0;
+            const fully = estT > 0 && (pct >= 99.5 || Math.abs(estT - raw) <= Math.max(200, estT * 0.005));
+            totalInvoiced += fully ? estT : raw;
+          });
           const invoicePaid = clientInvoices.reduce((s, inv) => s + inv.payments.reduce((ps, p) => ps + Number(p.amount), 0), 0);
           const approvedCos = changeOrders.filter(co => co.status === "APPROVED" || !!co.signedAt);
           const totalChangeOrders = approvedCos.reduce((sum, co) => {

@@ -80,13 +80,22 @@ export default function InvoicesAndCoTab(props: {
 
   const approvedChangeOrders = orders.filter(co => co.status === "APPROVED" || !!co.signedAt);
 
-  // Draft invoices are not real yet — exclude them from the invoiced total / billed balance.
+  // Draft invoices aren't real yet — exclude them. Snap PER ESTIMATE (fully-invoiced
+  // estimate shows its own total), never inflate to the sum of other estimates.
   const countedInvoices = invoices.filter(i => i.status !== "DRAFT");
-  const rawInvoiced = countedInvoices.reduce((s, i) => s + i.amount, 0);
-  const estimateTotal = (props.invoices.estimates ?? []).reduce((s, e) => s + (e.total ?? 0), 0);
-  const totalInvoicePct = countedInvoices.reduce((s, i) => s + Number(i.pct ?? 0), 0);
-  const fullyInvoiced = totalInvoicePct >= 99.5 || (estimateTotal > 0 && Math.abs(estimateTotal - rawInvoiced) <= Math.max(200, estimateTotal * 0.005));
-  const totalInvoiced = fullyInvoiced ? estimateTotal : rawInvoiced;
+  const estTotalById = new Map((props.invoices.estimates ?? []).map(e => [e.id, e.total ?? 0]));
+  const invByEst = new Map<string, { raw: number; pct: number }>();
+  countedInvoices.forEach(i => {
+    const cur = invByEst.get(i.estimateId) ?? { raw: 0, pct: 0 };
+    cur.raw += i.amount; cur.pct += Number(i.pct ?? 0);
+    invByEst.set(i.estimateId, cur);
+  });
+  let totalInvoiced = 0;
+  invByEst.forEach(({ raw, pct }, estId) => {
+    const estT = estTotalById.get(estId) ?? 0;
+    const fully = estT > 0 && (pct >= 99.5 || Math.abs(estT - raw) <= Math.max(200, estT * 0.005));
+    totalInvoiced += fully ? estT : raw;
+  });
   const totalChangeOrders = approvedChangeOrders.reduce((s, co) => s + coTotal(co), 0);
   const totalClientPaid = allPayments.reduce((s, r) => s + Number(r.payment.amount), 0);
   const totalBilled = totalInvoiced + totalChangeOrders;

@@ -34,27 +34,37 @@ export async function GET(
     }),
   ]);
 
-  const estimateTotal = estimates.reduce((sum, est) => {
+  const calcI = (i: { defaultQty: unknown; defaultUnitCost: unknown; defaultMarkupPct: unknown; detail: string | null }) =>
+    i.detail === "Excluded" ? 0 : Number(i.defaultQty ?? 0) * Number(i.defaultUnitCost ?? 0) * (1 + Number(i.defaultMarkupPct ?? 0) / 100);
+  // Per-estimate total (respects division AND group lump sums).
+  const estTotalById = new Map<string, number>();
+  for (const est of estimates) {
     const raw = est.divisions.reduce((s, div) => {
       if (div.manualTotal != null) return s + Number(div.manualTotal);
-      const allItems = [...div.items, ...div.groups.flatMap(g => g.items)];
-      return s + allItems.filter(i => i.detail !== "Excluded").reduce((ss, i) => {
-        const qty = i.defaultQty ? Number(i.defaultQty) : 0;
-        const cost = i.defaultUnitCost ? Number(i.defaultUnitCost) : 0;
-        const markup = i.defaultMarkupPct ? Number(i.defaultMarkupPct) : 0;
-        return ss + qty * cost * (1 + markup / 100);
-      }, 0);
+      const groupsTotal = div.groups.reduce((gs, g) => gs + (g.manualTotal != null ? Number(g.manualTotal) : g.items.reduce((ss, i) => ss + calcI(i), 0)), 0);
+      return s + div.items.reduce((ss, i) => ss + calcI(i), 0) + groupsTotal;
     }, 0);
     const fee = est.gcFeePercent ? raw * Number(est.gcFeePercent) / 100 : 0;
-    return sum + raw + fee;
-  }, 0);
+    estTotalById.set(est.id, raw + fee);
+  }
 
   // Draft invoices aren't real yet — don't count them as invoiced.
+  // Snap PER ESTIMATE: when an estimate is fully invoiced, show that estimate's total
+  // (avoids rounding drift), but never inflate to the sum of OTHER estimates.
   const countedInvoices = invoices.filter(inv => inv.status !== "DRAFT");
-  const rawInvoiced = countedInvoices.reduce((s, inv) => s + Number(inv.amount), 0);
-  const totalPct = countedInvoices.reduce((s, inv) => s + Number(inv.pct ?? 0), 0);
-  const fullyInvoiced = totalPct >= 99.5 || (estimateTotal > 0 && Math.abs(estimateTotal - rawInvoiced) <= Math.max(200, estimateTotal * 0.005));
-  const totalInvoiced = fullyInvoiced ? estimateTotal : rawInvoiced;
+  const invByEst = new Map<string, { raw: number; pct: number }>();
+  for (const inv of countedInvoices) {
+    const cur = invByEst.get(inv.estimateId) ?? { raw: 0, pct: 0 };
+    cur.raw += Number(inv.amount);
+    cur.pct += Number(inv.pct ?? 0);
+    invByEst.set(inv.estimateId, cur);
+  }
+  let totalInvoiced = 0;
+  invByEst.forEach(({ raw, pct }, estId) => {
+    const estT = estTotalById.get(estId) ?? 0;
+    const fully = estT > 0 && (pct >= 99.5 || Math.abs(estT - raw) <= Math.max(200, estT * 0.005));
+    totalInvoiced += fully ? estT : raw;
+  });
   const invoicePaid = invoices.reduce(
     (s, inv) => s + inv.payments.reduce((ps, p) => ps + Number(p.amount), 0),
     0,

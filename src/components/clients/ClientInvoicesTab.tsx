@@ -296,8 +296,21 @@ export default function ClientInvoicesTab({
     ? selectedEst.paymentSchedule
     : DEFAULT_SCHEDULE;
 
-  // Summary across all invoices
-  const totalInvoiced = invoices.reduce((s, i) => s + Number(i.amount), 0);
+  // Summary across all invoices. Drafts don't count; a fully-invoiced estimate snaps
+  // to its own total (avoids per-phase rounding drift), never to other estimates.
+  const estTotalById = new Map(estimates.map(e => [e.id, e.total]));
+  const invByEst = new Map<string, { raw: number; pct: number }>();
+  invoices.filter(i => i.status !== "DRAFT").forEach(i => {
+    const cur = invByEst.get(i.estimateId) ?? { raw: 0, pct: 0 };
+    cur.raw += Number(i.amount); cur.pct += Number(i.pct ?? 0);
+    invByEst.set(i.estimateId, cur);
+  });
+  let totalInvoiced = 0;
+  invByEst.forEach(({ raw, pct }, estId) => {
+    const estT = estTotalById.get(estId) ?? 0;
+    const fully = estT > 0 && (pct >= 99.5 || Math.abs(estT - raw) <= Math.max(200, estT * 0.005));
+    totalInvoiced += fully ? estT : raw;
+  });
   const totalPaid = invoices.reduce((s, i) => s + i.payments.reduce((ps, p) => ps + Number(p.amount), 0), 0);
   const totalBalance = totalInvoiced - totalPaid;
 
