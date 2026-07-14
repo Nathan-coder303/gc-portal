@@ -39,6 +39,7 @@ import {
   restoreTemplateGroup,
   restoreTemplateDivision,
   reorderTemplateDivisions,
+  reorderTemplateGroups,
   reorderTemplateItems,
   updateTemplateSummaryGroup,
   updateTemplateHasSkylights,
@@ -670,7 +671,7 @@ function TemplateItemTable({ divisionId, groupId, items, canEdit }: { divisionId
   );
 }
 
-function TemplateGroupSection({ group, divisionId, canEdit }: { group: Group; divisionId: string; canEdit: boolean }) {
+function TemplateGroupSection({ group, index, divisionId, canEdit }: { group: Group; index: number; divisionId: string; canEdit: boolean }) {
   const [isPending, startTransition] = useTransition();
   const { pushUndo } = useContext(UndoCtx);
   const [editingName, setEditingName] = useState(false);
@@ -680,6 +681,11 @@ function TemplateGroupSection({ group, divisionId, canEdit }: { group: Group; di
   const router = useRouter();
   const total = groupSectionTotal(group);
   const { setNodeRef: setGroupDropRef, isOver: isGroupOver } = useDroppable({ id: `group:${group.id}:${divisionId}` });
+  const { attributes: gDragAttrs, listeners: gDragListeners, setNodeRef: setGDragRef, isDragging: gDragging } = useDraggable({
+    id: `groupdrag:${group.id}`,
+    data: { type: "group", groupId: group.id, divisionId },
+    disabled: !canEdit,
+  });
 
   function saveLumpSum(value: string) {
     const parsed = value.trim() === "" ? null : parseFloat(value.replace(/,/g, ""));
@@ -700,28 +706,34 @@ function TemplateGroupSection({ group, divisionId, canEdit }: { group: Group; di
   }
 
   return (
-    <div ref={setGroupDropRef} className="mt-3" style={{ outline: isGroupOver ? "2px solid #C9A84C" : "none", borderRadius: 6 }}>
+    <div ref={(node) => { setGroupDropRef(node); setGDragRef(node); }} className="mt-3" style={{ outline: isGroupOver ? "2px solid #C9A84C" : "none", borderRadius: 6, opacity: gDragging ? 0.4 : 1 }}>
       <div className="flex items-center justify-between px-3 py-1.5 rounded" style={{ background: isGroupOver ? "#2a2010" : "#0d1117" }}>
-        {canEdit && editingName ? (
-          <input
-            autoFocus
-            value={nameInput}
-            onChange={e => setNameInput(e.target.value)}
-            onBlur={commitRename}
-            onKeyDown={e => { if (e.key === "Enter") commitRename(); if (e.key === "Escape") { setNameInput(group.name); setEditingName(false); } }}
-            className="text-xs font-semibold uppercase tracking-wide bg-transparent outline-none border-b"
-            style={{ color: "#e6edf3", borderColor: "#C9A84C", minWidth: 120 }}
-          />
-        ) : (
-          <span
-            className="text-xs font-semibold uppercase tracking-wide"
-            style={{ color: "#8b949e", cursor: canEdit ? "text" : "default" }}
-            onDoubleClick={() => { if (canEdit) { setNameInput(group.name); setEditingName(true); } }}
-            title={canEdit ? "Double-click to rename" : undefined}
-          >
-            {group.name}
-          </span>
-        )}
+        <div className="flex items-center gap-2 min-w-0">
+          {canEdit && (
+            <span {...gDragListeners} {...gDragAttrs} className="text-xs shrink-0 select-none" style={{ cursor: "grab", color: "#8b949e" }} title="Drag to reorder group">⠿</span>
+          )}
+          <span className="text-xs font-bold shrink-0" style={{ color: "#C9A84C" }}>{index + 1}.</span>
+          {canEdit && editingName ? (
+            <input
+              autoFocus
+              value={nameInput}
+              onChange={e => setNameInput(e.target.value)}
+              onBlur={commitRename}
+              onKeyDown={e => { if (e.key === "Enter") commitRename(); if (e.key === "Escape") { setNameInput(group.name); setEditingName(false); } }}
+              className="text-xs font-semibold uppercase tracking-wide bg-transparent outline-none border-b"
+              style={{ color: "#e6edf3", borderColor: "#C9A84C", minWidth: 120 }}
+            />
+          ) : (
+            <span
+              className="text-xs font-semibold uppercase tracking-wide truncate"
+              style={{ color: "#8b949e", cursor: canEdit ? "text" : "default" }}
+              onDoubleClick={() => { if (canEdit) { setNameInput(group.name); setEditingName(true); } }}
+              title={canEdit ? "Double-click to rename" : undefined}
+            >
+              {group.name}
+            </span>
+          )}
+        </div>
         <div className="flex items-center gap-2">
           {total > 0 && (
             <button
@@ -1076,8 +1088,8 @@ function TemplateDivisionSection({ division, otherDivisions, canEdit, globalSave
       {open && (
         <DivisionEditCtx.Provider value={{ editAllSignal, saveSignal, resetAllSignal }}>
         <div style={{ borderTop: "1px solid #30373f" }} className="pb-2">
-          {division.groups.map((grp) => (
-            <TemplateGroupSection key={grp.id} group={grp} divisionId={division.id} canEdit={canEdit} />
+          {division.groups.map((grp, gi) => (
+            <TemplateGroupSection key={grp.id} group={grp} index={gi} divisionId={division.id} canEdit={canEdit} />
           ))}
           {division.items.length > 0 && (
             <TemplateItemTable divisionId={division.id} groupId={null} items={division.items} canEdit={canEdit} />
@@ -1627,7 +1639,7 @@ export default function TemplateEditor({
   const [summaryGroups, setSummaryGroups] = useState<Record<string, SummaryGroupData>>(initialSummaryGroups ?? {});
   const [editingSummaryGroup, setEditingSummaryGroup] = useState<string | null>(null);
   const [sgForm, setSgForm] = useState<SummaryGroupData>({ qty: null, unit: null, unitCost: null, markupPct: null, manualTotal: null });
-  const [activeDragItem, setActiveDragItem] = useState<{ id: string; name: string; type: "item" | "division" } | null>(null);
+  const [activeDragItem, setActiveDragItem] = useState<{ id: string; name: string; type: "item" | "division" | "group" } | null>(null);
   const [undoState, undoDispatch] = useReducer(undoReducer, { past: [], future: [] });
   const [undoPending, startUndoTransition] = useTransition();
 
@@ -1664,6 +1676,11 @@ export default function TemplateEditor({
       const divId = event.active.data.current.divisionId as string;
       const div = divisions.find(d => d.id === divId);
       setActiveDragItem({ id: divId, name: div?.name ?? "", type: "division" });
+    } else if (event.active.data.current?.type === "group") {
+      const gid = event.active.data.current.groupId as string;
+      const divId = event.active.data.current.divisionId as string;
+      const grp = divisions.find(d => d.id === divId)?.groups.find(g => g.id === gid);
+      setActiveDragItem({ id: gid, name: grp?.name ?? "", type: "group" });
     } else {
       const name = event.active.data.current?.itemName as string ?? "";
       setActiveDragItem({ id: event.active.id as string, name, type: "item" });
@@ -1687,6 +1704,31 @@ export default function TemplateEditor({
       newOrder.splice(newIdx, 0, activeDivId);
       startTransition(async () => {
         await reorderTemplateDivisions(template.id, newOrder);
+      });
+    } else if (active.data.current?.type === "group") {
+      const activeGroupId = active.data.current.groupId as string;
+      const divId = active.data.current.divisionId as string;
+      const div = divisions.find(d => d.id === divId);
+      if (!div) return;
+      const overId = over.id as string;
+      let targetGroupId: string | null = null;
+      if (overId.startsWith("group:")) {
+        const [, gid, gdiv] = overId.split(":");
+        if (gdiv === divId) targetGroupId = gid;
+      } else {
+        // dropped onto an item — snap to that item's group (same division)
+        const hit = div.groups.find(g => g.items.some(i => i.id === overId));
+        if (hit) targetGroupId = hit.id;
+      }
+      if (!targetGroupId || targetGroupId === activeGroupId) return;
+      const ids = div.groups.map(g => g.id);
+      const oldIdx = ids.indexOf(activeGroupId);
+      const newIdx = ids.indexOf(targetGroupId);
+      if (oldIdx < 0 || newIdx < 0) return;
+      const newOrder = arrayMove(ids, oldIdx, newIdx);
+      startTransition(async () => {
+        await reorderTemplateGroups(divId, newOrder);
+        router.refresh();
       });
     } else {
       const sourceDivisionId = active.data.current?.sourceDivisionId as string;
@@ -2843,7 +2885,7 @@ export default function TemplateEditor({
     <DragOverlay>
       {activeDragItem && (
         <div className="rounded px-3 py-1.5 text-sm font-medium shadow-xl pointer-events-none"
-          style={{ background: activeDragItem.type === "division" ? "#1e2736" : "#C9A84C", color: activeDragItem.type === "division" ? "#e6edf3" : "#0d1117", border: activeDragItem.type === "division" ? "1px solid #C9A84C" : "none", opacity: 0.95 }}>
+          style={{ background: activeDragItem.type === "item" ? "#C9A84C" : "#1e2736", color: activeDragItem.type === "item" ? "#0d1117" : "#e6edf3", border: activeDragItem.type === "item" ? "none" : "1px solid #C9A84C", opacity: 0.95 }}>
           ⠿ {activeDragItem.name}
         </div>
       )}
