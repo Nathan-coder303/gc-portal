@@ -721,50 +721,79 @@ ${payRows}
           </button>
         </div>
 
-        {/* Scope items list with sale price + sub cost + profit */}
-        {sub.scopeItems.length > 0 && (
+        {/* Scope items list with sale price + sub cost + profit — grouped by source (Contract vs each Change Order) */}
+        {sub.scopeItems.length > 0 && (() => {
+          const GRID = "minmax(0,1fr) 70px 74px 70px 20px";
+          // Map each CO item name → its CO label so we can attribute scope items to their source.
+          const coNameToLabel = new Map<string, string>();
+          coGroups.forEach(g => g.items.forEach(it => { if (!coNameToLabel.has(it.name)) coNameToLabel.set(it.name, g.label); }));
+          const buckets = new Map<string, ScopeItem[]>();
+          sub.scopeItems.forEach(item => {
+            const label = coNameToLabel.get(item.name) ?? "Contract";
+            if (!buckets.has(label)) buckets.set(label, []);
+            buckets.get(label)!.push(item);
+          });
+          const order = ["Contract", ...coGroups.map(g => g.label)];
+          const groups = order.filter(l => buckets.has(l)).map(l => ({ label: l, items: buckets.get(l)! }));
+          const renderItemRow = (item: ScopeItem) => {
+            const profit = item.salePrice != null ? item.salePrice - item.amount : null;
+            return (
+              <div key={item.id} style={{ background: "#0d1117", borderBottom: "1px solid #21262d22" }}>
+                {editingItemId === item.id ? (
+                  <div className="flex items-center gap-1 px-2 py-2">
+                    <span className="text-xs flex-1 truncate" style={{ color: "#8b949e" }}>{item.name}</span>
+                    <span className="text-xs shrink-0" style={{ color: "#8b949e" }}>$</span>
+                    <FormulaInput
+                      autoFocus
+                      value={editingItemAmt}
+                      onChange={n => setEditingItemAmt(String(n))}
+                      onKeyDown={e => { if (e.key === "Enter") saveScopeItemAmount(item.id, editingItemAmt); if (e.key === "Escape") setEditingItemId(null); }}
+                      className="w-20 rounded px-1.5 py-0.5 text-xs text-right shrink-0"
+                      style={{ background: "#161b22", border: "1px solid #C9A84C", color: "#C9A84C" }}
+                      companyId={companyId}
+                      scope={`subScopeItem:${item.id}:amount`}
+                    />
+                    <button onClick={() => saveScopeItemAmount(item.id, editingItemAmt)} className="text-xs px-1.5 py-0.5 rounded font-bold shrink-0" style={{ background: "#C9A84C", color: "#0d1117" }}>✓</button>
+                    <button onClick={() => setEditingItemId(null)} className="text-xs px-1.5 py-0.5 rounded shrink-0" style={{ background: "#30373f", color: "#8b949e" }}>✕</button>
+                  </div>
+                ) : (
+                  <div className="grid items-center px-2 py-2" style={{ gridTemplateColumns: GRID, columnGap: "6px" }}>
+                    <span className="text-xs truncate pr-1" style={{ color: "#e6edf3" }}>{item.name}</span>
+                    <span className="text-xs text-right" style={{ color: "#8b949e" }}>{item.salePrice != null ? `$${fmt(item.salePrice)}` : "—"}</span>
+                    <button onClick={() => { setEditingItemId(item.id); setEditingItemAmt(String(item.amount)); }} className="text-xs text-right font-semibold px-1 py-0.5 rounded" style={{ color: "#C9A84C", background: "#C9A84C11" }}>${fmt(item.amount)}</button>
+                    <span className="text-xs text-right font-semibold" style={{ color: profit == null ? "#4d5566" : profit >= 0 ? "#22c55e" : "#f85149" }}>
+                      {profit != null ? `$${fmt(profit)}` : "—"}
+                    </span>
+                    <button onClick={() => deleteScopeItem(item.id)} className="flex items-center justify-center" style={{ color: "#f85149" }}><TrashIcon size={10} /></button>
+                  </div>
+                )}
+              </div>
+            );
+          };
+          return (
           <div className="rounded-xl overflow-hidden" style={{ border: "1px solid #21262d" }}>
             {/* Header row — compact columns that fit mobile */}
-            <div className="grid px-2 py-1.5" style={{ gridTemplateColumns: "minmax(0,1fr) 70px 74px 70px 20px", columnGap: "6px", background: "#0d1117", borderBottom: "1px solid #21262d" }}>
+            <div className="grid px-2 py-1.5" style={{ gridTemplateColumns: GRID, columnGap: "6px", background: "#0d1117", borderBottom: "1px solid #21262d" }}>
               <span className="text-xs" style={{ color: "#4d5566" }}>Item</span>
               <span className="text-xs text-right" style={{ color: "#4d5566" }}>Sale</span>
               <span className="text-xs text-right" style={{ color: "#4d5566" }}>Cost</span>
               <span className="text-xs text-right" style={{ color: "#4d5566" }}>Profit</span>
               <span />
             </div>
-            {sub.scopeItems.map(item => {
-              const profit = item.salePrice != null ? item.salePrice - item.amount : null;
+            {groups.map(grp => {
+              const isContract = grp.label === "Contract";
+              const accent = isContract ? "#C9A84C" : "#60a5fa";
+              const grpCost = grp.items.reduce((s, i) => s + i.amount, 0);
               return (
-                <div key={item.id} style={{ background: "#0d1117", borderBottom: "1px solid #21262d22" }}>
-                  {editingItemId === item.id ? (
-                    /* Edit row — full width, stacked */
-                    <div className="flex items-center gap-1 px-2 py-2">
-                      <span className="text-xs flex-1 truncate" style={{ color: "#8b949e" }}>{item.name}</span>
-                      <span className="text-xs shrink-0" style={{ color: "#8b949e" }}>$</span>
-                      <FormulaInput
-                        autoFocus
-                        value={editingItemAmt}
-                        onChange={n => setEditingItemAmt(String(n))}
-                        onKeyDown={e => { if (e.key === "Enter") saveScopeItemAmount(item.id, editingItemAmt); if (e.key === "Escape") setEditingItemId(null); }}
-                        className="w-20 rounded px-1.5 py-0.5 text-xs text-right shrink-0"
-                        style={{ background: "#161b22", border: "1px solid #C9A84C", color: "#C9A84C" }}
-                        companyId={companyId}
-                        scope={`subScopeItem:${item.id}:amount`}
-                      />
-                      <button onClick={() => saveScopeItemAmount(item.id, editingItemAmt)} className="text-xs px-1.5 py-0.5 rounded font-bold shrink-0" style={{ background: "#C9A84C", color: "#0d1117" }}>✓</button>
-                      <button onClick={() => setEditingItemId(null)} className="text-xs px-1.5 py-0.5 rounded shrink-0" style={{ background: "#30373f", color: "#8b949e" }}>✕</button>
-                    </div>
-                  ) : (
-                    <div className="grid items-center px-2 py-2" style={{ gridTemplateColumns: "minmax(0,1fr) 70px 74px 70px 20px", columnGap: "6px" }}>
-                      <span className="text-xs truncate pr-1" style={{ color: "#e6edf3" }}>{item.name}</span>
-                      <span className="text-xs text-right" style={{ color: "#8b949e" }}>{item.salePrice != null ? `$${fmt(item.salePrice)}` : "—"}</span>
-                      <button onClick={() => { setEditingItemId(item.id); setEditingItemAmt(String(item.amount)); }} className="text-xs text-right font-semibold px-1 py-0.5 rounded" style={{ color: "#C9A84C", background: "#C9A84C11" }}>${fmt(item.amount)}</button>
-                      <span className="text-xs text-right font-semibold" style={{ color: profit == null ? "#4d5566" : profit >= 0 ? "#22c55e" : "#f85149" }}>
-                        {profit != null ? `$${fmt(profit)}` : "—"}
-                      </span>
-                      <button onClick={() => deleteScopeItem(item.id)} className="flex items-center justify-center" style={{ color: "#f85149" }}><TrashIcon size={10} /></button>
+                <div key={grp.label}>
+                  {/* Source title (only when there's more than one source, or it's a change order) */}
+                  {(groups.length > 1 || !isContract) && (
+                    <div className="flex items-center justify-between px-2 py-1" style={{ background: "#161b2288", borderBottom: `1px solid ${accent}33`, borderLeft: `2px solid ${accent}` }}>
+                      <span className="text-xs font-bold uppercase tracking-wide" style={{ color: accent }}>{isContract ? "From Contract" : grp.label}</span>
+                      <span className="text-xs font-semibold" style={{ color: "#8b949e" }}>${fmt(grpCost)}</span>
                     </div>
                   )}
+                  {grp.items.map(renderItemRow)}
                 </div>
               );
             })}
@@ -785,7 +814,8 @@ ${payRows}
               );
             })()}
           </div>
-        )}
+          );
+        })()}
 
         {sub.scopeItems.length === 0 && !showScopePicker && (
           <p className="text-xs py-2 text-center" style={{ color: "#4d5566" }}>No scope items yet — click &ldquo;+ Add Items&rdquo;</p>
