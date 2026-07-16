@@ -522,11 +522,12 @@ function PayForm({ subId, companyId, clientId, payment, onSave, onCancel }: {
 }
 
 function SubCard({
-  sub, companyId, clientId, clientName, estimateDivisions,
+  sub, companyId, clientId, clientName, estimateDivisions, coGroups,
   onUpdate, onDelete, lienReleases, onReleaseCreated, onReleaseDeleted, subEmail, onSubEmailSaved,
 }: {
   sub: ClientSub; companyId: string; clientId: string; clientName: string;
   estimateDivisions: EstimateDivision[];
+  coGroups: { key: string; label: string; items: EstimateLineItem[] }[];
   onUpdate: (updated: ClientSub) => void;
   onDelete: (id: string) => void;
   lienReleases: LienRelease[];
@@ -715,8 +716,8 @@ ${payRows}
       <div className="space-y-2">
         <div className="flex items-center justify-between">
           <span className="text-xs font-semibold uppercase tracking-widest" style={{ color: "#8b949e" }}>Scope of Work</span>
-          <button onClick={() => setShowScopePicker(v => !v)} className="text-xs px-2.5 py-1 rounded-lg font-semibold" style={{ background: "#C9A84C22", color: "#C9A84C", border: "1px solid #C9A84C44" }}>
-            {showScopePicker ? "Close" : "+ Add Items"}
+          <button onClick={() => setShowScopePicker(true)} className="text-xs px-2.5 py-1 rounded-lg font-semibold" style={{ background: "#C9A84C22", color: "#C9A84C", border: "1px solid #C9A84C44" }}>
+            + Add Items
           </button>
         </div>
 
@@ -790,59 +791,64 @@ ${payRows}
           <p className="text-xs py-2 text-center" style={{ color: "#4d5566" }}>No scope items yet — click &ldquo;+ Add Items&rdquo;</p>
         )}
 
-        {/* Estimate-based picker */}
-        {showScopePicker && (
-          <div className="rounded-xl overflow-hidden" style={{ border: "1px solid #30373f" }}>
-            {estimateDivisions.length === 0 ? (
-              <p className="text-xs text-center py-4" style={{ color: "#4d5566", background: "#0d1117" }}>No estimate items found for this client.</p>
-            ) : (
-              <div className="overflow-y-auto" style={{ maxHeight: 340, background: "#0d1117" }}>
-                {estimateDivisions.map(div => {
-                  const isOpen = openPickerDivs.has(div.divisionId);
-                  const addedNames = new Set(sub.scopeItems.map(i => i.name));
-                  const allAdded = div.items.every(i => addedNames.has(i.name));
-                  return (
-                    <div key={div.divisionId}>
-                      <div className="flex items-center gap-2 px-3 py-2 sticky top-0" style={{ background: "#161b22", borderBottom: "1px solid #21262d" }}>
-                        <button onClick={() => setOpenPickerDivs(prev => { const n = new Set(prev); if (isOpen) { n.delete(div.divisionId); } else { n.add(div.divisionId); } return n; })} className="flex items-center gap-2 flex-1 text-left">
-                          <span className="text-xs" style={{ color: "#8b949e" }}>{isOpen ? "▼" : "▶"}</span>
-                          <span className="text-xs font-semibold" style={{ color: "#e6edf3" }}>{div.divisionName}</span>
-                        </button>
-                        {!allAdded && (
-                          <button
-                            onClick={() => addScopeItems(div.items.filter(i => !addedNames.has(i.name)).map(i => ({ csiCode: i.csiCode ?? undefined, name: i.name, salePrice: i.salePrice, amount: 0 })))}
-                            className="text-xs px-2 py-0.5 rounded font-semibold shrink-0"
-                            style={{ background: "#C9A84C22", color: "#C9A84C", border: "1px solid #C9A84C33" }}
-                          >
-                            + Add All
-                          </button>
-                        )}
-                      </div>
-                      {isOpen && (
-                        <div>
-                          {div.items.map(item => {
-                            const added = addedNames.has(item.name);
-                            return (
-                              <div key={item.id} className="flex items-center gap-2 px-4 py-1.5" style={{ background: "#0d1117", borderBottom: "1px solid #21262d22" }}>
-                                <span className="text-xs flex-1 truncate" style={{ color: added ? "#4d5566" : "#e6edf3" }}>{item.name}</span>
-                                <span className="text-xs shrink-0" style={{ color: "#8b949e" }}>${fmt(item.salePrice)}</span>
-                                {added ? (
-                                  <span className="text-xs px-2 py-0.5 rounded shrink-0" style={{ color: "#22c55e", background: "#22c55e11" }}>Added</span>
-                                ) : (
-                                  <button onClick={() => addScopeItems([{ csiCode: item.csiCode ?? undefined, name: item.name, salePrice: item.salePrice, amount: 0 }])} className="text-xs px-2 py-0.5 rounded font-semibold shrink-0" style={{ background: "#C9A84C22", color: "#C9A84C", border: "1px solid #C9A84C33" }}>+ Add</button>
-                                )}
-                              </div>
-                            );
-                          })}
-                        </div>
-                      )}
-                    </div>
-                  );
-                })}
+        {/* Add-scope popup — pick from the main contract or from change orders */}
+        {showScopePicker && (() => {
+          const addedNames = new Set(sub.scopeItems.map(i => i.name));
+          const renderItem = (item: EstimateLineItem, accent: string) => {
+            const added = addedNames.has(item.name);
+            return (
+              <div key={item.id} className="flex items-center gap-2 px-4 py-1.5" style={{ background: "#0d1117", borderBottom: "1px solid #21262d22" }}>
+                <span className="text-xs flex-1 truncate" style={{ color: added ? "#4d5566" : "#e6edf3" }}>{item.name}</span>
+                {item.salePrice > 0 && <span className="text-xs shrink-0" style={{ color: "#8b949e" }}>${fmt(item.salePrice)}</span>}
+                {added ? (
+                  <span className="text-xs px-2 py-0.5 rounded shrink-0" style={{ color: "#22c55e", background: "#22c55e11" }}>Added</span>
+                ) : (
+                  <button onClick={() => addScopeItems([{ csiCode: item.csiCode ?? undefined, name: item.name, salePrice: item.salePrice, amount: 0 }])} className="text-xs px-2 py-0.5 rounded font-semibold shrink-0" style={{ background: `${accent}22`, color: accent, border: `1px solid ${accent}33` }}>+ Add</button>
+                )}
               </div>
-            )}
-          </div>
-        )}
+            );
+          };
+          const renderGroup = (key: string, label: string, items: EstimateLineItem[], accent: string) => {
+            const isOpen = openPickerDivs.has(key);
+            const allAdded = items.every(i => addedNames.has(i.name));
+            return (
+              <div key={key}>
+                <div className="flex items-center gap-2 px-3 py-2" style={{ background: "#0d1117", borderBottom: "1px solid #21262d22" }}>
+                  <button onClick={() => setOpenPickerDivs(prev => { const n = new Set(prev); if (isOpen) n.delete(key); else n.add(key); return n; })} className="flex items-center gap-2 flex-1 text-left">
+                    <span className="text-xs" style={{ color: "#8b949e" }}>{isOpen ? "▼" : "▶"}</span>
+                    <span className="text-xs font-semibold" style={{ color: "#e6edf3" }}>{label}</span>
+                  </button>
+                  {!allAdded && (
+                    <button onClick={() => addScopeItems(items.filter(i => !addedNames.has(i.name)).map(i => ({ csiCode: i.csiCode ?? undefined, name: i.name, salePrice: i.salePrice, amount: 0 })))} className="text-xs px-2 py-0.5 rounded font-semibold shrink-0" style={{ background: `${accent}22`, color: accent, border: `1px solid ${accent}33` }}>+ Add All</button>
+                  )}
+                </div>
+                {isOpen && items.map(item => renderItem(item, accent))}
+              </div>
+            );
+          };
+          return (
+            <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ background: "rgba(0,0,0,0.7)" }} onClick={() => setShowScopePicker(false)}>
+              <div className="w-full max-w-lg rounded-2xl overflow-hidden flex flex-col" style={{ background: "#161b22", border: "1px solid #30373f", maxHeight: "85vh" }} onClick={e => e.stopPropagation()}>
+                <div className="flex items-center justify-between px-4 py-3 shrink-0" style={{ borderBottom: "1px solid #21262d" }}>
+                  <h3 className="text-sm font-bold" style={{ color: "#e6edf3" }}>Add scope to {sub.subName}</h3>
+                  <button onClick={() => setShowScopePicker(false)} className="text-xl leading-none" style={{ color: "#8b949e" }}>×</button>
+                </div>
+                <div className="overflow-y-auto" style={{ background: "#0d1117" }}>
+                  <div className="px-4 py-2 text-xs font-bold uppercase tracking-widest" style={{ background: "#161b22", color: "#C9A84C", borderBottom: "1px solid #21262d" }}>From Main Contract</div>
+                  {estimateDivisions.length === 0 ? (
+                    <p className="text-xs text-center py-3" style={{ color: "#4d5566" }}>No contract items for this client.</p>
+                  ) : estimateDivisions.map(div => renderGroup(div.divisionId, div.divisionName, div.items, "#C9A84C"))}
+                  {coGroups.length > 0 && (
+                    <>
+                      <div className="px-4 py-2 text-xs font-bold uppercase tracking-widest" style={{ background: "#161b22", color: "#60a5fa", borderBottom: "1px solid #21262d", borderTop: "1px solid #21262d" }}>From Change Orders</div>
+                      {coGroups.map(g => renderGroup(g.key, g.label, g.items, "#60a5fa"))}
+                    </>
+                  )}
+                </div>
+              </div>
+            </div>
+          );
+        })()}
       </div>
 
       {/* Balance bar */}
@@ -1305,6 +1311,15 @@ export default function ClientFinancialsTab({
     return { key: co.id, label: co.title ? `${num} — ${co.title}` : num, items };
   }).filter(g => g.items.length > 0), [changeOrders, pickedIds, isConsumed]);
   const coAvailableCount = coByOrder.reduce((s, g) => s + g.items.length, 0);
+  // All change-order items grouped by CO (unfiltered) — for the SubCard "+ Add Items" popup, which marks Added per its own scope.
+  const coGroupsAll = useMemo(() => changeOrders.map(co => {
+    const items = co.items.map(it => {
+      const sale = (parseFloat(it.qty ?? "") || 0) * (parseFloat(it.unitCost ?? "") || 0) * (1 + (parseFloat(it.markupPct ?? "") || 0) / 100);
+      return { id: `co_${it.id}`, name: it.name, csiCode: it.csiCode ?? null, salePrice: Math.round(sale * 100) / 100 };
+    });
+    const num = co.orderNumber ? `CO #${co.orderNumber}` : "CO";
+    return { key: co.id, label: co.title ? `${num} — ${co.title}` : num, items };
+  }).filter(g => g.items.length > 0), [changeOrders]);
   function pickItem(id: string) { setPickedIds(prev => new Set(prev).add(id)); }
   function unpickItem(id: string) { setPickedIds(prev => { const n = new Set(prev); n.delete(id); return n; }); }
 
@@ -1709,6 +1724,7 @@ ${paymentRows}
                 clientId={clientId}
                 clientName={clientName}
                 estimateDivisions={estimateDivisions}
+                coGroups={coGroupsAll}
                 onUpdate={updated => setClientSubs(prev => prev.map(s => s.id === updated.id ? updated : s))}
                 onDelete={id => setClientSubs(prev => prev.filter(s => s.id !== id))}
                 lienReleases={lienReleases.filter(r => r.subName === sub.subName)}
