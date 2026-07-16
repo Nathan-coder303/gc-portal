@@ -52,6 +52,42 @@ function ScopePicker({ divs, onPick, accent, emptyLabel }: { divs: EstimateDivis
   );
 }
 
+// Change-order picker grouped BY change order — add all (or one) to the list, or transfer a whole CO to a sub.
+function CoScopePicker({ groups, onPick, subs, onTransferAll }: {
+  groups: { key: string; label: string; items: EstimateLineItem[] }[];
+  onPick: (id: string) => void;
+  subs: ClientSub[];
+  onTransferAll: (sub: ClientSub, items: EstimateLineItem[]) => void;
+}) {
+  const accent = "#60a5fa";
+  return (
+    <div className="rounded-2xl overflow-hidden mt-1" style={{ border: `1px solid ${accent}33` }}>
+      {groups.length === 0 ? (
+        <div className="px-4 py-3 text-xs text-center" style={{ background: "#0d1117", color: "#8b949e" }}>No more change-order items to add.</div>
+      ) : groups.map(g => (
+        <div key={g.key}>
+          <div className="flex items-center justify-between gap-2 px-4 py-2 flex-wrap" style={{ background: "#0d1117", borderBottom: "1px solid #21262d" }}>
+            <span className="text-xs font-bold uppercase tracking-widest" style={{ color: accent }}>{g.label}</span>
+            <div className="flex items-center gap-1 flex-wrap justify-end">
+              <button onClick={() => g.items.forEach(i => onPick(i.id))} className="text-xs px-2 py-0.5 rounded-full font-semibold" style={{ background: `${accent}18`, color: accent, border: `1px solid ${accent}33` }} title="Add every item in this change order to the list">+ Add all</button>
+              {subs.map(sub => (
+                <button key={sub.id} onClick={() => onTransferAll(sub, g.items)} className="text-xs px-2 py-0.5 rounded-full font-semibold" style={{ background: "#C9A84C18", color: "#C9A84C", border: "1px solid #C9A84C33" }} title={`Transfer all of ${g.label} to ${sub.subName}`}>→ {sub.subName}</button>
+              ))}
+            </div>
+          </div>
+          {g.items.map(item => (
+            <button key={item.id} onClick={() => onPick(item.id)} className="w-full flex items-center gap-2 px-4 py-2 text-left transition-colors hover:opacity-80" style={{ background: "#0d1117", borderBottom: "1px solid #21262d22" }}>
+              <span className="text-sm shrink-0 font-bold" style={{ color: accent }}>+</span>
+              <span className="text-sm flex-1 min-w-0 truncate" style={{ color: "#e6edf3" }}>{item.name}</span>
+              {item.salePrice > 0 && <span className="text-xs shrink-0" style={{ color: "#8b949e" }}>${fmt(item.salePrice)}</span>}
+            </button>
+          ))}
+        </div>
+      ))}
+    </div>
+  );
+}
+
 const METHOD_LABELS: Record<string, string> = { CHECK: "Check", ZELLE: "Zelle", ACH: "ACH", CASH: "Cash" };
 
 // ─── Calendar date picker ──────────────────────────────────────────────────────
@@ -1259,20 +1295,31 @@ export default function ClientFinancialsTab({
     .map(div => ({ ...div, items: div.items.filter(i => !pickedIds.has(i.id) && !isConsumed(i)) }))
     .filter(div => div.items.length > 0), [pickedIds, isConsumed]);
   const contractAvailable = useMemo(() => availableFrom(estimateDivisions), [availableFrom, estimateDivisions]);
-  const coAvailable = useMemo(() => availableFrom(coDivisions), [availableFrom, coDivisions]);
+  // Change-order scope grouped BY CHANGE ORDER (CO #1, CO #2 …), not by CSI.
+  const coByOrder = useMemo(() => changeOrders.map(co => {
+    const items = co.items.map(it => {
+      const sale = (parseFloat(it.qty ?? "") || 0) * (parseFloat(it.unitCost ?? "") || 0) * (1 + (parseFloat(it.markupPct ?? "") || 0) / 100);
+      return { id: `co_${it.id}`, name: it.name, csiCode: it.csiCode ?? null, salePrice: Math.round(sale * 100) / 100 };
+    }).filter(i => !pickedIds.has(i.id) && !isConsumed(i));
+    const num = co.orderNumber ? `CO #${co.orderNumber}` : "CO";
+    return { key: co.id, label: co.title ? `${num} — ${co.title}` : num, items };
+  }).filter(g => g.items.length > 0), [changeOrders, pickedIds, isConsumed]);
+  const coAvailableCount = coByOrder.reduce((s, g) => s + g.items.length, 0);
   function pickItem(id: string) { setPickedIds(prev => new Set(prev).add(id)); }
   function unpickItem(id: string) { setPickedIds(prev => { const n = new Set(prev); n.delete(id); return n; }); }
 
-  async function addItemToSub(sub: ClientSub, item: EstimateLineItem) {
+  async function addItemsToSub(sub: ClientSub, items: EstimateLineItem[]) {
+    if (items.length === 0) return;
     const res = await fetch(`/api/${companyId}/clients/${clientId}/financials/subs/${sub.id}/scope`, {
       method: "POST", headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ items: [{ csiCode: item.csiCode, name: item.name, salePrice: item.salePrice, amount: 0 }] }),
+      body: JSON.stringify({ items: items.map(item => ({ csiCode: item.csiCode, name: item.name, salePrice: item.salePrice, amount: 0 })) }),
     });
     if (res.ok) {
       const data = await res.json();
       setClientSubs(prev => prev.map(s => s.id === sub.id ? { ...s, contractAmount: data.contractAmount, scopeItems: [...s.scopeItems, ...data.items] } : s));
     }
   }
+  const addItemToSub = (sub: ClientSub, item: EstimateLineItem) => addItemsToSub(sub, [item]);
 
   // Computed totals
   const totalContracted = clientSubs.reduce((s, sub) => s + (sub.scopeItems.length > 0 ? sub.scopeItems.reduce((ss, i) => ss + i.amount, 0) : sub.contractAmount), 0);
@@ -1531,14 +1578,14 @@ ${paymentRows}
               <button onClick={() => setPickContractOpen(v => !v)} className="text-xs px-3 py-1.5 rounded-lg font-semibold" style={{ background: "#C9A84C18", color: "#C9A84C", border: "1px solid #C9A84C33" }}>
                 {pickContractOpen ? "▼" : "▶"} Add from Original Contract{(() => { const n = contractAvailable.reduce((s, d) => s + d.items.length, 0); return n > 0 ? ` (${n})` : ""; })()}
               </button>
-              {coDivisions.length > 0 && (
+              {changeOrders.length > 0 && (
                 <button onClick={() => setPickCoOpen(v => !v)} className="text-xs px-3 py-1.5 rounded-lg font-semibold" style={{ background: "#60a5fa18", color: "#60a5fa", border: "1px solid #60a5fa33" }}>
-                  {pickCoOpen ? "▼" : "▶"} Add from Change Orders{(() => { const n = coAvailable.reduce((s, d) => s + d.items.length, 0); return n > 0 ? ` (${n})` : ""; })()}
+                  {pickCoOpen ? "▼" : "▶"} Add from Change Orders{coAvailableCount > 0 ? ` (${coAvailableCount})` : ""}
                 </button>
               )}
             </div>
             {pickContractOpen && <ScopePicker divs={contractAvailable} onPick={pickItem} accent="#C9A84C" emptyLabel="No more contract items to add." />}
-            {pickCoOpen && <ScopePicker divs={coAvailable} onPick={pickItem} accent="#60a5fa" emptyLabel="No more change-order items to add." />}
+            {pickCoOpen && <CoScopePicker groups={coByOrder} onPick={pickItem} subs={clientSubs} onTransferAll={addItemsToSub} />}
 
             {/* Custom scope adder — system auto-detects CSI from item name */}
             <div className="rounded-2xl mt-2 p-3" style={{ background: "#161b22", border: "1px dashed #30373f" }}>
