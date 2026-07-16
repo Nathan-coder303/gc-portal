@@ -28,6 +28,30 @@ type LienRelease = { id: string; type: "PARTIAL" | "FINAL"; subName: string; rec
 function fmt(n: number) { return n.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 }); }
 function today() { return new Date().toISOString().slice(0, 10); }
 
+// Picker of available scope items (from the contract or change orders) — click + to add to the working list.
+function ScopePicker({ divs, onPick, accent, emptyLabel }: { divs: EstimateDivision[]; onPick: (id: string) => void; accent: string; emptyLabel: string }) {
+  return (
+    <div className="rounded-2xl overflow-hidden mt-1" style={{ border: `1px solid ${accent}33` }}>
+      {divs.length === 0 ? (
+        <div className="px-4 py-3 text-xs text-center" style={{ background: "#0d1117", color: "#8b949e" }}>{emptyLabel}</div>
+      ) : divs.map(div => (
+        <div key={div.divisionId}>
+          <div className="px-4 py-2 text-xs font-bold uppercase tracking-widest" style={{ background: "#0d1117", color: accent, borderBottom: "1px solid #21262d" }}>
+            {div.csiCode ? `${div.csiCode.slice(0, 2)} · ` : ""}{div.divisionName}
+          </div>
+          {div.items.map(item => (
+            <button key={item.id} onClick={() => onPick(item.id)} className="w-full flex items-center gap-2 px-4 py-2 text-left transition-colors hover:opacity-80" style={{ background: "#0d1117", borderBottom: "1px solid #21262d22" }}>
+              <span className="text-sm shrink-0 font-bold" style={{ color: accent }}>+</span>
+              <span className="text-sm flex-1 min-w-0 truncate" style={{ color: "#e6edf3" }}>{item.name}</span>
+              {item.salePrice > 0 && <span className="text-xs shrink-0" style={{ color: "#8b949e" }}>${fmt(item.salePrice)}</span>}
+            </button>
+          ))}
+        </div>
+      ))}
+    </div>
+  );
+}
+
 const METHOD_LABELS: Record<string, string> = { CHECK: "Check", ZELLE: "Zelle", ACH: "ACH", CASH: "Cash" };
 
 // ─── Calendar date picker ──────────────────────────────────────────────────────
@@ -946,6 +970,11 @@ export default function ClientFinancialsTab({
 
   // Collapsible section state — collapsed by default
   const [scopeRemainingOpen, setScopeRemainingOpen] = useState(false);
+  // Scope Remaining is empty by default; the user picks which items to work on
+  // from the original contract and change orders.
+  const [pickedIds, setPickedIds] = useState<Set<string>>(new Set());
+  const [pickContractOpen, setPickContractOpen] = useState(false);
+  const [pickCoOpen, setPickCoOpen] = useState(false);
   const [subsOpen, setSubsOpen] = useState(false);
   const [permitFeesOpen, setPermitFeesOpen] = useState(false);
   const [materialsOpen, setMaterialsOpen] = useState(false);
@@ -1202,30 +1231,37 @@ export default function ClientFinancialsTab({
     }));
   }, [changeOrders]);
 
+  // An item is "consumed" once it's been given to a sub or bought as material.
+  const isConsumed = useCallback((i: EstimateLineItem) => {
+    const name = normName(i.name);
+    if (!name) return true;
+    const key = `${normCsi(i.csiCode)}|${name}`;
+    return assignedCsiNameSet.has(key) || assignedNameSet.has(name) || materialNameSet.has(name);
+  }, [assignedCsiNameSet, assignedNameSet, materialNameSet]);
+
+  // Displayed scope = ONLY the items the user has picked (empty by default), minus consumed.
   const remainingByDiv = useMemo(() => {
     const combined = [...estimateDivisions, ...coDivisions];
-    // Also dedup within the combined pool — if an estimate item and a CO item share the same name+CSI, only show one.
-    const seenInPool = new Set<string>();
+    const seen = new Set<string>();
     return combined
-      .map(div => ({
-        ...div,
-        items: div.items.filter(i => {
-          const name = normName(i.name);
-          if (!name) return false;
-          const key = `${normCsi(i.csiCode)}|${name}`;
-          // Already given to a sub?
-          if (assignedCsiNameSet.has(key) || assignedNameSet.has(name)) return false;
-          // Already accounted for as a material purchase?
-          if (materialNameSet.has(name)) return false;
-          // Already shown earlier in the pool (estimate item collapsing with CO item of same name)?
-          if (seenInPool.has(key)) return false;
-          seenInPool.add(key);
-          return true;
-        }),
-      }))
+      .map(div => ({ ...div, items: div.items.filter(i => {
+        if (!pickedIds.has(i.id) || isConsumed(i)) return false;
+        if (seen.has(i.id)) return false;
+        seen.add(i.id);
+        return true;
+      }) }))
       .filter(div => div.items.length > 0);
-  }, [estimateDivisions, coDivisions, assignedCsiNameSet, assignedNameSet, materialNameSet]);
+  }, [estimateDivisions, coDivisions, pickedIds, isConsumed]);
   const totalRemaining = remainingByDiv.reduce((s, d) => s + d.items.length, 0);
+
+  // Pools for the pickers: items not yet picked and not consumed.
+  const availableFrom = useCallback((divs: EstimateDivision[]) => divs
+    .map(div => ({ ...div, items: div.items.filter(i => !pickedIds.has(i.id) && !isConsumed(i)) }))
+    .filter(div => div.items.length > 0), [pickedIds, isConsumed]);
+  const contractAvailable = useMemo(() => availableFrom(estimateDivisions), [availableFrom, estimateDivisions]);
+  const coAvailable = useMemo(() => availableFrom(coDivisions), [availableFrom, coDivisions]);
+  function pickItem(id: string) { setPickedIds(prev => new Set(prev).add(id)); }
+  function unpickItem(id: string) { setPickedIds(prev => { const n = new Set(prev); n.delete(id); return n; }); }
 
   async function addItemToSub(sub: ClientSub, item: EstimateLineItem) {
     const res = await fetch(`/api/${companyId}/clients/${clientId}/financials/subs/${sub.id}/scope`, {
@@ -1436,10 +1472,8 @@ ${paymentRows}
           >
             <span className="text-xs" style={{ color: "#8b949e" }}>{scopeRemainingOpen ? "▼" : "▶"}</span>
             <h2 className="text-sm font-bold uppercase tracking-widest" style={{ color: "#8b949e" }}>Scope Remaining</h2>
-            {totalRemaining > 0 ? (
-              <span className="text-xs font-bold px-2 py-0.5 rounded-full" style={{ background: "#f8514922", color: "#f85149", border: "1px solid #f8514944" }}>{totalRemaining}</span>
-            ) : (
-              <span className="text-xs font-bold px-2 py-0.5 rounded-full" style={{ background: "#22c55e22", color: "#22c55e", border: "1px solid #22c55e44" }}>✓ All assigned</span>
+            {totalRemaining > 0 && (
+              <span className="text-xs font-bold px-2 py-0.5 rounded-full" style={{ background: "#C9A84C22", color: "#C9A84C", border: "1px solid #C9A84C44" }}>{totalRemaining}</span>
             )}
           </button>
           {scopeRemainingOpen && (
@@ -1447,7 +1481,7 @@ ${paymentRows}
             <div className="rounded-2xl overflow-hidden" style={{ border: "1px solid #21262d" }}>
               {totalRemaining === 0 && (
                 <div className="px-4 py-3 text-xs text-center" style={{ background: "#0d1117", color: "#8b949e" }}>
-                  All scope items have been assigned to subs.
+                  No scope selected. Add items from the original contract or change orders below.
                 </div>
               )}
               {remainingByDiv.map((div, di) => (
@@ -1480,11 +1514,31 @@ ${paymentRows}
                           ))}
                         </div>
                       )}
+                      <button
+                        onClick={() => unpickItem(item.id)}
+                        className="text-xs px-1.5 py-0.5 rounded shrink-0"
+                        style={{ color: "#8b949e", border: "1px solid #30373f" }}
+                        title="Remove from scope list"
+                      >✕</button>
                     </div>
                   ))}
                 </div>
               ))}
             </div>
+
+            {/* Pick scope to work on — from the original contract and change orders */}
+            <div className="flex flex-wrap gap-2 mt-2">
+              <button onClick={() => setPickContractOpen(v => !v)} className="text-xs px-3 py-1.5 rounded-lg font-semibold" style={{ background: "#C9A84C18", color: "#C9A84C", border: "1px solid #C9A84C33" }}>
+                {pickContractOpen ? "▼" : "▶"} Add from Original Contract{(() => { const n = contractAvailable.reduce((s, d) => s + d.items.length, 0); return n > 0 ? ` (${n})` : ""; })()}
+              </button>
+              {coDivisions.length > 0 && (
+                <button onClick={() => setPickCoOpen(v => !v)} className="text-xs px-3 py-1.5 rounded-lg font-semibold" style={{ background: "#60a5fa18", color: "#60a5fa", border: "1px solid #60a5fa33" }}>
+                  {pickCoOpen ? "▼" : "▶"} Add from Change Orders{(() => { const n = coAvailable.reduce((s, d) => s + d.items.length, 0); return n > 0 ? ` (${n})` : ""; })()}
+                </button>
+              )}
+            </div>
+            {pickContractOpen && <ScopePicker divs={contractAvailable} onPick={pickItem} accent="#C9A84C" emptyLabel="No more contract items to add." />}
+            {pickCoOpen && <ScopePicker divs={coAvailable} onPick={pickItem} accent="#60a5fa" emptyLabel="No more change-order items to add." />}
 
             {/* Custom scope adder — system auto-detects CSI from item name */}
             <div className="rounded-2xl mt-2 p-3" style={{ background: "#161b22", border: "1px dashed #30373f" }}>
