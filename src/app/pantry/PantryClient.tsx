@@ -16,19 +16,66 @@ type Item = {
 };
 type PendingRow = { text: string; qty: string; alwaysNeeded: boolean; store: string; onHand: number; minAtHome: number };
 
-// Common qty presets — offered as a native <datalist> so users get a
-// dropdown but can still type anything.
-const QTY_PRESETS = [
-  "1", "2", "3", "4", "5", "6", "8", "10", "12", "24",
-  "1 dozen", "2 dozen",
-  "1 lb", "2 lb", "5 lb",
-  "1 kg", "2 kg",
-  "1 pack", "2 packs", "3 packs",
-  "1 bottle", "2 bottles",
-  "1 gallon", "2 gallons",
-  "1 bag", "2 bags",
-  "1 jar", "2 jars",
+// Units offered next to the quantity number. Empty unit = plain count ("each").
+const UNITS = [
+  "dozen", "pack", "box", "case", "can", "bottle", "jar", "bag", "carton",
+  "loaf", "bunch", "head", "stick", "roll", "piece",
+  "lb", "oz", "kg", "g", "gallon", "liter", "ml", "cup",
 ];
+// Irregular plurals; anything not listed just gets an "s".
+const UNIT_PLURAL: Record<string, string> = {
+  box: "boxes", loaf: "loaves", bunch: "bunches",
+  lb: "lb", oz: "oz", kg: "kg", g: "g", ml: "ml", dozen: "dozen",
+};
+function pluralizeUnit(unit: string, n: number): string {
+  if (!unit) return "";
+  return n === 1 ? unit : (UNIT_PLURAL[unit] ?? unit + "s");
+}
+// Combine a number + unit into the stored qty string ("2 dozen", "1 bag", "3").
+function joinQty(numRaw: string, unit: string): string {
+  const num = numRaw.trim();
+  if (!num) return "";
+  if (!unit) return num;
+  const n = parseFloat(num);
+  return `${num} ${Number.isNaN(n) ? unit : pluralizeUnit(unit, n)}`;
+}
+// Split a stored qty string back into { num, unit } for editing.
+function splitQty(qty: string | null): { num: string; unit: string } {
+  if (!qty) return { num: "", unit: "" };
+  const m = qty.trim().match(/^(\d*\.?\d+)\s*(.*)$/);
+  if (!m) return { num: qty.trim(), unit: "" };
+  const num = m[1];
+  const rest = m[2].trim().toLowerCase();
+  if (!rest) return { num, unit: "" };
+  for (const u of UNITS) {
+    if (rest === u || rest === (UNIT_PLURAL[u] ?? u + "s")) return { num, unit: u };
+  }
+  return { num, unit: rest }; // preserve an unrecognized unit
+}
+// Number input + unit dropdown, kept side-by-side. `compact` for the dense review table.
+function QtyPicker({ value, onChange, compact }: { value: string; onChange: (v: string) => void; compact?: boolean }) {
+  const { num, unit } = splitQty(value);
+  const unitOptions = unit && !UNITS.includes(unit) ? [unit, ...UNITS] : UNITS;
+  const pad = compact ? "8px 6px" : "10px 8px";
+  const fs = compact ? 14 : 15;
+  return (
+    <div style={{ display: "flex", gap: 4 }}>
+      <input
+        type="text" inputMode="decimal" value={num} placeholder="—"
+        onChange={e => onChange(joinQty(e.target.value, unit))}
+        style={{ width: compact ? 44 : 60, flexShrink: 0, padding: pad, background: BG, border: `1px solid ${BORDER}`, color: TEXT, borderRadius: 8, fontSize: fs, textAlign: "center", outline: "none", boxSizing: "border-box" }}
+      />
+      <select
+        value={unit}
+        onChange={e => onChange(joinQty(num, e.target.value))}
+        style={{ flex: 1, minWidth: 0, padding: pad, background: BG, border: `1px solid ${BORDER}`, color: unit ? TEXT : MUTED, borderRadius: 8, fontSize: fs, fontWeight: unit ? 600 : 400, outline: "none", boxSizing: "border-box" }}
+      >
+        <option value="">each</option>
+        {unitOptions.map(u => <option key={u} value={u}>{u}</option>)}
+      </select>
+    </div>
+  );
+}
 const LOW_STOCK_THRESHOLD = 2;
 
 // Minimal Web Speech API type surface (browsers differ; TS lib doesn't ship this)
@@ -508,7 +555,7 @@ export default function PantryClient() {
               <thead>
                 <tr>
                   <th style={{ textAlign: "left", padding: "6px 8px", color: MUTED, fontWeight: 600, fontSize: 10, textTransform: "uppercase", letterSpacing: 1 }}>Item</th>
-                  <th style={{ textAlign: "left", padding: "6px 8px", color: MUTED, fontWeight: 600, fontSize: 10, textTransform: "uppercase", letterSpacing: 1, width: 80 }}>Qty</th>
+                  <th style={{ textAlign: "left", padding: "6px 8px", color: MUTED, fontWeight: 600, fontSize: 10, textTransform: "uppercase", letterSpacing: 1, width: 130 }}>Qty</th>
                   <th style={{ textAlign: "left", padding: "6px 8px", color: MUTED, fontWeight: 600, fontSize: 10, textTransform: "uppercase", letterSpacing: 1, width: 90 }}>Store</th>
                   <th style={{ textAlign: "center", padding: "6px 8px", color: MUTED, fontWeight: 600, fontSize: 10, textTransform: "uppercase", letterSpacing: 1, width: 52 }} title="How many at home right now">🏠</th>
                   <th style={{ textAlign: "center", padding: "6px 8px", color: MUTED, fontWeight: 600, fontSize: 10, textTransform: "uppercase", letterSpacing: 1, width: 52 }} title="Alert threshold: when at-home drops below this, item goes on the shopping list">⚠ Min</th>
@@ -528,13 +575,7 @@ export default function PantryClient() {
                       />
                     </td>
                     <td style={{ padding: "4px 2px" }}>
-                      <input
-                        value={r.qty}
-                        onChange={e => updatePendingRow(i, { qty: e.target.value })}
-                        list="review-qty-presets"
-                        placeholder="—"
-                        style={{ width: "100%", padding: "8px 10px", background: BG, border: `1px solid ${BORDER}`, color: TEXT, borderRadius: 8, fontSize: 14, outline: "none", boxSizing: "border-box" }}
-                      />
+                      <QtyPicker value={r.qty} onChange={v => updatePendingRow(i, { qty: v })} compact />
                     </td>
                     <td style={{ padding: "4px 2px" }}>
                       <select
@@ -592,10 +633,6 @@ export default function PantryClient() {
               </tbody>
             </table>
           </div>
-
-          <datalist id="review-qty-presets">
-            {QTY_PRESETS.map(q => <option key={q} value={q} />)}
-          </datalist>
 
           <button onClick={addPendingRow}
             style={{ marginTop: 8, width: "100%", padding: "10px", background: "transparent", border: `1px dashed ${BORDER}`, borderRadius: 10, color: MUTED, cursor: "pointer", fontSize: 12 }}>
@@ -794,16 +831,7 @@ function PantryRow({ item, onToggle, onPatch, onDelete, onAdjustOnHand }: {
         <div style={{ display: "flex", gap: 8 }}>
           <div style={{ flex: 1 }}>
             <label style={{ display: "block", fontSize: 10, textTransform: "uppercase", letterSpacing: 1.5, color: MUTED, fontWeight: 700, marginBottom: 4 }}>Qty to buy</label>
-            <input
-              value={draftQty}
-              onChange={e => setDraftQty(e.target.value)}
-              list={`qty-presets-${item.id}`}
-              placeholder="—"
-              style={{ width: "100%", padding: "10px 12px", background: BG, border: `1px solid ${BORDER}`, color: TEXT, borderRadius: 8, fontSize: 15, outline: "none", boxSizing: "border-box", textAlign: "center", fontWeight: 700 }}
-            />
-            <datalist id={`qty-presets-${item.id}`}>
-              {QTY_PRESETS.map(q => <option key={q} value={q} />)}
-            </datalist>
+            <QtyPicker value={draftQty} onChange={setDraftQty} />
           </div>
           <div style={{ flex: 1.2 }}>
             <label style={{ display: "block", fontSize: 10, textTransform: "uppercase", letterSpacing: 1.5, color: MUTED, fontWeight: 700, marginBottom: 4 }}>Store</label>
