@@ -206,12 +206,12 @@ export default function ClientDetailHeader({
                     </span>
                   )}
                   {client.phone && (
-                    <span className="text-sm" style={{ color: "#8b949e" }}>
+                    <a href={`tel:${client.phone.replace(/[^\d+]/g, "")}`} className="text-sm hover:underline" style={{ color: "#8b949e" }}>
                       📞 {formatPhone(client.phone)}
-                    </span>
+                    </a>
                   )}
                   {((client.emailList as string[] | null) ?? (client.email ? [client.email] : [])).map((em, i) => (
-                    <span key={i} className="text-sm" style={{ color: "#8b949e" }}>✉ {em}</span>
+                    <a key={i} href={`mailto:${em}`} className="text-sm hover:underline" style={{ color: "#8b949e" }}>✉ {em}</a>
                   ))}
                 </div>
                 {client.legalDescription && (
