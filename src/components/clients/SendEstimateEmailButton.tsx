@@ -32,7 +32,7 @@ type Props = {
 
 export default function SendEstimateEmailButton({ templateId, companyId, templateName, clientName, clientEmail, estimateNumber, description, isCommercial, clientCoverPhotoType, clientCoverPhotoUrl, hasInsertFile }: Props) {
   const firstName = clientName.split(" ")[0];
-  const defaultBody = `Dear ${firstName},\n\nPlease find attached your estimate for the project.\n\nDo not hesitate to contact us with any questions.\n\n${MIKE_SIGNATURE}`;
+  const defaultBody = `Dear ${firstName},\n\nPlease find attached your Budget estimate for the project based on our site meeting.\n\nDo not hesitate to contact us with any questions.\n\n${MIKE_SIGNATURE}`;
 
   const scope = templateName || description;
   const numPart = estimateNumber ? `Estimate #${estimateNumber}` : "Estimate";

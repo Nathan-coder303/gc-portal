@@ -1586,7 +1586,7 @@ export default function TemplateEditor({
     return `${numPart}${clientPart} for ${scope}`;
   });
   const [emailBody, setEmailBody] = useState(() => {
-    return `Dear ${_greetingName},\n\nPlease find attached your estimate for the project.\n\nDo not hesitate to contact us with any questions.\n\nMike Baruh\nFounder/CEO | MIBH Construction\nCertified & Licensed General Contractor CGC 1527069\nCertified & Licensed Roofer CCC 1336817\n\n📱 Cell: 305.746.7307\n📧 Email: mike@mibhconstruction.com\n📍 Address: 2950 N 28 Terr, Hollywood, FL 33020\n🌐 Website: www.mibhconstruction.com\n📸 Instagram: @mibh_construction`;
+    return `Dear ${_greetingName},\n\nPlease find attached your Budget estimate for the project based on our site meeting.\n\nDo not hesitate to contact us with any questions.\n\nMike Baruh\nFounder/CEO | MIBH Construction\nCertified & Licensed General Contractor CGC 1527069\nCertified & Licensed Roofer CCC 1336817\n\n📱 Cell: 305.746.7307\n📧 Email: mike@mibhconstruction.com\n📍 Address: 2950 N 28 Terr, Hollywood, FL 33020\n🌐 Website: www.mibhconstruction.com\n📸 Instagram: @mibh_construction`;
   });
   const [emailSending, setEmailSending] = useState(false);
   const [emailResult, setEmailResult] = useState<{ ok: boolean; msg: string } | null>(null);
@@ -1627,7 +1627,7 @@ export default function TemplateEditor({
     const greet = currentClient?.contactName?.trim()
       ? currentClient.contactName.trim().split(" ")[0]
       : currentClient?.name?.split(" ")[0] ?? "there";
-    setEmailBody(`Dear ${greet},\n\nPlease find attached your estimate for the project.\n\nDo not hesitate to contact us with any questions.\n\nMike Baruh\nFounder/CEO | MIBH Construction\nCertified & Licensed General Contractor CGC 1527069\nCertified & Licensed Roofer CCC 1336817\n\n📱 Cell: 305.746.7307\n📧 Email: mike@mibhconstruction.com\n📍 Address: 2950 N 28 Terr, Hollywood, FL 33020\n🌐 Website: www.mibhconstruction.com\n📸 Instagram: @mibh_construction`);
+    setEmailBody(`Dear ${greet},\n\nPlease find attached your Budget estimate for the project based on our site meeting.\n\nDo not hesitate to contact us with any questions.\n\nMike Baruh\nFounder/CEO | MIBH Construction\nCertified & Licensed General Contractor CGC 1527069\nCertified & Licensed Roofer CCC 1336817\n\n📱 Cell: 305.746.7307\n📧 Email: mike@mibhconstruction.com\n📍 Address: 2950 N 28 Terr, Hollywood, FL 33020\n🌐 Website: www.mibhconstruction.com\n📸 Instagram: @mibh_construction`);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentClient?.id]);
   const isRoofTemplate = template.name.toLowerCase().includes("roof");
