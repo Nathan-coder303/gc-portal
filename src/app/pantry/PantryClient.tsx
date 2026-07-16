@@ -54,12 +54,62 @@ const MUTED = "#8b949e";
 const WA_GREEN = "#25D366";
 
 // Known stores (used for voice detection + quick-pick chips)
-const STORES = ["Publix", "Costco", "Kosher"];
+const STORES = ["Publix", "Costco", "Kosher", "Aldi"];
 const STORE_COLORS: Record<string, string> = {
   Publix: "#009639",   // Publix green
   Costco: "#E32227",   // Costco red
   Kosher: "#3366CC",   // blue
+  Aldi: "#F47C20",     // Aldi orange
 };
+
+// ── Custom stores (user-added, persisted in localStorage) ────────────────────
+const CUSTOM_STORES_KEY = "pantry_custom_stores";
+const STORES_CHANGED_EVENT = "pantry-stores-changed";
+// Deterministic color for a custom store name so chips/badges stay consistent.
+const CUSTOM_STORE_PALETTE = ["#8B5CF6", "#0EA5E9", "#EC4899", "#14B8A6", "#F59E0B", "#84CC16", "#EF4444", "#6366F1"];
+function colorForStore(name: string): string {
+  if (STORE_COLORS[name]) return STORE_COLORS[name];
+  let h = 0;
+  for (let i = 0; i < name.length; i++) h = (h * 31 + name.charCodeAt(i)) >>> 0;
+  return CUSTOM_STORE_PALETTE[h % CUSTOM_STORE_PALETTE.length];
+}
+function loadCustomStores(): string[] {
+  if (typeof window === "undefined") return [];
+  try {
+    const raw = window.localStorage.getItem(CUSTOM_STORES_KEY);
+    const arr = raw ? JSON.parse(raw) : [];
+    return Array.isArray(arr) ? arr.filter((s): s is string => typeof s === "string") : [];
+  } catch { return []; }
+}
+// React hook: merged store list ([built-in, ...custom]) + an addStore() that persists and broadcasts.
+function useStores(): { stores: string[]; addStore: (name: string) => string | null } {
+  const [custom, setCustom] = useState<string[]>([]);
+  useEffect(() => {
+    setCustom(loadCustomStores());
+    const sync = () => setCustom(loadCustomStores());
+    window.addEventListener(STORES_CHANGED_EVENT, sync);
+    window.addEventListener("storage", sync);
+    return () => { window.removeEventListener(STORES_CHANGED_EVENT, sync); window.removeEventListener("storage", sync); };
+  }, []);
+  const addStore = useCallback((raw: string): string | null => {
+    const name = raw.trim();
+    if (!name) return null;
+    const known = new Set([...STORES, ...loadCustomStores()].map(s => s.toLowerCase()));
+    if (!known.has(name.toLowerCase())) {
+      const next = [...loadCustomStores(), name];
+      try { window.localStorage.setItem(CUSTOM_STORES_KEY, JSON.stringify(next)); } catch {}
+      window.dispatchEvent(new Event(STORES_CHANGED_EVENT));
+    }
+    return name;
+  }, []);
+  return { stores: [...STORES, ...custom], addStore };
+}
+// Sentinel value used by the "add a new store" <option>.
+const ADD_STORE_OPTION = "__add_store__";
+function promptAddStore(addStore: (name: string) => string | null): string | null {
+  const name = window.prompt("New store name:");
+  return name ? addStore(name) : null;
+}
 
 // Wife's WhatsApp (US +1)
 const DEFAULT_WA_NUMBER = "13058778256";
@@ -190,6 +240,7 @@ function parseUtterance(raw: string): PendingRow[] {
 }
 
 export default function PantryClient() {
+  const { stores, addStore } = useStores();
   const [items, setItems] = useState<Item[]>([]);
   const [loading, setLoading] = useState(true);
   const [manual, setManual] = useState("");
@@ -436,12 +487,16 @@ export default function PantryClient() {
           {/* Batch store selector */}
           <div style={{ display: "flex", gap: 6, alignItems: "center", marginBottom: 10, flexWrap: "wrap" }}>
             <span style={{ fontSize: 10, textTransform: "uppercase", letterSpacing: 1, color: MUTED, fontWeight: 700 }}>Set all →</span>
-            {STORES.map(s => (
+            {stores.map(s => (
               <button key={s} onClick={() => setStoreForAll(s)}
-                style={{ padding: "4px 10px", background: `${STORE_COLORS[s]}22`, border: `1px solid ${STORE_COLORS[s]}55`, color: STORE_COLORS[s], borderRadius: 12, fontSize: 11, fontWeight: 700, cursor: "pointer" }}>
+                style={{ padding: "4px 10px", background: `${colorForStore(s)}22`, border: `1px solid ${colorForStore(s)}55`, color: colorForStore(s), borderRadius: 12, fontSize: 11, fontWeight: 700, cursor: "pointer" }}>
                 {s}
               </button>
             ))}
+            <button onClick={() => { const name = promptAddStore(addStore); if (name) setStoreForAll(name); }}
+              style={{ padding: "4px 10px", background: "transparent", border: `1px dashed ${BORDER}`, color: MUTED, borderRadius: 12, fontSize: 11, fontWeight: 700, cursor: "pointer" }}>
+              + Add store
+            </button>
             <button onClick={() => setStoreForAll("")}
               style={{ padding: "4px 10px", background: "transparent", border: `1px solid ${BORDER}`, color: MUTED, borderRadius: 12, fontSize: 11, cursor: "pointer" }}>
               Clear
@@ -484,11 +539,15 @@ export default function PantryClient() {
                     <td style={{ padding: "4px 2px" }}>
                       <select
                         value={r.store}
-                        onChange={e => updatePendingRow(i, { store: e.target.value })}
-                        style={{ width: "100%", padding: "8px 6px", background: BG, border: `1px solid ${r.store ? `${STORE_COLORS[r.store] ?? BORDER}` : BORDER}`, color: r.store ? (STORE_COLORS[r.store] ?? TEXT) : MUTED, borderRadius: 8, fontSize: 13, fontWeight: r.store ? 700 : 400, outline: "none", boxSizing: "border-box" }}
+                        onChange={e => {
+                          if (e.target.value === ADD_STORE_OPTION) { const name = promptAddStore(addStore); if (name) updatePendingRow(i, { store: name }); return; }
+                          updatePendingRow(i, { store: e.target.value });
+                        }}
+                        style={{ width: "100%", padding: "8px 6px", background: BG, border: `1px solid ${r.store ? colorForStore(r.store) : BORDER}`, color: r.store ? colorForStore(r.store) : MUTED, borderRadius: 8, fontSize: 13, fontWeight: r.store ? 700 : 400, outline: "none", boxSizing: "border-box" }}
                       >
                         <option value="">—</option>
-                        {STORES.map(s => <option key={s} value={s}>{s}</option>)}
+                        {stores.map(s => <option key={s} value={s}>{s}</option>)}
+                        <option value={ADD_STORE_OPTION}>+ Add store…</option>
                       </select>
                     </td>
                     <td style={{ padding: "4px 2px" }}>
@@ -684,6 +743,7 @@ function PantryRow({ item, onToggle, onPatch, onDelete, onAdjustOnHand }: {
   onDelete: (id: string) => void;
   onAdjustOnHand: (id: string, delta: number) => void;
 }) {
+  const { stores, addStore } = useStores();
   const [editing, setEditing] = useState(false);
   const [draftText, setDraftText] = useState(item.text);
   const [draftQty, setDraftQty] = useState(item.qty ?? "");
@@ -691,7 +751,7 @@ function PantryRow({ item, onToggle, onPatch, onDelete, onAdjustOnHand }: {
   const [draftAlways, setDraftAlways] = useState(item.alwaysNeeded);
   const [draftOnHand, setDraftOnHand] = useState(item.onHand);
   const [draftMin, setDraftMin] = useState(item.minAtHome);
-  const storeColor = item.store ? (STORE_COLORS[item.store] ?? MUTED) : null;
+  const storeColor = item.store ? colorForStore(item.store) : null;
   const isLow = item.onHand < item.minAtHome;
 
   function beginEdit() {
@@ -749,11 +809,15 @@ function PantryRow({ item, onToggle, onPatch, onDelete, onAdjustOnHand }: {
             <label style={{ display: "block", fontSize: 10, textTransform: "uppercase", letterSpacing: 1.5, color: MUTED, fontWeight: 700, marginBottom: 4 }}>Store</label>
             <select
               value={draftStore}
-              onChange={e => setDraftStore(e.target.value)}
-              style={{ width: "100%", padding: "10px 8px", background: BG, border: `1px solid ${draftStore ? (STORE_COLORS[draftStore] ?? BORDER) : BORDER}`, color: draftStore ? (STORE_COLORS[draftStore] ?? TEXT) : MUTED, borderRadius: 8, fontSize: 14, fontWeight: draftStore ? 700 : 400, outline: "none", boxSizing: "border-box" }}
+              onChange={e => {
+                if (e.target.value === ADD_STORE_OPTION) { const name = promptAddStore(addStore); if (name) setDraftStore(name); return; }
+                setDraftStore(e.target.value);
+              }}
+              style={{ width: "100%", padding: "10px 8px", background: BG, border: `1px solid ${draftStore ? colorForStore(draftStore) : BORDER}`, color: draftStore ? colorForStore(draftStore) : MUTED, borderRadius: 8, fontSize: 14, fontWeight: draftStore ? 700 : 400, outline: "none", boxSizing: "border-box" }}
             >
               <option value="">— None —</option>
-              {STORES.map(s => <option key={s} value={s}>{s}</option>)}
+              {stores.map(s => <option key={s} value={s}>{s}</option>)}
+              <option value={ADD_STORE_OPTION}>+ Add store…</option>
             </select>
           </div>
           <div>
@@ -1175,17 +1239,19 @@ function StatementBody({ grouped, totalCount, dateStr, note }: { grouped: { stor
       )}
 
       {/* Store sections */}
-      {grouped.map(g => (
+      {grouped.map(g => {
+        const gc = g.store === "Any" ? null : colorForStore(g.store);
+        return (
         <div key={g.store} style={{ marginBottom: 18, border: "1px solid #e2e8f0", borderRadius: 12, overflow: "hidden" }}>
           <div style={{
             padding: "10px 14px",
-            background: STORE_COLORS[g.store] ? `${STORE_COLORS[g.store]}15` : "#f8fafc",
+            background: gc ? `${gc}15` : "#f8fafc",
             borderBottom: "1px solid #e2e8f0",
             display: "flex", justifyContent: "space-between", alignItems: "center",
           }}>
             <span style={{
               fontSize: 13, fontWeight: 800,
-              color: STORE_COLORS[g.store] ?? "#334155",
+              color: gc ?? "#334155",
               textTransform: "uppercase", letterSpacing: 1,
             }}>
               {g.store === "Any" ? "Any store" : g.store}
@@ -1210,7 +1276,8 @@ function StatementBody({ grouped, totalCount, dateStr, note }: { grouped: { stor
             </tbody>
           </table>
         </div>
-      ))}
+        );
+      })}
 
       {/* Footer */}
       <div style={{ marginTop: 8, padding: "10px 14px", background: "#f8fafc", border: "1px solid #e2e8f0", borderRadius: 10, fontSize: 11, color: "#94a3b8", textAlign: "center", letterSpacing: 0.3 }}>
