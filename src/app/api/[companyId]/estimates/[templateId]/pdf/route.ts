@@ -82,6 +82,7 @@ export async function GET(
   const noPresentation = req.nextUrl.searchParams.get("noPresent") === "1";
   const scopeId = req.nextUrl.searchParams.get("scopeId");
   const scopeTitle = req.nextUrl.searchParams.get("scopeTitle") || null;
+  const hideLineItems = req.nextUrl.searchParams.get("noItems") === "1";
 
   const [template, company, scopeOfWork] = await Promise.all([
     prisma.estimateTemplate.findFirst({
@@ -202,6 +203,7 @@ export async function GET(
     forcedBreakTerms,
     scopeOfWork: scopeOfWork ?? null,
     scopeTitle,
+    hideLineItems,
   });
   let finalBuffer = buffer;
   if (insertFileUrl) {

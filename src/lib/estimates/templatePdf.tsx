@@ -256,6 +256,7 @@ type TemplatePdfProps = {
   forcedBreakTerms?: boolean;
   scopeOfWork?: { title: string; body: string } | null;
   scopeTitle?: string | null;
+  hideLineItems?: boolean;
   branding?: Partial<CompanyBranding> | null;
   hideEstimateLabel?: boolean;
   hideContractorSignature?: boolean;
@@ -1726,7 +1727,7 @@ function ScopeOfWorkPage({ title, body, client }: { title: string; body: string;
       <View style={{ height: 3, backgroundColor: GOLD }} />
 
       {/* Page title */}
-      <View style={{ paddingHorizontal: 28, paddingTop: 14, paddingBottom: 4 }}>
+      <View style={{ paddingHorizontal: 28, paddingTop: 30, paddingBottom: 4 }}>
         <Text style={{ fontSize: 14, fontFamily: "Helvetica-Bold", color: DARK, letterSpacing: 0.5, textTransform: "uppercase", marginBottom: 10 }}>{title}</Text>
 
         {/* Body blocks */}
@@ -1736,7 +1737,7 @@ function ScopeOfWorkPage({ title, body, client }: { title: string; body: string;
   );
 }
 
-function TemplatePdfDocument({ companyName, template, client, divisions, showTerms, termsContent, paymentSchedule, gcFeePercent, summaryGroups, clientSignatureData, clientSignedByName, clientSignedAt, contractorSignatureData, contractorSignedAt, includeRoofUpgradesPage, includeCoverPage, includeAdditionPages, includePermitPages, includeRetailPages, includeDivisionSummary, includeAllowancesSummary, insertPageOffset, insulationType, clientCoverPhotoType, clientCoverPhotoUrl, clientCoverTitle, forcedBreakCsiPrefixes = [], forcedBreakTerms = false, scopeOfWork, scopeTitle, hideEstimateLabel = false, changeOrderNotes, hideContractorSignature = false, attachments }: TemplatePdfProps) {
+function TemplatePdfDocument({ companyName, template, client, divisions, showTerms, termsContent, paymentSchedule, gcFeePercent, summaryGroups, clientSignatureData, clientSignedByName, clientSignedAt, contractorSignatureData, contractorSignedAt, includeRoofUpgradesPage, includeCoverPage, includeAdditionPages, includePermitPages, includeRetailPages, includeDivisionSummary, includeAllowancesSummary, insertPageOffset, insulationType, clientCoverPhotoType, clientCoverPhotoUrl, clientCoverTitle, forcedBreakCsiPrefixes = [], forcedBreakTerms = false, scopeOfWork, scopeTitle, hideLineItems = false, hideEstimateLabel = false, changeOrderNotes, hideContractorSignature = false, attachments }: TemplatePdfProps) {
   const branding = useBranding();
   const grouped = groupDivisions(divisions);
 
@@ -2015,8 +2016,8 @@ function TemplatePdfDocument({ companyName, template, client, divisions, showTer
           </View>
         </View>
 
-        {/* Divisions — grouped into super-sections (e.g. SHELL) */}
-        {(() => {
+        {/* Divisions — grouped into super-sections (e.g. SHELL). Hidden for scope-only PDFs. */}
+        {!hideLineItems && (() => {
           // Shared filter function
           const applyInsF = (item: Item) => {
             const filtered = applyInsulationFilter(item.name, insulationType);
@@ -2189,15 +2190,15 @@ function TemplatePdfDocument({ companyName, template, client, divisions, showTer
         })()}
 
         {/* Change order notes — below items, above totals */}
-        {changeOrderNotes ? (
+        {!hideLineItems && changeOrderNotes ? (
           <View style={{ marginTop: 10, paddingHorizontal: 8, paddingVertical: 6, borderTopWidth: 1, borderTopColor: "#e2e8f0" }}>
             <Text style={{ fontSize: 8.5, color: "#475569", fontFamily: "Helvetica-Bold", marginBottom: 2 }}>Notes</Text>
             <Text style={{ fontSize: 8.5, color: "#1e293b" }}>{changeOrderNotes}</Text>
           </View>
         ) : null}
 
-        {/* Totals block — all kept together so TOTAL never lands alone on a new page */}
-        <View wrap={false}>
+        {/* Totals block — all kept together so TOTAL never lands alone on a new page. Hidden for scope-only PDFs. */}
+        {!hideLineItems && <View wrap={false}>
           {hasAllowances && (
             <View style={[styles.grandTotalBar, { marginTop: 6, backgroundColor: "#2d2410" }]}>
               <Text style={[styles.grandTotalLabel, { fontSize: 10 }]}>TOTAL ALLOWANCES</Text>
@@ -2237,7 +2238,7 @@ function TemplatePdfDocument({ companyName, template, client, divisions, showTer
               </Text>
             </View>
           )}
-        </View>
+        </View>}
 
         {/* Payment terms + signature: inline when no extra page */}
         {!includeRoofUpgradesPage && paymentTermsSignatureBlock}

@@ -181,7 +181,7 @@ function EstimateCard({
   const initialPage2: Page2Type = n.includes("retail") ? "RETAIL" : n.includes("roof") ? "ROOF" : n.includes("addition") ? "ADDITION" : "NONE";
 
   function buildPdfUrl(opts: PdfOptions, preview = false) {
-    const base = `/api/${companyId}/estimates/${est.id}/pdf?cover=${opts.coverType !== "NONE" ? 1 : 0}&coverType=${opts.coverType}&page2=${opts.page2}&includeInsert=${opts.includeInsert ? 1 : 0}&divSummary=${opts.includeDivisionSummary ? 1 : 0}&allowances=${opts.includeAllowances ? 1 : 0}&forcedBreakCsi=${opts.forcedBreakCsiPrefixes.join(",")}${opts.noPresentation ? "&noPresent=1" : ""}${opts.scopeOfWorkId ? `&scopeId=${opts.scopeOfWorkId}` : ""}${preview ? "&preview=1" : ""}`;
+    const base = `/api/${companyId}/estimates/${est.id}/pdf?cover=${opts.coverType !== "NONE" ? 1 : 0}&coverType=${opts.coverType}&page2=${opts.page2}&includeInsert=${opts.includeInsert ? 1 : 0}&divSummary=${opts.includeDivisionSummary ? 1 : 0}&allowances=${opts.includeAllowances ? 1 : 0}&forcedBreakCsi=${opts.forcedBreakCsiPrefixes.join(",")}${opts.noPresentation ? "&noPresent=1" : ""}${opts.scopeOfWorkId ? `&scopeId=${opts.scopeOfWorkId}` : ""}${opts.hideLineItems ? "&noItems=1" : ""}${preview ? "&preview=1" : ""}`;
     if (opts.coverType === "CUSTOM" && opts.coverBlobUrl) {
       return `${base}&coverBlobUrl=${encodeURIComponent(opts.coverBlobUrl)}`;
     }
@@ -223,6 +223,7 @@ function EstimateCard({
           noPresentation: pdfOpts.noPresentation,
           forcedBreakCsiPrefixes: pdfOpts.forcedBreakCsiPrefixes,
           scopeOfWorkId: pdfOpts.scopeOfWorkId ?? null,
+          hideLineItems: pdfOpts.hideLineItems ?? false,
         }),
       });
       const text = await res.text();

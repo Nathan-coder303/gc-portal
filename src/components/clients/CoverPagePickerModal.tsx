@@ -40,6 +40,7 @@ export type PdfOptions = {
   noPresentation: boolean;
   scopeOfWorkId?: string | null;
   scopeTitle?: string | null;
+  hideLineItems?: boolean;
 };
 
 type CustomCover = { blobUrl: string; proxyUrl: string; filename: string };
@@ -178,6 +179,15 @@ export default function CoverPagePickerModal({
     }
     return null;
   });
+  const [hideLineItems, setHideLineItems] = useState<boolean>(() => {
+    if (companyId) {
+      try {
+        const saved = JSON.parse(localStorage.getItem(`gc-pdf-opts-${clientId ?? companyId}`) ?? "null");
+        if (saved?.hideLineItems != null) return saved.hideLineItems as boolean;
+      } catch {}
+    }
+    return false;
+  });
   useEffect(() => {
     if (!companyId) return;
     fetch(`/api/${companyId}/scopes-of-work`)
@@ -210,9 +220,9 @@ export default function CoverPagePickerModal({
   useEffect(() => {
     if (!companyId) return;
     try {
-      localStorage.setItem(`gc-pdf-opts-${clientId ?? companyId}`, JSON.stringify({ coverType: cover, page2, selectedBlobUrl, includeDivisionSummary, includeAllowances, forcedBreakCsiPrefixes, forcedBreakTerms, scopeTitle, scopeOfWorkId }));
+      localStorage.setItem(`gc-pdf-opts-${clientId ?? companyId}`, JSON.stringify({ coverType: cover, page2, selectedBlobUrl, includeDivisionSummary, includeAllowances, forcedBreakCsiPrefixes, forcedBreakTerms, scopeTitle, scopeOfWorkId, hideLineItems }));
     } catch {}
-  }, [cover, page2, selectedBlobUrl, includeDivisionSummary, includeAllowances, forcedBreakCsiPrefixes, forcedBreakTerms, scopeTitle, scopeOfWorkId, companyId, clientId]);
+  }, [cover, page2, selectedBlobUrl, includeDivisionSummary, includeAllowances, forcedBreakCsiPrefixes, forcedBreakTerms, scopeTitle, scopeOfWorkId, hideLineItems, companyId, clientId]);
 
   function getCoverName(c: CustomCover): string {
     return coverNames[c.blobUrl] ?? formatCoverName(c.filename);
@@ -287,6 +297,7 @@ export default function CoverPagePickerModal({
     noPresentation,
     scopeOfWorkId,
     scopeTitle: scopeTitle.trim() || null,
+    hideLineItems,
   };
 
   return (
@@ -362,6 +373,10 @@ export default function CoverPagePickerModal({
                 {scopes.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
               </select>
               <p className="text-[11px] mt-1.5" style={{ color: "#6b7280" }}>Adds a dedicated Scope of Work page to the PDF/preview.</p>
+              <label className="flex items-center gap-2 mt-2.5 cursor-pointer select-none">
+                <input type="checkbox" checked={hideLineItems} onChange={e => setHideLineItems(e.target.checked)} style={{ accentColor: "#C9A84C", width: 15, height: 15 }} />
+                <span className="text-xs" style={{ color: hideLineItems ? "#C9A84C" : "#c9d1d9", fontWeight: hideLineItems ? 600 : 400 }}>Scope only — hide line items &amp; totals (keep payment schedule + signature)</span>
+              </label>
             </div>
           )}
 
