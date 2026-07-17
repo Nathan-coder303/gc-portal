@@ -1701,8 +1701,8 @@ function ScopeOfWorkPage({ title, body, client }: { title: string; body: string;
   const { logoSrc: logoPath, name: companyDisplayName, address: companyAddress, phone: companyPhone, email: companyEmail, licenses: companyLicenses, contactName: companyContactName } = useBranding();
   const clientName = client?.name ?? "";
   return (
-    <Page size="LETTER" style={{ fontFamily: "Helvetica", padding: 0, paddingBottom: 96 }}>
-      {/* Footer pinned to bottom */}
+    <Page size="LETTER" style={{ fontFamily: "Helvetica", paddingTop: 92, paddingBottom: 96 }}>
+      {/* Footer pinned to bottom — repeats on every page */}
       <View fixed style={{ position: "absolute", bottom: 0, left: 0, right: 0, backgroundColor: DARK, paddingHorizontal: 24, paddingVertical: 9, flexDirection: "row", alignItems: "center", gap: 12 }}>
         <Text style={{ fontSize: 8.5, color: GOLD, fontFamily: "Helvetica-Bold" }}>{companyDisplayName.toUpperCase()}</Text>
         <Text style={{ fontSize: 7, color: "#94a3b8" }}>|</Text>
@@ -1714,20 +1714,22 @@ function ScopeOfWorkPage({ title, body, client }: { title: string; body: string;
         <View style={{ flex: 1 }} />
         <Text style={{ fontSize: 8, color: "#94a3b8" }} render={({ pageNumber, totalPages }) => `Page ${pageNumber} of ${totalPages}`} />
       </View>
-      {/* Header */}
-      <View style={{ flexDirection: "row", alignItems: "center", backgroundColor: DARK, paddingHorizontal: 24, paddingVertical: 10, gap: 14 }}>
-        {/* eslint-disable-next-line jsx-a11y/alt-text */}
-        <Image src={logoPath} style={{ width: 52, height: 52 }} />
-        <View style={{ flex: 1 }}>
-          <Text style={{ fontSize: 20, fontFamily: "Helvetica-Bold", color: GOLD, letterSpacing: 2 }}>{companyDisplayName.toUpperCase()}</Text>
-          <Text style={{ fontSize: 8, color: "#94a3b8", marginTop: 2 }}>Licensed &amp; Insured  |  {companyLicenses}  |  {companyAddress}  |  {companyPhone}</Text>
+      {/* Header pinned to top — repeats on every page so continuation pages aren't jammed at the edge */}
+      <View fixed style={{ position: "absolute", top: 0, left: 0, right: 0 }}>
+        <View style={{ flexDirection: "row", alignItems: "center", backgroundColor: DARK, paddingHorizontal: 24, paddingVertical: 10, gap: 14 }}>
+          {/* eslint-disable-next-line jsx-a11y/alt-text */}
+          <Image src={logoPath} style={{ width: 52, height: 52 }} />
+          <View style={{ flex: 1 }}>
+            <Text style={{ fontSize: 20, fontFamily: "Helvetica-Bold", color: GOLD, letterSpacing: 2 }}>{companyDisplayName.toUpperCase()}</Text>
+            <Text style={{ fontSize: 8, color: "#94a3b8", marginTop: 2 }}>Licensed &amp; Insured  |  {companyLicenses}  |  {companyAddress}  |  {companyPhone}</Text>
+          </View>
+          {clientName ? <Text style={{ fontSize: 10, color: "#94a3b8", textAlign: "right" }}>{clientName}</Text> : null}
         </View>
-        {clientName ? <Text style={{ fontSize: 10, color: "#94a3b8", textAlign: "right" }}>{clientName}</Text> : null}
+        <View style={{ height: 3, backgroundColor: GOLD }} />
       </View>
-      <View style={{ height: 3, backgroundColor: GOLD }} />
 
-      {/* Page title */}
-      <View style={{ paddingHorizontal: 28, paddingTop: 30, paddingBottom: 4 }}>
+      {/* Page title + body */}
+      <View style={{ paddingHorizontal: 28, paddingTop: 8, paddingBottom: 4 }}>
         <Text style={{ fontSize: 14, fontFamily: "Helvetica-Bold", color: DARK, letterSpacing: 0.5, textTransform: "uppercase", marginBottom: 10 }}>{title}</Text>
 
         {/* Body blocks */}

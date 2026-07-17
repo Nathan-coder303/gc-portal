@@ -179,11 +179,13 @@ export default function CoverPagePickerModal({
     }
     return null;
   });
-  const [hideLineItems, setHideLineItems] = useState<boolean>(() => {
+  // When a Scope of Work page is selected, the PDF is scope-only by default (no line
+  // items / totals). This opt-in adds the full itemized estimate back in.
+  const [includeLineItems, setIncludeLineItems] = useState<boolean>(() => {
     if (companyId) {
       try {
         const saved = JSON.parse(localStorage.getItem(`gc-pdf-opts-${clientId ?? companyId}`) ?? "null");
-        if (saved?.hideLineItems != null) return saved.hideLineItems as boolean;
+        if (saved?.includeLineItems != null) return saved.includeLineItems as boolean;
       } catch {}
     }
     return false;
@@ -220,9 +222,9 @@ export default function CoverPagePickerModal({
   useEffect(() => {
     if (!companyId) return;
     try {
-      localStorage.setItem(`gc-pdf-opts-${clientId ?? companyId}`, JSON.stringify({ coverType: cover, page2, selectedBlobUrl, includeDivisionSummary, includeAllowances, forcedBreakCsiPrefixes, forcedBreakTerms, scopeTitle, scopeOfWorkId, hideLineItems }));
+      localStorage.setItem(`gc-pdf-opts-${clientId ?? companyId}`, JSON.stringify({ coverType: cover, page2, selectedBlobUrl, includeDivisionSummary, includeAllowances, forcedBreakCsiPrefixes, forcedBreakTerms, scopeTitle, scopeOfWorkId, includeLineItems }));
     } catch {}
-  }, [cover, page2, selectedBlobUrl, includeDivisionSummary, includeAllowances, forcedBreakCsiPrefixes, forcedBreakTerms, scopeTitle, scopeOfWorkId, hideLineItems, companyId, clientId]);
+  }, [cover, page2, selectedBlobUrl, includeDivisionSummary, includeAllowances, forcedBreakCsiPrefixes, forcedBreakTerms, scopeTitle, scopeOfWorkId, includeLineItems, companyId, clientId]);
 
   function getCoverName(c: CustomCover): string {
     return coverNames[c.blobUrl] ?? formatCoverName(c.filename);
@@ -297,7 +299,7 @@ export default function CoverPagePickerModal({
     noPresentation,
     scopeOfWorkId,
     scopeTitle: scopeTitle.trim() || null,
-    hideLineItems,
+    hideLineItems: scopeOfWorkId ? !includeLineItems : false,
   };
 
   return (
@@ -372,11 +374,17 @@ export default function CoverPagePickerModal({
                 <option value="">None</option>
                 {scopes.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
               </select>
-              <p className="text-[11px] mt-1.5" style={{ color: "#6b7280" }}>Adds a dedicated Scope of Work page to the PDF/preview.</p>
-              <label className="flex items-center gap-2 mt-2.5 cursor-pointer select-none">
-                <input type="checkbox" checked={hideLineItems} onChange={e => setHideLineItems(e.target.checked)} style={{ accentColor: "#C9A84C", width: 15, height: 15 }} />
-                <span className="text-xs" style={{ color: hideLineItems ? "#C9A84C" : "#c9d1d9", fontWeight: hideLineItems ? 600 : 400 }}>Scope only — hide line items &amp; totals (keep payment schedule + signature)</span>
-              </label>
+              <p className="text-[11px] mt-1.5" style={{ color: "#6b7280" }}>
+                {scopeOfWorkId
+                  ? "Scope-only PDF: scope page → payment schedule → signature. Line items & totals are hidden."
+                  : "Adds a dedicated Scope of Work page to the PDF/preview."}
+              </p>
+              {scopeOfWorkId && (
+                <label className="flex items-center gap-2 mt-2.5 cursor-pointer select-none">
+                  <input type="checkbox" checked={includeLineItems} onChange={e => setIncludeLineItems(e.target.checked)} style={{ accentColor: "#C9A84C", width: 15, height: 15 }} />
+                  <span className="text-xs" style={{ color: includeLineItems ? "#C9A84C" : "#c9d1d9", fontWeight: includeLineItems ? 600 : 400 }}>Also include the full itemized estimate (line items &amp; totals)</span>
+                </label>
+              )}
             </div>
           )}
 
