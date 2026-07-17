@@ -1604,9 +1604,100 @@ function AllowancesSummaryPage({ client, divisions }: Pick<TemplatePdfProps, "cl
   );
 }
 
+// Parse a scope body into rendered blocks. Supports (all optional, backward-compatible
+// with plain paragraphs + "N." numbered blocks used by older scopes):
+//   "## Heading"          → gold section header
+//   "## Total" + "$1,234" → dark price panel (header followed by a currency-only line)
+//   "- item"              → bullet list (consecutive lines grouped)
+//   "1. item"             → gold-bordered numbered card
+//   anything else         → paragraph
+function renderScopeBody(body: string) {
+  const lines = body.replace(/\r/g, "").split("\n");
+  const out: React.ReactNode[] = [];
+  let bullets: string[] = [];
+  let para: string[] = [];
+  let key = 0;
+  const flushBullets = () => {
+    if (!bullets.length) return;
+    const items = bullets;
+    bullets = [];
+    out.push(
+      <View key={`b${key++}`} style={{ marginBottom: 10, gap: 4 }}>
+        {items.map((it, j) => (
+          <View key={j} style={{ flexDirection: "row", gap: 6 }}>
+            <Text style={{ fontSize: 9.5, color: GOLD, lineHeight: 1.55 }}>▪</Text>
+            <Text style={{ fontSize: 9.5, color: "#334155", lineHeight: 1.55, flex: 1 }}>{it}</Text>
+          </View>
+        ))}
+      </View>
+    );
+  };
+  const flushPara = () => {
+    if (!para.length) return;
+    const text = para.join(" ").trim();
+    para = [];
+    if (text) out.push(<View key={`p${key++}`} style={{ marginBottom: 10 }}><Text style={{ fontSize: 9.5, color: "#334155", lineHeight: 1.55 }}>{text}</Text></View>);
+  };
+  for (let i = 0; i < lines.length; i++) {
+    const raw = lines[i];
+    const line = raw.trim();
+    if (!line) { flushBullets(); flushPara(); continue; }
+    // Section header / price panel
+    const h = line.match(/^#{2,3}\s+(.*)$/);
+    if (h) {
+      flushBullets(); flushPara();
+      // Look ahead for a currency-only line → render a price panel
+      let j = i + 1;
+      while (j < lines.length && !lines[j].trim()) j++;
+      const amountMatch = j < lines.length ? lines[j].trim().match(/^\$[\d,]+(?:\.\d{2})?$/) : null;
+      if (amountMatch) {
+        const amount = lines[j].trim();
+        const note: string[] = [];
+        let k = j + 1;
+        for (; k < lines.length && lines[k].trim(); k++) note.push(lines[k].trim());
+        out.push(
+          <View key={`price${key++}`} wrap={false} style={{ marginTop: 14, backgroundColor: DARK, borderRadius: 6, padding: 16, flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: 14 }}>
+            <View style={{ flex: 1 }}>
+              <Text style={{ fontSize: 9, fontFamily: "Helvetica-Bold", color: GOLD, letterSpacing: 1.2, textTransform: "uppercase" }}>{h[1]}</Text>
+              {note.length ? <Text style={{ fontSize: 8.5, color: "#aeb9c9", lineHeight: 1.5, marginTop: 4 }}>{note.join(" ")}</Text> : null}
+            </View>
+            <Text style={{ fontSize: 26, fontFamily: "Helvetica-Bold", color: "#ffffff" }}>{amount}</Text>
+          </View>
+        );
+        i = k - 1;
+        continue;
+      }
+      out.push(
+        <View key={`h${key++}`} style={{ marginTop: 14, marginBottom: 8, borderBottom: "1px solid #e2e8f0", paddingBottom: 4 }}>
+          <Text style={{ fontSize: 11, fontFamily: "Helvetica-Bold", color: DARK, letterSpacing: 0.5, textTransform: "uppercase" }}>{h[1]}</Text>
+        </View>
+      );
+      continue;
+    }
+    // Bullet
+    const b = line.match(/^[-•*]\s+(.*)$/);
+    if (b) { flushPara(); bullets.push(b[1]); continue; }
+    // Numbered card
+    const n = line.match(/^(\d+)\.\s+(.*)$/);
+    if (n) {
+      flushBullets(); flushPara();
+      out.push(
+        <View key={`n${key++}`} style={{ marginBottom: 8, backgroundColor: "#f8fafc", borderRadius: 4, padding: 10, borderLeft: "3px solid " + GOLD, flexDirection: "row", gap: 9 }}>
+          <Text style={{ fontSize: 10, fontFamily: "Helvetica-Bold", color: GOLD }}>{n[1]}.</Text>
+          <Text style={{ fontSize: 9.5, color: "#334155", lineHeight: 1.55, flex: 1 }}>{n[2]}</Text>
+        </View>
+      );
+      continue;
+    }
+    flushBullets();
+    para.push(line);
+  }
+  flushBullets(); flushPara();
+  return out;
+}
+
 function ScopeOfWorkPage({ title, body, client }: { title: string; body: string; client?: TemplatePdfProps["client"] }) {
   const { logoSrc: logoPath, name: companyDisplayName, address: companyAddress, phone: companyPhone, email: companyEmail, licenses: companyLicenses, contactName: companyContactName } = useBranding();
-  const blocks = body.split(/\n\n+/).map(b => b.trim()).filter(Boolean);
   const clientName = client?.name ?? "";
   return (
     <Page size="LETTER" style={{ fontFamily: "Helvetica", padding: 0, paddingBottom: 96 }}>
@@ -1639,25 +1730,7 @@ function ScopeOfWorkPage({ title, body, client }: { title: string; body: string;
         <Text style={{ fontSize: 14, fontFamily: "Helvetica-Bold", color: DARK, letterSpacing: 0.5, textTransform: "uppercase", marginBottom: 10 }}>{title}</Text>
 
         {/* Body blocks */}
-        {blocks.map((block, i) => {
-          const lines = block.split("\n");
-          const firstLine = lines[0];
-          const isNumbered = /^\d+\.\s+/.test(firstLine);
-          const rest = lines.slice(1).join("\n").trim();
-          if (isNumbered) {
-            return (
-              <View key={i} style={{ marginBottom: 10, backgroundColor: "#f8fafc", borderRadius: 4, padding: 10, borderLeft: "3px solid " + GOLD }}>
-                <Text style={{ fontSize: 10, fontFamily: "Helvetica-Bold", color: DARK, marginBottom: rest ? 4 : 0 }}>{firstLine}</Text>
-                {rest ? <Text style={{ fontSize: 9.5, color: "#334155", lineHeight: 1.55 }}>{rest}</Text> : null}
-              </View>
-            );
-          }
-          return (
-            <View key={i} style={{ marginBottom: 10 }}>
-              <Text style={{ fontSize: 9.5, color: "#334155", lineHeight: 1.55 }}>{block}</Text>
-            </View>
-          );
-        })}
+        {renderScopeBody(body)}
       </View>
     </Page>
   );

@@ -167,6 +167,24 @@ export default function CoverPagePickerModal({
     }
     return "";
   });
+  // Saved Scope-of-Work documents (added as an optional preview page)
+  const [scopes, setScopes] = useState<{ id: string; name: string; title: string }[]>([]);
+  const [scopeOfWorkId, setScopeOfWorkId] = useState<string | null>(() => {
+    if (companyId) {
+      try {
+        const saved = JSON.parse(localStorage.getItem(`gc-pdf-opts-${clientId ?? companyId}`) ?? "null");
+        if (saved?.scopeOfWorkId) return saved.scopeOfWorkId as string;
+      } catch {}
+    }
+    return null;
+  });
+  useEffect(() => {
+    if (!companyId) return;
+    fetch(`/api/${companyId}/scopes-of-work`)
+      .then(r => r.json())
+      .then(data => setScopes(data.scopes ?? []))
+      .catch(() => {});
+  }, [companyId]);
 
   // Custom cover gallery
   const [customCovers, setCustomCovers] = useState<CustomCover[]>([]);
@@ -192,9 +210,9 @@ export default function CoverPagePickerModal({
   useEffect(() => {
     if (!companyId) return;
     try {
-      localStorage.setItem(`gc-pdf-opts-${clientId ?? companyId}`, JSON.stringify({ coverType: cover, page2, selectedBlobUrl, includeDivisionSummary, includeAllowances, forcedBreakCsiPrefixes, forcedBreakTerms, scopeTitle }));
+      localStorage.setItem(`gc-pdf-opts-${clientId ?? companyId}`, JSON.stringify({ coverType: cover, page2, selectedBlobUrl, includeDivisionSummary, includeAllowances, forcedBreakCsiPrefixes, forcedBreakTerms, scopeTitle, scopeOfWorkId }));
     } catch {}
-  }, [cover, page2, selectedBlobUrl, includeDivisionSummary, includeAllowances, forcedBreakCsiPrefixes, forcedBreakTerms, scopeTitle, companyId, clientId]);
+  }, [cover, page2, selectedBlobUrl, includeDivisionSummary, includeAllowances, forcedBreakCsiPrefixes, forcedBreakTerms, scopeTitle, scopeOfWorkId, companyId, clientId]);
 
   function getCoverName(c: CustomCover): string {
     return coverNames[c.blobUrl] ?? formatCoverName(c.filename);
@@ -267,7 +285,7 @@ export default function CoverPagePickerModal({
     forcedBreakCsiPrefixes,
     forcedBreakTerms,
     noPresentation,
-    scopeOfWorkId: null,
+    scopeOfWorkId,
     scopeTitle: scopeTitle.trim() || null,
   };
 
@@ -329,6 +347,23 @@ export default function CoverPagePickerModal({
 
         {/* Scrollable body */}
         <div className="overflow-y-auto px-6 py-5 space-y-6">
+
+          {/* ── SCOPE OF WORK PAGE ── */}
+          {scopes.length > 0 && (
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-widest mb-2" style={{ color: "#8b949e" }}>Scope of Work Page</p>
+              <select
+                value={scopeOfWorkId ?? ""}
+                onChange={e => setScopeOfWorkId(e.target.value || null)}
+                className="w-full rounded-lg px-3 py-2 text-sm"
+                style={{ background: "#0d1117", border: `1px solid ${scopeOfWorkId ? "#C9A84C55" : "#30373f"}`, color: scopeOfWorkId ? "#C9A84C" : "#8b949e", fontWeight: scopeOfWorkId ? 600 : 400 }}
+              >
+                <option value="">None</option>
+                {scopes.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
+              </select>
+              <p className="text-[11px] mt-1.5" style={{ color: "#6b7280" }}>Adds a dedicated Scope of Work page to the PDF/preview.</p>
+            </div>
+          )}
 
           {/* ── SCOPE TITLE ── */}
           <div>
