@@ -671,14 +671,26 @@ function TemplateItemTable({ divisionId, groupId, items, canEdit }: { divisionId
   );
 }
 
-function TemplateGroupSection({ group, index, divisionId, canEdit }: { group: Group; index: number; divisionId: string; canEdit: boolean }) {
+function TemplateGroupSection({ group, index, divisionId, canEdit, companyId }: { group: Group; index: number; divisionId: string; canEdit: boolean; companyId: string }) {
   const [isPending, startTransition] = useTransition();
   const { pushUndo } = useContext(UndoCtx);
   const [editingName, setEditingName] = useState(false);
   const [nameInput, setNameInput] = useState(group.name);
-  const [lumpSumInput, setLumpSumInput] = useState(group.manualTotal != null ? String(group.manualTotal) : "");
   const [lumpSumOpen, setLumpSumOpen] = useState(group.manualTotal != null);
+  const [lumpFormula, setLumpFormula] = useState<string | null>(null);
+  const lumpScope = `tmplLumpGrp:${group.id}`;
+  const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const router = useRouter();
+
+  // Load any stored formula so it shows on hover even when the override panel is collapsed
+  useEffect(() => {
+    if (group.manualTotal == null) return;
+    fetch(`/api/${companyId}/formulas?scope=${encodeURIComponent(lumpScope)}`, { cache: "no-store" })
+      .then(r => r.ok ? r.json() : null)
+      .then((d: { expression: string } | null) => { if (d?.expression) setLumpFormula(d.expression); })
+      .catch(() => {});
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [companyId, lumpScope]);
   const total = groupSectionTotal(group);
   const { setNodeRef: setGroupDropRef, isOver: isGroupOver } = useDroppable({ id: `group:${group.id}:${divisionId}` });
   const { attributes: gDragAttrs, listeners: gDragListeners, setNodeRef: setGDragRef, isDragging: gDragging } = useDraggable({
@@ -687,13 +699,15 @@ function TemplateGroupSection({ group, index, divisionId, canEdit }: { group: Gr
     disabled: !canEdit,
   });
 
-  function saveLumpSum(value: string) {
-    const parsed = value.trim() === "" ? null : parseFloat(value.replace(/,/g, ""));
-    if (value.trim() !== "" && isNaN(parsed!)) return;
+  function saveLumpSum(parsed: number | null) {
     startTransition(async () => {
       await upsertTemplateGroup(divisionId, { id: group.id, name: group.name, manualTotal: parsed });
       router.refresh();
     });
+  }
+  function scheduleSave(parsed: number | null) {
+    if (saveTimer.current) clearTimeout(saveTimer.current);
+    saveTimer.current = setTimeout(() => saveLumpSum(parsed), 700);
   }
 
   function commitRename() {
@@ -740,9 +754,9 @@ function TemplateGroupSection({ group, index, divisionId, canEdit }: { group: Gr
               onClick={() => { if (canEdit) setLumpSumOpen(v => !v); }}
               className="text-xs font-semibold"
               style={{ color: "#C9A84C", background: "transparent", border: "none", padding: 0, cursor: canEdit ? "pointer" : "default" }}
-              title={canEdit ? "Set lump-sum total for this group" : undefined}
+              title={lumpFormula ? `Formula: ${lumpFormula}` : (canEdit ? "Set lump-sum total for this group" : undefined)}
             >
-              {group.manualTotal != null ? "≈ " : ""}${fmt(total)}
+              {group.manualTotal != null ? "≈ " : ""}${fmt(total)}{lumpFormula ? " ƒ" : ""}
             </button>
           )}
           {canEdit && (
@@ -773,18 +787,19 @@ function TemplateGroupSection({ group, index, divisionId, canEdit }: { group: Gr
       {lumpSumOpen && canEdit && (
         <div className="flex items-center gap-2 px-3 py-2" style={{ background: "#161b22", borderTop: "1px solid #30373f" }}>
           <span className="text-xs shrink-0" style={{ color: "#8b949e" }}>Group lump sum override:</span>
-          <input
-            type="number"
+          <FormulaInput
+            companyId={companyId}
+            scope={lumpScope}
+            storageKey={lumpScope}
             className="rounded px-2 py-1 text-sm flex-1"
             style={{ background: "#0d1117", border: "1px solid #C9A84C66", color: "#e6edf3", minWidth: 0 }}
-            placeholder="e.g. 12000"
-            value={lumpSumInput}
-            onChange={e => setLumpSumInput(e.target.value)}
-            onBlur={e => saveLumpSum(e.target.value)}
-            onKeyDown={e => { if (e.key === "Enter") { saveLumpSum(lumpSumInput); (e.target as HTMLInputElement).blur(); } }}
+            placeholder="e.g. 12000 or =4000*3"
+            value={group.manualTotal ?? ""}
+            onChange={v => scheduleSave(v)}
+            onFormulaChange={f => setLumpFormula(f)}
           />
-          {lumpSumInput && (
-            <button onClick={() => { setLumpSumInput(""); saveLumpSum(""); setLumpSumOpen(false); }} className="text-xs shrink-0" style={{ color: "#ef4444" }}>✕ Clear</button>
+          {group.manualTotal != null && (
+            <button onClick={() => { if (saveTimer.current) clearTimeout(saveTimer.current); saveLumpSum(null); setLumpFormula(null); setLumpSumOpen(false); }} className="text-xs shrink-0" style={{ color: "#ef4444" }}>✕ Clear</button>
           )}
         </div>
       )}
@@ -793,7 +808,7 @@ function TemplateGroupSection({ group, index, divisionId, canEdit }: { group: Gr
   );
 }
 
-function TemplateDivisionSection({ division, otherDivisions, canEdit, globalSaveSignal, templateId }: { division: Division; otherDivisions: Division[]; canEdit: boolean; globalSaveSignal?: number; templateId: string }) {
+function TemplateDivisionSection({ division, otherDivisions, canEdit, globalSaveSignal, templateId, companyId }: { division: Division; otherDivisions: Division[]; canEdit: boolean; globalSaveSignal?: number; templateId: string; companyId: string }) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const [isPending, startTransition] = useTransition();
@@ -802,8 +817,18 @@ function TemplateDivisionSection({ division, otherDivisions, canEdit, globalSave
   const [editingHeader, setEditingHeader] = useState(false);
   const [editCsi, setEditCsi] = useState(division.csiCode ?? "");
   const [editName, setEditName] = useState(division.name);
-  const [lumpSumInput, setLumpSumInput] = useState(division.manualTotal != null ? String(division.manualTotal) : "");
   const [lumpSumOpen, setLumpSumOpen] = useState(division.manualTotal != null);
+  const [lumpFormula, setLumpFormula] = useState<string | null>(null);
+  const lumpScope = `tmplLumpDiv:${division.id}`;
+  const lumpSaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  useEffect(() => {
+    if (division.manualTotal == null) return;
+    fetch(`/api/${companyId}/formulas?scope=${encodeURIComponent(lumpScope)}`, { cache: "no-store" })
+      .then(r => r.ok ? r.json() : null)
+      .then((d: { expression: string } | null) => { if (d?.expression) setLumpFormula(d.expression); })
+      .catch(() => {});
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [companyId, lumpScope]);
   const [movingTo, setMovingTo] = useState(false);
   const [editAllSignal, setEditAllSignal] = useState(0);
   const [saveSignal, setSaveSignal] = useState(0);
@@ -870,13 +895,15 @@ function TemplateDivisionSection({ division, otherDivisions, canEdit, globalSave
     });
   }
 
-  function saveLumpSum(value: string) {
-    const parsed = value.trim() === "" ? null : parseFloat(value.replace(/,/g, ""));
-    if (value.trim() !== "" && isNaN(parsed!)) return;
+  function saveLumpSum(parsed: number | null) {
     startTransition(async () => {
       await upsertTemplateDivision(templateId, { id: division.id, name: division.name, manualTotal: parsed });
       router.refresh();
     });
+  }
+  function scheduleLumpSave(parsed: number | null) {
+    if (lumpSaveTimer.current) clearTimeout(lumpSaveTimer.current);
+    lumpSaveTimer.current = setTimeout(() => saveLumpSum(parsed), 700);
   }
 
   return (
@@ -949,8 +976,8 @@ function TemplateDivisionSection({ division, otherDivisions, canEdit, globalSave
               onClick={e => { e.stopPropagation(); setLumpSumOpen(v => !v); }}
               className="text-sm font-bold shrink-0"
               style={{ color: "#C9A84C", background: "transparent", border: "none", padding: 0 }}
-              title="Set lump-sum total">
-              {division.manualTotal != null ? "≈ " : ""}${fmt(total)}
+              title={lumpFormula ? `Formula: ${lumpFormula}` : "Set lump-sum total"}>
+              {division.manualTotal != null ? "≈ " : ""}${fmt(total)}{lumpFormula ? " ƒ" : ""}
             </button>
           )}
         </div>
@@ -958,18 +985,19 @@ function TemplateDivisionSection({ division, otherDivisions, canEdit, globalSave
         {lumpSumOpen && canEdit && (
           <div className="flex items-center gap-2 px-4 py-2" style={{ background: "#161b22", borderTop: "1px solid #30373f" }} onClick={e => e.stopPropagation()}>
             <span className="text-xs shrink-0" style={{ color: "#8b949e" }}>Lump sum override:</span>
-            <input
-              type="number"
+            <FormulaInput
+              companyId={companyId}
+              scope={lumpScope}
+              storageKey={lumpScope}
               className="rounded px-2 py-1 text-sm flex-1"
               style={{ background: "#0d1117", border: "1px solid #C9A84C66", color: "#e6edf3", minWidth: 0 }}
-              placeholder="e.g. 45000"
-              value={lumpSumInput}
-              onChange={e => setLumpSumInput(e.target.value)}
-              onBlur={e => saveLumpSum(e.target.value)}
-              onKeyDown={e => { if (e.key === "Enter") { saveLumpSum(lumpSumInput); (e.target as HTMLInputElement).blur(); } }}
+              placeholder="e.g. 45000 or =15000*3"
+              value={division.manualTotal ?? ""}
+              onChange={v => scheduleLumpSave(v)}
+              onFormulaChange={f => setLumpFormula(f)}
             />
-            {lumpSumInput && (
-              <button onClick={() => { setLumpSumInput(""); saveLumpSum(""); setLumpSumOpen(false); }} className="text-xs shrink-0" style={{ color: "#ef4444" }}>✕ Clear</button>
+            {division.manualTotal != null && (
+              <button onClick={() => { if (lumpSaveTimer.current) clearTimeout(lumpSaveTimer.current); saveLumpSum(null); setLumpFormula(null); setLumpSumOpen(false); }} className="text-xs shrink-0" style={{ color: "#ef4444" }}>✕ Clear</button>
             )}
           </div>
         )}
@@ -1058,9 +1086,9 @@ function TemplateDivisionSection({ division, otherDivisions, canEdit, globalSave
           </div>
         )}
         {total > 0 && !editingHeader && (
-          <span className="text-sm font-bold shrink-0" style={{ color: "#C9A84C" }}>
+          <span className="text-sm font-bold shrink-0" style={{ color: "#C9A84C" }} title={lumpFormula ? `Formula: ${lumpFormula}` : undefined}>
             {division.manualTotal != null && <span className="text-[10px] font-normal mr-1" style={{ color: "#8b949e" }}>override</span>}
-            ${fmt(total)}
+            ${fmt(total)}{lumpFormula ? " ƒ" : ""}
           </span>
         )}
       </div>
@@ -1068,20 +1096,21 @@ function TemplateDivisionSection({ division, otherDivisions, canEdit, globalSave
       {lumpSumOpen && canEdit && (
         <div className="hidden md:flex items-center gap-3 px-4 py-2" style={{ background: "#0d1117", borderTop: "1px solid #C9A84C33" }}>
           <span className="text-xs shrink-0" style={{ color: "#8b949e" }}>Lump-sum override (replaces all line items in this division):</span>
-          <input
-            type="number"
+          <FormulaInput
+            companyId={companyId}
+            scope={lumpScope}
+            storageKey={lumpScope}
             className="rounded px-2 py-1 text-sm"
             style={{ background: "#161b22", border: "1px solid #C9A84C66", color: "#e6edf3", width: 140 }}
-            placeholder="e.g. 45000"
-            value={lumpSumInput}
-            onChange={e => setLumpSumInput(e.target.value)}
-            onBlur={e => saveLumpSum(e.target.value)}
-            onKeyDown={e => { if (e.key === "Enter") { saveLumpSum(lumpSumInput); (e.target as HTMLInputElement).blur(); } }}
+            placeholder="e.g. 45000 or =15000*3"
+            value={division.manualTotal ?? ""}
+            onChange={v => scheduleLumpSave(v)}
+            onFormulaChange={f => setLumpFormula(f)}
           />
-          {lumpSumInput && (
-            <button onClick={() => { setLumpSumInput(""); saveLumpSum(""); setLumpSumOpen(false); }} className="text-xs px-2 py-1 rounded" style={{ color: "#ef4444", border: "1px solid #ef444433" }}>✕ Clear override</button>
+          {division.manualTotal != null && (
+            <button onClick={() => { if (lumpSaveTimer.current) clearTimeout(lumpSaveTimer.current); saveLumpSum(null); setLumpFormula(null); setLumpSumOpen(false); }} className="text-xs px-2 py-1 rounded" style={{ color: "#ef4444", border: "1px solid #ef444433" }}>✕ Clear override</button>
           )}
-          <span className="text-[11px]" style={{ color: "#484f58" }}>Leave blank to use line item sum</span>
+          <span className="text-[11px]" style={{ color: "#484f58" }}>Type a number or a formula like =15000*3</span>
         </div>
       )}
 
@@ -1089,7 +1118,7 @@ function TemplateDivisionSection({ division, otherDivisions, canEdit, globalSave
         <DivisionEditCtx.Provider value={{ editAllSignal, saveSignal, resetAllSignal }}>
         <div style={{ borderTop: "1px solid #30373f" }} className="pb-2">
           {division.groups.map((grp, gi) => (
-            <TemplateGroupSection key={grp.id} group={grp} index={gi} divisionId={division.id} canEdit={canEdit} />
+            <TemplateGroupSection key={grp.id} group={grp} index={gi} divisionId={division.id} canEdit={canEdit} companyId={companyId} />
           ))}
           {division.items.length > 0 && (
             <TemplateItemTable divisionId={division.id} groupId={null} items={division.items} canEdit={canEdit} />
@@ -2773,7 +2802,7 @@ export default function TemplateEditor({
               )}
               <div className={groupLabel ? "space-y-2 pl-2" : "space-y-3"}>
                 {divs.map((div) => (
-                  <TemplateDivisionSection key={div.id} division={div} otherDivisions={divisions.filter(d => d.id !== div.id)} canEdit={canEdit} globalSaveSignal={globalSaveSignal} templateId={template.id} />
+                  <TemplateDivisionSection key={div.id} division={div} otherDivisions={divisions.filter(d => d.id !== div.id)} canEdit={canEdit} globalSaveSignal={globalSaveSignal} templateId={template.id} companyId={template.companyId} />
                 ))}
               </div>
             </div>

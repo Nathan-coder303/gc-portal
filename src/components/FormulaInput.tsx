@@ -14,6 +14,13 @@ function evalFormula(expr: string): number | null {
   } catch { return null; }
 }
 
+// True when the raw text is a formula (leading "=", a leading paren, or an
+// arithmetic operator between two numbers) rather than a plain number.
+function looksLikeFormula(raw: string): boolean {
+  const c = raw.replace(/,/g, "").trim();
+  return c.startsWith("=") || /^\(/.test(c) || /\d\s*[\+\-\*\/]\s*\d/.test(c);
+}
+
 function parseRaw(raw: string): number | null {
   const cleaned = raw.replace(/,/g, "").trim();
   if (cleaned.startsWith("=")) return evalFormula(cleaned);
@@ -43,9 +50,11 @@ interface FormulaInputProps {
   autoFocus?: boolean;
   onKeyDown?: (e: React.KeyboardEvent<HTMLInputElement>) => void;
   disabled?: boolean;
+  /** Fires with the raw formula text (or null when it's a plain number) on load and edit. */
+  onFormulaChange?: (formula: string | null) => void;
 }
 
-export function FormulaInput({ value, onChange, storageKey, companyId, scope, className = "", style, placeholder = "0", autoFocus, onKeyDown, disabled }: FormulaInputProps) {
+export function FormulaInput({ value, onChange, storageKey, companyId, scope, className = "", style, placeholder = "0", autoFocus, onKeyDown, disabled, onFormulaChange }: FormulaInputProps) {
   const getStored = () => storageKey && typeof window !== "undefined" ? localStorage.getItem(fxKey(storageKey)) : null;
 
   const [raw, setRaw] = useState<string>(() => getStored() ?? String(value ?? ""));
@@ -63,6 +72,7 @@ export function FormulaInput({ value, onChange, storageKey, companyId, scope, cl
       .then((data: { expression: string } | null) => {
         if (data?.expression && !focused) {
           setRaw(data.expression);
+          onFormulaChange?.(data.expression);
           // Mirror to localStorage so subsequent loads on this device are instant
           if (storageKey && typeof window !== "undefined") {
             localStorage.setItem(fxKey(storageKey), data.expression);
@@ -82,7 +92,7 @@ export function FormulaInput({ value, onChange, storageKey, companyId, scope, cl
     }
   });
 
-  const isFormula = raw.startsWith("=");
+  const isFormula = looksLikeFormula(raw);
   const computed = parseRaw(raw);
   const displayValue = focused ? raw : (computed != null ? String(computed) : raw);
 
@@ -97,7 +107,7 @@ export function FormulaInput({ value, onChange, storageKey, companyId, scope, cl
     if (!companyId || !scope) return;
     if (saveTimer.current) clearTimeout(saveTimer.current);
     saveTimer.current = setTimeout(() => {
-      if (rawValue.startsWith("=")) {
+      if (looksLikeFormula(rawValue)) {
         fetch(`/api/${companyId}/formulas`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -113,11 +123,13 @@ export function FormulaInput({ value, onChange, storageKey, companyId, scope, cl
   function handleChange(e: React.ChangeEvent<HTMLInputElement>) {
     const v = e.target.value;
     setRaw(v);
+    const formula = looksLikeFormula(v);
     if (storageKey && typeof window !== "undefined") {
-      if (v.startsWith("=")) localStorage.setItem(fxKey(storageKey), v);
+      if (formula) localStorage.setItem(fxKey(storageKey), v);
       else localStorage.removeItem(fxKey(storageKey));
     }
     queueServerSave(v);
+    onFormulaChange?.(formula ? v : null);
     const num = parseRaw(v);
     if (num != null) onChange(num);
   }
