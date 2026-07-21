@@ -176,14 +176,14 @@ export async function duplicateTemplate(templateId: string) {
   for (let di = 0; di < source.divisions.length; di++) {
     const srcDiv = source.divisions[di];
     const newDiv = await prisma.estimateTemplateDivision.create({
-      data: { templateId: copy.id, csiCode: srcDiv.csiCode, name: srcDiv.name, sortOrder: di },
+      data: { templateId: copy.id, csiCode: srcDiv.csiCode, name: srcDiv.name, sortOrder: di, manualTotal: srcDiv.manualTotal },
     });
 
     // Groups with their items
     for (let gi = 0; gi < srcDiv.groups.length; gi++) {
       const srcGrp = srcDiv.groups[gi];
       const newGrp = await prisma.estimateTemplateGroup.create({
-        data: { divisionId: newDiv.id, name: srcGrp.name, sortOrder: gi },
+        data: { divisionId: newDiv.id, name: srcGrp.name, sortOrder: gi, manualTotal: srcGrp.manualTotal },
       });
       for (let ii = 0; ii < srcGrp.items.length; ii++) {
         const item = srcGrp.items[ii];
@@ -197,6 +197,8 @@ export async function duplicateTemplate(templateId: string) {
             unit: item.unit,
             defaultQty: item.defaultQty,
             defaultUnitCost: item.defaultUnitCost,
+            defaultLaborCost: item.defaultLaborCost,
+            defaultMaterialCost: item.defaultMaterialCost,
             defaultMarkupPct: item.defaultMarkupPct,
             visibleInPdf: item.visibleInPdf,
             notes: item.notes,
@@ -218,6 +220,8 @@ export async function duplicateTemplate(templateId: string) {
           unit: item.unit,
           defaultQty: item.defaultQty,
           defaultUnitCost: item.defaultUnitCost,
+          defaultLaborCost: item.defaultLaborCost,
+          defaultMaterialCost: item.defaultMaterialCost,
           defaultMarkupPct: item.defaultMarkupPct,
           visibleInPdf: item.visibleInPdf,
           notes: item.notes,
@@ -984,11 +988,11 @@ export async function saveAsNewTemplate(sourceTemplateId: string, newName: strin
 
     for (const div of source.divisions) {
       const newDiv = await tx.estimateTemplateDivision.create({
-        data: { templateId: tpl.id, csiCode: div.csiCode, name: div.name, sortOrder: div.sortOrder },
+        data: { templateId: tpl.id, csiCode: div.csiCode, name: div.name, sortOrder: div.sortOrder, manualTotal: div.manualTotal },
       });
       for (const grp of div.groups) {
         const newGrp = await tx.estimateTemplateGroup.create({
-          data: { divisionId: newDiv.id, name: grp.name, sortOrder: grp.sortOrder },
+          data: { divisionId: newDiv.id, name: grp.name, sortOrder: grp.sortOrder, manualTotal: grp.manualTotal },
         });
         for (const item of grp.items) {
           await tx.estimateTemplateItem.create({
@@ -1434,11 +1438,11 @@ export async function saveAsClientEstimate(sourceTemplateId: string, clientId: s
 
     for (const div of source.divisions) {
       const newDiv = await tx.estimateTemplateDivision.create({
-        data: { templateId: tpl.id, csiCode: div.csiCode, name: div.name, sortOrder: div.sortOrder },
+        data: { templateId: tpl.id, csiCode: div.csiCode, name: div.name, sortOrder: div.sortOrder, manualTotal: div.manualTotal },
       });
       for (const grp of div.groups) {
         const newGrp = await tx.estimateTemplateGroup.create({
-          data: { divisionId: newDiv.id, name: grp.name, sortOrder: grp.sortOrder },
+          data: { divisionId: newDiv.id, name: grp.name, sortOrder: grp.sortOrder, manualTotal: grp.manualTotal },
         });
         for (const item of grp.items) {
           await tx.estimateTemplateItem.create({
