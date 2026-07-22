@@ -1393,7 +1393,7 @@ function ClientSelector({
 }) {
   const [mode, setMode] = useState<"view" | "select" | "new">("view");
   const [isPending, startTransition] = useTransition();
-  const [selectedId, setSelectedId] = useState(currentClient?.id ?? "");
+  const [query, setQuery] = useState("");
   const [newName, setNewName] = useState("");
   const [newAddress, setNewAddress] = useState("");
   const [newCity, setNewCity] = useState("");
@@ -1402,15 +1402,20 @@ function ClientSelector({
   const [newEmail, setNewEmail] = useState("");
   const [displayClient, setDisplayClient] = useState<ClientData | null>(currentClient);
 
-  function handleAssignExisting() {
-    if (!selectedId) return;
+  function handleAssignExisting(clientId: string) {
     startTransition(async () => {
-      await setTemplateClient(templateId, selectedId);
-      const found = allClients.find(c => c.id === selectedId) ?? null;
-      setDisplayClient(found);
+      await setTemplateClient(templateId, clientId);
+      setDisplayClient(allClients.find(c => c.id === clientId) ?? null);
+      setQuery("");
       setMode("view");
     });
   }
+
+  const q = query.trim().toLowerCase();
+  const filteredClients = (q
+    ? allClients.filter(c => `${c.name} ${c.address ?? ""} ${c.city ?? ""}`.toLowerCase().includes(q))
+    : allClients
+  ).slice(0, 8);
 
   function handleCreateNew() {
     if (!newName.trim()) return;
@@ -1467,24 +1472,39 @@ function ClientSelector({
       </div>
 
       {canEdit && mode === "select" && (
-        <div className="mt-3 flex gap-2 items-end flex-wrap">
-          <div className="flex-1">
-            <label className="block text-xs font-medium mb-1" style={{ color: "#8b949e" }}>Select existing client</label>
-            <select
-              value={selectedId}
-              onChange={(e) => setSelectedId(e.target.value)}
-              className="w-full rounded px-2 py-1.5 text-sm"
-              style={{ background: "#0d1117", border: "1px solid #30373f", color: "#e6edf3" }}
-            >
-              <option value="">— choose —</option>
-              {allClients.map(c => (
-                <option key={c.id} value={c.id}>{c.name}{c.address ? ` — ${c.address}` : ""}</option>
-              ))}
-            </select>
+        <div className="mt-3">
+          <label className="block text-xs font-medium mb-1" style={{ color: "#8b949e" }}>Search or type a client name</label>
+          <input
+            autoFocus
+            value={query}
+            onChange={e => setQuery(e.target.value)}
+            onKeyDown={e => { if (e.key === "Enter" && filteredClients.length > 0) handleAssignExisting(filteredClients[0].id); if (e.key === "Escape") setMode("view"); }}
+            placeholder="Start typing a client name…"
+            className="w-full rounded px-2 py-1.5 text-sm"
+            style={{ background: "#0d1117", border: "1px solid #30373f", color: "#e6edf3" }}
+          />
+          <div className="mt-2 rounded overflow-hidden" style={{ border: "1px solid #21262d", maxHeight: 208, overflowY: "auto" }}>
+            {filteredClients.length > 0 ? filteredClients.map(c => (
+              <button
+                key={c.id}
+                onClick={() => handleAssignExisting(c.id)}
+                disabled={isPending}
+                className="w-full text-left px-3 py-2 disabled:opacity-50"
+                style={{ background: "#0d1117", borderBottom: "1px solid #21262d" }}
+              >
+                <span className="text-sm block truncate" style={{ color: "#e6edf3" }}>{c.name}</span>
+                {(c.address || c.city) && <span className="text-xs block truncate" style={{ color: "#8b949e" }}>{[c.address, c.city].filter(Boolean).join(", ")}</span>}
+              </button>
+            )) : (
+              <p className="text-xs px-3 py-3 text-center" style={{ color: "#6b7280" }}>No matching clients.</p>
+            )}
           </div>
-          <button onClick={handleAssignExisting} disabled={isPending || !selectedId} className="text-xs px-3 py-1.5 rounded font-medium" style={{ background: "#C9A84C", color: "#0d1117" }}>Assign</button>
-          <button onClick={() => setMode("new")} className="text-xs px-3 py-1.5 rounded" style={{ border: "1px solid #30373f", color: "#e6edf3" }}>+ New Client</button>
-          <button onClick={() => setMode("view")} className="text-xs px-2" style={{ color: "#8b949e" }}>Cancel</button>
+          <div className="mt-2 flex gap-2 items-center">
+            <button onClick={() => { setNewName(query.trim()); setMode("new"); }} className="text-xs px-3 py-1.5 rounded" style={{ border: "1px solid #30373f", color: "#e6edf3" }}>
+              {query.trim() ? `+ New client “${query.trim()}”` : "+ New Client"}
+            </button>
+            <button onClick={() => { setQuery(""); setMode("view"); }} className="text-xs px-2" style={{ color: "#8b949e" }}>Cancel</button>
+          </div>
         </div>
       )}
 
