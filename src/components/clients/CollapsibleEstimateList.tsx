@@ -499,10 +499,18 @@ function EstimateCard({
               </p>
               <button
                 onClick={() => setStep("cover")}
-                className="text-xs px-2 py-1 rounded-lg"
+                className="flex items-center gap-2 text-xs px-2 py-1.5 rounded-lg"
                 style={{ background: "#1e2736", border: "1px solid #30373f", color: "#8b949e" }}
+                title="Click to change the cover page"
               >
-                Cover: {selectedOption?.label ?? pdfOpts?.coverType}
+                {(() => {
+                  const thumb = pdfOpts?.coverType === "CUSTOM" ? pdfOpts.coverBlobUrl : (selectedOption && "img" in selectedOption ? selectedOption.img : null);
+                  return thumb ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img src={thumb} alt="" style={{ width: 40, height: 28, objectFit: "cover", borderRadius: 4, border: "1px solid #30373f" }} />
+                  ) : null;
+                })()}
+                <span>Cover: <span style={{ color: "#C9A84C" }}>{selectedOption?.label ?? pdfOpts?.coverType ?? "None"}</span> ✎</span>
               </button>
             </div>
 
