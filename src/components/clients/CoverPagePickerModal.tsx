@@ -303,11 +303,11 @@ export default function CoverPagePickerModal({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ background: "rgba(0,0,0,0.8)" }} onClick={onClose}>
-      <div className="w-full max-w-2xl rounded-2xl overflow-hidden flex flex-col" style={{ background: "#161b22", border: "1px solid #30373f", maxHeight: "90vh" }} onClick={e => e.stopPropagation()}>
+    <div className="fixed inset-0 z-50 flex items-start sm:items-center justify-center p-2 sm:p-4 overflow-y-auto" style={{ background: "rgba(0,0,0,0.8)" }} onClick={onClose}>
+      <div className="w-full max-w-2xl rounded-2xl overflow-hidden flex flex-col my-auto" style={{ background: "#161b22", border: "1px solid #30373f", maxHeight: "calc(100dvh - 1rem)" }} onClick={e => e.stopPropagation()}>
 
         {/* Sticky header + actions */}
-        <div className="px-6 pt-5 pb-4 shrink-0" style={{ borderBottom: "1px solid #21262d" }}>
+        <div className="px-4 sm:px-6 pt-4 sm:pt-5 pb-3 sm:pb-4 shrink-0" style={{ borderBottom: "1px solid #21262d" }}>
           <div className="flex items-center justify-between mb-4">
             <h2 className="text-base font-bold" style={{ color: "#e6edf3" }}>PDF Options</h2>
             <button onClick={onClose} style={{ color: "#8b949e" }} className="text-xl leading-none">×</button>
@@ -359,7 +359,7 @@ export default function CoverPagePickerModal({
         </div>
 
         {/* Scrollable body */}
-        <div className="overflow-y-auto px-6 py-5 space-y-6">
+        <div className="flex-1 min-h-0 overflow-y-auto px-4 sm:px-6 py-5 space-y-6">
 
           {/* ── SCOPE OF WORK PAGE ── */}
           {scopes.length > 0 && (
