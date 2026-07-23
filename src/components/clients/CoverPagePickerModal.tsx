@@ -557,32 +557,34 @@ export default function CoverPagePickerModal({
           )}
 
           {/* ── DIVISION SUMMARY ── */}
-          <div>
-            <p className="text-xs font-semibold uppercase tracking-widest mb-2" style={{ color: "#8b949e" }}>Include Division Summary Page?</p>
-            <div className="grid grid-cols-2 gap-2">
-              {[{ v: true, icon: "📊", label: "Yes", desc: "Add a summary page with division totals" }, { v: false, icon: "⊘", label: "No", desc: "Skip summary page" }].map(o => (
+          <div className="flex items-center justify-between gap-3">
+            <div className="min-w-0">
+              <p className="text-xs font-semibold uppercase tracking-widest" style={{ color: "#8b949e" }}>Division Summary Page</p>
+              <p className="text-[10px] mt-0.5" style={{ color: "#6b7280" }}>Summary page with division totals</p>
+            </div>
+            <div className="flex gap-1 shrink-0">
+              {[{ v: true, label: "Yes" }, { v: false, label: "No" }].map(o => (
                 <button key={String(o.v)} onClick={() => setIncludeDivisionSummary(o.v)}
-                  className="rounded-xl p-3 text-left transition-all"
-                  style={{ border: `2px solid ${includeDivisionSummary === o.v ? "#C9A84C" : "#30373f"}`, background: includeDivisionSummary === o.v ? "#1e2a12" : "#1e2736", outline: "none" }}>
-                  <div className="text-2xl mb-1">{o.icon}</div>
-                  <div className="text-xs font-semibold" style={{ color: includeDivisionSummary === o.v ? "#C9A84C" : "#e6edf3" }}>{o.label}</div>
-                  <div className="text-[10px] mt-0.5" style={{ color: "#8b949e" }}>{o.desc}</div>
+                  className="text-xs font-semibold px-3 py-1.5 rounded-lg transition-all"
+                  style={{ border: `1.5px solid ${includeDivisionSummary === o.v ? "#C9A84C" : "#30373f"}`, background: includeDivisionSummary === o.v ? "#1e2a12" : "#1e2736", color: includeDivisionSummary === o.v ? "#C9A84C" : "#e6edf3", outline: "none" }}>
+                  {o.label}
                 </button>
               ))}
             </div>
           </div>
 
           {/* ── ALLOWANCES SUMMARY ── */}
-          <div>
-            <p className="text-xs font-semibold uppercase tracking-widest mb-2" style={{ color: "#8b949e" }}>Include Allowances Summary Page?</p>
-            <div className="grid grid-cols-2 gap-2">
-              {[{ v: true, icon: "🧾", label: "Yes", desc: "Add a clean one-page allowances recap" }, { v: false, icon: "⊘", label: "No", desc: "Skip allowances page" }].map(o => (
+          <div className="flex items-center justify-between gap-3">
+            <div className="min-w-0">
+              <p className="text-xs font-semibold uppercase tracking-widest" style={{ color: "#8b949e" }}>Allowances Summary Page</p>
+              <p className="text-[10px] mt-0.5" style={{ color: "#6b7280" }}>One-page allowances recap</p>
+            </div>
+            <div className="flex gap-1 shrink-0">
+              {[{ v: true, label: "Yes" }, { v: false, label: "No" }].map(o => (
                 <button key={String(o.v)} onClick={() => setIncludeAllowances(o.v)}
-                  className="rounded-xl p-3 text-left transition-all"
-                  style={{ border: `2px solid ${includeAllowances === o.v ? "#C9A84C" : "#30373f"}`, background: includeAllowances === o.v ? "#1e2a12" : "#1e2736", outline: "none" }}>
-                  <div className="text-2xl mb-1">{o.icon}</div>
-                  <div className="text-xs font-semibold" style={{ color: includeAllowances === o.v ? "#C9A84C" : "#e6edf3" }}>{o.label}</div>
-                  <div className="text-[10px] mt-0.5" style={{ color: "#8b949e" }}>{o.desc}</div>
+                  className="text-xs font-semibold px-3 py-1.5 rounded-lg transition-all"
+                  style={{ border: `1.5px solid ${includeAllowances === o.v ? "#C9A84C" : "#30373f"}`, background: includeAllowances === o.v ? "#1e2a12" : "#1e2736", color: includeAllowances === o.v ? "#C9A84C" : "#e6edf3", outline: "none" }}>
+                  {o.label}
                 </button>
               ))}
             </div>
