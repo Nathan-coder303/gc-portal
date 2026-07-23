@@ -592,26 +592,26 @@ export default function CoverPagePickerModal({
 
           {/* ── FORCE PAGE BREAK ── */}
           <div>
-            <p className="text-xs font-semibold uppercase tracking-widest mb-2" style={{ color: "#8b949e" }}>Force New Page Before</p>
-            <div className="flex flex-wrap gap-2">
+            <p className="text-xs font-semibold uppercase tracking-widest mb-2" style={{ color: "#8b949e" }}>Force New Page Before Division</p>
+            <div className="grid grid-cols-6 sm:grid-cols-11 gap-1.5">
               {["02","03","04","05","06","07","08","09","10","11","12","13","14","21","22","23","26","27","28","31","32","33"].map(prefix => {
                 const on = forcedBreakCsiPrefixes.includes(prefix);
                 return (
                   <button key={prefix}
                     onClick={() => setForcedBreakCsiPrefixes(prev => on ? prev.filter(p => p !== prefix) : [...prev, prefix])}
-                    className="px-3 py-1 rounded-lg text-xs font-bold transition-all"
+                    className="py-1.5 rounded-lg text-xs font-bold transition-all text-center"
                     style={{ background: on ? "#C9A84C" : "#1e2736", color: on ? "#0d1117" : "#8b949e", border: `1px solid ${on ? "#C9A84C" : "#30373f"}` }}>
-                    Div {prefix}
+                    {prefix}
                   </button>
                 );
               })}
-              <button
-                onClick={() => setForcedBreakTerms(prev => !prev)}
-                className="px-3 py-1 rounded-lg text-xs font-bold transition-all"
-                style={{ background: forcedBreakTerms ? "#C9A84C" : "#1e2736", color: forcedBreakTerms ? "#0d1117" : "#8b949e", border: `1px solid ${forcedBreakTerms ? "#C9A84C" : "#30373f"}` }}>
-                T&amp;C
-              </button>
             </div>
+            <button
+              onClick={() => setForcedBreakTerms(prev => !prev)}
+              className="mt-2 px-3 py-1.5 rounded-lg text-xs font-bold transition-all"
+              style={{ background: forcedBreakTerms ? "#C9A84C" : "#1e2736", color: forcedBreakTerms ? "#0d1117" : "#8b949e", border: `1px solid ${forcedBreakTerms ? "#C9A84C" : "#30373f"}` }}>
+              Break before T&amp;C
+            </button>
           </div>
 
         </div>
