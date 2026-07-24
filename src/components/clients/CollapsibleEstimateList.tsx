@@ -222,7 +222,9 @@ function EstimateCard({
           includeAllowances: pdfOpts.includeAllowances,
           noPresentation: pdfOpts.noPresentation,
           forcedBreakCsiPrefixes: pdfOpts.forcedBreakCsiPrefixes,
+          forcedBreakTerms: pdfOpts.forcedBreakTerms,
           scopeOfWorkId: pdfOpts.scopeOfWorkId ?? null,
+          scopeTitle: pdfOpts.scopeTitle ?? null,
           hideLineItems: pdfOpts.hideLineItems ?? false,
         }),
       });

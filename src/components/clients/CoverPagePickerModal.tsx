@@ -105,13 +105,18 @@ export default function CoverPagePickerModal({
   // This prevents the race where the save effect fires before the async load resolves,
   // causing the client-specific initialCoverType to overwrite the company-wide saved value.
   const [cover, setCover] = useState<CoverType>(() => {
-    if (companyId) {
+    // The client's saved cover selection is client-specific and intentional — it must win.
+    // (Previously a localStorage value took precedence, so a cover last used for another client
+    // leaked in as the default — e.g. a commercial "Additions" cover defaulting onto the next client.)
+    if (initialCoverType) return initialCoverType;
+    // No client selection: remember the last choice for THIS client only — never company-wide.
+    if (companyId && clientId) {
       try {
-        const saved = JSON.parse(localStorage.getItem(`gc-pdf-opts-${clientId ?? companyId}`) ?? "null");
+        const saved = JSON.parse(localStorage.getItem(`gc-pdf-opts-${clientId}`) ?? "null");
         if (saved?.coverType) return saved.coverType as CoverType;
       } catch {}
     }
-    return initialCoverType ?? (isCommercial ? "ADDITIONS" : "FLAT_ROOFS");
+    return isCommercial ? "ADDITIONS" : "FLAT_ROOFS";
   });
   const [page2, setPage2] = useState<Page2Type>(() => {
     if (companyId) {
