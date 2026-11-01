@@ -58,6 +58,7 @@ export default async function LeadsPage({
       projectType: l.projectType,
       receivedAt: l.receivedAt.toISOString(),
       status: l.status,
+      source: l.source,
     }));
 
   const stagedCards = pipelineCards

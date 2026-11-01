@@ -16,6 +16,7 @@ type TriageLead = {
   projectType: string | null;
   receivedAt: string;
   status: string;
+  source?: string | null;
 };
 
 type StagedCard = {
@@ -41,7 +42,7 @@ type Props = {
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
-const PRESET_SOURCES = ["Evolute", "ADU Elite", "NSA", "FYRD UP"];
+const PRESET_SOURCES = ["Evolute", "ADU Elite", "NSA", "FYRD UP", "MIBH Lead Machine"];
 
 const AVATAR_COLORS = [
   "#3b82f6", "#a855f7", "#C9A84C", "#f97316", "#22c55e",
@@ -214,7 +215,9 @@ function TriageCard({
 }) {
   const [dragging, setDragging] = useState(false);
   const [hovered, setHovered] = useState(false);
-  const [source, setSource] = useState<string | null>(null);
+  const [source, setSource] = useState<string | null>(
+    lead.source && PRESET_SOURCES.includes(lead.source) ? lead.source : null
+  );
 
   return (
     <div

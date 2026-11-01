@@ -1,6 +1,6 @@
 /**
  * GET /api/cron/fetch-leads — runs every 5 minutes (requires Vercel Pro).
- * Picks up new emails from info@emailings.mibhconstruction-services.com,
+ * Picks up new emails from each sender in SENDERS (the emailings mailbox and the MIBH Lead Machine),
  * merges duplicates by name.
  */
 import { NextRequest, NextResponse } from "next/server";
@@ -12,7 +12,9 @@ export const runtime = "nodejs";
 export const maxDuration = 60;
 
 const COMPANY_ID = "cmmij161r000004jm8il8bd0e";
-const LEAD_SENDER = "info@emailings.mibhconstruction-services.com";
+const MIBH_LEAD_MACHINE_SENDER = "mike@mibhroofing.com";
+const SENDERS = ["info@emailings.mibhconstruction-services.com", MIBH_LEAD_MACHINE_SENDER];
+const SENDER_QUERY = SENDERS.map((s) => `from:${s}`).join(" OR ");
 
 
 function decodeBase64(data: string): string {
@@ -46,6 +48,10 @@ function field(text: string, key: string): string | null {
   return val && val.length > 0 && val !== "N/A" ? val : null;
 }
 
+function leadSource(from: string): string {
+  return from.toLowerCase().includes(MIBH_LEAD_MACHINE_SENDER) ? "MIBH Lead Machine" : "email";
+}
+
 function parseLead(subject: string, body: string) {
   const source = `${subject}\n${body}`;
   const name = field(source, "Name");
@@ -76,7 +82,7 @@ export async function GET(req: NextRequest) {
   const since = Math.floor(Date.now() / 1000) - 600;
   const listRes = await gmail.users.messages.list({
     userId: "me",
-    q: `from:${LEAD_SENDER} after:${since}`,
+    q: `(${SENDER_QUERY}) after:${since}`,
     maxResults: 100,
   });
   const messages = listRes.data.messages ?? [];
@@ -136,7 +142,7 @@ export async function GET(req: NextRequest) {
           data: {
             companyId: COMPANY_ID,
             gmailMsgId: msg.id!, emailFrom: from, emailSubject: subject, receivedAt,
-            source: "email", status: "NEW",
+            source: leadSource(from), status: "NEW",
             name: parsed.name, email: parsed.email, phone: parsed.phone,
             address: parsed.address, city: parsed.city, state: parsed.state,
             projectType: parsed.projectType, message: parsed.message,
