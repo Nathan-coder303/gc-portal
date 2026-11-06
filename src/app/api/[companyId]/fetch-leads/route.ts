@@ -1,6 +1,6 @@
 /**
  * POST /api/[companyId]/fetch-leads
- * Fetches emails from info@emailings.mibhconstruction-services.com,
+ * Fetches emails from each sender in SENDERS (the emailings mailbox and the MIBH Lead Machine),
  * parses contact info from the structured subject line (no Claude needed),
  * and stores them as Lead records.
  *
@@ -15,8 +15,9 @@ import { getGmailOAuth } from "@/lib/gmail";
 export const runtime = "nodejs";
 export const maxDuration = 60;
 
-const LEAD_SENDER = "info@emailings.mibhconstruction-services.com";
-const GMAIL_QUERY = `from:${LEAD_SENDER}`;
+const MIBH_LEAD_MACHINE_SENDER = "mike@mibhroofing.com";
+const SENDERS = ["info@emailings.mibhconstruction-services.com", MIBH_LEAD_MACHINE_SENDER];
+const GMAIL_QUERY = SENDERS.map((s) => `from:${s}`).join(" OR ");
 
 function decodeBase64(data: string): string {
   return Buffer.from(data.replace(/-/g, "+").replace(/_/g, "/"), "base64").toString("utf-8");
@@ -48,6 +49,10 @@ function field(text: string, key: string): string | null {
   const m = text.match(pattern);
   const val = m?.[1]?.trim().replace(/\s+/g, " ") ?? null;
   return val && val.length > 0 && val !== "N/A" ? val : null;
+}
+
+function leadSource(from: string): string {
+  return from.toLowerCase().includes(MIBH_LEAD_MACHINE_SENDER) ? "MIBH Lead Machine" : "email";
 }
 
 interface ParsedLead {
@@ -190,7 +195,7 @@ export async function POST(
             emailFrom: from,
             emailSubject: subject,
             receivedAt,
-            source: "email",
+            source: leadSource(from),
             status: "NEW",
             name: parsed.name,
             email: parsed.email,
